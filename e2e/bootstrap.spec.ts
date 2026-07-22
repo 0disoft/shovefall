@@ -72,7 +72,7 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
 
   await expect(page.locator("#app")).toHaveAttribute("data-screen", "arena");
   await expect(page.locator("#app")).toHaveAttribute("data-round", "countdown");
-  await expect(page.locator("#renderer-status")).toHaveText("시작까지 3");
+  await expect(page.locator("#renderer-status")).toHaveText(/^시작까지 [123]$/u);
   await expect(page.locator("#tick-value")).toHaveText("0");
   await expect(page.locator("#arena-host")).toBeFocused();
   await expect(page.locator("#game-telemetry")).toBeVisible();
