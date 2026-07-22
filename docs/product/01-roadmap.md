@@ -85,9 +85,11 @@ Exit conditions:
 - Screenshot, short gameplay capture, tool list, asset provenance, and development notes are ready
   in [05-submission-package.md](05-submission-package.md) for the contest post.
 
-Current status: `NOT_STARTED`. GitHub reported no attached workflow runs or combined status checks
-for pushed SHA `c4e55df88d0a254b83ace1e83b127bc14e6737c8` when queried on 2026-07-23, so
-hosted CI is not yet proven.
+Current status: `BLOCKED_HOSTED_CI`. The authenticated GitHub Actions dashboard showed
+[CI #8](https://github.com/0disoft/shovefall/actions/runs/29948023175) for exact SHA
+`307c371fb43486af36f42e0bc7c9a0b031893c79`, but GitHub rejected the job before checkout because
+recent account payments failed or the Actions spending limit must be increased. Resolving that
+account-level gate and obtaining an exact-SHA green run is required before this gate can advance.
 
 ## Deferred Beyond the Submission
 
