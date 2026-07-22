@@ -140,6 +140,8 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
 
     telemetry.dataset.tick = String(current.frame.tick);
     telemetry.dataset.action = human.action;
+    telemetry.dataset.backlogTicks = String(current.backlogTicks);
+    telemetry.dataset.simulationRate = String(current.simulationRate);
     tickValue.value = String(current.frame.tick);
     actionValue.value = ACTION_LABELS[human.action];
     massValue.value =

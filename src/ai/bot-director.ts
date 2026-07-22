@@ -17,6 +17,8 @@ import {
   ZERO_VECTOR,
 } from "../simulation/math";
 import { RandomStreamSet, type SeedInput, type XorShift32 } from "../simulation/random";
+import { ParticipantSpatialHash } from "../simulation/spatial-hash";
+import { SIMULATION_TUNING } from "../simulation/tuning";
 
 export interface BotDirectorOptions {
   readonly reactionDelayTicks?: number;
@@ -223,6 +225,10 @@ export class BotDirector {
         (participant) => [participant.actorId, participant] as const,
       ),
     );
+    const perceivedSpatialHash = new ParticipantSpatialHash(
+      perceptionFrame.participants.filter(isControllable),
+      SIMULATION_TUNING.spatialHash.cellSize,
+    );
     const commands: ActorCommandV1[] = [];
 
     for (const current of currentFrame.participants) {
@@ -246,7 +252,7 @@ export class BotDirector {
           tick,
           perceived,
           current,
-          [...perceivedActors.values()],
+          perceivedSpatialHash,
           bounds,
           memory,
         );
@@ -295,11 +301,12 @@ export class BotDirector {
     tick: number,
     perceived: RenderParticipantV1,
     current: RenderParticipantV1,
-    perceivedParticipants: readonly RenderParticipantV1[],
+    perceivedSpatialHash: ParticipantSpatialHash<RenderParticipantV1>,
     bounds: ArenaBounds,
     memory: BotMemory,
   ): BotDecision {
     const personality = BOT_PERSONALITIES[memory.personality];
+    const perceivedParticipants = perceivedSpatialHash.queryNearby(perceived.position, 2);
     const threats = perceivedParticipants
       .filter(
         (candidate) =>

@@ -20,6 +20,8 @@ interface ArenaTransform {
 }
 
 const TILE_GAP = 4;
+const DEFAULT_RESOLUTION_CAP = 1.5;
+const MAYHEM_RESOLUTION_CAP = 1;
 const BOT_COLORS = [0xb8c1bd, 0xd5aaa7, 0xc9bd91, 0xaab8d5, 0xc0a8cf];
 const ACTION_COLORS: Readonly<Record<ParticipantActionKind, number>> = Object.freeze({
   Ready: 0xe8ecea,
@@ -211,7 +213,7 @@ export async function createArenaRenderer(host: HTMLElement): Promise<ArenaRende
     autoStart: false,
     background: "#101514",
     preference: "webgl",
-    resolution: Math.min(window.devicePixelRatio, 2),
+    resolution: Math.min(window.devicePixelRatio, DEFAULT_RESOLUTION_CAP),
     resizeTo: host,
   });
   application.ticker.stop();
@@ -263,6 +265,15 @@ export async function createArenaRenderer(host: HTMLElement): Promise<ArenaRende
       application.destroy(true, { children: true });
     },
     render(frame: RenderFrameV1, interpolationAlpha: number, humanActorId: number): void {
+      const resolutionCap =
+        frame.participants.length >= 25 ? MAYHEM_RESOLUTION_CAP : DEFAULT_RESOLUTION_CAP;
+      const desiredResolution = Math.min(window.devicePixelRatio, resolutionCap);
+
+      if (application.renderer.resolution !== desiredResolution) {
+        application.renderer.resolution = desiredResolution;
+        application.renderer.resize(host.clientWidth, host.clientHeight);
+      }
+
       latestFrame = frame;
       latestInterpolationAlpha = clamp(interpolationAlpha, 0, 1);
       latestHumanActorId = humanActorId;

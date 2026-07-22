@@ -14,6 +14,9 @@ export const SIMULATION_TUNING = Object.freeze({
     weakContactSlop: 0.000_1,
     weakContactVelocityDamping: 0.12,
   }),
+  spatialHash: Object.freeze({
+    cellSize: 1.7,
+  }),
   movement: Object.freeze({
     baseMaximumSpeed: 0.078,
     baseAcceleration: 0.012,

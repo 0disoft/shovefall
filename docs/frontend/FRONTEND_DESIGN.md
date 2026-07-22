@@ -66,7 +66,7 @@ Vitest covers pure state, input edges, settings tiers, collapse phases, result s
 
 ## 15. Implementation Sequence
 
-The toolchain, deterministic simulation, gray-box movement and combat, browser scheduler, keyboard adapter, procedural PixiJS presentation, utility bots, readable collapse states, round results, accelerated defeat resolution, and restart are implemented. Add the first bounded item set before final visual polish. Promote scale, items, and presentation only after their preceding behavior gates pass.
+The toolchain, deterministic simulation, gray-box movement and combat, browser scheduler, keyboard adapter, procedural PixiJS presentation, utility bots, readable collapse states, round results, accelerated defeat resolution, restart, spatial broad phase, and local 12/24/32 profiles are implemented. Add the first bounded item set before final visual polish. Promote items and presentation only after their preceding behavior gates pass.
 
 ## 16. Open Questions and Decisions Log
 

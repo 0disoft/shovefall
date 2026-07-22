@@ -13,7 +13,7 @@ The repository architecture check applies the same renderer, DOM, wall-clock, an
 
 Normal bots perceive public state ten ticks late and reconsider intent every twelve ticks. Initial decision ticks are staggered by stable actor ID so all bots do not spike one frame. Between decisions, a bot preserves its movement intent and emits no repeated shove or dodge edge. A bot may inspect its own current position and currently visible tile state for immediate edge or unstable-tile recovery; it cannot inspect the private future collapse plan or use current opponent positions to bypass delayed perception.
 
-Perception contains participant positions, velocities, facing, visible action state, mass, active state, and public cooldown readiness from a prior render frame. At most six nearest active candidates enter utility scoring.
+Perception contains participant positions, velocities, facing, visible action state, mass, active state, and public cooldown readiness from a prior render frame. One spatial hash is built for that delayed frame; each bot queries a bounded five-by-five cell neighborhood and at most six nearest active candidates enter utility scoring.
 
 ## Personalities
 

@@ -1,13 +1,13 @@
 # Shovefall
 
-- Status: Complete playable gray-box rounds; items and visual polish pending
+- Status: Playable 4–32 participant gray-box rounds; items and visual polish pending
 - Scope: frontend
 - Repository Type: web-app
 - Addons: none
 
 Shovefall is a short single-player browser party game about shoving opponents off a collapsing arena. One participant is human and the remaining participants are deterministic rule-based bots. The MVP is a static client application with no backend, database, account system, runtime LLM, or remote analytics.
 
-The repository contains a playable semantic DOM and PixiJS WebGL gray-box, exact package graph, and local validation commands. WASD, Space, and Shift produce versioned commands for the renderer-independent 60 Hz simulation. Deterministic utility bots use the same command shape, delayed public perception, staggered decisions, data-driven personalities, and isolated jitter streams. Seeded outer-in collapse waves visibly progress through warning, collapsing, and void states before the last standing participant wins. Human defeat accelerates the remaining simulation and the DOM result path starts a fresh world. Items, final visual direction, CI, and deployment remain later slices.
+The repository contains a playable semantic DOM and PixiJS WebGL gray-box, exact package graph, and local validation commands. WASD, Space, and Shift produce versioned commands for the renderer-independent 60 Hz simulation. Deterministic utility bots use delayed public perception and spatially bounded candidate search. A stable ActorId-ordered spatial hash reduces contact candidates without changing replay hashes. Seeded outer-in collapse waves visibly progress through warning, collapsing, and void states before the last standing participant wins. Human defeat accelerates the remaining simulation and the DOM result path starts a fresh world. Items, final visual direction, CI, and deployment remain later slices.
 
 ## Accepted Toolchain Baseline
 
@@ -40,6 +40,7 @@ The complete adoption constraints, rollback path, and version policy are in [doc
 - docs/product/02-spec.md: accepted game scope, controls, quality tiers, gates, and non-goals
 - docs/architecture/: authoritative boundary, domain model, and fixed-tick runtime order
 - docs/architecture/04-bot-ai.md: bot fairness, personality, scheduling, and command boundaries
+- docs/architecture/05-scale-performance.md: broad-phase semantics and bounded local performance evidence
 - docs/: design, operations, architecture, and engineering standards
 
 ## Repository Shape Notes
@@ -54,4 +55,4 @@ binary diffs, local files, build outputs, caches, and secret files under control
 
 ## Scope Notes
 
-The toolchain, deterministic replay, first gray-box physics tuning, fixed-step browser scheduler, keyboard adapter, procedural PixiJS renderer, utility bots, collapse, round results, accelerated defeat resolution, and restart are implemented. The current tuning, collapse cadence, and bot weights still need external playtest evidence before they are treated as fun or final. Static hosting, items, final visual direction, and the asset inventory remain unimplemented or separately undecided.
+The toolchain, deterministic replay, gray-box physics, fixed-step browser scheduler, keyboard adapter, procedural PixiJS renderer, utility bots, collapse, results, spatial broad phase, 4–32 participant presets, accelerated defeat resolution, and restart are implemented. Local Bun and headless Chrome profiles pass the current scale budgets, but physical-device, cross-browser, and external playtest evidence remain pending. Static hosting, items, final visual direction, and the asset inventory remain unimplemented or separately undecided.

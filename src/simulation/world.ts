@@ -35,12 +35,20 @@ import {
   ZERO_VECTOR,
 } from "./math";
 import { RandomStreamSet, type SeedInput } from "./random";
+import { ParticipantSpatialHash, type ActorPair } from "./spatial-hash";
 import { getMovementProfile, normalizeMassFactor, SIMULATION_TUNING } from "./tuning";
 import { SYSTEM_ORDER } from "./versions";
 
 export interface SimulationStepResult {
   readonly frame: RenderFrameV1;
   readonly events: readonly SimulationEventV1[];
+  readonly diagnostics: SimulationStepDiagnostics;
+}
+
+export interface SimulationStepDiagnostics {
+  readonly collidableParticipants: number;
+  readonly broadPhaseCandidatePairs: number;
+  readonly fullPairCount: number;
 }
 
 export interface ParticipantSpawnOverride {
@@ -321,8 +329,19 @@ export class SimulationWorld {
     participants = this.#startRequestedActions(participants, commandsByActor, events);
     participants = this.#applyMovementIntent(participants, commandsByActor);
     participants = this.#integratePositions(participants);
-    participants = this.#resolveWeakContacts(participants);
-    participants = this.#resolveShoves(participants, events);
+    const collidableParticipants = participants.filter(isCollidable).map((participant) =>
+      Object.freeze({
+        actorId: participant.actorId,
+        position: participant.body.position,
+      }),
+    );
+    const spatialHash = new ParticipantSpatialHash(
+      collidableParticipants,
+      SIMULATION_TUNING.spatialHash.cellSize,
+    );
+    const candidatePairs = spatialHash.getCandidatePairs();
+    participants = this.#resolveWeakContacts(participants, candidatePairs);
+    participants = this.#resolveShoves(participants, candidatePairs, events);
     participants = this.#resolveSupport(participants, events);
 
     this.#participants = Object.freeze(participants);
@@ -333,6 +352,11 @@ export class SimulationWorld {
     return Object.freeze({
       frame: this.createRenderFrame(),
       events: Object.freeze(events),
+      diagnostics: Object.freeze({
+        collidableParticipants: collidableParticipants.length,
+        broadPhaseCandidatePairs: candidatePairs.length,
+        fullPairCount: (collidableParticipants.length * (collidableParticipants.length - 1)) / 2,
+      }),
     });
   }
 
@@ -683,11 +707,13 @@ export class SimulationWorld {
     });
   }
 
-  #resolveWeakContacts(participants: readonly ParticipantState[]): readonly ParticipantState[] {
-    const ordered = participants
-      .map((participant, index) => ({ participant, index }))
-      .filter(({ participant }) => isCollidable(participant))
-      .toSorted((left, right) => left.participant.actorId - right.participant.actorId);
+  #resolveWeakContacts(
+    participants: readonly ParticipantState[],
+    candidatePairs: readonly ActorPair[],
+  ): readonly ParticipantState[] {
+    const participantIndices = new Map(
+      participants.map((participant, index) => [participant.actorId, index] as const),
+    );
     const positions = participants.map((participant) => participant.body.position);
     const velocities = participants.map((participant) => participant.body.velocity);
 
@@ -696,73 +722,71 @@ export class SimulationWorld {
       iteration < SIMULATION_TUNING.body.weakContactIterations;
       iteration += 1
     ) {
-      for (let leftIndex = 0; leftIndex < ordered.length; leftIndex += 1) {
-        const leftEntry = ordered[leftIndex];
+      for (const pair of candidatePairs) {
+        const leftIndex = participantIndices.get(pair.leftActorId);
+        const rightIndex = participantIndices.get(pair.rightActorId);
 
-        if (leftEntry === undefined) {
+        if (leftIndex === undefined || rightIndex === undefined) {
           continue;
         }
 
-        for (let rightIndex = leftIndex + 1; rightIndex < ordered.length; rightIndex += 1) {
-          const rightEntry = ordered[rightIndex];
+        const left = participants[leftIndex];
+        const right = participants[rightIndex];
 
-          if (rightEntry === undefined) {
-            continue;
-          }
+        if (left === undefined || right === undefined) {
+          continue;
+        }
 
-          const left = leftEntry.participant;
-          const right = rightEntry.participant;
-          const leftPosition = positions[leftEntry.index] ?? left.body.position;
-          const rightPosition = positions[rightEntry.index] ?? right.body.position;
-          const delta = subtractVectors(rightPosition, leftPosition);
-          const minimumDistance = left.body.radius + right.body.radius;
-          const distanceSquared = vectorLengthSquared(delta);
+        const leftPosition = positions[leftIndex] ?? left.body.position;
+        const rightPosition = positions[rightIndex] ?? right.body.position;
+        const delta = subtractVectors(rightPosition, leftPosition);
+        const minimumDistance = left.body.radius + right.body.radius;
+        const distanceSquared = vectorLengthSquared(delta);
 
-          if (distanceSquared >= minimumDistance * minimumDistance) {
-            continue;
-          }
+        if (distanceSquared >= minimumDistance * minimumDistance) {
+          continue;
+        }
 
-          const distance = Math.sqrt(distanceSquared);
-          const normal =
-            distance === 0
-              ? Object.freeze({ x: left.actorId < right.actorId ? 1 : -1, y: 0 })
-              : scaleVector(delta, 1 / distance);
-          const overlap = Math.max(
-            0,
-            minimumDistance - distance - SIMULATION_TUNING.body.weakContactSlop,
+        const distance = Math.sqrt(distanceSquared);
+        const normal =
+          distance === 0
+            ? Object.freeze({ x: left.actorId < right.actorId ? 1 : -1, y: 0 })
+            : scaleVector(delta, 1 / distance);
+        const overlap = Math.max(
+          0,
+          minimumDistance - distance - SIMULATION_TUNING.body.weakContactSlop,
+        );
+        const leftInverseMass = 1 / left.body.massFactor;
+        const rightInverseMass = 1 / right.body.massFactor;
+        const inverseMassTotal = leftInverseMass + rightInverseMass;
+        positions[leftIndex] = subtractVectors(
+          leftPosition,
+          scaleVector(normal, (overlap * leftInverseMass) / inverseMassTotal),
+        );
+        positions[rightIndex] = addVectors(
+          rightPosition,
+          scaleVector(normal, (overlap * rightInverseMass) / inverseMassTotal),
+        );
+
+        const leftVelocity = velocities[leftIndex] ?? left.body.velocity;
+        const rightVelocity = velocities[rightIndex] ?? right.body.velocity;
+        const relativeNormalSpeed = dotVectors(
+          subtractVectors(rightVelocity, leftVelocity),
+          normal,
+        );
+
+        if (relativeNormalSpeed < 0) {
+          const contactImpulse =
+            (-relativeNormalSpeed * SIMULATION_TUNING.body.weakContactVelocityDamping) /
+            inverseMassTotal;
+          velocities[leftIndex] = subtractVectors(
+            leftVelocity,
+            scaleVector(normal, contactImpulse * leftInverseMass),
           );
-          const leftInverseMass = 1 / left.body.massFactor;
-          const rightInverseMass = 1 / right.body.massFactor;
-          const inverseMassTotal = leftInverseMass + rightInverseMass;
-          positions[leftEntry.index] = subtractVectors(
-            leftPosition,
-            scaleVector(normal, (overlap * leftInverseMass) / inverseMassTotal),
+          velocities[rightIndex] = addVectors(
+            rightVelocity,
+            scaleVector(normal, contactImpulse * rightInverseMass),
           );
-          positions[rightEntry.index] = addVectors(
-            rightPosition,
-            scaleVector(normal, (overlap * rightInverseMass) / inverseMassTotal),
-          );
-
-          const leftVelocity = velocities[leftEntry.index] ?? left.body.velocity;
-          const rightVelocity = velocities[rightEntry.index] ?? right.body.velocity;
-          const relativeNormalSpeed = dotVectors(
-            subtractVectors(rightVelocity, leftVelocity),
-            normal,
-          );
-
-          if (relativeNormalSpeed < 0) {
-            const contactImpulse =
-              (-relativeNormalSpeed * SIMULATION_TUNING.body.weakContactVelocityDamping) /
-              inverseMassTotal;
-            velocities[leftEntry.index] = subtractVectors(
-              leftVelocity,
-              scaleVector(normal, contactImpulse * leftInverseMass),
-            );
-            velocities[rightEntry.index] = addVectors(
-              rightVelocity,
-              scaleVector(normal, contactImpulse * rightInverseMass),
-            );
-          }
         }
       }
     }
@@ -784,9 +808,24 @@ export class SimulationWorld {
 
   #resolveShoves(
     participants: readonly ParticipantState[],
+    candidatePairs: readonly ActorPair[],
     events: SimulationEventV1[],
   ): readonly ParticipantState[] {
     const ordered = participants.toSorted((left, right) => left.actorId - right.actorId);
+    const participantsById = new Map(
+      ordered.map((participant) => [participant.actorId, participant] as const),
+    );
+    const candidateIdsByActor = new Map<ActorId, ActorId[]>();
+
+    for (const pair of candidatePairs) {
+      const leftCandidates = candidateIdsByActor.get(pair.leftActorId) ?? [];
+      leftCandidates.push(pair.rightActorId);
+      candidateIdsByActor.set(pair.leftActorId, leftCandidates);
+      const rightCandidates = candidateIdsByActor.get(pair.rightActorId) ?? [];
+      rightCandidates.push(pair.leftActorId);
+      candidateIdsByActor.set(pair.rightActorId, rightCandidates);
+    }
+
     const impulses = new Map<ActorId, Vector2>();
     const newlyHit = new Map<ActorId, Set<ActorId>>();
     const newlyResolved = new Map<ActorId, Set<ActorId>>();
@@ -799,12 +838,12 @@ export class SimulationWorld {
       const direction = attacker.action.lockedDirection ?? attacker.body.facing;
       const resolved = new Set(attacker.action.resolvedActorIds);
 
-      for (const target of ordered) {
-        if (
-          target.actorId === attacker.actorId ||
-          !isCollidable(target) ||
-          resolved.has(target.actorId)
-        ) {
+      for (const targetActorId of candidateIdsByActor
+        .get(attacker.actorId)
+        ?.toSorted((left, right) => left - right) ?? []) {
+        const target = participantsById.get(targetActorId);
+
+        if (target === undefined || !isCollidable(target) || resolved.has(target.actorId)) {
           continue;
         }
 
