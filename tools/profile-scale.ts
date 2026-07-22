@@ -4,7 +4,7 @@ import { createNeutralCommand, normalizeGameConfig } from "../src/simulation/con
 import { SimulationWorld } from "../src/simulation/world";
 
 const PROFILE_TICKS = 120 * 60;
-const PARTICIPANT_COUNTS = [12, 24, 32] as const;
+const PARTICIPANT_COUNTS = [16, 24, 32] as const;
 
 interface Percentiles {
   readonly p50: number;
@@ -54,7 +54,7 @@ function profileParticipantCount(participantCount: number) {
     roundLimitSeconds: 120,
     collapseSpeed: "slow",
     itemsEnabled: true,
-    itemRespawnSeconds: participantCount >= 25 ? 3 : 5,
+    itemRespawnSeconds: participantCount >= 25 ? 3 : participantCount >= 17 ? 4 : 5,
   });
   const aiDurations: number[] = [];
   const simulationDurations: number[] = [];
@@ -119,7 +119,7 @@ function profileParticipantCount(participantCount: number) {
 
 const profiles = PARTICIPANT_COUNTS.map(profileParticipantCount);
 const thresholds = new Map([
-  [12, 3],
+  [16, 3.5],
   [24, 4],
   [32, 6],
 ]);

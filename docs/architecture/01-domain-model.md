@@ -12,11 +12,13 @@
 
 ## Round Configuration
 
-`GameConfigV1` is normalized before world creation. It supports 4 through 32 participants, arenas from 7 through 31 columns and rows, a maximum 120-second replay horizon, slow, normal, or fast collapse, normal density and difficulty, item policy version 1, a bounded initial item count, a participant-derived simultaneous cap, and a zero-to-thirty-second spawn interval. The same raw values normalize identically, and disabled items require zero initial and spawn values.
+`GameConfigV1` is normalized before world creation. It supports 4 through 32 participants, arenas from 7 through 31 columns and rows, a maximum 120-second replay horizon, slow, normal, or fast collapse, normal density and difficulty, item policy version 2, a bounded initial item count, a participant-derived simultaneous cap, and a zero-to-thirty-second spawn interval. The same raw values normalize identically, and disabled items require zero initial and spawn values. The raw contract defaults to the browser's 16-participant 12×10 normal configuration.
+
+The browser's normal-density arena policy derives 10×8 tiles for 4–8 participants, 12×10 for 9–16, 16×12 for 17–24, and 17×13 for 25–32. The final Mayhem tier grows only one row and column because adding more world area there would shrink actors and telegraphs further on the fixed canvas. This policy increases first-contact distance for smaller tiers without modifying combat strength.
 
 ## Participant
 
-A participant contains stable identity, human or scripted control ownership, an active flag, a circular body, effects, and an action state. The body owns position, velocity, facing, radius, base and effective continuous `massFactor`, and integer unsupported ticks. Timed Iron Boots and Feather effects refresh rather than stack duplicates; opposite effects may coexist and their product is clamped to the global mass range. Spring Glove is one held charge consumed when a shove starts.
+A participant contains stable identity, human or scripted control ownership, an active flag, a circular body, effects, and an action state. The body owns position, velocity, facing, radius, base and effective continuous `massFactor`, and integer unsupported ticks. Effective mass is clamped to `0.8..1.4`; this range survived the checked-in controlled balance audit, but it is not a human fairness claim. Timed Iron Boots and Feather effects refresh rather than stack duplicates; opposite effects may coexist and their product is clamped to the global mass range. Spring Glove is one held charge consumed when a shove starts.
 
 Action kinds are `Ready`, `ShoveWindup`, `ShoveActive`, `ShoveRecovery`, `DodgeActive`, `Stumbling`, `Anchored`, `Falling`, and `Eliminated`. Action transitions are tick-bounded. If shove and dodge edges arrive together while both are ready, dodge has deterministic priority. `Falling` is irreversible and later transitions to `Eliminated`.
 
@@ -50,7 +52,7 @@ Randomness may select arena variants, content placement, bot personality data, a
 
 The current format accepts UTF-8 JSON up to 5 MiB and 7,200 ticks. Unknown replay majors, incompatible simulation versions, malformed booleans or numbers, commands for bots, duplicate or unordered ticks, range violations, and hash mismatches are errors. Compatibility is never guessed.
 
-Simulation version `5.0.0` adds swept-circle weak-contact semantics between fixed ticks. Previous position was already authoritative state, but it now participates in collision results, so simulation `4.0.0` replays are intentionally incompatible rather than silently receiving different physics. Content version `3.0.0` still owns the three item definitions and placement constants.
+Simulation version `5.0.0` added swept-circle weak-contact semantics between fixed ticks. Version `5.1.0` preserves that combat model and changes slow, normal, and fast collapse scheduling to start at ticks 1,080, 780, and 480 with wave intervals of 84, 66, and 48 ticks. Version `5.2.0` changes global mass bounds and deterministic item candidate weighting. Content `3.1.0` owns the adjusted Iron Boots and Feather multipliers plus the 3/2/1 placement weights. These changes alter authoritative outcomes and require regenerated replay evidence instead of inheriting `5.1.0` hashes.
 
 ## Version Ownership
 

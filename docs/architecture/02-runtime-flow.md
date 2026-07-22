@@ -30,7 +30,7 @@ Each 60 Hz tick uses this versioned order:
 13. Decide round result.
 14. Emit ordered events, an immutable render frame, and a quantized state hash.
 
-All fourteen stages are implemented. Weak contact first resolves a swept circle intersection from `previousPosition` to the integrated position, then applies iterative overlap correction. Timed effects expire with action transitions before movement. Item pickup runs after support, so a valid pickup wins over a tile that begins collapsing later in the same tick. Collapse then advances, void-tile items are removed, the safe-area cap is enforced, and at most one due item is spawned on a stable interior tile. Collapse still cannot retroactively remove support earlier in the same tick. Later work cannot reorder the pipeline or change contact meaning without a simulation-version decision and regenerated replay evidence.
+All fourteen stages are implemented. Weak contact first resolves a swept circle intersection from `previousPosition` to the integrated position, then applies iterative overlap correction. Timed effects expire with action transitions before movement. Item pickup runs after support, so a valid pickup wins over a tile that begins collapsing later in the same tick. Collapse then advances, void-tile items are removed, the safe-area cap is enforced, and at most one due item is spawned on a stable clear tile using the 3/2/1 edge-ring weights. Collapse still cannot retroactively remove support earlier in the same tick. Later work cannot reorder the pipeline or change contact meaning without a simulation-version decision and regenerated replay evidence.
 
 ## Browser Scheduling
 

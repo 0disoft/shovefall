@@ -439,6 +439,7 @@ export async function createArenaRenderer(
   let latestFrame: RenderFrameV1 | undefined;
   let latestInterpolationAlpha = 0;
   let latestHumanActorId = 1;
+  let tileLayerDirty = true;
 
   const draw = (): void => {
     if (latestFrame === undefined) {
@@ -450,14 +451,19 @@ export async function createArenaRenderer(
       application.screen.width,
       application.screen.height,
     );
-    tiles.clear();
     items.clear();
     participants.clear();
     effectLayer.clear();
     const mayhem = latestFrame.participants.length >= 25;
 
-    for (const tile of latestFrame.tiles) {
-      drawTile(tiles, tile, transform);
+    if (tileLayerDirty) {
+      tiles.clear();
+
+      for (const tile of latestFrame.tiles) {
+        drawTile(tiles, tile, transform);
+      }
+
+      tileLayerDirty = false;
     }
 
     for (const item of latestFrame.items) {
@@ -492,6 +498,10 @@ export async function createArenaRenderer(
     host.dataset.motion = reducedMotion ? "reduced" : "full";
     draw();
   };
+  const handleResize = (): void => {
+    tileLayerDirty = true;
+    draw();
+  };
   const handleContextLost = (event: Event): void => {
     event.preventDefault();
     host.dataset.renderer = "lost";
@@ -503,7 +513,7 @@ export async function createArenaRenderer(
     options.onContextRestored?.();
   };
 
-  application.renderer.on("resize", draw);
+  application.renderer.on("resize", handleResize);
   motionPreference.addEventListener("change", handleMotionPreference);
   application.canvas.addEventListener("webglcontextlost", handleContextLost);
   application.canvas.addEventListener("webglcontextrestored", handleContextRestored);
@@ -512,6 +522,9 @@ export async function createArenaRenderer(
   return Object.freeze({
     consumeEvents(events: readonly SimulationEventV1[], frame: RenderFrameV1): void {
       const accepted = eventLedger.consume(events);
+      tileLayerDirty ||= accepted.some(
+        ({ kind }) => kind === "tile-warning" || kind === "tile-collapsing" || kind === "tile-void",
+      );
       const durationTicks = reducedMotion ? 3 : frame.participants.length >= 25 ? 7 : 12;
       const cap = frame.participants.length >= 25 ? MAYHEM_EFFECT_CAP : NORMAL_EFFECT_CAP;
       const appended = accepted.flatMap((event): readonly VisualEffect[] => {
@@ -540,7 +553,7 @@ export async function createArenaRenderer(
       visualEffects = Object.freeze([...visualEffects, ...appended].slice(-cap));
     },
     destroy(): void {
-      application.renderer.off("resize", draw);
+      application.renderer.off("resize", handleResize);
       motionPreference.removeEventListener("change", handleMotionPreference);
       application.canvas.removeEventListener("webglcontextlost", handleContextLost);
       application.canvas.removeEventListener("webglcontextrestored", handleContextRestored);
@@ -556,6 +569,7 @@ export async function createArenaRenderer(
         application.renderer.resize(host.clientWidth, host.clientHeight);
       }
 
+      tileLayerDirty ||= latestFrame?.roundId !== frame.roundId;
       latestFrame = frame;
       visualEffects = Object.freeze(
         visualEffects.filter((effect) => effect.roundId === frame.roundId),

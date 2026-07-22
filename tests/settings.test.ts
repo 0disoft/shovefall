@@ -20,8 +20,8 @@ describe("settings normalization", () => {
   });
 
   it("replaces non-finite participant counts with the default", () => {
-    expect(normalizePlayerCount(Number.NaN)).toBe(12);
-    expect(normalizePlayerCount(Number.POSITIVE_INFINITY)).toBe(12);
+    expect(normalizePlayerCount(Number.NaN)).toBe(16);
+    expect(normalizePlayerCount(Number.POSITIVE_INFINITY)).toBe(16);
   });
 
   it("falls back from unknown presets without discarding a valid count", () => {
@@ -34,14 +34,17 @@ describe("settings normalization", () => {
   });
 
   it("keeps preset defaults explicit", () => {
-    expect(getPresetPlayerCount("default")).toBe(12);
+    expect(getPresetPlayerCount("default")).toBe(16);
     expect(getPresetPlayerCount("relaxed")).toBe(8);
+    expect(getPresetPlayerCount("crowded")).toBe(24);
     expect(getPresetPlayerCount("chaos")).toBe(32);
     expect(getPresetCollapseSpeed("default")).toBe("normal");
     expect(getPresetCollapseSpeed("relaxed")).toBe("slow");
+    expect(getPresetCollapseSpeed("crowded")).toBe("normal");
     expect(getPresetCollapseSpeed("chaos")).toBe("fast");
     expect(getPresetItemRespawnSeconds("default")).toBe(5);
     expect(getPresetItemRespawnSeconds("relaxed")).toBe(7);
+    expect(getPresetItemRespawnSeconds("crowded")).toBe(4);
     expect(getPresetItemRespawnSeconds("chaos")).toBe(3);
   });
 
@@ -60,10 +63,10 @@ describe("settings normalization", () => {
   });
 
   it("derives larger arenas at the participant tier boundaries", () => {
-    expect(getArenaSize(4)).toEqual({ columns: 9, rows: 7 });
-    expect(getArenaSize(8)).toEqual({ columns: 9, rows: 7 });
-    expect(getArenaSize(9)).toEqual({ columns: 11, rows: 9 });
-    expect(getArenaSize(24)).toEqual({ columns: 15, rows: 11 });
+    expect(getArenaSize(4)).toEqual({ columns: 10, rows: 8 });
+    expect(getArenaSize(8)).toEqual({ columns: 10, rows: 8 });
+    expect(getArenaSize(9)).toEqual({ columns: 12, rows: 10 });
+    expect(getArenaSize(24)).toEqual({ columns: 16, rows: 12 });
     expect(getArenaSize(25)).toEqual({ columns: 17, rows: 13 });
     expect(getArenaSize(32)).toEqual({ columns: 17, rows: 13 });
   });

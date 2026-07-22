@@ -95,7 +95,7 @@ describe("utility bot director", () => {
       "bot-tile-safety",
     );
 
-    while (world.tick < 361) {
+    while (world.tick < 481) {
       world.step();
     }
 

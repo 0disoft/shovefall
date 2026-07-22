@@ -21,9 +21,10 @@ The central promise is a readable comic reversal: a player can dodge an incoming
 
 ## Player and Mode Contract
 
-- Supported participants: 4 through 32, including the human.
-- Recommended default: 12.
-- Normal competitive-quality range: 4 through 24.
+- Simulation and replay support: 4 through 32 participants, including the human.
+- Browser presets: 8, 16, 24, and 32 participants.
+- Recommended default: 16.
+- Normal competitive-quality range: 8 through 24.
 - Participants 25 through 32 are explicitly labeled `Mayhem`; input stability and deterministic rules still apply, but normal balance and readability are not promised.
 - Arena area, spawn spacing, item caps, and bot search bounds are derived from participant count and density rather than exposed as unrelated raw numbers.
 
@@ -59,7 +60,7 @@ Collapse, formal bots, 32-participant scale, items, audio, and final art cannot 
 - At least 60% use or correctly explain dodge by the end of their second round.
 - At least 90% of observed deaths can be explained by the player immediately afterward.
 - At least 60% restart within five seconds of their first defeat, and at least half play three rounds.
-- The normal 12-participant build targets 60 fps on the named baseline device. The 32-participant Mayhem build must remain responsive at 45 fps or better.
+- The normal 16- and 24-participant builds target 60 fps on the named baseline device. The 32-participant Mayhem build must remain responsive at 45 fps or better.
 
 These are pre-submission quality gates, not population-level market claims.
 
@@ -73,4 +74,4 @@ These are pre-submission quality gates, not population-level market claims.
 
 ## Current Implementation Slice
 
-Version `0.12.0` adds a deterministic all-bot round audit for 4, 12, 24, and 32 participants. It commands actor 1 through the normal bot policy only inside the headless harness, emits every fixed-seed terminal observation, and rejects malformed results or reliance on the 75-second time-limit draw. The first 16-seed-per-count run completed all 64 samples without a time-limit result, but its much shorter bot-only durations do not approve human round length or balance. Simulation remains `5.0.0`, content remains `3.0.0`, and replay fixtures change only to record the product version. Physical-device, cross-browser, hosted-deployment, human round-duration, balance, final-art readability, audio-device, and external playtest approval remain pending.
+Version `0.14.0` exposes four production presets at 8, 16, 24, and 32 participants, with 16 as Quick Start. It retains the `0.13.0` breathing-room arenas, delayed collapse, and cached tile layer. New items choose among stable, clear candidates with integer location weights 3 for the outer ring, 2 for the second ring, and 1 for the interior, so rewards usually demand an edge risk without becoming edge-only. A fixed-seed controlled audit narrowed global mass from `0.7..1.5` to `0.8..1.4`; shove timing, support, item duration, and hidden probability remain unchanged. Simulation `5.2.0`, content `3.1.0`, item policy 2, and replay fixtures own these changes. Local bot duration, item exposure, mass balance, headless scale, and production-Chrome evidence are recorded in engineering documents. Physical-device, cross-browser, hosted-deployment, human round-duration, causal item balance, final-art readability, audio-device, and external playtest approval remain pending.

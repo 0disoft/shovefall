@@ -146,7 +146,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   let renderer: ArenaRenderer | undefined;
   let session: GameSession | undefined;
   let audio: AudioFeedback | undefined;
-  let latestSettings = normalizeSettings({ playerCount: 12, preset: "default" });
+  let latestSettings = normalizeSettings({ playerCount: 16, preset: "default" });
 
   const updateSoundControl = (state: AudioFeedbackState): void => {
     root.dataset.audio = state;

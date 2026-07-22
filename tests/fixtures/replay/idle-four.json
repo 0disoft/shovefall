@@ -1,20 +1,20 @@
 {
   "formatVersion": 1,
-  "productVersion": "0.12.0",
-  "simulationVersion": "5.0.0",
-  "contentVersion": "3.0.0",
+  "productVersion": "0.14.0",
+  "simulationVersion": "5.2.0",
+  "contentVersion": "3.1.0",
   "buildId": "fixture-v3",
   "config": {
     "configVersion": 1,
     "participantCount": 4,
-    "arenaColumns": 11,
-    "arenaRows": 9,
+    "arenaColumns": 12,
+    "arenaRows": 10,
     "roundLimitTicks": 600,
     "density": "normal",
     "difficulty": "normal",
     "collapseSpeed": "normal",
     "itemsEnabled": false,
-    "itemPolicyVersion": 1,
+    "itemPolicyVersion": 2,
     "initialItemCount": 0,
     "maximumItemCount": 2,
     "itemSpawnIntervalTicks": 0
@@ -26,16 +26,16 @@
   "checkpoints": [
     {
       "tick": 60,
-      "stateHash": "fnv1a32:a3fb9ae7"
+      "stateHash": "fnv1a32:e3b2a470"
     },
     {
       "tick": 120,
-      "stateHash": "fnv1a32:df26fb74"
+      "stateHash": "fnv1a32:8245f447"
     },
     {
       "tick": 180,
-      "stateHash": "fnv1a32:eddaa75e"
+      "stateHash": "fnv1a32:d54a5701"
     }
   ],
-  "finalHash": "fnv1a32:eddaa75e"
+  "finalHash": "fnv1a32:d54a5701"
 }

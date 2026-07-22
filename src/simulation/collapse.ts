@@ -17,20 +17,20 @@ interface CollapseTiming {
 
 const COLLAPSE_TIMINGS: Readonly<Record<CollapseSpeed, CollapseTiming>> = Object.freeze({
   slow: Object.freeze({
-    startTick: 15 * 60,
-    waveIntervalTicks: 75,
+    startTick: 18 * 60,
+    waveIntervalTicks: 84,
     warningTicks: 120,
     collapsingTicks: 24,
   }),
   normal: Object.freeze({
-    startTick: 10 * 60,
-    waveIntervalTicks: 60,
+    startTick: 13 * 60,
+    waveIntervalTicks: 66,
     warningTicks: 90,
     collapsingTicks: 18,
   }),
   fast: Object.freeze({
-    startTick: 6 * 60,
-    waveIntervalTicks: 42,
+    startTick: 8 * 60,
+    waveIntervalTicks: 48,
     warningTicks: 66,
     collapsingTicks: 12,
   }),

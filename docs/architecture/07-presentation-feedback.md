@@ -30,6 +30,6 @@ An uncaught round-loop failure stops scheduling and enters the existing DOM fata
 
 ## Evidence and Limits
 
-Vitest proves event deduplication, new-round acceptance, silent fallback, unlock, mute, and voice priority. Playwright proves mute semantics, unavailable audio, reduced motion, deterministic human defeat and immediate restart, fatal recovery, context-loss pause, and restoration. The production Chrome profile covers the added presentation layer at 12, 24, and 32 participants.
+Vitest proves event deduplication, new-round acceptance, silent fallback, unlock, mute, and voice priority. Playwright proves mute semantics, unavailable audio, reduced motion, deterministic human defeat and immediate restart, fatal recovery, context-loss pause, and restoration. The production Chrome profile covers the added presentation layer at 16, 24, and 32 participants.
 
 This evidence does not establish audio-device quality, final-art readability, photosensitivity approval, physical-GPU performance, cross-browser support, or external playtest acceptance.

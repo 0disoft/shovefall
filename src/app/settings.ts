@@ -1,4 +1,4 @@
-export const PRESET_NAMES = ["default", "relaxed", "chaos"] as const;
+export const PRESET_NAMES = ["relaxed", "default", "crowded", "chaos"] as const;
 
 export type PresetName = (typeof PRESET_NAMES)[number];
 
@@ -24,20 +24,23 @@ export const PLAYER_COUNT_LIMITS = Object.freeze({
 export const ITEM_RESPAWN_LIMITS = Object.freeze({ minimum: 0, maximum: 30 });
 
 const PRESET_PLAYER_COUNTS: Readonly<Record<PresetName, number>> = Object.freeze({
-  default: 12,
   relaxed: 8,
+  default: 16,
+  crowded: 24,
   chaos: 32,
 });
 
 const PRESET_COLLAPSE_SPEEDS: Readonly<Record<PresetName, CollapseSpeed>> = Object.freeze({
-  default: "normal",
   relaxed: "slow",
+  default: "normal",
+  crowded: "normal",
   chaos: "fast",
 });
 
 const PRESET_ITEM_RESPAWN_SECONDS: Readonly<Record<PresetName, number>> = Object.freeze({
-  default: 5,
   relaxed: 7,
+  default: 5,
+  crowded: 4,
   chaos: 3,
 });
 
@@ -114,15 +117,15 @@ export function getArenaSize(playerCount: number): ArenaSize {
   const normalizedCount = normalizePlayerCount(playerCount);
 
   if (normalizedCount <= 8) {
-    return Object.freeze({ columns: 9, rows: 7 });
+    return Object.freeze({ columns: 10, rows: 8 });
   }
 
   if (normalizedCount <= 16) {
-    return Object.freeze({ columns: 11, rows: 9 });
+    return Object.freeze({ columns: 12, rows: 10 });
   }
 
   if (normalizedCount <= 24) {
-    return Object.freeze({ columns: 15, rows: 11 });
+    return Object.freeze({ columns: 16, rows: 12 });
   }
 
   return Object.freeze({ columns: 17, rows: 13 });

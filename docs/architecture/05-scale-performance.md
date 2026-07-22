@@ -43,9 +43,32 @@ A Vite production build ran in local headless Chrome at 1280×720. Each four-sec
 
 These refreshed 2026-07-22 samples include simulation `5.0.0` swept contacts, the recommended item policy, Collector item interest, presentation-event feedback, and Mayhem effect caps. Twenty immediate 32-participant restarts followed by CDP garbage collection increased used heap by 2,145,784 bytes and left one canvas. This is Chromium-specific lab evidence. The host reports device pixel ratio 1, so the run confirms the Mayhem upper bound but does not exercise a physical high-DPR display.
 
+## Preset and Balance Refresh
+
+Product `0.14.0` changes the production profile counts to 16, 24, and 32, adds edge-weighted item candidates, and narrows mass bounds. Simulation `5.2.0` also skips collapse scanning on ticks that cannot contain a scheduled transition. The PixiJS tile layer remains cached between tile transitions, new rounds, and resizes. Both profiles were rerun because these changes alter authoritative workload and round frequency.
+
+On 2026-07-23, the refreshed Bun 1.3.14 run measured 7,200 ticks per count:
+
+| Participants | AI p95 | Simulation p95 | Candidate/full pairs | Long steps over 100 ms |
+|---:|---:|---:|---:|---:|
+| 16 | 0.383 ms | 1.325 ms | 0.2899 | 0 |
+| 24 | 0.653 ms | 2.482 ms | 0.3239 | 0 |
+| 32 | 0.708 ms | 2.319 ms | 0.2300 | 0 |
+
+The production-Chrome harness waits for `data-round=active` before starting each four-second sample. This excludes the intentionally tick-zero countdown from delivered simulation rate while preserving it in browser smoke coverage.
+
+| Participants | Seed | Frame p95 | Maximum frame | Delivered ticks / requested simulation second | Long frames over 100 ms |
+|---:|---|---:|---:|---:|---:|
+| 16 | `0000001000000001` | 16.8 ms | 17.3 ms | 60.72 | 0 |
+| 24 | `0000001800000001` | 16.8 ms | 17.3 ms | 60.67 | 0 |
+| 32 | `0000002000000000` | 16.8 ms | 17.9 ms | 60.62 | 0 |
+
+All three samples stayed at 1× with zero backlog and effective device pixel ratio 1. Twenty immediate 32-participant restarts followed by CDP garbage collection increased used heap by 509,168 bytes and left one canvas. Headless heap deltas remain observational because that harness does not force garbage collection. These are fresh local measurements, not a controlled interleaved regression comparison or physical-device evidence.
+
 ## Limits
 
 - No physical baseline device, headed-browser trace, GPU timing, field data, Firefox, Edge, Safari, or mobile result exists.
-- The first uncontrolled browser attempt ended a 12-participant round at tick 364 after human elimination and 6× resolution. That observation is a gameplay-duration risk, not a valid steady active-load performance sample.
+- The pre-countdown browser harness used a fixed 750 ms startup delay. After the 1.5-second countdown shipped, that stale boundary included tick-zero time and produced invalid delivered-rate failures between 52.58 and 54.42. Those observations are rejected rather than reported as performance regressions.
+- The first uncontrolled browser attempt ended an older 12-participant round at tick 364 after human elimination and 6× resolution. That historical observation is a gameplay-duration risk, not a valid steady active-load performance sample.
 - Candidate ratios aggregate source counts across changing survivor counts. They describe comparison reduction for this workload, not a universal constant.
 - Worker, WASM, WebGPU-only behavior, 64 participants, and rule changes by quality tier remain prohibited.

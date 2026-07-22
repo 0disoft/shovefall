@@ -20,16 +20,16 @@ interface BrowserHeapUsage {
 
 const PROFILE_CASES = Object.freeze([
   {
-    participantCount: 12,
+    participantCount: 16,
     preset: "default",
-    seed: "0000000c00000000",
-    seedWords: [12, 0],
+    seed: "0000001000000001",
+    seedWords: [16, 1],
     p95Budget: 20,
     tickRateBudget: 55,
   },
   {
     participantCount: 24,
-    preset: "default",
+    preset: "crowded",
     seed: "0000001800000001",
     seedWords: [24, 1],
     p95Budget: 20,
@@ -38,8 +38,8 @@ const PROFILE_CASES = Object.freeze([
   {
     participantCount: 32,
     preset: "chaos",
-    seed: "0000002000000001",
-    seedWords: [32, 1],
+    seed: "0000002000000000",
+    seedWords: [32, 0],
     p95Budget: 22,
     tickRateBudget: 42,
   },
@@ -139,7 +139,13 @@ async function profileCases(page: Page, index: number, profiles: FrameProfile[])
     return;
   }
 
-  await page.getByLabel(profileCase.preset === "chaos" ? "난장판" : "기본").check();
+  const presetLabel =
+    profileCase.preset === "chaos"
+      ? "난장판"
+      : profileCase.preset === "crowded"
+        ? "대규모"
+        : "기본";
+  await page.getByLabel(presetLabel).check();
   await page.locator("#player-count").fill(String(profileCase.participantCount));
   await page.evaluate((seedWords) => {
     (
@@ -147,7 +153,7 @@ async function profileCases(page: Page, index: number, profiles: FrameProfile[])
     ).shovefallProfileSeedWords = seedWords;
   }, profileCase.seedWords);
   await page.getByRole("button", { name: "빠른 시작" }).click();
-  await page.waitForTimeout(750);
+  await expect(page.locator("#app")).toHaveAttribute("data-round", "active");
   const profile = await collectFrameProfile(page, profileCase.participantCount, profileCase.seed);
   profiles.push(profile);
   expect(profile.p95FrameMilliseconds).toBeLessThanOrEqual(profileCase.p95Budget);
@@ -177,7 +183,7 @@ async function collectHeapUsage(client: CDPSession): Promise<BrowserHeapUsage> {
   return client.send("Runtime.getHeapUsage");
 }
 
-test("@profile measures production 12, 24, and 32 participant browser budgets", async ({
+test("@profile measures production 16, 24, and 32 participant browser budgets", async ({
   page,
   context,
 }) => {

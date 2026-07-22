@@ -23,6 +23,18 @@ import { normalizeMassFactor } from "./tuning";
 const ITEM_PICKUP_REACH = 0.22;
 const PARTICIPANT_SPAWN_CLEARANCE = 1.25;
 const ITEM_SPAWN_CLEARANCE = 0.9;
+const ITEM_SPAWN_WEIGHTS = Object.freeze({
+  edge: 3,
+  "near-edge": 2,
+  interior: 1,
+} as const);
+
+export type ItemSpawnBand = keyof typeof ITEM_SPAWN_WEIGHTS;
+
+interface ItemSpawnCandidate {
+  readonly position: Vector2;
+  readonly weight: number;
+}
 
 export interface ItemSpawnOverride {
   readonly itemId: ItemId;
@@ -72,13 +84,34 @@ function getTileCenter(tile: TileState): Vector2 {
   return Object.freeze({ x: tile.column + 0.5, y: tile.row + 0.5 });
 }
 
-function getArenaEdges(tiles: readonly TileState[]): { maximumColumn: number; maximumRow: number } {
-  return tiles.reduce(
-    (bounds, tile) => ({
-      maximumColumn: Math.max(bounds.maximumColumn, tile.column),
-      maximumRow: Math.max(bounds.maximumRow, tile.row),
-    }),
-    { maximumColumn: 0, maximumRow: 0 },
+function getItemSpawnBandFromStableTiles(
+  position: Vector2,
+  stableTileIds: ReadonlySet<string>,
+): ItemSpawnBand {
+  const column = Math.floor(position.x);
+  const row = Math.floor(position.y);
+
+  for (let radius = 1; radius <= 2; radius += 1) {
+    for (let offsetY = -radius; offsetY <= radius; offsetY += 1) {
+      for (let offsetX = -radius; offsetX <= radius; offsetX += 1) {
+        if (Math.max(Math.abs(offsetX), Math.abs(offsetY)) !== radius) {
+          continue;
+        }
+
+        if (!stableTileIds.has(`${column + offsetX}:${row + offsetY}`)) {
+          return radius === 1 ? "edge" : "near-edge";
+        }
+      }
+    }
+  }
+
+  return "interior";
+}
+
+export function getItemSpawnBand(position: Vector2, tiles: readonly TileState[]): ItemSpawnBand {
+  return getItemSpawnBandFromStableTiles(
+    position,
+    new Set(getStableTiles(tiles).map(({ tileId }) => tileId)),
   );
 }
 
@@ -90,17 +123,11 @@ function getSpawnCandidates(
   tiles: readonly TileState[],
   participants: readonly ParticipantState[],
   items: readonly ItemState[],
-): readonly Vector2[] {
-  const { maximumColumn, maximumRow } = getArenaEdges(tiles);
+): readonly ItemSpawnCandidate[] {
+  const stableTiles = getStableTiles(tiles);
+  const stableTileIds = new Set(stableTiles.map(({ tileId }) => tileId));
 
-  return getStableTiles(tiles)
-    .filter(
-      (tile) =>
-        tile.column >= 1 &&
-        tile.row >= 1 &&
-        tile.column <= maximumColumn - 1 &&
-        tile.row <= maximumRow - 1,
-    )
+  return stableTiles
     .map(getTileCenter)
     .filter((position) =>
       participants.every((participant) =>
@@ -109,15 +136,33 @@ function getSpawnCandidates(
     )
     .filter((position) =>
       items.every((item) => isFarEnough(position, item.position, ITEM_SPAWN_CLEARANCE)),
-    );
+    )
+    .map((position) => {
+      const band = getItemSpawnBandFromStableTiles(position, stableTileIds);
+      return Object.freeze({ position, weight: ITEM_SPAWN_WEIGHTS[band] });
+    });
 }
 
-function chooseCandidate<T>(candidates: readonly T[], random: XorShift32): T | undefined {
+function chooseCandidate(
+  candidates: readonly ItemSpawnCandidate[],
+  random: XorShift32,
+): Vector2 | undefined {
   if (candidates.length === 0) {
     return undefined;
   }
 
-  return candidates[random.nextUint32() % candidates.length];
+  const totalWeight = candidates.reduce((sum, candidate) => sum + candidate.weight, 0);
+  let selection = random.nextUint32() % totalWeight;
+
+  for (const candidate of candidates) {
+    if (selection < candidate.weight) {
+      return candidate.position;
+    }
+
+    selection -= candidate.weight;
+  }
+
+  return candidates.at(-1)?.position;
 }
 
 function createItem(itemId: ItemId, position: Vector2, tick: Tick, random: XorShift32): ItemState {

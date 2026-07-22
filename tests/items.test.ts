@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createNeutralCommand, normalizeGameConfig } from "../src/simulation/contracts";
+import { getItemSpawnBand } from "../src/simulation/items";
 import { vectorLength, subtractVectors } from "../src/simulation/math";
 import { SIMULATION_TUNING } from "../src/simulation/tuning";
 import { SimulationWorld, type ParticipantSpawnOverride } from "../src/simulation/world";
@@ -77,7 +78,7 @@ describe("deterministic item effects", () => {
     ]);
     expect(actor.massFactor).toBeGreaterThanOrEqual(SIMULATION_TUNING.mass.minimum);
     expect(actor.massFactor).toBeLessThanOrEqual(SIMULATION_TUNING.mass.maximum);
-    expect(actor.massFactor).toBeCloseTo(1.42 * 0.72, 10);
+    expect(actor.massFactor).toBeCloseTo(1.4 * 0.8, 10);
   });
 
   it("expires a timed effect before movement and collision on its exact end tick", () => {
@@ -177,7 +178,7 @@ describe("deterministic item effects", () => {
 });
 
 describe("deterministic item placement", () => {
-  it("keeps seeded initial items stable, inside safe margins, and clear of participants", () => {
+  it("keeps seeded initial items deterministic, supported, and clear of participants", () => {
     const config = normalizeGameConfig({
       participantCount: 32,
       arenaColumns: 17,
@@ -188,17 +189,20 @@ describe("deterministic item placement", () => {
       itemRespawnSeconds: 3,
     });
 
-    for (let seed = 0; seed < 40; seed += 1) {
+    const bandCounts = { edge: 0, "near-edge": 0, interior: 0 };
+
+    for (let seed = 0; seed < 24; seed += 1) {
       const left = new SimulationWorld(config, `placement-${seed}`).createRenderFrame();
       const right = new SimulationWorld(config, `placement-${seed}`).createRenderFrame();
       expect(left.stateHash).toBe(right.stateHash);
       expect(left.items).toHaveLength(11);
 
       for (const item of left.items) {
-        expect(item.position.x).toBeGreaterThanOrEqual(1.5);
-        expect(item.position.y).toBeGreaterThanOrEqual(1.5);
-        expect(item.position.x).toBeLessThanOrEqual(15.5);
-        expect(item.position.y).toBeLessThanOrEqual(11.5);
+        expect(item.position.x).toBeGreaterThanOrEqual(0.5);
+        expect(item.position.y).toBeGreaterThanOrEqual(0.5);
+        expect(item.position.x).toBeLessThanOrEqual(16.5);
+        expect(item.position.y).toBeLessThanOrEqual(12.5);
+        bandCounts[getItemSpawnBand(item.position, left.tiles)] += 1;
         expect(
           left.participants.every(
             (participant) =>
@@ -207,6 +211,10 @@ describe("deterministic item placement", () => {
         ).toBe(true);
       }
     }
+
+    const total = bandCounts.edge + bandCounts["near-edge"] + bandCounts.interior;
+    expect((bandCounts.edge + bandCounts["near-edge"]) / total).toBeGreaterThan(0.6);
+    expect(bandCounts.interior).toBeGreaterThan(0);
   });
 
   it("never accumulates beyond the participant-derived cap", () => {

@@ -22,6 +22,6 @@ Previous position already entered authoritative participant state, but simulatio
 
 ## Evidence and Limits
 
-Vitest covers three equal bodies at one coordinate and 21 deterministic grazing geometries across three horizontal and seven vertical separations. The normal replay, determinism, shove, item, and spatial suites remain merge blocking. Headless and production Chrome profiles pass at 12, 24, and 32 participants.
+Vitest covers three equal bodies at one coordinate and 21 deterministic grazing geometries across three horizontal and seven vertical separations. The normal replay, determinism, shove, item, and spatial suites remain merge blocking. Headless and production Chrome profiles pass at 16, 24, and 32 participants.
 
 The solver handles one analytic contact per candidate on the first iteration, followed by overlap correction. It is not a general rigid-body engine and does not promise exact multi-impact time ordering, angular momentum, friction, or rotating shapes.

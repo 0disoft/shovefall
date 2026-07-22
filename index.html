@@ -32,17 +32,24 @@
             <fieldset class="preset-fieldset">
               <legend>플레이 방식</legend>
               <label class="preset-card">
-                <input type="radio" name="preset" value="default" checked />
+                <input type="radio" name="preset" value="relaxed" />
                 <span>
-                  <strong>기본</strong>
-                  <small>균형 잡힌 12인전</small>
+                  <strong>소규모</strong>
+                  <small>여유 있는 8인전</small>
                 </span>
               </label>
               <label class="preset-card">
-                <input type="radio" name="preset" value="relaxed" />
+                <input type="radio" name="preset" value="default" checked />
                 <span>
-                  <strong>느긋하게</strong>
-                  <small>넓은 바닥, 느린 붕괴</small>
+                  <strong>기본</strong>
+                  <small>균형 잡힌 16인전</small>
+                </span>
+              </label>
+              <label class="preset-card">
+                <input type="radio" name="preset" value="crowded" />
+                <span>
+                  <strong>대규모</strong>
+                  <small>빽빽한 24인전</small>
                 </span>
               </label>
               <label class="preset-card">
@@ -57,19 +64,21 @@
             <div class="player-control">
               <div class="player-control__label">
                 <label for="player-count">참가 인원</label>
-                <output id="player-count-value" for="player-count">12명</output>
+                <output id="player-count-value" for="player-count">16명</output>
               </div>
               <input
                 id="player-count"
                 name="playerCount"
                 type="range"
-                min="4"
+                min="8"
                 max="32"
-                step="1"
-                value="12"
+                step="8"
+                value="16"
               />
               <div class="range-labels" aria-hidden="true">
-                <span>4</span>
+                <span>8</span>
+                <span>16</span>
+                <span>24</span>
                 <span>32</span>
               </div>
             </div>
@@ -77,16 +86,16 @@
             <div class="player-control">
               <div class="player-control__label">
                 <label for="initial-item-count">시작 아이템</label>
-                <output id="initial-item-count-value" for="initial-item-count">4개</output>
+                <output id="initial-item-count-value" for="initial-item-count">6개</output>
               </div>
               <input
                 id="initial-item-count"
                 name="initialItemCount"
                 type="range"
                 min="0"
-                max="6"
+                max="8"
                 step="1"
-                value="4"
+                value="6"
               />
             </div>
 
@@ -107,7 +116,7 @@
             </div>
 
             <p id="setup-summary" class="settings-summary" aria-live="polite">
-              12명 · 시작 아이템 4개 · 5초마다 1개
+              16명 · 시작 아이템 6개 · 5초마다 1개
             </p>
 
             <button class="primary-action" type="submit">
@@ -168,7 +177,7 @@
             </div>
             <div>
               <dt>생존</dt>
-              <dd><output id="survivor-value">12</output></dd>
+              <dd><output id="survivor-value">16</output></dd>
             </div>
             <div>
               <dt>속도</dt>

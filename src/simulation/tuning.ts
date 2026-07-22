@@ -2,8 +2,8 @@ import { clamp } from "./math";
 
 export const SIMULATION_TUNING = Object.freeze({
   mass: Object.freeze({
-    minimum: 0.7,
-    maximum: 1.5,
+    minimum: 0.8,
+    maximum: 1.4,
     default: 1,
     maximumSpeedSlope: 0.18,
   }),

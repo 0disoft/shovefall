@@ -90,8 +90,8 @@ function parseConfig(value: unknown): GameConfigV1 {
         : fail("config.collapseSpeed is unsupported"),
     itemsEnabled: readBoolean(value, "itemsEnabled"),
     itemPolicyVersion:
-      readInteger(value, "itemPolicyVersion") === 1
-        ? 1
+      readInteger(value, "itemPolicyVersion") === 2
+        ? 2
         : fail("config.itemPolicyVersion is unsupported"),
     initialItemCount: readInteger(value, "initialItemCount"),
     maximumItemCount: readInteger(value, "maximumItemCount"),

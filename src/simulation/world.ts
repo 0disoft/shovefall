@@ -318,6 +318,7 @@ export class SimulationWorld {
   readonly #config: GameConfigV1;
   readonly #roundId: RoundId;
   readonly #collapsePlan: readonly CollapseWave[];
+  readonly #collapseTransitionTicks: ReadonlySet<number>;
   readonly #itemRandom;
   readonly #tieBreakRandom;
   #tiles: readonly TileState[];
@@ -364,6 +365,13 @@ export class SimulationWorld {
       config.arenaRows,
       config.collapseSpeed,
       streams.get("collapse"),
+    );
+    this.#collapseTransitionTicks = new Set(
+      this.#collapsePlan.flatMap(({ warningTick, collapsingTick, voidTick }) => [
+        warningTick,
+        collapsingTick,
+        voidTick,
+      ]),
     );
     this.#participants = createParticipants(
       config,
@@ -1180,6 +1188,10 @@ export class SimulationWorld {
   }
 
   #advanceCollapse(events: SimulationEventV1[]): boolean {
+    if (!this.#collapseTransitionTicks.has(this.#tick)) {
+      return false;
+    }
+
     const result = advanceCollapse(this.#tiles, this.#collapsePlan, this.#tick);
     this.#tiles = result.tiles;
 

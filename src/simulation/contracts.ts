@@ -32,7 +32,7 @@ export interface GameConfigV1 {
   readonly difficulty: "normal";
   readonly collapseSpeed: CollapseSpeed;
   readonly itemsEnabled: boolean;
-  readonly itemPolicyVersion: 1;
+  readonly itemPolicyVersion: 2;
   readonly initialItemCount: number;
   readonly maximumItemCount: number;
   readonly itemSpawnIntervalTicks: number;
@@ -223,9 +223,9 @@ export function assertIntegerInRange(
 }
 
 export function normalizeGameConfig(input: GameConfigInput): GameConfigV1 {
-  const participantCount = Math.round(input.participantCount ?? 12);
-  const arenaColumns = Math.round(input.arenaColumns ?? 11);
-  const arenaRows = Math.round(input.arenaRows ?? 9);
+  const participantCount = Math.round(input.participantCount ?? 16);
+  const arenaColumns = Math.round(input.arenaColumns ?? 12);
+  const arenaRows = Math.round(input.arenaRows ?? 10);
   const roundLimitSeconds = Math.round(input.roundLimitSeconds ?? 75);
   const collapseSpeed = input.collapseSpeed ?? "normal";
   const itemsEnabled = input.itemsEnabled ?? false;
@@ -257,7 +257,7 @@ export function normalizeGameConfig(input: GameConfigInput): GameConfigV1 {
     difficulty: "normal",
     collapseSpeed,
     itemsEnabled,
-    itemPolicyVersion: 1,
+    itemPolicyVersion: 2,
     initialItemCount,
     maximumItemCount,
     itemSpawnIntervalTicks: itemRespawnSeconds * FIXED_TICKS_PER_SECOND,

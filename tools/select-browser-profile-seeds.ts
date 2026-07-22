@@ -6,7 +6,7 @@ import { SimulationWorld } from "../src/simulation/world";
 const SURVIVAL_TICKS = 300;
 const HUMAN_DEFEAT_LIMIT_TICKS = 900;
 const MAXIMUM_CANDIDATES = 256;
-const PARTICIPANT_COUNTS = [12, 24, 32] as const;
+const PARTICIPANT_COUNTS = [16, 24, 32] as const;
 
 function candidateSeed(participantCount: number, candidate: number): string {
   return `${participantCount.toString(16).padStart(8, "0")}${candidate
@@ -24,7 +24,7 @@ function survivesProfileWindow(participantCount: number, seed: string): boolean 
       roundLimitSeconds: 120,
       collapseSpeed: participantCount >= 25 ? "fast" : "normal",
       itemsEnabled: true,
-      itemRespawnSeconds: participantCount >= 25 ? 3 : 5,
+      itemRespawnSeconds: participantCount >= 25 ? 3 : participantCount >= 17 ? 4 : 5,
     }),
     seed,
     { humanActorId: 1 },
@@ -48,7 +48,7 @@ function survivesProfileWindow(participantCount: number, seed: string): boolean 
 }
 
 function findHumanDefeatTick(seed: string): number | undefined {
-  const participantCount = 4;
+  const participantCount = 8;
   const arenaSize = getArenaSize(participantCount);
   const world = new SimulationWorld(
     normalizeGameConfig({
@@ -105,15 +105,15 @@ const seeds = PARTICIPANT_COUNTS.map((participantCount) => {
 });
 
 let humanDefeatFixture:
-  | Readonly<{ participantCount: 4; seed: string; candidate: number; defeatTick: number }>
+  | Readonly<{ participantCount: 8; seed: string; candidate: number; defeatTick: number }>
   | undefined;
 
 for (let candidate = 0; candidate < MAXIMUM_CANDIDATES; candidate += 1) {
-  const seed = candidateSeed(4, candidate);
+  const seed = candidateSeed(8, candidate);
   const defeatTick = findHumanDefeatTick(seed);
 
   if (defeatTick !== undefined) {
-    humanDefeatFixture = Object.freeze({ participantCount: 4, seed, candidate, defeatTick });
+    humanDefeatFixture = Object.freeze({ participantCount: 8, seed, candidate, defeatTick });
     break;
   }
 }

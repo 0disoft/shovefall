@@ -66,7 +66,7 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await expect(page.getByRole("heading", { level: 1, name: "끝까지 남아." })).toBeVisible();
   await expect(page.getByText("WebGL 준비됨")).toBeVisible();
   await expect(page.locator("#arena-host canvas")).toBeVisible();
-  await expect(page.locator("#setup-summary")).toHaveText("12명 · 시작 아이템 4개 · 5초마다 1개");
+  await expect(page.locator("#setup-summary")).toHaveText("16명 · 시작 아이템 6개 · 5초마다 1개");
 
   await page.getByRole("button", { name: "빠른 시작" }).click();
 
@@ -76,7 +76,7 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await expect(page.locator("#tick-value")).toHaveText("0");
   await expect(page.locator("#arena-host")).toBeFocused();
   await expect(page.locator("#game-telemetry")).toBeVisible();
-  await expect(page.locator("#app")).toHaveAttribute("data-initial-items", "4");
+  await expect(page.locator("#app")).toHaveAttribute("data-initial-items", "6");
   await page.keyboard.press("Space");
   await page.evaluate(() => window.dispatchEvent(new Event("blur")));
   await expect(page.locator("#renderer-status")).toHaveText("일시 정지");
@@ -142,9 +142,9 @@ test("completes a collapsing round and starts a fresh world", async ({ page }) =
   await expect(page.locator("#setup-summary")).toContainText("난장판");
   await expect(page.locator("#initial-item-count-value")).toHaveText("11개");
   await expect(page.locator("#item-respawn-value")).toHaveText("3초");
-  await page.locator("#player-count").fill("4");
-  await expect(page.locator("#player-count-value")).toHaveText("4명");
-  await expect(page.locator("#initial-item-count-value")).toHaveText("2개");
+  await page.locator("#player-count").fill("8");
+  await expect(page.locator("#player-count-value")).toHaveText("8명");
+  await expect(page.locator("#initial-item-count-value")).toHaveText("3개");
   await page.getByRole("button", { name: "빠른 시작" }).click();
 
   await finishInstalledClockCountdown(page);
@@ -168,10 +168,10 @@ test("completes a collapsing round and starts a fresh world", async ({ page }) =
 
 test("allows an immediate fresh restart after a deterministic human defeat", async ({ page }) => {
   await page.clock.install();
-  await installFixedRoundSeed(page, 4, 0);
+  await installFixedRoundSeed(page, 8, 0);
   await page.goto("/");
   await page.getByLabel("난장판").check();
-  await page.locator("#player-count").fill("4");
+  await page.locator("#player-count").fill("8");
   await page.getByRole("button", { name: "빠른 시작" }).click();
 
   await finishInstalledClockCountdown(page);

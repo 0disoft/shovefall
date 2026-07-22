@@ -27,18 +27,18 @@ describe("collapse and round lifecycle", () => {
     });
     const world = new SimulationWorld(config, "collapse-phases");
 
-    const warningEvents = stepUntil(world, 361).filter(({ kind }) => kind === "tile-warning");
+    const warningEvents = stepUntil(world, 481).filter(({ kind }) => kind === "tile-warning");
     expect(warningEvents.length).toBeGreaterThan(0);
     expect(world.createRenderFrame().tiles.filter(({ state }) => state === "Warning")).toHaveLength(
       warningEvents.length,
     );
 
-    const collapsingEvents = stepUntil(world, 427).filter(({ kind }) => kind === "tile-collapsing");
+    const collapsingEvents = stepUntil(world, 547).filter(({ kind }) => kind === "tile-collapsing");
     expect(collapsingEvents.map(({ tileId }) => tileId)).toEqual(
       warningEvents.map(({ tileId }) => tileId),
     );
 
-    const voidEvents = stepUntil(world, 439).filter(({ kind }) => kind === "tile-void");
+    const voidEvents = stepUntil(world, 559).filter(({ kind }) => kind === "tile-void");
     expect(voidEvents.map(({ tileId }) => tileId)).toEqual(
       warningEvents.map(({ tileId }) => tileId),
     );
