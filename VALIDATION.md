@@ -14,7 +14,7 @@ This document owns stable validation names for this scaffold.
 | `format-check` | Oxfmt check mode | Fails when approved project-owned paths are not formatted. |
 | `lint` | Oxlint and `oxlint-tsgolint@7` | Runs correctness, import, and type-aware rules without replacing the authoritative type gate. |
 | `typecheck` | TypeScript 7 `tsc --noEmit` | Authoritative TypeScript diagnostics. |
-| `test` | Vitest 4 | Runs settings, deterministic simulation, replay, mass, action timing, batch impulse, dodge, support, falling, and application-model coverage. |
+| `test` | Vitest 4 | Runs settings, deterministic simulation, replay, mass, action timing, batch impulse, dodge, support, falling, input state, bot command shape, bot determinism, delayed perception, edge safety, and identity-neutral targeting coverage. |
 | `contract` | Repository-owned Bun TypeScript checks | Validates module boundaries, forbidden dependencies, asset provenance, and other repository contracts that Oxlint cannot express reliably. |
 | `migration-check` | Not applicable until a persisted format or compatible migration surface exists | Must report `NOT_APPLICABLE`, not fake success. |
 | `smoke` | Playwright Test | Proves Chrome boot, WebGL initialization, setup-to-round transition, fixed-tick progress, WASD movement, Space action state, active-round blur pause and focus resume, keyboard focus entry, settings return, and telemetry cleanup. Defeat, result, restart, and fatal-error cases become mandatory with the complete round lifecycle. |
@@ -41,7 +41,7 @@ Frontend validations use the accepted stack in `docs/engineering/08-toolchain-ba
 
 ## Repository Shape
 
-Web-app validation covers the playable DOM/PixiJS gray-box without claiming that stationary opponents are finished AI or that a complete collapsing round exists.
+Web-app validation covers the playable DOM/PixiJS gray-box and deterministic utility bots without claiming that the weights passed external playtesting or that a complete collapsing round exists.
 
 ## Formatting Boundary
 

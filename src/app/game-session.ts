@@ -1,4 +1,5 @@
 import { createKeyboardInput, type KeyboardInput } from "./keyboard-input";
+import { BotDirector } from "../ai/bot-director";
 import type { GameConfigV1, RenderFrameV1, SimulationEventV1 } from "../simulation/contracts";
 import { clamp } from "../simulation/math";
 import { FIXED_TICKS_PER_SECOND } from "../simulation/versions";
@@ -34,6 +35,8 @@ export interface GameSession {
 
 export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHooks): GameSession {
   let world: SimulationWorld | undefined;
+  let bots: BotDirector | undefined;
+  let latestFrame: RenderFrameV1 | undefined;
   let animationFrameId: number | undefined;
   let previousTimestamp: number | undefined;
   let accumulatorMilliseconds = 0;
@@ -43,16 +46,15 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
   const keyboard: KeyboardInput = createKeyboardInput(() => active && !paused);
 
   const publishFrame = (): void => {
-    if (world === undefined) {
+    if (world === undefined || latestFrame === undefined) {
       return;
     }
 
-    const frame = world.createRenderFrame();
     const interpolationAlpha = clamp(accumulatorMilliseconds / FIXED_STEP_MILLISECONDS, 0, 1);
-    renderer.render(frame, interpolationAlpha, HUMAN_ACTOR_ID);
+    renderer.render(latestFrame, interpolationAlpha, HUMAN_ACTOR_ID);
     hooks.onTelemetry(
       Object.freeze({
-        frame,
+        frame: latestFrame,
         interpolationAlpha,
         backlogTicks: Math.floor(accumulatorMilliseconds / FIXED_STEP_MILLISECONDS),
         paused,
@@ -88,7 +90,11 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
       let steps = 0;
 
       while (accumulatorMilliseconds >= FIXED_STEP_MILLISECONDS && steps < MAX_STEPS_PER_RENDER) {
-        const result = world.step([keyboard.state.consumeCommand(world.tick, HUMAN_ACTOR_ID)]);
+        const result = world.step([
+          keyboard.state.consumeCommand(world.tick, HUMAN_ACTOR_ID),
+          ...(bots?.createCommands(world.tick, latestFrame ?? world.createRenderFrame()) ?? []),
+        ]);
+        latestFrame = result.frame;
         hooks.onEvents(result.events);
         accumulatorMilliseconds -= FIXED_STEP_MILLISECONDS;
         steps += 1;
@@ -149,6 +155,8 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
       }
 
       world = new SimulationWorld(config, masterSeed, { humanActorId: HUMAN_ACTOR_ID });
+      bots = new BotDirector(masterSeed, HUMAN_ACTOR_ID);
+      latestFrame = world.createRenderFrame();
       accumulatorMilliseconds = 0;
       previousTimestamp = undefined;
       paused = document.visibilityState !== "visible";
@@ -162,6 +170,8 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
     stop(): void {
       active = false;
       world = undefined;
+      bots = undefined;
+      latestFrame = undefined;
       accumulatorMilliseconds = 0;
       previousTimestamp = undefined;
       keyboard.state.clear();

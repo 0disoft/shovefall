@@ -66,7 +66,7 @@ Vitest covers pure state, input edges, settings tiers, and presentation-independ
 
 ## 15. Implementation Sequence
 
-The toolchain, deterministic simulation, gray-box movement and combat, browser scheduler, keyboard adapter, and procedural PixiJS presentation are implemented. Add utility bots and then the complete collapsing-round lifecycle before items or final visual polish. Promote scale, items, and presentation only after their preceding behavior gates pass.
+The toolchain, deterministic simulation, gray-box movement and combat, browser scheduler, keyboard adapter, procedural PixiJS presentation, and first utility bots are implemented. Add the complete collapsing-round lifecycle before items or final visual polish. Promote scale, items, and presentation only after their preceding behavior gates pass.
 
 ## 16. Open Questions and Decisions Log
 

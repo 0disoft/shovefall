@@ -1,0 +1,116 @@
+import { describe, expect, it } from "vitest";
+import { BotDirector } from "../src/ai/bot-director";
+import { createNeutralCommand, normalizeGameConfig } from "../src/simulation/contracts";
+import { SimulationWorld, type ParticipantSpawnOverride } from "../src/simulation/world";
+
+function createBotWorld(
+  participantCount = 4,
+  overrides: readonly ParticipantSpawnOverride[] = [],
+  seed = "bot-world",
+): SimulationWorld {
+  return new SimulationWorld(
+    normalizeGameConfig({ participantCount, roundLimitSeconds: 10 }),
+    seed,
+    { humanActorId: 1, participantOverrides: overrides },
+  );
+}
+
+describe("utility bot director", () => {
+  it("emits exactly one sorted command per active non-human actor", () => {
+    const world = createBotWorld(8);
+    const director = new BotDirector("command-shape", 1, {
+      reactionDelayTicks: 0,
+      decisionIntervalTicks: 1,
+    });
+    const commands = director.createCommands(0, world.createRenderFrame());
+
+    expect(commands.map(({ actorId }) => actorId)).toEqual([2, 3, 4, 5, 6, 7, 8]);
+    expect(commands.every(({ tick, commandVersion }) => tick === 0 && commandVersion === 1)).toBe(
+      true,
+    );
+  });
+
+  it("repeats personalities, commands, and final state for the same seed", () => {
+    function run() {
+      const world = createBotWorld(8, [], "deterministic-bots");
+      const director = new BotDirector("deterministic-bots", 1);
+      const commandLog: unknown[] = [];
+
+      for (let tick = 0; tick < 180; tick += 1) {
+        const commands = director.createCommands(world.tick, world.createRenderFrame());
+        commandLog.push(commands);
+        world.step([createNeutralCommand(world.tick, 1), ...commands]);
+      }
+
+      return {
+        assignments: director.getAssignments(),
+        commandLog,
+        finalHash: world.createRenderFrame().stateHash,
+      };
+    }
+
+    expect(run()).toEqual(run());
+  });
+
+  it("uses immediate self-preservation when a bot reaches the arena edge", () => {
+    const world = createBotWorld(4, [
+      { actorId: 1, position: { x: 5.5, y: 4.5 } },
+      { actorId: 2, position: { x: 0.3, y: 4.5 } },
+      { actorId: 3, position: { x: 8.5, y: 1.5 } },
+      { actorId: 4, position: { x: 8.5, y: 7.5 } },
+    ]);
+    const director = new BotDirector("edge-safety", 1, {
+      reactionDelayTicks: 0,
+      decisionIntervalTicks: 1,
+    });
+    const bot = director
+      .createCommands(0, world.createRenderFrame())
+      .find(({ actorId }) => actorId === 2);
+
+    expect(bot?.move.x).toBeGreaterThan(0);
+    expect(bot?.shovePressed).toBe(false);
+  });
+
+  it("prefers an equally close edge opportunity without checking human identity", () => {
+    const world = createBotWorld(4, [
+      { actorId: 1, position: { x: 3.5, y: 4.5 }, facing: { x: 1, y: 0 } },
+      { actorId: 2, position: { x: 2.5, y: 4.5 }, facing: { x: 0, y: 1 } },
+      { actorId: 3, position: { x: 1.5, y: 4.5 }, facing: { x: -1, y: 0 } },
+      { actorId: 4, position: { x: 8.5, y: 7.5 } },
+    ]);
+    const director = new BotDirector("identity-neutral", 1, {
+      reactionDelayTicks: 0,
+      decisionIntervalTicks: 1,
+    });
+    const bot = director
+      .createCommands(0, world.createRenderFrame())
+      .find(({ actorId }) => actorId === 2);
+
+    expect(bot?.move.x).toBeLessThan(0);
+  });
+
+  it("reacts to a shove telegraph only after the configured perception delay", () => {
+    const world = createBotWorld(4, [
+      { actorId: 1, position: { x: 4, y: 4.5 }, facing: { x: 1, y: 0 } },
+      { actorId: 2, position: { x: 5.4, y: 4.5 }, facing: { x: 0, y: 1 } },
+      { actorId: 3, position: { x: 8.5, y: 1.5 } },
+      { actorId: 4, position: { x: 8.5, y: 7.5 } },
+    ]);
+    const director = new BotDirector("delayed-reaction", 1, {
+      reactionDelayTicks: 1,
+      decisionIntervalTicks: 1,
+    });
+    const initialBots = director.createCommands(0, world.createRenderFrame());
+    world.step([
+      { ...createNeutralCommand(0, 1), shovePressed: true, move: { x: 1, y: 0 } },
+      ...initialBots,
+    ]);
+
+    const beforeDelay = director.createCommands(1, world.createRenderFrame());
+    expect(beforeDelay.find(({ actorId }) => actorId === 2)?.dodgePressed).toBe(false);
+    world.step([createNeutralCommand(1, 1), ...beforeDelay]);
+
+    const afterDelay = director.createCommands(2, world.createRenderFrame());
+    expect(afterDelay.find(({ actorId }) => actorId === 2)?.dodgePressed).toBe(true);
+  });
+});

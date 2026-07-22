@@ -15,7 +15,7 @@ The physical baseline device and repeatable browser capture procedure are still 
 
 ## Automated Regression Budgets
 
-- The 100-run determinism test executes 12,000 ticks with 12 participants and must finish within its 15-second Vitest budget. Observed 2026-07-22 local runs completed in approximately 2.7 to 5.8 seconds; this is evidence from one workstation, not a portable forecast.
+- The 100-run determinism test executes 12,000 ticks with 12 participants and must finish within its 15-second Vitest budget. Observed 2026-07-22 local runs completed in approximately 2.7 to 13.5 seconds under varying concurrent test load; this is evidence from one workstation, not a portable forecast. Repeated approach to the upper bound requires profiling rather than a silent timeout increase.
 - A 32-participant `RenderFrameV1` has a 256 KiB warning threshold. Production code must not JSON-serialize the full frame every render.
 - Total compressed production JavaScript has a 180 KiB warning budget and CSS has a 20 KiB warning budget before art/audio assets. The playable 2026-07-22 Vite build reports approximately 160 KiB across emitted JavaScript chunks, a 40.77 KiB gzip entry chunk, and 2.15 KiB gzip CSS. Chunk count alone is not a failure when Vite and PixiJS load the provider-neutral static artifact correctly.
 - Replay JSON is capped at 5 MiB and 7,200 ticks before parsing or execution.
@@ -24,7 +24,7 @@ The physical baseline device and repeatable browser capture procedure are still 
 
 - Simulation work is renderer-independent and allocation changes must be measured with 12, 24, and 32 participants.
 - Same-tick shove contacts are batched for correctness. Weak contacts currently use bounded stable pair iteration; spatial hashing becomes mandatory before 24- and 32-participant promotion if profiling shows pair checks dominate.
-- Bot decisions will run on staggered schedules and bounded nearby candidates rather than every bot evaluating the whole world every tick.
+- Bot decisions run on staggered 12-tick schedules, retain intent between decisions, and score at most six nearby candidates. Browser composition reuses the last emitted `RenderFrameV1` for AI and presentation instead of rebuilding and hashing the world multiple times per tick.
 - No background job, application network request, analytics upload, or remote model call belongs in the MVP runtime.
 
 ## Review Blockers

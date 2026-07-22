@@ -6,7 +6,7 @@
 
 ## Ownership
 
-The browser application has one in-memory screen state: `setup` or `arena`. The DOM owns draft settings and focus. `GameSession` owns whether a round is active or paused, the fixed-step accumulator, current world reference, generated local seed, and animation-frame handle. `InputState` owns held gameplay keys and unconsumed action edges. The simulation owns all authoritative participant and tile state. PixiJS owns no game state.
+The browser application has one in-memory screen state: `setup` or `arena`. The DOM owns draft settings and focus. `GameSession` owns whether a round is active or paused, the fixed-step accumulator, current world and bot-director references, last emitted render frame, generated local seed, and animation-frame handle. `InputState` owns held gameplay keys and unconsumed action edges. `BotDirector` owns bounded perception history and bot intent memory. The simulation owns all authoritative participant and tile state. PixiJS owns no game state.
 
 There is no server state, durable URL state, cookie, local storage, IndexedDB, service worker, or cross-tab coordination in the MVP gray-box.
 
@@ -14,7 +14,7 @@ There is no server state, durable URL state, cookie, local storage, IndexedDB, s
 
 1. Boot initializes the renderer and draws a deterministic setup preview.
 2. Quick Start normalizes settings, derives arena dimensions, creates a fresh seed and world, reveals telemetry, and focuses the labeled arena region.
-3. `requestAnimationFrame` supplies browser time to an accumulator. Whole 60 Hz steps consume one human command each. Rendering interpolates the latest immutable frame and never supplies delta time to rules.
+3. `requestAnimationFrame` supplies browser time to an accumulator. Whole 60 Hz steps consume one human command and one command per active bot. The bot director reads the last immutable frame, and the step result becomes the next AI and presentation frame without duplicate world hashing. Rendering interpolates that frame and never supplies delta time to rules.
 4. No more than eight simulation steps run in one render callback. Remaining elapsed work stays as visible backlog rather than being discarded.
 5. Window blur or hidden visibility clears held keys and pauses the accumulator. Visible focus resumes from a fresh timestamp so hidden time is not simulated as a burst.
 6. Restart cancels the previous animation frame and creates a fresh seed and world. Settings return stops and releases the current world, restores the preview, and returns focus to Quick Start.
@@ -30,4 +30,4 @@ The local HUD exposes tick, human action, mass category, position, seed, state h
 
 ## Pending States
 
-The complete round slice still must add countdown, victory, human defeat, accelerated bot resolution, result, restart-after-result, and fatal-invariant recovery tests. Current stationary opponents are presentation and collision fixtures, not AI lifecycle state.
+The complete round slice still must add countdown, victory, human defeat, accelerated bot resolution, result, restart-after-result, and fatal-invariant recovery tests. Bot weights and personality readability remain unapproved until external gray-box observation.

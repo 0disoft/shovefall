@@ -73,4 +73,4 @@ These are pre-submission quality gates, not population-level market claims.
 
 ## Current Implementation Slice
 
-Version `0.4.0` connects simulation version `2.0.0` to a fixed-step browser scheduler, keyboard command adapter, procedural PixiJS renderer, local seed/tick/state telemetry, pause-on-focus-loss lifecycle, and bounded arena tiers. The gray-box is now directly playable, but stationary opponents are test bodies rather than approved AI. External gray-box playtest evidence still gates promotion to collapse and content.
+Version `0.5.0` adds deterministic utility bots on top of the playable gray-box. Five personalities share one scoring implementation, consume delayed public render frames, stagger decisions, search at most six nearby candidates, use isolated personality and jitter streams, and submit the same `ActorCommandV1` as the human. Human identity is absent from target scoring. The weights remain an automated baseline pending external playtest; collapse and content are still gated.

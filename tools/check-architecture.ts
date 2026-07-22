@@ -18,8 +18,8 @@ const FORBIDDEN_PACKAGES = new Set([
   "vue",
 ]);
 
-const FORBIDDEN_SIMULATION_IMPORTS = new Set(["pixi.js"]);
-const FORBIDDEN_SIMULATION_GLOBALS = [
+const FORBIDDEN_HEADLESS_IMPORTS = new Set(["pixi.js"]);
+const FORBIDDEN_HEADLESS_GLOBALS = [
   "document",
   "window",
   "performance.now",
@@ -88,18 +88,18 @@ function isPackageManifest(value: unknown): value is PackageManifest {
   );
 }
 
-async function checkSimulationFile(root: string, file: string): Promise<readonly string[]> {
+async function checkHeadlessFile(root: string, file: string): Promise<readonly string[]> {
   const source = await readFile(file, "utf8");
   const displayPath = relative(root, file).replaceAll("\\", "/");
   const violations: string[] = [];
 
   for (const specifier of getImportSpecifiers(source)) {
-    if (FORBIDDEN_SIMULATION_IMPORTS.has(specifier)) {
+    if (FORBIDDEN_HEADLESS_IMPORTS.has(specifier)) {
       violations.push(`${displayPath} imports forbidden renderer: ${specifier}`);
     }
   }
 
-  for (const globalName of FORBIDDEN_SIMULATION_GLOBALS) {
+  for (const globalName of FORBIDDEN_HEADLESS_GLOBALS) {
     if (source.includes(globalName)) {
       violations.push(`${displayPath} uses forbidden ambient global: ${globalName}`);
     }
@@ -138,11 +138,15 @@ async function main(): Promise<void> {
     }
   }
 
-  const simulationFiles = await listTypeScriptFiles(join(root, "src", "simulation"));
-  const simulationViolations = await Promise.all(
-    simulationFiles.map((file) => checkSimulationFile(root, file)),
+  const headlessFiles = (
+    await Promise.all(
+      ["simulation", "ai"].map((directory) => listTypeScriptFiles(join(root, "src", directory))),
+    )
+  ).flat();
+  const headlessViolations = await Promise.all(
+    headlessFiles.map((file) => checkHeadlessFile(root, file)),
   );
-  violations.push(...simulationViolations.flat());
+  violations.push(...headlessViolations.flat());
 
   if (violations.length > 0) {
     process.stderr.write(`${JSON.stringify({ ok: false, violations }, null, 2)}\n`);
@@ -155,7 +159,7 @@ async function main(): Promise<void> {
       {
         ok: true,
         checkedDependencies: [...dependencyNames].toSorted(),
-        simulationBoundary: "clean",
+        headlessBoundaries: ["src/ai", "src/simulation"],
       },
       null,
       2,
