@@ -18,11 +18,16 @@ const REQUIRED_CUSTOM_DOCUMENTS = [
   "docs/product/02-spec.md",
   "docs/product/03-risk-register.md",
   "docs/product/04-playtest-protocol.md",
+  "docs/product/05-submission-package.md",
+  "docs/assets/README.md",
   "docs/frontend/FRONTEND_DESIGN.md",
   "docs/web-app/README.md",
   "docs/web-app/routing-and-rendering.md",
   "docs/web-app/browser-state.md",
   "docs/integrations/backend-api.md",
+  "docs/ops/00-operational-contract.md",
+  "docs/ops/release.md",
+  "docs/ops/rollback.md",
 ] as const;
 
 const SCAFFOLD_MARKERS = [

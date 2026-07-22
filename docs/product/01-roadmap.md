@@ -83,7 +83,7 @@ Exit conditions:
 - The chosen HTTPS host serves the built artifact from a clean URL, including the configured base
   path, with no application backend.
 - Screenshot, short gameplay capture, tool list, asset provenance, and development notes are ready
-  for the contest post.
+  in [05-submission-package.md](05-submission-package.md) for the contest post.
 
 Current status: `NOT_STARTED`. GitHub reported no attached workflow runs or combined status checks
 for pushed SHA `c4e55df88d0a254b83ace1e83b127bc14e6737c8` when queried on 2026-07-23, so

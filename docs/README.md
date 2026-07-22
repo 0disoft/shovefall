@@ -10,6 +10,8 @@
 - Product specification: [product/02-spec.md](product/02-spec.md)
 - Risk register: [product/03-risk-register.md](product/03-risk-register.md)
 - Human playtest procedure: [product/04-playtest-protocol.md](product/04-playtest-protocol.md)
+- Contest submission package: [product/05-submission-package.md](product/05-submission-package.md)
+- Asset provenance ledger: [assets/README.md](assets/README.md)
 
 ## Architecture and Frontend
 
@@ -32,6 +34,8 @@
 - Toolchain baseline: [engineering/08-toolchain-baseline.md](engineering/08-toolchain-baseline.md)
 - Deterministic round audit: [engineering/09-round-audit.md](engineering/09-round-audit.md)
 - Hosted CI boundary: [ops/ci.md](ops/ci.md)
+- Static release procedure: [ops/release.md](ops/release.md)
+- Static rollback procedure: [ops/rollback.md](ops/rollback.md)
 - Backend integration decision: [integrations/backend-api.md](integrations/backend-api.md)
 
 Generated output, caches, local run receipts, and the ssealed manifest do not replace these current
