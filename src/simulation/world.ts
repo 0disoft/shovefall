@@ -94,6 +94,13 @@ interface EventDetails {
   readonly reason?: SimulationEventV1["reason"];
 }
 
+interface SweptCircleContact {
+  readonly time: number;
+  readonly normal: Vector2;
+  readonly leftPosition: Vector2;
+  readonly rightPosition: Vector2;
+}
+
 function createTiles(config: GameConfigV1): readonly TileState[] {
   const tiles: TileState[] = [];
 
@@ -253,6 +260,47 @@ function isGroundAction(kind: ParticipantActionKind): boolean {
 
 function isCollidable(participant: ParticipantState): boolean {
   return participant.active && isGroundAction(participant.action.kind);
+}
+
+function findSweptCircleContact(
+  left: ParticipantState,
+  right: ParticipantState,
+  minimumDistance: number,
+): SweptCircleContact | undefined {
+  const leftMotion = subtractVectors(left.body.position, left.body.previousPosition);
+  const rightMotion = subtractVectors(right.body.position, right.body.previousPosition);
+  const relativeStart = subtractVectors(right.body.previousPosition, left.body.previousPosition);
+  const relativeMotion = subtractVectors(rightMotion, leftMotion);
+  const quadraticA = vectorLengthSquared(relativeMotion);
+  const quadraticB = 2 * dotVectors(relativeStart, relativeMotion);
+  const quadraticC = vectorLengthSquared(relativeStart) - minimumDistance * minimumDistance;
+
+  if (quadraticA === 0 || quadraticC < 0 || quadraticB >= 0) {
+    return undefined;
+  }
+
+  const discriminant = quadraticB * quadraticB - 4 * quadraticA * quadraticC;
+
+  if (discriminant < 0) {
+    return undefined;
+  }
+
+  const time = (-quadraticB - Math.sqrt(discriminant)) / (2 * quadraticA);
+
+  if (time < 0 || time > 1) {
+    return undefined;
+  }
+
+  const leftPosition = addVectors(left.body.previousPosition, scaleVector(leftMotion, time));
+  const rightPosition = addVectors(right.body.previousPosition, scaleVector(rightMotion, time));
+  const delta = subtractVectors(rightPosition, leftPosition);
+  const distance = vectorLength(delta);
+  const normal =
+    distance === 0
+      ? Object.freeze({ x: left.actorId < right.actorId ? 1 : -1, y: 0 })
+      : scaleVector(delta, 1 / distance);
+
+  return Object.freeze({ time, normal, leftPosition, rightPosition });
 }
 
 function hasTileSupport(position: Vector2, tilesById: ReadonlySet<string>): boolean {
@@ -826,23 +874,64 @@ export class SimulationWorld {
         const delta = subtractVectors(rightPosition, leftPosition);
         const minimumDistance = left.body.radius + right.body.radius;
         const distanceSquared = vectorLengthSquared(delta);
+        const overlapping = distanceSquared < minimumDistance * minimumDistance;
+        const sweptContact =
+          iteration === 0 ? findSweptCircleContact(left, right, minimumDistance) : undefined;
 
-        if (distanceSquared >= minimumDistance * minimumDistance) {
+        if (!overlapping && sweptContact === undefined) {
           continue;
         }
 
         const distance = Math.sqrt(distanceSquared);
         const normal =
-          distance === 0
+          sweptContact?.normal ??
+          (distance === 0
             ? Object.freeze({ x: left.actorId < right.actorId ? 1 : -1, y: 0 })
-            : scaleVector(delta, 1 / distance);
+            : scaleVector(delta, 1 / distance));
+        const leftInverseMass = 1 / left.body.massFactor;
+        const rightInverseMass = 1 / right.body.massFactor;
+        const inverseMassTotal = leftInverseMass + rightInverseMass;
+        const leftVelocity = velocities[leftIndex] ?? left.body.velocity;
+        const rightVelocity = velocities[rightIndex] ?? right.body.velocity;
+        const relativeNormalSpeed = dotVectors(
+          subtractVectors(rightVelocity, leftVelocity),
+          normal,
+        );
+
+        if (sweptContact !== undefined) {
+          if (relativeNormalSpeed >= 0) {
+            continue;
+          }
+
+          const contactImpulse =
+            (-relativeNormalSpeed * (1 + SIMULATION_TUNING.body.weakContactVelocityDamping)) /
+            inverseMassTotal;
+          const nextLeftVelocity = subtractVectors(
+            leftVelocity,
+            scaleVector(normal, contactImpulse * leftInverseMass),
+          );
+          const nextRightVelocity = addVectors(
+            rightVelocity,
+            scaleVector(normal, contactImpulse * rightInverseMass),
+          );
+          const remainingTime = 1 - sweptContact.time;
+          positions[leftIndex] = addVectors(
+            sweptContact.leftPosition,
+            scaleVector(nextLeftVelocity, remainingTime),
+          );
+          positions[rightIndex] = addVectors(
+            sweptContact.rightPosition,
+            scaleVector(nextRightVelocity, remainingTime),
+          );
+          velocities[leftIndex] = nextLeftVelocity;
+          velocities[rightIndex] = nextRightVelocity;
+          continue;
+        }
+
         const overlap = Math.max(
           0,
           minimumDistance - distance - SIMULATION_TUNING.body.weakContactSlop,
         );
-        const leftInverseMass = 1 / left.body.massFactor;
-        const rightInverseMass = 1 / right.body.massFactor;
-        const inverseMassTotal = leftInverseMass + rightInverseMass;
         positions[leftIndex] = subtractVectors(
           leftPosition,
           scaleVector(normal, (overlap * leftInverseMass) / inverseMassTotal),
@@ -850,13 +939,6 @@ export class SimulationWorld {
         positions[rightIndex] = addVectors(
           rightPosition,
           scaleVector(normal, (overlap * rightInverseMass) / inverseMassTotal),
-        );
-
-        const leftVelocity = velocities[leftIndex] ?? left.body.velocity;
-        const rightVelocity = velocities[rightIndex] ?? right.body.velocity;
-        const relativeNormalSpeed = dotVectors(
-          subtractVectors(rightVelocity, leftVelocity),
-          normal,
         );
 
         if (relativeNormalSpeed < 0) {

@@ -21,15 +21,15 @@ On 2026-07-22, Bun 1.3.14 ran 7,200 ticks each across sequential seeded rounds o
 | 24 | 0.647 ms | 2.844 ms | 0.2527 | 1 |
 | 32 | 1.159 ms | 5.286 ms | 0.2704 | 1 |
 
-The first two item-enabled runs exposed allocation pressure in pickup scans. After pickup, expiry, item hashing, and bot item targeting stopped allocating on steady-state ticks, a fresh 2026-07-22 run passed all tail gates:
+The first two item-enabled runs exposed allocation pressure in pickup scans. After pickup, expiry, item hashing, and bot item targeting stopped allocating on steady-state ticks, the item slice passed all tail gates. A fresh 2026-07-22 simulation `5.0.0` run with swept contacts reported:
 
 | Participants | AI p95 | Simulation p95 | Candidate/full pairs | Long steps over 100 ms |
 |---:|---:|---:|---:|---:|
-| 12 | 0.381 ms | 2.261 ms | 0.3868 | 0 |
-| 24 | 0.709 ms | 3.448 ms | 0.2545 | 0 |
-| 32 | 1.231 ms | 5.591 ms | 0.1925 | 0 |
+| 12 | 0.374 ms | 1.935 ms | 0.3629 | 1 |
+| 24 | 0.755 ms | 3.138 ms | 0.2993 | 0 |
+| 32 | 1.092 ms | 4.272 ms | 0.2245 | 0 |
 
-The maximum combined step components remained below 100 ms. Headless heap deltas are observational because the harness does not force garbage collection and must not be compared with the Chrome restart measurement.
+One 12-participant combined step exceeded 100 ms during the local run; 24 and 32 participants had none, and all p95 and harness tail gates passed. This isolated scheduler or workstation tail is retained rather than edited out. Headless heap deltas are observational because the harness does not force garbage collection and must not be compared with the Chrome restart measurement.
 
 ## Local Production-Chrome Evidence
 
@@ -37,11 +37,11 @@ A Vite production build ran in local headless Chrome at 1280×720. Each four-sec
 
 | Participants | Seed | Frame p95 | Maximum frame | Delivered ticks / requested simulation second | Long frames over 100 ms |
 |---:|---|---:|---:|---:|---:|
-| 12 | `0000000c00000000` | 16.8 ms | 17.8 ms | 61.04 | 0 |
-| 24 | `0000001800000001` | 16.8 ms | 17.6 ms | 60.70 | 0 |
-| 32 | `0000002000000001` | 16.8 ms | 17.3 ms | 61.22 | 0 |
+| 12 | `0000000c00000000` | 16.9 ms | 17.5 ms | 61.06 | 0 |
+| 24 | `0000001800000001` | 16.9 ms | 17.5 ms | 61.25 | 0 |
+| 32 | `0000002000000001` | 17.1 ms | 17.7 ms | 60.95 | 0 |
 
-These refreshed 2026-07-22 samples include the recommended item policy, Collector item interest, presentation-event feedback, and Mayhem effect caps. Twenty immediate 32-participant restarts followed by CDP garbage collection increased used heap by 655,284 bytes and left one canvas. This is Chromium-specific lab evidence. The host reports device pixel ratio 1, so the run confirms the Mayhem upper bound but does not exercise a physical high-DPR display.
+These refreshed 2026-07-22 samples include simulation `5.0.0` swept contacts, the recommended item policy, Collector item interest, presentation-event feedback, and Mayhem effect caps. Twenty immediate 32-participant restarts followed by CDP garbage collection increased used heap by 2,145,784 bytes and left one canvas. This is Chromium-specific lab evidence. The host reports device pixel ratio 1, so the run confirms the Mayhem upper bound but does not exercise a physical high-DPR display.
 
 ## Limits
 

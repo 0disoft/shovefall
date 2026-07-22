@@ -50,7 +50,7 @@ Randomness may select arena variants, content placement, bot personality data, a
 
 The current format accepts UTF-8 JSON up to 5 MiB and 7,200 ticks. Unknown replay majors, incompatible simulation versions, malformed booleans or numbers, commands for bots, duplicate or unordered ticks, range violations, and hash mismatches are errors. Compatibility is never guessed.
 
-Simulation version `4.0.0` adds item instances, timed effects, effective mass, Spring Glove shove state, item cursors, and item events to authoritative state. Content version `3.0.0` owns the three item definitions and placement constants. Replay fixtures from simulation `3.0.0` are intentionally incompatible rather than silently receiving item semantics.
+Simulation version `5.0.0` adds swept-circle weak-contact semantics between fixed ticks. Previous position was already authoritative state, but it now participates in collision results, so simulation `4.0.0` replays are intentionally incompatible rather than silently receiving different physics. Content version `3.0.0` still owns the three item definitions and placement constants.
 
 ## Version Ownership
 

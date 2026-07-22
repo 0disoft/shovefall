@@ -21,7 +21,7 @@ Each 60 Hz tick uses this versioned order:
 4. Apply dodge, stumble, and other active displacement.
 5. Integrate positions and velocities.
 6. Rebuild the spatial index.
-7. Resolve weak circular contacts.
+7. Resolve overlapping and swept weak circular contacts.
 8. Collect all shove contacts from the same pre-impulse state.
 9. Sum and apply actor impulses as a batch.
 10. Evaluate tile support, grace ticks, falling, and elimination.
@@ -30,7 +30,7 @@ Each 60 Hz tick uses this versioned order:
 13. Decide round result.
 14. Emit ordered events, an immutable render frame, and a quantized state hash.
 
-All fourteen stages are implemented. Timed effects expire with action transitions before movement. Item pickup runs after support, so a valid pickup wins over a tile that begins collapsing later in the same tick. Collapse then advances, void-tile items are removed, the safe-area cap is enforced, and at most one due item is spawned on a stable interior tile. Collapse still cannot retroactively remove support earlier in the same tick. Later work cannot reorder the pipeline without a simulation-version decision and regenerated replay evidence.
+All fourteen stages are implemented. Weak contact first resolves a swept circle intersection from `previousPosition` to the integrated position, then applies iterative overlap correction. Timed effects expire with action transitions before movement. Item pickup runs after support, so a valid pickup wins over a tile that begins collapsing later in the same tick. Collapse then advances, void-tile items are removed, the safe-area cap is enforced, and at most one due item is spawned on a stable interior tile. Collapse still cannot retroactively remove support earlier in the same tick. Later work cannot reorder the pipeline or change contact meaning without a simulation-version decision and regenerated replay evidence.
 
 ## Browser Scheduling
 

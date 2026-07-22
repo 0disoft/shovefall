@@ -191,6 +191,79 @@ describe("gray-box movement and action timing", () => {
   });
 });
 
+describe("weak-contact containment", () => {
+  it("separates three equal bodies spawned at the same coordinate without non-finite state", () => {
+    const world = createWorld(
+      [
+        { actorId: 1, position: { x: 4.5, y: 4.5 } },
+        { actorId: 2, position: { x: 4.5, y: 4.5 } },
+        { actorId: 3, position: { x: 4.5, y: 4.5 } },
+        { actorId: 4, position: { x: 8.5, y: 7.5 } },
+      ],
+      "triple-overlap",
+    );
+
+    world.step();
+    const actors = [getActor(world, 1), getActor(world, 2), getActor(world, 3)];
+    const minimumDistance = SIMULATION_TUNING.body.radius * 2 - 0.02;
+
+    for (let leftIndex = 0; leftIndex < actors.length; leftIndex += 1) {
+      for (let rightIndex = leftIndex + 1; rightIndex < actors.length; rightIndex += 1) {
+        const left = actors[leftIndex];
+        const right = actors[rightIndex];
+
+        expect(left).toBeDefined();
+        expect(right).toBeDefined();
+
+        if (left === undefined || right === undefined) {
+          continue;
+        }
+
+        expect(Number.isFinite(left.position.x)).toBe(true);
+        expect(Number.isFinite(left.position.y)).toBe(true);
+        expect(
+          Math.hypot(right.position.x - left.position.x, right.position.y - left.position.y),
+        ).toBeGreaterThanOrEqual(minimumDistance);
+      }
+    }
+  });
+
+  it("detects maximum-speed grazing crossings across a deterministic geometry matrix", () => {
+    const cases = [0.22, 0.25, 0.28].flatMap((horizontalGap) =>
+      Array.from({ length: 7 }, (_, index) => ({
+        horizontalGap,
+        verticalGap: 0.645 + index * 0.005,
+      })),
+    );
+
+    for (const { horizontalGap, verticalGap } of cases) {
+      const world = createWorld(
+        createSeparatedOverrides(
+          {
+            actorId: 1,
+            position: { x: 4, y: 4.5 - verticalGap / 2 },
+            velocity: { x: SIMULATION_TUNING.body.maximumSpeed, y: 0 },
+          },
+          {
+            actorId: 2,
+            position: { x: 4 + horizontalGap, y: 4.5 + verticalGap / 2 },
+            velocity: { x: -SIMULATION_TUNING.body.maximumSpeed, y: 0 },
+          },
+        ),
+        `grazing-crossing-${horizontalGap}-${verticalGap}`,
+      );
+
+      world.step();
+      const left = getActor(world, 1);
+      const right = getActor(world, 2);
+
+      expect(Math.abs(left.velocity.y)).toBeGreaterThan(0.000_001);
+      expect(Math.abs(right.velocity.y)).toBeGreaterThan(0.000_001);
+      expect(Math.sign(left.velocity.y)).toBe(-Math.sign(right.velocity.y));
+    }
+  });
+});
+
 describe("gray-box shove resolution", () => {
   function duelOverrides(swapped = false): readonly ParticipantSpawnOverride[] {
     const left = {

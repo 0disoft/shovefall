@@ -31,4 +31,4 @@ The local HUD exposes tick, human action, mass category, standing participant co
 
 ## Pending States
 
-Countdown, explicit deterministic human-defeat injection, and fatal-invariant recovery tests remain pending. Bot weights, collapse cadence, and personality readability remain unapproved until external gray-box observation.
+Countdown remains pending. Deterministic human-defeat restart, fatal recovery, reduced motion, unavailable audio, and WebGL loss/restoration are covered in browser smoke. Bot weights, collapse cadence, and personality readability remain unapproved until external gray-box observation.
