@@ -25,6 +25,8 @@ and `docs/integrations/backend-api.md`.
 
 - Product scope: docs/product/02-spec.md
 - Architecture decisions: docs/adr/*.md
+- Toolchain baseline: docs/engineering/08-toolchain-baseline.md
+- Frontend boundary: docs/frontend/FRONTEND_DESIGN.md
 - Validation: VALIDATION.md
 - Agent routing: .agents/context-map.md
 - Repository hygiene: .editorconfig, .gitattributes, .gitignore

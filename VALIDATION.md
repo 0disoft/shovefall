@@ -1,6 +1,6 @@
 # Validation
 
-- Status: Draft
+- Status: Executable application-bootstrap validations
 
 ## Validation Source of Truth
 
@@ -8,15 +8,19 @@ This document owns stable validation names for this scaffold.
 
 ## Standard Validation Names
 
-- format
-- lint
-- typecheck
-- test
-- contract
-- migration-check
-- smoke
-- docs
-- check
+| Name | Owner | Current contract |
+|---|---|---|
+| `format` | Oxfmt write mode | Formats only approved project-owned paths. |
+| `format-check` | Oxfmt check mode | Fails when approved project-owned paths are not formatted. |
+| `lint` | Oxlint and `oxlint-tsgolint@7` | Runs correctness, import, and type-aware rules without replacing the authoritative type gate. |
+| `typecheck` | TypeScript 7 `tsc --noEmit` | Authoritative TypeScript diagnostics. |
+| `test` | Vitest 4 | Runs the implemented settings and application-model unit coverage; deterministic simulation and scenario coverage becomes mandatory when that source exists. |
+| `contract` | Repository-owned Bun TypeScript checks | Validates module boundaries, forbidden dependencies, asset provenance, and other repository contracts that Oxlint cannot express reliably. |
+| `migration-check` | Not applicable until a persisted format or compatible migration surface exists | Must report `NOT_APPLICABLE`, not fake success. |
+| `smoke` | Playwright Test | Currently proves Chrome boot, WebGL initialization, setup-to-arena transition, and focus recovery. Input, round, failure, and restart cases become mandatory with gameplay. |
+| `docs` | Repository and ssealed documentation checks | Validates source-of-truth links, scaffold state, and Markdown hygiene. |
+| `build` | Vite 8 | Produces the provider-neutral static `dist` artifact. |
+| `check` | Aggregate command | Runs the configured merge-blocking validations without silently skipping a missing command. |
 
 ## Required Final Report
 
@@ -24,9 +28,7 @@ Final responses must list executed validations, passed validations, skipped vali
 
 ## Runner Policy
 
-Task runner files are optional. Runner `none` means no executable task runner is generated.
-If a runner is generated, runner command names must match this document.
-Unconfigured runner commands must fail, not pass with a fake success.
+Ssealed runner remains `none`; package scripts are the application command surface rather than a generated task-runner file. Agents must use the configured `shovefall_*` mustflow intents. Unconfigured commands must fail, not pass with fake success.
 
 ## Hygiene Validation
 
@@ -35,8 +37,12 @@ tracked secret files, ignored build/cache artifacts, and generated-output drift.
 
 ## Scope
 
-frontend validation routes must stay stack-neutral unless a runner file explicitly defines a command.
+Frontend validations use the accepted stack in `docs/engineering/08-toolchain-baseline.md`. Exact package patch versions are owned by `package.json` and `bun.lock`.
 
 ## Repository Shape
 
-web-app validation must stay repository-shape focused and must not imply generated application source code.
+Web-app validation covers the implemented DOM and PixiJS bootstrap without claiming that gameplay exists.
+
+## Formatting Boundary
+
+Oxfmt must ignore `.agents/**`, `.ssealed/**`, dependencies, caches, coverage, and build output. Existing seeded documents are not bulk-formatted merely to satisfy a new formatter. Markdown prose wrapping remains preserved unless a document owner explicitly changes it.

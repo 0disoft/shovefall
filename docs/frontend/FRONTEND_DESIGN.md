@@ -1,110 +1,77 @@
 # Frontend Design
 
-- Status: Draft
+- Status: Accepted technical boundary; visual direction pending
 
 ## 0. Decision Summary
 
-Record accepted decisions, rejected options, owners, and remaining UNDECIDED items.
+Shovefall uses one static browser application. PixiJS 8 with WebGL owns the game world. Semantic HTML, DOM, and CSS own setup, settings, results, fatal errors, focus, and accessibility text. TypeScript 7, Vite 8, Bun, Oxlint, and Oxfmt form the accepted toolchain baseline.
+
+React, Vue, Svelte, Phaser, Tailwind CSS, a general state manager, and a general-purpose physics engine are not part of the initial baseline. The visual style, final palette, typography, generated image inventory, and animation polish remain undecided and must not be invented by implementation code.
 
 ## 1. Product Surface and Scope
 
-Name the product surface, primary users, entry points, non-goals, and ownership boundary.
+The primary surface is a short desktop-browser single-player game reached through a public HTTPS link. The default entry point must reach quick start without installation, account creation, or a network service. Mobile touch, online multiplayer, authentication, a backend, a database, runtime LLM calls, and remote analytics are outside the MVP.
 
 ## 2. User Flow Map
 
-Map happy paths, failure paths, permission paths, and recovery paths.
+The minimum user flow is load, setup, quick start, countdown, play, elimination or victory, and immediate restart. Optional settings branch from setup and return to countdown. Required initialization failure enters a DOM fatal-error state with a retry path. There are no application permission or authentication flows.
 
 ## 3. Routing Contract
 
-List routes, URL parameters, query parameters, redirects, and not-found behavior.
+The MVP is a single-page static application with one document route. URL parameters, query-driven game state, hash routing, redirects, and shareable configuration are not part of the initial contract. Static hosting must support both root and configured base-path builds without application routing.
 
 ## 4. Page and Layout Model
 
-Define page shells, persistent regions, scroll behavior, responsive breakpoints, and empty layouts.
+The DOM shell owns setup, settings, HUD overlays outside the game world, results, errors, and accessibility text. The PixiJS canvas owns arena tiles, participants, items, world effects, and camera transforms. The game preserves a fixed logical world aspect and may letterbox rather than distort simulation coordinates.
 
 ## 5. State Ownership Model
 
-Assign Server State, URL State, Form State, Local UI State, and allowed Global Client State.
+The pure simulation owns round state. The application layer owns screen and round lifecycle state. The DOM shell owns draft settings and focus. PixiJS owns presentation objects derived from read-only render state. There is no server state or durable URL state. Presentation layers cannot mutate simulation entities directly.
 
 ## 6. Data Fetching and Cache Policy
 
-Define fetch timing, cache keys, invalidation, retry, optimistic updates, and stale data behavior.
+Application data fetching and cache invalidation are `NOT_APPLICABLE`. Required static assets load from the same origin. Optional image or audio failure may fall back to procedural visuals or silence; required renderer or content-contract failure blocks round start with a recoverable error screen.
 
 ## 7. Component Boundary Model
 
-Describe app/pages/features/entities/shared layers, import direction, and reusable component limits.
+The application composes simulation, AI, presentation, platform adapters, and content. Simulation remains pure TypeScript and cannot import PixiJS, DOM, browser clocks, or ambient randomness. AI emits the same participant command shape as human input. PixiJS and DOM consume read-only state and events. Generic `shared`, `utils`, and framework-shaped layer hierarchies are not created without a concrete owner.
 
 ## 8. Design Token Contract
 
-Name semantic token roles for color, spacing, typography, surfaces, status, and interaction states.
+Semantic tokens must distinguish canvas background, stable tile, warning tile, void, human participant, bot participants, focus, cooldown readiness, mass state, success, danger, and disabled controls. The bootstrap uses a neutral gray-box palette with a blue focus and human marker only to make the shell testable. These values are not the final visual direction. Color cannot be the only signal for collapse warning, player identity, or action readiness.
 
 ## 9. Interaction and Accessibility Contract
 
-Define keyboard paths, focus order, labels, landmarks, announcements, and reduced-motion expectations.
+The initial input contract is `WASD` movement, `Space` shove, and `Shift` dodge. Setup and settings remain fully keyboard operable through DOM controls with visible focus. Canvas input must not trap focus or trigger page scrolling. Reduced-motion mode removes nonessential camera shake and large flashes without changing simulation timing or hit windows.
 
 ## 10. Loading, Empty, Error, and Disabled States
 
-List loading, empty, error, and disabled states for each route and async action.
+Boot has loading, ready, unsupported-renderer, required-content-error, and retry states. Setup disables start only when normalized configuration cannot be produced. Playing exposes paused and fatal-invariant states. Optional media failure does not create an empty game state.
 
 ## 11. Form and Validation Model
 
-Separate client validation, backend validation, error display, dirty state, submit, reset, and recovery.
+Settings are local client inputs validated at the DOM boundary and normalized again by the application contract. There is no backend validation. Invalid user-controlled values are constrained with visible feedback; invalid project-owned content blocks start rather than silently inventing defaults.
 
 ## 12. Responsive and Layout Rules
 
-Define width ranges, wrapping rules, long-content behavior, viewport constraints, and safe-area handling.
+The MVP targets desktop viewports with a minimum supported layout recorded during application bootstrap. DOM controls wrap without overlapping the canvas. Device-pixel ratio is capped by measured performance policy. Mobile touch and safe-area support remain non-goals until explicitly promoted.
 
 ## 13. Observability and Analytics
 
-Name events, analytics, logs, client errors, performance marks, and privacy limits.
+Remote analytics, session replay, advertising, and automatic error upload are excluded. Development builds may expose local frame, fixed-tick backlog, AI decision, collision, and state-hash diagnostics. Fatal errors may show copyable non-secret reproduction metadata without uploading it.
 
 ## 14. Test Strategy
 
-Map unit, component, route, accessibility, contract, and smoke coverage to user-visible risks.
+Vitest covers pure state and presentation-model behavior. Playwright Test covers setup, keyboard input, focus recovery, one complete round, failure handling, and restart. Visual review checks readability of telegraphs, collapse warnings, human identity, mass state, and reduced-motion behavior. Oxfmt and Oxlint do not replace product interaction testing.
 
 ## 15. Implementation Sequence
 
-Break work into safe slices with validation after each slice.
+Bootstrap the toolchain and empty DOM/Pixi boundary first. Add a deterministic simulation without presentation coupling. Build the gray-box movement, shove, dodge, simultaneous-impact, support, and restart slice before item art or visual polish. Promote AI, collapse, scale, items, and final presentation only after their preceding behavior gates pass.
 
 ## 16. Open Questions and Decisions Log
 
-Track open questions, decision owners, due dates, and decision-reversing evidence.
+Open decisions include the final visual direction, palette, typography, image and audio asset inventory, hosting provider, exact supported viewport and browser matrix, and whether generated images are required. When visual assets become necessary, the implementation owner must give the repository owner a complete generation prompt instead of invoking a metered image-generation tool. Aesthetic frontend work should use the user-designated Umans GLM 5.2 path when available; if unavailable, prepare a self-contained handoff prompt for the user.
 
-## State Definitions
+## Technology Reference
 
-- Server State: remote data owned by backend contracts.
-- URL State: route, query, and hash data that must survive reload and share links.
-- Form State: draft user input owned by a form boundary.
-- Local UI State: temporary visual or interaction state owned by one component area.
-- Global Client State: client-owned state allowed only by explicit allowlist.
-
-## Global State Allowlist
-
-- Auth session summary when required.
-- Current tenant or organization selection when required.
-- Feature flags when required.
-
-## Global State Denylist
-
-- Server response copies.
-- Form drafts.
-- One-off modal state.
-- Derived values that can be computed locally.
-
-## Component Layers
-
-app -> pages -> features -> entities -> shared.
-
-Imports may point downward only. Shared must not import entities, features, pages, or app.
-
-## State Categories
-
-Loading, empty, error, and disabled states must be defined per route and per async interaction.
-
-## Accessibility Contract
-
-Keyboard paths, focus movement, visible focus, labels, semantic landmarks, and screen-reader announcements must be explicit before implementation.
-
-## Semantic Token Usage
-
-Use semantic tokens for color, spacing, typography, state, and surface role. Do not hardcode product-specific visual choices here.
+The toolchain, version tracks, formatter boundary, adoption constraints, and rollback policy are owned by [../engineering/08-toolchain-baseline.md](../engineering/08-toolchain-baseline.md). This document owns frontend responsibility and interaction boundaries, not package version duplication.

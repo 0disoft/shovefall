@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="무너지는 아레나에서 상대를 밀어내고 마지막까지 살아남는 Shovefall"
+    />
+    <title>Shovefall</title>
+  </head>
+  <body>
+    <a class="skip-link" href="#setup-title">게임 설정으로 이동</a>
+    <main id="app" class="app-shell" data-screen="setup">
+      <header class="masthead">
+        <p class="eyebrow">SHOVE · DODGE · SURVIVE</p>
+        <h1>끝까지 남아.</h1>
+        <p class="masthead__copy">무너지는 바닥을 읽고, 빈틈을 노려 상대를 밀어내.</p>
+      </header>
+
+      <div class="play-layout">
+        <section class="setup-panel" aria-labelledby="setup-title">
+          <div class="section-heading">
+            <p class="section-heading__index" aria-hidden="true">01</p>
+            <div>
+              <h2 id="setup-title">게임 설정</h2>
+              <p>한 판은 짧게, 선택은 간단하게.</p>
+            </div>
+          </div>
+
+          <form id="game-settings" class="settings-form">
+            <fieldset class="preset-fieldset">
+              <legend>플레이 방식</legend>
+              <label class="preset-card">
+                <input type="radio" name="preset" value="default" checked />
+                <span>
+                  <strong>기본</strong>
+                  <small>균형 잡힌 12인전</small>
+                </span>
+              </label>
+              <label class="preset-card">
+                <input type="radio" name="preset" value="relaxed" />
+                <span>
+                  <strong>느긋하게</strong>
+                  <small>넓은 바닥, 느린 붕괴</small>
+                </span>
+              </label>
+              <label class="preset-card">
+                <input type="radio" name="preset" value="chaos" />
+                <span>
+                  <strong>난장판</strong>
+                  <small>32명이 한꺼번에</small>
+                </span>
+              </label>
+            </fieldset>
+
+            <div class="player-control">
+              <div class="player-control__label">
+                <label for="player-count">참가 인원</label>
+                <output id="player-count-value" for="player-count">12명</output>
+              </div>
+              <input
+                id="player-count"
+                name="playerCount"
+                type="range"
+                min="4"
+                max="32"
+                step="1"
+                value="12"
+              />
+              <div class="range-labels" aria-hidden="true">
+                <span>4</span>
+                <span>32</span>
+              </div>
+            </div>
+
+            <button class="primary-action" type="submit">
+              <span>빠른 시작</span>
+              <span aria-hidden="true">→</span>
+            </button>
+          </form>
+
+          <div id="arena-actions" class="arena-actions" hidden>
+            <p class="ready-message" role="status">아레나 준비 완료.</p>
+            <button id="back-to-settings" class="secondary-action" type="button">
+              설정으로 돌아가기
+            </button>
+          </div>
+        </section>
+
+        <section class="arena-panel" aria-labelledby="arena-title">
+          <div class="arena-panel__header">
+            <div>
+              <p class="section-heading__index" aria-hidden="true">02</p>
+              <h2 id="arena-title">아레나</h2>
+            </div>
+            <p id="renderer-status" class="renderer-status" aria-live="polite">불러오는 중</p>
+          </div>
+          <div
+            id="arena-host"
+            class="arena-host"
+            role="img"
+            aria-label="타일로 이루어진 Shovefall 아레나 미리보기"
+          ></div>
+          <dl class="control-guide" aria-label="조작법">
+            <div>
+              <dt>이동</dt>
+              <dd>WASD</dd>
+            </div>
+            <div>
+              <dt>밀치기</dt>
+              <dd>Space</dd>
+            </div>
+            <div>
+              <dt>회피</dt>
+              <dd>Shift</dd>
+            </div>
+          </dl>
+        </section>
+      </div>
+    </main>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
