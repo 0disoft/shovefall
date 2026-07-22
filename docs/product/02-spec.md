@@ -64,6 +64,10 @@ Collapse, formal bots, 32-participant scale, items, audio, and final art cannot 
 
 These are pre-submission quality gates, not population-level market claims.
 
+Human evidence for these gates must follow [04-playtest-protocol.md](04-playtest-protocol.md). A
+developer check or five-person directional batch may identify problems but cannot claim the
+pre-submission percentages have passed. Results from different behavior SHAs are not combined.
+
 ## Explicit Non-goals
 
 - Online multiplayer, accounts, authentication, cloud saves, leaderboards, chat, or a database.

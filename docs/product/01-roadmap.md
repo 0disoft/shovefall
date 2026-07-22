@@ -1,28 +1,106 @@
 # Roadmap
 
-- Status: Draft
-- Owner: UNASSIGNED
+- Status: Active MVP roadmap
+- Product owner: Repository owner
+- Technical owner: Repository owner
+- Product source of truth: [02-spec.md](02-spec.md)
+- Risk source of truth: [03-risk-register.md](03-risk-register.md)
+- Human evidence procedure: [04-playtest-protocol.md](04-playtest-protocol.md)
 
-## Purpose
+## Release Objective
 
-This document captures the durable design contract for Roadmap.
-It is intentionally a scaffold and should be filled with project-specific decisions as they become known.
+Ship a short desktop-browser party-action game whose chaos stays readable. The submission build
+must let a first-time player move, shove, dodge, understand most defeats, and restart without an
+account, tutorial wall, backend, or hidden probability deciding combat.
 
-## Source of Truth
+The implementation already proves deterministic rules, production presets, local browser boot,
+and bounded 32-participant workload. The critical path is no longer adding systems. It is proving
+the current systems with people, then applying a coherent visual direction without burying combat
+telegraphs.
 
-- Product decision: UNDECIDED
-- Technical owner: UNASSIGNED
-- Related ADR: UNDECIDED
+## Completed Foundation
 
-## Required Decisions
+- [x] Provider-neutral Vite and PixiJS static application with a pure 60 Hz simulation.
+- [x] Movement, shove, dodge, missed-shove stumble, simultaneous impulses, support loss, falling,
+      results, and fresh-world restart.
+- [x] Production presets for 8, 16, 24, and 32 participants, with 16 as Quick Start and 32 labeled
+      Mayhem.
+- [x] Easy, Normal, and Hard utility-bot reaction profiles without bot-only physics advantages.
+- [x] Slow, Normal, and Fast collapse controls with deterministic warning and collapse schedules.
+- [x] Iron Boots, Feather, and Spring Glove with a bounded 3/2/1 outer-ring placement preference.
+- [x] Deterministic round, mass, item-grant, collapse-pacing, headless scale, and production-Chrome
+      regression evidence.
+- [x] Local aggregate validation and production-artifact browser smoke.
 
-- Boundary: UNDECIDED
-- Data ownership: UNDECIDED
-- Failure and recovery behavior: UNDECIDED
-- Validation needed before merge: VALIDATION.md
+## Gate 1: Human Gray-box Evidence
 
-## Review Blockers
+Run the sessions in [04-playtest-protocol.md](04-playtest-protocol.md) against an exact commit SHA.
+Do not tune from bot win rates or from one vivid anecdote.
 
-- The change invents a product domain without a source.
-- The change weakens validation or skips required evidence.
-- The change relies on generated, cache, or build output as source truth.
+Exit conditions:
+
+- The first-time discovery cohort reaches the movement, dodge, explainable-death, restart, and
+  three-round gates in [02-spec.md](02-spec.md), or each miss has a reproduced cause and bounded
+  corrective change.
+- A paired Normal-versus-Slow session records whether Slow creates useful decisions rather than
+  merely delaying the ending.
+- Edge-item attempts are experienced as a visible voluntary risk. Unreadable spawns, accidental
+  pickups, and forced deaths are separated from chosen greed.
+- Human identity, shove windup, dodge window, collapse warning, item type, and result state remain
+  distinguishable at 16 and 24 participants.
+
+Current status: `PENDING_EXTERNAL_PLAYTEST`. Automated audits are supporting evidence only.
+
+## Gate 2: Visual Direction and Asset Inventory
+
+Choose one visual direction through the user-designated Umans GLM 5.2 review path. Translate the
+approved direction into semantic tokens and a small asset inventory before generating images.
+
+Exit conditions:
+
+- Palette, typography, shape language, camera treatment, and motion hierarchy are approved as one
+  system rather than accumulated decoration.
+- Human identity and danger telegraphs work without color alone and under reduced motion.
+- Every external or generated asset has a source, license or generation record, dimensions, and
+  fallback behavior.
+- Optional image failure leaves the game playable; art never changes simulation timing or hit
+  windows.
+
+Current status: `WAITING_FOR_VISUAL_DIRECTION`. Procedural gray-box presentation remains the
+accepted fallback.
+
+## Gate 3: Submission Hardening
+
+Freeze balance before this gate. Changes here remove delivery risk rather than adding mechanics.
+
+Exit conditions:
+
+- The exact candidate SHA passes configured local `check`, `smoke-dist`, round audit, headless
+  scale profile, and production-browser profile.
+- A named physical desktop and supported browser matrix have manual smoke evidence.
+- GitHub Actions reports green checks for the exact candidate SHA. A local pass or remote push is
+  not a substitute.
+- The chosen HTTPS host serves the built artifact from a clean URL, including the configured base
+  path, with no application backend.
+- Screenshot, short gameplay capture, tool list, asset provenance, and development notes are ready
+  for the contest post.
+
+Current status: `NOT_STARTED`. GitHub reported no attached workflow runs or combined status checks
+for pushed SHA `c4e55df88d0a254b83ace1e83b127bc14e6737c8` when queried on 2026-07-23, so
+hosted CI is not yet proven.
+
+## Deferred Beyond the Submission
+
+- Online multiplayer, accounts, leaderboards, cloud saves, remote analytics, and a database.
+- Mobile touch, gamepad, installed desktop packages, progression, shops, skins, and user maps.
+- Additional items or mechanics unless human evidence identifies a specific missing decision.
+- Public replay upload or backward compatibility beyond the current developer format.
+
+## Change Discipline
+
+- One failed threshold does not authorize a broad redesign. Reproduce the failure, change the
+  smallest owning surface, and rerun the relevant human and automated checks.
+- Do not change combat physics and visual presentation in the same evidence batch when either can
+  explain the result.
+- A version bump is required for runtime, content, or replay-contract changes. Planning and
+  evidence-document edits alone do not change the product or simulation version.
