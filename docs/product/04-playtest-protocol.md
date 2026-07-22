@@ -46,6 +46,11 @@ Record this once per batch before anyone plays:
 If the SHA or runtime versions change, start a new batch. Results from different behavior builds
 must not be merged into one denominator.
 
+After a round completes, `기록 복사` copies a local JSON record with the round versions, seed,
+settings, completion tick, outcome, and state hash. Paste that record beside the observation row to
+avoid transcription errors. It contains no player identity and performs no upload; the batch-level
+commit SHA, browser, and device still come from the build record above.
+
 ## Session A: First-time Discovery
 
 Give the player the link and only say: "한번 해봐." Do not explain controls, item effects, collapse,

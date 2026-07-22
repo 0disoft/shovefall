@@ -58,7 +58,7 @@ The MVP targets desktop viewports with a minimum supported layout recorded durin
 
 ## 13. Observability and Analytics
 
-Remote analytics, session replay, advertising, and automatic error upload are excluded. Development builds may expose local frame, fixed-tick backlog, AI decision, collision, and state-hash diagnostics. Fatal errors may show copyable non-secret reproduction metadata without uploading it.
+Remote analytics, session replay, advertising, and automatic error upload are excluded. Development builds may expose local frame, fixed-tick backlog, AI decision, collision, and state-hash diagnostics. Fatal errors may show copyable non-secret reproduction metadata without uploading it. Completed rounds may copy a local versioned playtest record with seed, normalized settings, result, and state hash; this is a user-triggered clipboard write, not analytics or persistence.
 
 ## 14. Test Strategy
 
@@ -66,7 +66,7 @@ Vitest covers pure state, input edges, settings tiers, collapse phases, result s
 
 ## 15. Implementation Sequence
 
-The toolchain, deterministic simulation, gray-box movement and combat, browser scheduler, pausable countdown, keyboard adapter, procedural PixiJS presentation, Easy/Normal/Hard utility bots, selectable Slow/Normal/Fast collapse, readable collapse states, round results, accelerated defeat resolution, restart, spatial broad phase, four 8/16/24/32 setup presets, local 16/24/32 profiles, production-artifact smoke, three procedural item markers, effect HUD, bounded edge-weighted item settings, presentation-event deduplication, optional procedural audio, reduced-motion effects, and renderer recovery are implemented. Final art remains gated on an approved visual direction and user-provided or approved assets.
+The toolchain, deterministic simulation, gray-box movement and combat, browser scheduler, pausable countdown, keyboard adapter, procedural PixiJS presentation, Easy/Normal/Hard utility bots, selectable Slow/Normal/Fast collapse, readable collapse states, round results, local playtest-record copy, accelerated defeat resolution, restart, spatial broad phase, four 8/16/24/32 setup presets, local 16/24/32 profiles, production-artifact smoke, three procedural item markers, effect HUD, bounded edge-weighted item settings, presentation-event deduplication, optional procedural audio, reduced-motion effects, and renderer recovery are implemented. Final art remains gated on an approved visual direction and user-provided or approved assets.
 
 ## 16. Open Questions and Decisions Log
 

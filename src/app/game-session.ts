@@ -1,11 +1,6 @@
 import { createKeyboardInput, type KeyboardInput } from "./keyboard-input";
 import { BotDirector } from "../ai/bot-director";
-import type {
-  GameConfigV1,
-  RenderFrameV1,
-  RoundStateV1,
-  SimulationEventV1,
-} from "../simulation/contracts";
+import type { GameConfigV1, RenderFrameV1, SimulationEventV1 } from "../simulation/contracts";
 import { clamp } from "../simulation/math";
 import { FIXED_TICKS_PER_SECOND } from "../simulation/versions";
 import { SimulationWorld } from "../simulation/world";
@@ -33,7 +28,7 @@ export interface GameSessionHooks {
   readonly onTelemetry: (telemetry: SessionTelemetry) => void;
   readonly onEvents: (events: readonly SimulationEventV1[]) => void;
   readonly onHumanEliminated: () => void;
-  readonly onRoundCompleted: (round: RoundStateV1) => void;
+  readonly onRoundCompleted: (frame: RenderFrameV1) => void;
   readonly onPauseChanged: (paused: boolean) => void;
   readonly onFatalError: (error: unknown) => void;
 }
@@ -162,7 +157,7 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
           keyboard.state.clear();
           animationFrameId = undefined;
           publishFrame();
-          hooks.onRoundCompleted(result.frame.round);
+          hooks.onRoundCompleted(result.frame);
           return;
         }
       }

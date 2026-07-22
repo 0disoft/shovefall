@@ -14,7 +14,7 @@ Duration is `completedTick / 60`, not command wall time. Percentiles use nearest
 
 ## Version 5 Production-Preset Observation
 
-The accepted product `0.16.0`, simulation `5.3.0`, and content `3.1.0` run produced:
+The accepted product `0.17.0`, simulation `5.3.0`, and content `3.1.0` run produced:
 
 | Participants | Preset | Minimum | p50 | p95 | Maximum | Last standing | No survivors | Time limit |
 |---:|---|---:|---:|---:|---:|---:|---:|---:|

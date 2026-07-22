@@ -36,6 +36,20 @@ async function installFixedRoundSeed(page: Page, firstWord: number, secondWord: 
   );
 }
 
+async function installClipboardCapture(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: {
+        async writeText(value: string): Promise<void> {
+          (window as Window & { shovefallClipboardCapture?: string }).shovefallClipboardCapture =
+            value;
+        },
+      },
+    });
+  });
+}
+
 async function fastForwardUntilAttribute(
   page: Page,
   selector: string,
@@ -143,6 +157,7 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
 
 test("completes a collapsing round and starts a fresh world", async ({ page }) => {
   await page.clock.install();
+  await installClipboardCapture(page);
   await page.goto("/");
 
   await page.getByLabel("난장판").check();
@@ -161,11 +176,42 @@ test("completes a collapsing round and starts a fresh world", async ({ page }) =
   await expect(page.getByRole("button", { name: "다시 시작" })).toBeFocused();
   await expect(page.locator("#renderer-status")).toHaveText(/승리|라운드 종료/u);
 
+  const copyButton = page.getByRole("button", { name: "기록 복사" });
+  await expect(copyButton).toBeVisible();
+  await copyButton.click();
+  await expect(page.getByRole("button", { name: "복사됨" })).toBeVisible();
+  const copiedReport = await page.evaluate(
+    () => (window as Window & { shovefallClipboardCapture?: string }).shovefallClipboardCapture,
+  );
+  const parsedReport: unknown = JSON.parse(copiedReport ?? "null");
+  expect(parsedReport).toMatchObject({
+    schemaVersion: "shovefall-playtest-round/v1",
+    seed: await page.locator("#seed-value").textContent(),
+    stateHash: await page.locator("#hash-value").textContent(),
+    settings: { participantCount: 8 },
+    result: { completedTick: Number(await page.locator("#tick-value").textContent()) },
+  });
+
+  await page.evaluate(() => {
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: {
+        async writeText(): Promise<void> {
+          throw new DOMException("Clipboard denied", "NotAllowedError");
+        },
+      },
+    });
+  });
+  await page.getByRole("button", { name: "복사됨" }).click();
+  await expect(page.getByRole("button", { name: "복사 실패" })).toBeVisible();
+  await expect(page.getByText("복사하지 못했어. 시드와 상태 해시를 직접 기록해 줘.")).toBeVisible();
+
   const completedTick = Number(await page.locator("#tick-value").textContent());
   const completedHash = await page.locator("#hash-value").textContent();
   await page.getByRole("button", { name: "다시 시작" }).click();
 
   await expect(page.locator("#app")).toHaveAttribute("data-round", "countdown");
+  await expect(copyButton).toBeHidden();
   await expect(page.locator("#tick-value")).toHaveText("0");
   await finishInstalledClockCountdown(page);
   await expect(page.locator("#arena-host")).toBeFocused();

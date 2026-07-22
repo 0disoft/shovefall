@@ -12,6 +12,7 @@ import {
   type PresetName,
 } from "./settings";
 import { createGameSession, type GameSession, type SessionTelemetry } from "./game-session";
+import { createPlaytestRoundReport, serializePlaytestRoundReport } from "./round-report";
 import type { SimulationEventV1 } from "../simulation/contracts";
 import { normalizeGameConfig } from "../simulation/contracts";
 import { SimulationWorld } from "../simulation/world";
@@ -152,6 +153,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   const readyMessage = requireElement(root, "#round-message", HTMLElement);
   const restartButton = requireElement(root, "#restart-round", HTMLButtonElement);
   const backButton = requireElement(root, "#back-to-settings", HTMLButtonElement);
+  const copyRoundReportButton = requireElement(root, "#copy-round-report", HTMLButtonElement);
   const soundButton = requireElement(root, "#toggle-sound", HTMLButtonElement);
   const arenaHost = requireElement(root, "#arena-host", HTMLElement);
   const rendererStatus = requireElement(root, "#renderer-status", HTMLElement);
@@ -171,6 +173,8 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   let session: GameSession | undefined;
   let audio: AudioFeedback | undefined;
   let latestSettings = normalizeSettings({ playerCount: 16, preset: "default" });
+  let latestMasterSeed: string | undefined;
+  let latestRoundReport: string | undefined;
 
   const updateSoundControl = (state: AudioFeedbackState): void => {
     root.dataset.audio = state;
@@ -340,8 +344,18 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
         root.dataset.humanEliminated = "true";
         readyMessage.textContent = "떨어졌어. 남은 승부를 빠르게 돌리는 중.";
       },
-      onRoundCompleted(round): void {
+      onRoundCompleted(frame): void {
+        const { round } = frame;
+
+        if (latestMasterSeed === undefined) {
+          throw new Error("Completed round is missing its master seed.");
+        }
+
+        latestRoundReport = serializePlaytestRoundReport(
+          createPlaytestRoundReport(latestSettings, latestMasterSeed, frame),
+        );
         root.dataset.round = "completed";
+        copyRoundReportButton.hidden = false;
         rendererStatus.dataset.state = round.winnerActorId === 1 ? "victory" : "completed";
         rendererStatus.textContent = round.winnerActorId === 1 ? "승리" : "라운드 종료";
         readyMessage.textContent =
@@ -360,6 +374,8 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
         }
       },
       onFatalError(error): void {
+        latestRoundReport = undefined;
+        copyRoundReportButton.hidden = true;
         root.dataset.round = "fatal";
         rendererStatus.dataset.state = "error";
         rendererStatus.textContent = "라운드를 멈췄어";
@@ -383,6 +399,10 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     }
 
     latestSettings = settings;
+    latestMasterSeed = createRoundSeed();
+    latestRoundReport = undefined;
+    copyRoundReportButton.hidden = true;
+    copyRoundReportButton.textContent = "기록 복사";
     void audio?.unlock();
     root.dataset.screen = "arena";
     root.dataset.round = "countdown";
@@ -398,7 +418,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
       "aria-label",
       `${settings.playerCount}명이 참가하는 Shovefall 회색 상자 아레나. WASD로 이동하고 Space로 밀치며 Shift로 회피해.`,
     );
-    session.start(createConfig(settings), createRoundSeed());
+    session.start(createConfig(settings), latestMasterSeed);
     arenaHost.focus();
   };
 
@@ -437,6 +457,30 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
 
   restartButton.addEventListener("click", () => startRound(latestSettings));
 
+  const copyRoundReport = async (): Promise<void> => {
+    if (latestRoundReport === undefined) {
+      return;
+    }
+
+    try {
+      if (navigator.clipboard?.writeText === undefined) {
+        throw new Error("Clipboard API is unavailable.");
+      }
+
+      await navigator.clipboard.writeText(latestRoundReport);
+      copyRoundReportButton.textContent = "복사됨";
+      readyMessage.textContent = "개인정보 없는 라운드 기록을 복사했어.";
+    } catch (error: unknown) {
+      copyRoundReportButton.textContent = "복사 실패";
+      readyMessage.textContent = "복사하지 못했어. 시드와 상태 해시를 직접 기록해 줘.";
+      console.error("Unable to copy the local playtest round report.", error);
+    }
+  };
+
+  copyRoundReportButton.addEventListener("click", () => {
+    void copyRoundReport();
+  });
+
   soundButton.addEventListener("click", () => {
     if (audio === undefined) {
       return;
@@ -460,6 +504,8 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
 
   backButton.addEventListener("click", () => {
     session?.stop();
+    latestRoundReport = undefined;
+    copyRoundReportButton.hidden = true;
     root.dataset.screen = "setup";
     delete root.dataset.round;
     arenaActions.hidden = true;
