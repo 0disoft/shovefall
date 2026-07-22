@@ -12,7 +12,7 @@
 
 ## Round Configuration
 
-`GameConfigV1` is normalized before world creation. It supports 4 through 32 participants, arenas from 7 through 31 columns and rows, a maximum 120-second replay horizon, slow, normal, or fast collapse, normal density and difficulty, item policy version 2, a bounded initial item count, a participant-derived simultaneous cap, and a zero-to-thirty-second spawn interval. The same raw values normalize identically, and disabled items require zero initial and spawn values. The raw contract defaults to the browser's 16-participant 12×10 normal configuration.
+`GameConfigV1` is normalized before world creation. It supports 4 through 32 participants, arenas from 7 through 31 columns and rows, a maximum 120-second replay horizon, slow, normal, or fast collapse, normal density, Easy/Normal/Hard bot difficulty, item policy version 2, a bounded initial item count, a participant-derived simultaneous cap, and a zero-to-thirty-second spawn interval. The same raw values normalize identically, and disabled items require zero initial and spawn values. The raw contract defaults to the browser's 16-participant 12×10 normal configuration and Normal bot difficulty.
 
 The browser's normal-density arena policy derives 10×8 tiles for 4–8 participants, 12×10 for 9–16, 16×12 for 17–24, and 17×13 for 25–32. The final Mayhem tier grows only one row and column because adding more world area there would shrink actors and telegraphs further on the fixed canvas. This policy increases first-contact distance for smaller tiers without modifying combat strength.
 
@@ -52,7 +52,7 @@ Randomness may select arena variants, content placement, bot personality data, a
 
 The current format accepts UTF-8 JSON up to 5 MiB and 7,200 ticks. Unknown replay majors, incompatible simulation versions, malformed booleans or numbers, commands for bots, duplicate or unordered ticks, range violations, and hash mismatches are errors. Compatibility is never guessed.
 
-Simulation version `5.0.0` added swept-circle weak-contact semantics between fixed ticks. Version `5.1.0` preserves that combat model and changes slow, normal, and fast collapse scheduling to start at ticks 1,080, 780, and 480 with wave intervals of 84, 66, and 48 ticks. Version `5.2.0` changes global mass bounds and deterministic item candidate weighting. Content `3.1.0` owns the adjusted Iron Boots and Feather multipliers plus the 3/2/1 placement weights. These changes alter authoritative outcomes and require regenerated replay evidence instead of inheriting `5.1.0` hashes.
+Simulation version `5.0.0` added swept-circle weak-contact semantics between fixed ticks. Version `5.1.0` preserves that combat model and changes slow, normal, and fast collapse scheduling to start at ticks 1,080, 780, and 480 with wave intervals of 84, 66, and 48 ticks. Version `5.2.0` changes global mass bounds and deterministic item candidate weighting. Version `5.3.0` expands the normalized and replayed difficulty contract to Easy/Normal/Hard without changing authoritative physics. Content `3.1.0` owns the adjusted Iron Boots and Feather multipliers plus the 3/2/1 placement weights. Contract changes require regenerated replay evidence instead of inheriting older fixture metadata.
 
 ## Version Ownership
 

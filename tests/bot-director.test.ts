@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BotDirector } from "../src/ai/bot-director";
+import { BotDirector, getBotDifficultyProfile } from "../src/ai/bot-director";
 import { createNeutralCommand, normalizeGameConfig } from "../src/simulation/contracts";
 import { SimulationWorld, type ParticipantSpawnOverride } from "../src/simulation/world";
 
@@ -16,6 +16,24 @@ function createBotWorld(
 }
 
 describe("utility bot director", () => {
+  it("changes only bounded perception and decision budgets across difficulty levels", () => {
+    expect(getBotDifficultyProfile("easy")).toEqual({
+      reactionDelayTicks: 24,
+      decisionIntervalTicks: 20,
+      nearbyCandidateLimit: 4,
+    });
+    expect(getBotDifficultyProfile("normal")).toEqual({
+      reactionDelayTicks: 10,
+      decisionIntervalTicks: 12,
+      nearbyCandidateLimit: 6,
+    });
+    expect(getBotDifficultyProfile("hard")).toEqual({
+      reactionDelayTicks: 6,
+      decisionIntervalTicks: 8,
+      nearbyCandidateLimit: 8,
+    });
+  });
+
   it("emits exactly one sorted command per active non-human actor", () => {
     const world = createBotWorld(8);
     const director = new BotDirector("command-shape", 1, {

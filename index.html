@@ -61,6 +61,31 @@
               </label>
             </fieldset>
 
+            <fieldset class="preset-fieldset">
+              <legend>AI 난이도</legend>
+              <label class="preset-card">
+                <input type="radio" name="botDifficulty" value="easy" />
+                <span>
+                  <strong>쉬움</strong>
+                  <small>천천히 반응해</small>
+                </span>
+              </label>
+              <label class="preset-card">
+                <input type="radio" name="botDifficulty" value="normal" checked />
+                <span>
+                  <strong>보통</strong>
+                  <small>기본 판단 속도</small>
+                </span>
+              </label>
+              <label class="preset-card">
+                <input type="radio" name="botDifficulty" value="hard" />
+                <span>
+                  <strong>어려움</strong>
+                  <small>빈틈을 빠르게 노려</small>
+                </span>
+              </label>
+            </fieldset>
+
             <div class="player-control">
               <div class="player-control__label">
                 <label for="player-count">참가 인원</label>
@@ -116,7 +141,7 @@
             </div>
 
             <p id="setup-summary" class="settings-summary" aria-live="polite">
-              16명 · 시작 아이템 6개 · 5초마다 1개
+              16명 · AI 보통 · 시작 아이템 6개 · 5초마다 1개
             </p>
 
             <button class="primary-action" type="submit">

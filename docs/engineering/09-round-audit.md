@@ -8,13 +8,13 @@
 
 The audit asks four bounded questions: whether each production preset terminates without a hard-limit draw, where the item policy actually places rewards, whether controlled base-mass groups show an obvious win-rate skew, and whether equal-slot synthetic item grants show an obvious winner-distribution skew. It also reports live item-exposure outcomes, but those are descriptive rather than causal because longer-lived actors have more time to collect items.
 
-The production workload uses 8, 16, 24, and 32 participants with the Small, Default, Crowded, and Mayhem rules. Each count runs sixteen fixed seeds with production arena size, recommended initial items, preset respawn interval, preset collapse speed, and a 75-second limit. Actor 1 receives the same deterministic bot policy as every other actor only inside this harness.
+The production workload uses 8, 16, 24, and 32 participants with the Small, Default, Crowded, and Mayhem rules at Normal bot difficulty. Each count runs sixteen fixed seeds with production arena size, recommended initial items, preset respawn interval, preset collapse speed, and a 75-second limit. Actor 1 receives the same deterministic bot policy as every other actor only inside this harness.
 
 Duration is `completedTick / 60`, not command wall time. Percentiles use nearest-rank selection. Every raw round reports its seed, completion tick, terminal reason, winner, and state hash. Item exposure counts one actor-round when that actor collected the named item at least once; the same actor-round may appear under several items. Mass exposure counts active actor-ticks, so winners necessarily contribute more ticks.
 
 ## Version 3 Production-Preset Observation
 
-The accepted product `0.14.1`, simulation `5.2.0`, and content `3.1.0` run produced:
+The accepted product `0.15.0`, simulation `5.3.0`, and content `3.1.0` run produced:
 
 | Participants | Preset | Minimum | p50 | p95 | Maximum | Last standing | No survivors | Time limit |
 |---:|---|---:|---:|---:|---:|---:|---:|---:|

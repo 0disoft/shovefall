@@ -232,7 +232,7 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
         humanActorId: HUMAN_ACTOR_ID,
       });
       nextRoundId += 1;
-      bots = new BotDirector(masterSeed, HUMAN_ACTOR_ID);
+      bots = new BotDirector(masterSeed, HUMAN_ACTOR_ID, { difficulty: config.difficulty });
       latestFrame = world.createRenderFrame();
       accumulatorMilliseconds = 0;
       previousTimestamp = undefined;

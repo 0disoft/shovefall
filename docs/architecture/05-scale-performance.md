@@ -9,7 +9,7 @@ The simulation builds one participant spatial hash after position integration. T
 
 Boundary, negative-coordinate, identical-position, and full-scan distance-filter equivalence tests protect candidate completeness. All checked-in replay hashes stayed unchanged after broad-phase adoption. `SimulationStepDiagnostics` reports collidable participants, broad-phase candidate pairs, and the full-pair denominator without entering authoritative state or consuming randomness.
 
-Bot perception builds one spatial hash per decision frame and searches a bounded five-by-five cell neighborhood before applying the existing six-candidate limit. Reaction delay, personality streams, target scoring, human-identity neutrality, commands, and physics remain unchanged.
+Bot perception builds one spatial hash per decision frame and searches a bounded five-by-five cell neighborhood before applying the difficulty profile's four-, six-, or eight-candidate limit. Difficulty changes reaction delay and decision cadence; personality streams, target scoring, human-identity neutrality, commands, and physics remain unchanged.
 
 ## Local Headless Evidence
 
@@ -64,6 +64,28 @@ The production-Chrome harness waits for `data-round=active` before starting each
 | 32 | `0000002000000000` | 16.8 ms | 17.9 ms | 60.62 | 0 |
 
 All three samples stayed at 1× with zero backlog and effective device pixel ratio 1. Twenty immediate 32-participant restarts followed by CDP garbage collection increased used heap by 509,168 bytes and left one canvas. Headless heap deltas remain observational because that harness does not force garbage collection. These are fresh local measurements, not a controlled interleaved regression comparison or physical-device evidence.
+
+## Hard-Difficulty Refresh
+
+Product `0.15.0` and simulation contract `5.3.0` add selectable bot difficulty. Normal retains its previous 10-tick perception delay, 12-tick decision interval, and six-candidate limit. The performance harnesses now select Hard's 6-tick delay, 8-tick interval, and eight-candidate limit so the public performance evidence covers the largest supported AI decision budget.
+
+On 2026-07-23, Bun 1.3.14 ran 7,200 hard-difficulty ticks per count:
+
+| Participants | AI p95 | Simulation p95 | Candidate/full pairs | Long steps over 100 ms |
+|---:|---:|---:|---:|---:|
+| 16 | 0.449 ms | 1.762 ms | 0.2976 | 0 |
+| 24 | 0.627 ms | 2.025 ms | 0.2294 | 0 |
+| 32 | 1.033 ms | 3.248 ms | 0.2329 | 0 |
+
+The matching local production-Chrome run used Hard at 1280×720:
+
+| Participants | Seed | Frame p95 | Maximum frame | Delivered ticks / requested simulation second | Long frames over 100 ms |
+|---:|---|---:|---:|---:|---:|
+| 16 | `0000001000000001` | 18.4 ms | 18.9 ms | 60.65 | 0 |
+| 24 | `0000001800000001` | 18.4 ms | 18.6 ms | 60.77 | 0 |
+| 32 | `0000002000000000` | 18.3 ms | 19.1 ms | 60.75 | 0 |
+
+All samples stayed at 1× with zero backlog and effective device pixel ratio 1. Twenty immediate 32-participant restarts followed by CDP garbage collection increased used heap by 551,392 bytes and left one canvas. This replaces neither physical-device nor cross-browser evidence.
 
 ## Limits
 

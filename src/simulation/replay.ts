@@ -81,7 +81,10 @@ function parseConfig(value: unknown): GameConfigV1 {
     arenaRows: readInteger(value, "arenaRows"),
     roundLimitTicks: readInteger(value, "roundLimitTicks"),
     density: value.density === "normal" ? "normal" : fail("config.density is unsupported"),
-    difficulty: value.difficulty === "normal" ? "normal" : fail("config.difficulty is unsupported"),
+    difficulty:
+      value.difficulty === "easy" || value.difficulty === "normal" || value.difficulty === "hard"
+        ? value.difficulty
+        : fail("config.difficulty is unsupported"),
     collapseSpeed:
       value.collapseSpeed === "slow" ||
       value.collapseSpeed === "normal" ||

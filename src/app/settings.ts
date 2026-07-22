@@ -1,4 +1,7 @@
+import type { BotDifficulty } from "../simulation/contracts";
+
 export const PRESET_NAMES = ["relaxed", "default", "crowded", "chaos"] as const;
+export const BOT_DIFFICULTIES = ["easy", "normal", "hard"] as const;
 
 export type PresetName = (typeof PRESET_NAMES)[number];
 
@@ -7,6 +10,7 @@ export interface GameSettings {
   readonly preset: PresetName;
   readonly initialItemCount: number;
   readonly itemRespawnSeconds: number;
+  readonly botDifficulty: BotDifficulty;
 }
 
 export interface ArenaSize {
@@ -46,6 +50,10 @@ const PRESET_ITEM_RESPAWN_SECONDS: Readonly<Record<PresetName, number>> = Object
 
 export function isPresetName(value: string): value is PresetName {
   return PRESET_NAMES.some((preset) => preset === value);
+}
+
+export function isBotDifficulty(value: string): value is BotDifficulty {
+  return BOT_DIFFICULTIES.some((difficulty) => difficulty === value);
 }
 
 export function getPresetPlayerCount(preset: PresetName): number {
@@ -101,6 +109,7 @@ export function normalizeSettings(input: {
   readonly preset: string;
   readonly initialItemCount?: number;
   readonly itemRespawnSeconds?: number;
+  readonly botDifficulty?: string;
 }): GameSettings {
   const preset = isPresetName(input.preset) ? input.preset : "default";
   const playerCount = normalizePlayerCount(input.playerCount);
@@ -110,6 +119,10 @@ export function normalizeSettings(input: {
     preset,
     initialItemCount: normalizeInitialItemCount(input.initialItemCount ?? Number.NaN, playerCount),
     itemRespawnSeconds: normalizeItemRespawnSeconds(input.itemRespawnSeconds ?? Number.NaN, preset),
+    botDifficulty:
+      input.botDifficulty !== undefined && isBotDifficulty(input.botDifficulty)
+        ? input.botDifficulty
+        : "normal",
   });
 }
 

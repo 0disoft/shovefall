@@ -6,6 +6,7 @@ import {
   getPresetItemRespawnSeconds,
   getPresetPlayerCount,
   getRecommendedInitialItemCount,
+  isBotDifficulty,
   normalizeInitialItemCount,
   normalizeItemRespawnSeconds,
   normalizePlayerCount,
@@ -30,7 +31,21 @@ describe("settings normalization", () => {
       preset: "default",
       initialItemCount: 7,
       itemRespawnSeconds: 5,
+      botDifficulty: "normal",
     });
+  });
+
+  it("accepts only the bounded bot difficulty values", () => {
+    expect(isBotDifficulty("easy")).toBe(true);
+    expect(isBotDifficulty("normal")).toBe(true);
+    expect(isBotDifficulty("hard")).toBe(true);
+    expect(isBotDifficulty("impossible")).toBe(false);
+    expect(
+      normalizeSettings({ playerCount: 16, preset: "default", botDifficulty: "hard" }),
+    ).toMatchObject({ botDifficulty: "hard" });
+    expect(
+      normalizeSettings({ playerCount: 16, preset: "default", botDifficulty: "cheat" }),
+    ).toMatchObject({ botDifficulty: "normal" });
   });
 
   it("keeps preset defaults explicit", () => {

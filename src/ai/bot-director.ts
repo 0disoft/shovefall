@@ -3,6 +3,7 @@ import {
   createNeutralCommand,
   type ActorCommandV1,
   type ActorId,
+  type BotDifficulty,
   type RenderFrameV1,
   type RenderItemV1,
   type RenderParticipantV1,
@@ -22,9 +23,16 @@ import { ParticipantSpatialHash } from "../simulation/spatial-hash";
 import { SIMULATION_TUNING } from "../simulation/tuning";
 
 export interface BotDirectorOptions {
+  readonly difficulty?: BotDifficulty;
   readonly reactionDelayTicks?: number;
   readonly decisionIntervalTicks?: number;
   readonly nearbyCandidateLimit?: number;
+}
+
+export interface BotDifficultyProfile {
+  readonly reactionDelayTicks: number;
+  readonly decisionIntervalTicks: number;
+  readonly nearbyCandidateLimit: number;
 }
 
 export interface BotAssignment {
@@ -55,6 +63,24 @@ interface BotDecision {
 const DEFAULT_REACTION_DELAY_TICKS = 10;
 const DEFAULT_DECISION_INTERVAL_TICKS = 12;
 const DEFAULT_NEARBY_CANDIDATE_LIMIT = 6;
+const BOT_DIFFICULTY_PROFILES: Readonly<Record<BotDifficulty, BotDifficultyProfile>> =
+  Object.freeze({
+    easy: Object.freeze({
+      reactionDelayTicks: 24,
+      decisionIntervalTicks: 20,
+      nearbyCandidateLimit: 4,
+    }),
+    normal: Object.freeze({
+      reactionDelayTicks: DEFAULT_REACTION_DELAY_TICKS,
+      decisionIntervalTicks: DEFAULT_DECISION_INTERVAL_TICKS,
+      nearbyCandidateLimit: DEFAULT_NEARBY_CANDIDATE_LIMIT,
+    }),
+    hard: Object.freeze({
+      reactionDelayTicks: 6,
+      decisionIntervalTicks: 8,
+      nearbyCandidateLimit: 8,
+    }),
+  });
 const EDGE_EMERGENCY_DISTANCE = 0.82;
 const THREAT_DISTANCE = 1.65;
 const THREAT_FACING_DOT = 0.55;
@@ -65,6 +91,10 @@ function assertPositiveInteger(value: number, name: string, allowZero = false): 
   if (!Number.isSafeInteger(value) || value < minimum) {
     throw new Error(`${name} must be a safe integer greater than or equal to ${minimum}`);
   }
+}
+
+export function getBotDifficultyProfile(difficulty: BotDifficulty): BotDifficultyProfile {
+  return BOT_DIFFICULTY_PROFILES[difficulty];
 }
 
 function getArenaBounds(frame: RenderFrameV1): ArenaBounds {
@@ -185,9 +215,10 @@ export class BotDirector {
     humanActorId: ActorId | null,
     options: BotDirectorOptions = {},
   ) {
-    this.#reactionDelayTicks = options.reactionDelayTicks ?? DEFAULT_REACTION_DELAY_TICKS;
-    this.#decisionIntervalTicks = options.decisionIntervalTicks ?? DEFAULT_DECISION_INTERVAL_TICKS;
-    this.#nearbyCandidateLimit = options.nearbyCandidateLimit ?? DEFAULT_NEARBY_CANDIDATE_LIMIT;
+    const profile = getBotDifficultyProfile(options.difficulty ?? "normal");
+    this.#reactionDelayTicks = options.reactionDelayTicks ?? profile.reactionDelayTicks;
+    this.#decisionIntervalTicks = options.decisionIntervalTicks ?? profile.decisionIntervalTicks;
+    this.#nearbyCandidateLimit = options.nearbyCandidateLimit ?? profile.nearbyCandidateLimit;
     assertPositiveInteger(this.#reactionDelayTicks, "reactionDelayTicks", true);
     assertPositiveInteger(this.#decisionIntervalTicks, "decisionIntervalTicks");
     assertPositiveInteger(this.#nearbyCandidateLimit, "nearbyCandidateLimit");

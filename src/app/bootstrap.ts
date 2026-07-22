@@ -4,6 +4,7 @@ import {
   getPresetItemRespawnSeconds,
   getPresetPlayerCount,
   getRecommendedInitialItemCount,
+  isBotDifficulty,
   isPresetName,
   normalizeSettings,
   type GameSettings,
@@ -62,6 +63,12 @@ function readSelectedPreset(form: HTMLFormElement): PresetName {
   return typeof value === "string" && isPresetName(value) ? value : "default";
 }
 
+function readSelectedBotDifficulty(form: HTMLFormElement): GameSettings["botDifficulty"] {
+  const data = new FormData(form);
+  const value = data.get("botDifficulty");
+  return typeof value === "string" && isBotDifficulty(value) ? value : "normal";
+}
+
 function setPlayerCount(input: HTMLInputElement, output: HTMLOutputElement, value: number): void {
   input.value = String(value);
   output.value = `${value}명`;
@@ -81,6 +88,7 @@ function createConfig(settings: GameSettings) {
     arenaRows: arenaSize.rows,
     roundLimitSeconds: 75,
     collapseSpeed: getPresetCollapseSpeed(settings.preset),
+    difficulty: settings.botDifficulty,
     itemsEnabled: settings.initialItemCount > 0 || settings.itemRespawnSeconds > 0,
     initialItemCount: settings.initialItemCount,
     itemRespawnSeconds: settings.itemRespawnSeconds,
@@ -168,6 +176,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
       preset: readSelectedPreset(form),
       initialItemCount: Number(initialItemCount.value),
       itemRespawnSeconds: Number(itemRespawn.value),
+      botDifficulty: readSelectedBotDifficulty(form),
     });
 
   const setRecommendedInitialItems = (participantCount: number): void => {
@@ -184,7 +193,13 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     itemRespawn.value = String(settings.itemRespawnSeconds);
     itemRespawnValue.value =
       settings.itemRespawnSeconds === 0 ? "추가 없음" : `${settings.itemRespawnSeconds}초`;
-    setupSummary.textContent = `${settings.playerCount}명 · 시작 아이템 ${settings.initialItemCount}개 · ${
+    const difficultyLabel =
+      settings.botDifficulty === "easy"
+        ? "AI 쉬움"
+        : settings.botDifficulty === "hard"
+          ? "AI 어려움"
+          : "AI 보통";
+    setupSummary.textContent = `${settings.playerCount}명 · ${difficultyLabel} · 시작 아이템 ${settings.initialItemCount}개 · ${
       settings.itemRespawnSeconds === 0
         ? "추가 생성 없음"
         : `${settings.itemRespawnSeconds}초마다 1개`
@@ -350,6 +365,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     root.dataset.round = "countdown";
     delete root.dataset.humanEliminated;
     root.dataset.initialItems = String(settings.initialItemCount);
+    root.dataset.botDifficulty = settings.botDifficulty;
     form.hidden = true;
     arenaActions.hidden = false;
     telemetry.hidden = false;
@@ -375,17 +391,18 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   form.addEventListener("change", (event) => {
     const target = event.target;
 
-    if (!(target instanceof HTMLInputElement) || target.name !== "preset") {
+    if (!(target instanceof HTMLInputElement)) {
       return;
     }
 
-    if (isPresetName(target.value)) {
+    if (target.name === "preset" && isPresetName(target.value)) {
       setPlayerCount(playerCount, playerCountValue, getPresetPlayerCount(target.value));
       setRecommendedInitialItems(getPresetPlayerCount(target.value));
       itemRespawn.value = String(getPresetItemRespawnSeconds(target.value));
-      renderSettingsSummary();
       renderSetupPreview();
     }
+
+    renderSettingsSummary();
   });
 
   form.addEventListener("submit", (event) => {

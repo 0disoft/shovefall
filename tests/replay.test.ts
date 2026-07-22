@@ -63,6 +63,20 @@ describe("replay fixture contract", () => {
     );
   });
 
+  it("accepts bounded bot difficulty and rejects unknown values", () => {
+    const fixture = createFixture();
+    const hard = parseReplayFixtureJson(
+      JSON.stringify({ ...fixture, config: { ...fixture.config, difficulty: "hard" } }),
+    );
+
+    expect(hard.config.difficulty).toBe("hard");
+    expect(() =>
+      parseReplayFixtureJson(
+        JSON.stringify({ ...fixture, config: { ...fixture.config, difficulty: "impossible" } }),
+      ),
+    ).toThrow(/difficulty is unsupported/u);
+  });
+
   it("rejects commands that are not strictly ordered", () => {
     const fixture = createFixture();
     const commands = fixture.commands.toReversed();

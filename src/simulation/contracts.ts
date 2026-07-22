@@ -7,6 +7,7 @@ export type ItemId = number;
 export type Tick = number;
 export type TileId = `${number}:${number}`;
 export type CollapseSpeed = "slow" | "normal" | "fast";
+export type BotDifficulty = "easy" | "normal" | "hard";
 export type TileStateKind = "Stable" | "Warning" | "Collapsing" | "Void";
 export type RoundEndReason = "last-standing" | "no-survivors" | "time-limit";
 export type ItemDefinitionId = "iron-boots" | "feather" | "spring-glove";
@@ -29,7 +30,7 @@ export interface GameConfigV1 {
   readonly arenaRows: number;
   readonly roundLimitTicks: number;
   readonly density: "normal";
-  readonly difficulty: "normal";
+  readonly difficulty: BotDifficulty;
   readonly collapseSpeed: CollapseSpeed;
   readonly itemsEnabled: boolean;
   readonly itemPolicyVersion: 2;
@@ -44,6 +45,7 @@ export interface GameConfigInput {
   readonly arenaRows?: number;
   readonly roundLimitSeconds?: number;
   readonly collapseSpeed?: CollapseSpeed;
+  readonly difficulty?: BotDifficulty;
   readonly itemsEnabled?: boolean;
   readonly initialItemCount?: number;
   readonly itemRespawnSeconds?: number;
@@ -228,6 +230,7 @@ export function normalizeGameConfig(input: GameConfigInput): GameConfigV1 {
   const arenaRows = Math.round(input.arenaRows ?? 10);
   const roundLimitSeconds = Math.round(input.roundLimitSeconds ?? 75);
   const collapseSpeed = input.collapseSpeed ?? "normal";
+  const difficulty = input.difficulty ?? "normal";
   const itemsEnabled = input.itemsEnabled ?? false;
   const maximumItemCount = Math.ceil(participantCount * 0.5);
   const defaultInitialItemCount = Math.ceil(participantCount * 0.33);
@@ -247,6 +250,10 @@ export function normalizeGameConfig(input: GameConfigInput): GameConfigV1 {
     throw new SimulationContractError("collapseSpeed is unsupported");
   }
 
+  if (difficulty !== "easy" && difficulty !== "normal" && difficulty !== "hard") {
+    throw new SimulationContractError("difficulty is unsupported");
+  }
+
   return Object.freeze({
     configVersion: 1,
     participantCount,
@@ -254,7 +261,7 @@ export function normalizeGameConfig(input: GameConfigInput): GameConfigV1 {
     arenaRows,
     roundLimitTicks: roundLimitSeconds * FIXED_TICKS_PER_SECOND,
     density: "normal",
-    difficulty: "normal",
+    difficulty,
     collapseSpeed,
     itemsEnabled,
     itemPolicyVersion: 2,

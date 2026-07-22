@@ -66,7 +66,11 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await expect(page.getByRole("heading", { level: 1, name: "끝까지 남아." })).toBeVisible();
   await expect(page.getByText("WebGL 준비됨")).toBeVisible();
   await expect(page.locator("#arena-host canvas")).toBeVisible();
-  await expect(page.locator("#setup-summary")).toHaveText("16명 · 시작 아이템 6개 · 5초마다 1개");
+  await expect(page.locator("#setup-summary")).toHaveText(
+    "16명 · AI 보통 · 시작 아이템 6개 · 5초마다 1개",
+  );
+  await page.getByLabel("어려움").check();
+  await expect(page.locator("#setup-summary")).toContainText("AI 어려움");
 
   await page.getByRole("button", { name: "빠른 시작" }).click();
 
@@ -77,6 +81,7 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await expect(page.locator("#arena-host")).toBeFocused();
   await expect(page.locator("#game-telemetry")).toBeVisible();
   await expect(page.locator("#app")).toHaveAttribute("data-initial-items", "6");
+  await expect(page.locator("#app")).toHaveAttribute("data-bot-difficulty", "hard");
   await page.keyboard.press("Space");
   await page.evaluate(() => window.dispatchEvent(new Event("blur")));
   await expect(page.locator("#renderer-status")).toHaveText("일시 정지");

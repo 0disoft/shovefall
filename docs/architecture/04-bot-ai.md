@@ -11,9 +11,17 @@ The browser passes actor 1 as the excluded human actor. Repository-owned headles
 
 The repository architecture check applies the same renderer, DOM, wall-clock, and ambient-randomness restrictions to `src/ai` and `src/simulation`.
 
-## Perception and Scheduling
+## Difficulty, Perception, and Scheduling
 
-Normal bots perceive public state ten ticks late and reconsider intent every twelve ticks. Initial decision ticks are staggered by stable actor ID so all bots do not spike one frame. Between decisions, a bot preserves its movement intent and emits no repeated shove or dodge edge. A bot may inspect its own current position and currently visible tile state for immediate edge or unstable-tile recovery; it cannot inspect the private future collapse plan or use current opponent positions to bypass delayed perception.
+Difficulty changes bounded information age and decision work, never movement speed, mass, cooldown, shove impulse, dodge window, or collision results:
+
+| Difficulty | Public-state delay | Decision interval | Nearby candidates |
+|---|---:|---:|---:|
+| Easy | 24 ticks | 20 ticks | 4 |
+| Normal | 10 ticks | 12 ticks | 6 |
+| Hard | 6 ticks | 8 ticks | 8 |
+
+Initial decision ticks are staggered by stable actor ID so all bots do not spike one frame. Between decisions, a bot preserves its movement intent and emits no repeated shove or dodge edge. A bot may inspect its own current position and currently visible tile state for immediate edge or unstable-tile recovery; it cannot inspect the private future collapse plan or use current opponent positions to bypass delayed perception. Immediate self-preservation is identical at every difficulty so Easy bots do not deliberately walk into visible voids.
 
 Perception contains participant positions, velocities, facing, visible action state, mass, active state, and public cooldown readiness from a prior render frame. One spatial hash is built for that delayed frame; each bot queries a bounded five-by-five cell neighborhood and at most six nearest active candidates enter utility scoring.
 
@@ -35,7 +43,7 @@ Actor control type and human identity are not fields in the perception participa
 
 ## Known Limits
 
-- Ten-tick perception is longer than the six-tick shove windup, so normal bots primarily dodge dangerous approach trajectories rather than reading every shove start perfectly.
+- Normal's ten-tick perception is longer than the six-tick shove windup, so it primarily dodges dangerous approach trajectories rather than reading every shove start perfectly. Hard sees public state six ticks late but still cannot read input or unannounced future state.
 - Item utility is intentionally shallow: bots do not predict future spawns, hidden collapse plans, or an optimal inventory route.
 - Utility weights have automated invariants but no external evidence of fun, aggression balance, or personality readability.
 - Explicit coordination is limited to incidental target geometry; side-pressure and anti-dogpile rules remain future tuning.

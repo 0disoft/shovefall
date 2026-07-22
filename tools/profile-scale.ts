@@ -53,6 +53,7 @@ function profileParticipantCount(participantCount: number) {
     arenaRows: arenaSize.rows,
     roundLimitSeconds: 120,
     collapseSpeed: "slow",
+    difficulty: "hard",
     itemsEnabled: true,
     itemRespawnSeconds: participantCount >= 25 ? 3 : participantCount >= 17 ? 4 : 5,
   });
@@ -70,7 +71,7 @@ function profileParticipantCount(participantCount: number) {
   while (totalTicks < PROFILE_TICKS) {
     const seed = `scale-${participantCount}-${roundIndex}`;
     const world = new SimulationWorld(config, seed, { humanActorId: 1 });
-    const bots = new BotDirector(seed, 1);
+    const bots = new BotDirector(seed, 1, { difficulty: config.difficulty });
     let frame = world.createRenderFrame();
 
     while (totalTicks < PROFILE_TICKS && frame.round.status === "Active") {
@@ -101,6 +102,7 @@ function profileParticipantCount(participantCount: number) {
   const heapAfter = process.memoryUsage().heapUsed;
   return Object.freeze({
     participantCount,
+    botDifficulty: config.difficulty,
     ticks: totalTicks,
     completedRounds,
     elapsedMilliseconds: roundMilliseconds(elapsedMilliseconds),
@@ -138,7 +140,7 @@ process.stdout.write(
       profileTicks: PROFILE_TICKS,
       profiles,
       limitations: [
-        "This measures headless AI plus simulation on the current workstation, not browser rendering.",
+        "This measures hard-difficulty headless AI plus simulation on the current workstation, not browser rendering.",
         "Heap deltas are observational because the harness does not force garbage collection.",
       ],
     },

@@ -2,6 +2,7 @@ import { expect, test, type CDPSession, type Page } from "@playwright/test";
 
 interface FrameProfile {
   readonly participantCount: number;
+  readonly botDifficulty: "hard";
   readonly seed: string;
   readonly frameCount: number;
   readonly p95FrameMilliseconds: number;
@@ -115,6 +116,7 @@ async function collectFrameProfile(
 
   return Object.freeze({
     participantCount,
+    botDifficulty: "hard",
     seed,
     frameCount: result.intervals.length,
     p95FrameMilliseconds: Math.round(percentile(result.intervals, 0.95) * 1_000) / 1_000,
@@ -139,13 +141,8 @@ async function profileCases(page: Page, index: number, profiles: FrameProfile[])
     return;
   }
 
-  const presetLabel =
-    profileCase.preset === "chaos"
-      ? "난장판"
-      : profileCase.preset === "crowded"
-        ? "대규모"
-        : "기본";
-  await page.getByLabel(presetLabel).check();
+  await page.locator(`input[name="preset"][value="${profileCase.preset}"]`).check();
+  await page.getByLabel("어려움").check();
   await page.locator("#player-count").fill(String(profileCase.participantCount));
   await page.evaluate((seedWords) => {
     (
@@ -154,6 +151,7 @@ async function profileCases(page: Page, index: number, profiles: FrameProfile[])
   }, profileCase.seedWords);
   await page.getByRole("button", { name: "빠른 시작" }).click();
   await expect(page.locator("#app")).toHaveAttribute("data-round", "active");
+  await expect(page.locator("#app")).toHaveAttribute("data-bot-difficulty", "hard");
   const profile = await collectFrameProfile(page, profileCase.participantCount, profileCase.seed);
   profiles.push(profile);
   expect(profile.p95FrameMilliseconds).toBeLessThanOrEqual(profileCase.p95Budget);
