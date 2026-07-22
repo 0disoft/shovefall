@@ -81,10 +81,13 @@
           </form>
 
           <div id="arena-actions" class="arena-actions" hidden>
-            <p class="ready-message" role="status">아레나 준비 완료.</p>
-            <button id="back-to-settings" class="secondary-action" type="button">
-              설정으로 돌아가기
-            </button>
+            <p id="round-message" class="ready-message" role="status">
+              움직여서 가장자리로 몰아붙여.
+            </p>
+            <div class="arena-actions__buttons">
+              <button id="restart-round" class="primary-action" type="button">다시 시작</button>
+              <button id="back-to-settings" class="secondary-action" type="button">설정으로</button>
+            </div>
           </div>
         </section>
 
@@ -101,7 +104,34 @@
             class="arena-host"
             role="img"
             aria-label="타일로 이루어진 Shovefall 아레나 미리보기"
+            tabindex="0"
           ></div>
+          <dl id="game-telemetry" class="game-telemetry" aria-label="현재 라운드 상태" hidden>
+            <div>
+              <dt>틱</dt>
+              <dd><output id="tick-value">0</output></dd>
+            </div>
+            <div>
+              <dt>상태</dt>
+              <dd><output id="action-value">준비</output></dd>
+            </div>
+            <div>
+              <dt>몸무게</dt>
+              <dd><output id="mass-value">보통</output></dd>
+            </div>
+            <div>
+              <dt>위치</dt>
+              <dd><output id="position-value">0.00, 0.00</output></dd>
+            </div>
+            <div class="game-telemetry__hash">
+              <dt>시드</dt>
+              <dd><output id="seed-value">not-started</output></dd>
+            </div>
+            <div class="game-telemetry__hash">
+              <dt>상태 해시</dt>
+              <dd><output id="hash-value">fnv1a32:00000000</output></dd>
+            </div>
+          </dl>
           <dl class="control-guide" aria-label="조작법">
             <div>
               <dt>이동</dt>

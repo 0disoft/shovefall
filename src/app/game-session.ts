@@ -1,0 +1,182 @@
+import { createKeyboardInput, type KeyboardInput } from "./keyboard-input";
+import type { GameConfigV1, RenderFrameV1, SimulationEventV1 } from "../simulation/contracts";
+import { clamp } from "../simulation/math";
+import { FIXED_TICKS_PER_SECOND } from "../simulation/versions";
+import { SimulationWorld } from "../simulation/world";
+import type { ArenaRenderer } from "../presentation/arena-renderer";
+
+const FIXED_STEP_MILLISECONDS = 1_000 / FIXED_TICKS_PER_SECOND;
+const MAX_STEPS_PER_RENDER = 8;
+const HUMAN_ACTOR_ID = 1;
+
+export interface SessionTelemetry {
+  readonly frame: RenderFrameV1;
+  readonly interpolationAlpha: number;
+  readonly backlogTicks: number;
+  readonly paused: boolean;
+  readonly masterSeed: string;
+}
+
+export interface GameSessionHooks {
+  readonly onTelemetry: (telemetry: SessionTelemetry) => void;
+  readonly onEvents: (events: readonly SimulationEventV1[]) => void;
+  readonly onHumanEliminated: () => void;
+  readonly onPauseChanged: (paused: boolean) => void;
+  readonly onFatalError: (error: unknown) => void;
+}
+
+export interface GameSession {
+  readonly active: boolean;
+  start(config: GameConfigV1, masterSeed: string | number): void;
+  stop(): void;
+  destroy(): void;
+}
+
+export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHooks): GameSession {
+  let world: SimulationWorld | undefined;
+  let animationFrameId: number | undefined;
+  let previousTimestamp: number | undefined;
+  let accumulatorMilliseconds = 0;
+  let active = false;
+  let paused = false;
+  let currentSeed = "not-started";
+  const keyboard: KeyboardInput = createKeyboardInput(() => active && !paused);
+
+  const publishFrame = (): void => {
+    if (world === undefined) {
+      return;
+    }
+
+    const frame = world.createRenderFrame();
+    const interpolationAlpha = clamp(accumulatorMilliseconds / FIXED_STEP_MILLISECONDS, 0, 1);
+    renderer.render(frame, interpolationAlpha, HUMAN_ACTOR_ID);
+    hooks.onTelemetry(
+      Object.freeze({
+        frame,
+        interpolationAlpha,
+        backlogTicks: Math.floor(accumulatorMilliseconds / FIXED_STEP_MILLISECONDS),
+        paused,
+        masterSeed: currentSeed,
+      }),
+    );
+  };
+
+  const schedule = (): void => {
+    animationFrameId = window.requestAnimationFrame(runFrame);
+  };
+
+  const runFrame = (timestamp: number): void => {
+    if (!active || world === undefined) {
+      return;
+    }
+
+    if (paused) {
+      previousTimestamp = timestamp;
+      publishFrame();
+      schedule();
+      return;
+    }
+
+    if (previousTimestamp === undefined) {
+      previousTimestamp = timestamp;
+    } else {
+      accumulatorMilliseconds += Math.max(0, timestamp - previousTimestamp);
+      previousTimestamp = timestamp;
+    }
+
+    try {
+      let steps = 0;
+
+      while (accumulatorMilliseconds >= FIXED_STEP_MILLISECONDS && steps < MAX_STEPS_PER_RENDER) {
+        const result = world.step([keyboard.state.consumeCommand(world.tick, HUMAN_ACTOR_ID)]);
+        hooks.onEvents(result.events);
+        accumulatorMilliseconds -= FIXED_STEP_MILLISECONDS;
+        steps += 1;
+
+        const human = result.frame.participants.find(
+          (participant) => participant.actorId === HUMAN_ACTOR_ID,
+        );
+
+        if (human?.active === false) {
+          active = false;
+          keyboard.state.clear();
+          hooks.onHumanEliminated();
+          publishFrame();
+          return;
+        }
+      }
+
+      publishFrame();
+      schedule();
+    } catch (error: unknown) {
+      active = false;
+      keyboard.state.clear();
+      hooks.onFatalError(error);
+    }
+  };
+
+  const setPaused = (nextPaused: boolean): void => {
+    if (!active || paused === nextPaused) {
+      return;
+    }
+
+    paused = nextPaused;
+    previousTimestamp = undefined;
+    keyboard.state.clear();
+    hooks.onPauseChanged(paused);
+    publishFrame();
+  };
+
+  const handleWindowBlur = (): void => setPaused(true);
+  const handleWindowFocus = (): void => {
+    if (document.visibilityState === "visible") {
+      setPaused(false);
+    }
+  };
+  const handleVisibilityChange = (): void => setPaused(document.visibilityState !== "visible");
+
+  window.addEventListener("blur", handleWindowBlur);
+  window.addEventListener("focus", handleWindowFocus);
+  document.addEventListener("visibilitychange", handleVisibilityChange);
+
+  return {
+    get active(): boolean {
+      return active;
+    },
+    start(config: GameConfigV1, masterSeed: string | number): void {
+      if (animationFrameId !== undefined) {
+        window.cancelAnimationFrame(animationFrameId);
+      }
+
+      world = new SimulationWorld(config, masterSeed, { humanActorId: HUMAN_ACTOR_ID });
+      accumulatorMilliseconds = 0;
+      previousTimestamp = undefined;
+      paused = document.visibilityState !== "visible";
+      currentSeed = String(masterSeed);
+      active = true;
+      keyboard.state.clear();
+      publishFrame();
+      hooks.onPauseChanged(paused);
+      schedule();
+    },
+    stop(): void {
+      active = false;
+      world = undefined;
+      accumulatorMilliseconds = 0;
+      previousTimestamp = undefined;
+      keyboard.state.clear();
+
+      if (animationFrameId !== undefined) {
+        window.cancelAnimationFrame(animationFrameId);
+        animationFrameId = undefined;
+      }
+    },
+    destroy(): void {
+      this.stop();
+      keyboard.destroy();
+      window.removeEventListener("blur", handleWindowBlur);
+      window.removeEventListener("focus", handleWindowFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    },
+  };
+}

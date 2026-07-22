@@ -280,6 +280,16 @@ button:disabled {
   border-top: 1px solid var(--line);
 }
 
+.arena-actions__buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.arena-actions__buttons .primary-action {
+  justify-content: center;
+}
+
 .ready-message {
   margin: 0 0 18px;
   font-size: 1.4rem;
@@ -320,12 +330,29 @@ button:disabled {
   background: #f8eceb;
 }
 
+.renderer-status[data-state="playing"] {
+  color: #164e3d;
+  border-color: #8fc4b2;
+  background: #e3f3ed;
+}
+
+.renderer-status[data-state="paused"],
+.renderer-status[data-state="eliminated"] {
+  color: #755218;
+  border-color: #d9c18d;
+  background: #faf3df;
+}
+
 .arena-host {
   width: 100%;
   min-height: 430px;
   overflow: hidden;
   border-radius: 12px;
   background: #101514;
+}
+
+.arena-host:focus-visible {
+  outline-color: #70a9ff;
 }
 
 .arena-canvas {
@@ -343,6 +370,52 @@ button:disabled {
   border: 1px solid var(--line);
   border-radius: 10px;
   background: var(--line);
+}
+
+.game-telemetry {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  margin: 12px 0 0;
+  overflow: hidden;
+  color: #dce3e0;
+  border: 1px solid #303a37;
+  border-radius: 10px;
+  background: #303a37;
+}
+
+.game-telemetry[hidden] {
+  display: none;
+}
+
+.game-telemetry div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 8px 10px;
+  background: #17201d;
+}
+
+.game-telemetry dt,
+.game-telemetry dd {
+  margin: 0;
+}
+
+.game-telemetry dt {
+  color: #899792;
+  font-size: 0.65rem;
+}
+
+.game-telemetry dd {
+  overflow: hidden;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.game-telemetry__hash {
+  grid-column: 1 / -1;
 }
 
 .control-guide div {
@@ -383,6 +456,10 @@ button:disabled {
 
   .arena-host {
     min-height: 360px;
+  }
+
+  .game-telemetry {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

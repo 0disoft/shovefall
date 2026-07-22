@@ -17,7 +17,7 @@ This document owns stable validation names for this scaffold.
 | `test` | Vitest 4 | Runs settings, deterministic simulation, replay, mass, action timing, batch impulse, dodge, support, falling, and application-model coverage. |
 | `contract` | Repository-owned Bun TypeScript checks | Validates module boundaries, forbidden dependencies, asset provenance, and other repository contracts that Oxlint cannot express reliably. |
 | `migration-check` | Not applicable until a persisted format or compatible migration surface exists | Must report `NOT_APPLICABLE`, not fake success. |
-| `smoke` | Playwright Test | Currently proves Chrome boot, WebGL initialization, setup-to-arena transition, and focus recovery. Direct gameplay input, active-round focus loss, failure, result, and restart become mandatory when the headless combat is connected to the browser. |
+| `smoke` | Playwright Test | Proves Chrome boot, WebGL initialization, setup-to-round transition, fixed-tick progress, WASD movement, Space action state, active-round blur pause and focus resume, keyboard focus entry, settings return, and telemetry cleanup. Defeat, result, restart, and fatal-error cases become mandatory with the complete round lifecycle. |
 | `docs` | Repository and ssealed documentation checks | Validates source-of-truth links, scaffold state, and Markdown hygiene. |
 | `build` | Vite 8 | Produces the provider-neutral static `dist` artifact. |
 | `check` | Aggregate command | Runs the configured merge-blocking validations without silently skipping a missing command. |
@@ -41,7 +41,7 @@ Frontend validations use the accepted stack in `docs/engineering/08-toolchain-ba
 
 ## Repository Shape
 
-Web-app validation covers the implemented DOM and PixiJS bootstrap without claiming that the headless combat is already playable in the browser.
+Web-app validation covers the playable DOM/PixiJS gray-box without claiming that stationary opponents are finished AI or that a complete collapsing round exists.
 
 ## Formatting Boundary
 

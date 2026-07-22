@@ -15,9 +15,9 @@ The physical baseline device and repeatable browser capture procedure are still 
 
 ## Automated Regression Budgets
 
-- The 100-run determinism test executes 12,000 ticks with 12 participants and must finish within its 15-second Vitest budget. The 2026-07-22 local run completed in approximately 4.6 seconds; this is evidence from one workstation, not a portable forecast.
+- The 100-run determinism test executes 12,000 ticks with 12 participants and must finish within its 15-second Vitest budget. Observed 2026-07-22 local runs completed in approximately 2.7 to 5.8 seconds; this is evidence from one workstation, not a portable forecast.
 - A 32-participant `RenderFrameV1` has a 256 KiB warning threshold. Production code must not JSON-serialize the full frame every render.
-- Total compressed production JavaScript has a 180 KiB warning budget and CSS has a 20 KiB warning budget before art/audio assets. The 2026-07-22 Vite build reports approximately 152 KiB across emitted JavaScript chunks, a 32.72 KiB gzip entry chunk, and 1.90 KiB gzip CSS. Chunk count alone is not a failure when Vite and PixiJS load the provider-neutral static artifact correctly.
+- Total compressed production JavaScript has a 180 KiB warning budget and CSS has a 20 KiB warning budget before art/audio assets. The playable 2026-07-22 Vite build reports approximately 160 KiB across emitted JavaScript chunks, a 40.77 KiB gzip entry chunk, and 2.15 KiB gzip CSS. Chunk count alone is not a failure when Vite and PixiJS load the provider-neutral static artifact correctly.
 - Replay JSON is capped at 5 MiB and 7,200 ticks before parsing or execution.
 
 ## Hot-path Rules

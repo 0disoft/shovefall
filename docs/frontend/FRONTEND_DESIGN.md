@@ -1,6 +1,6 @@
 # Frontend Design
 
-- Status: Accepted technical boundary; visual direction pending
+- Status: Playable gray-box boundary implemented; visual direction pending
 
 ## 0. Decision Summary
 
@@ -26,7 +26,7 @@ The DOM shell owns setup, settings, HUD overlays outside the game world, results
 
 ## 5. State Ownership Model
 
-The pure simulation owns round state. The application layer owns screen and round lifecycle state. The DOM shell owns draft settings and focus. PixiJS owns presentation objects derived from read-only render state. There is no server state or durable URL state. Presentation layers cannot mutate simulation entities directly.
+The pure simulation owns round state. The application layer owns the fixed-step accumulator, screen and round lifecycle, generated local seed, pause/resume, and command delivery. The DOM shell owns draft settings, focus, textual telemetry, restart, and settings return. PixiJS owns presentation objects derived from read-only render state. There is no server state or durable URL state. Presentation layers cannot mutate simulation entities directly.
 
 ## 6. Data Fetching and Cache Policy
 
@@ -42,7 +42,7 @@ Semantic tokens must distinguish canvas background, stable tile, warning tile, v
 
 ## 9. Interaction and Accessibility Contract
 
-The initial input contract is `WASD` movement, `Space` shove, and `Shift` dodge. Setup and settings remain fully keyboard operable through DOM controls with visible focus. Canvas input must not trap focus or trigger page scrolling. Reduced-motion mode removes nonessential camera shake and large flashes without changing simulation timing or hit windows.
+The initial input contract is `WASD` movement, `Space` shove, and `Shift` dodge. Key edges become `ActorCommandV1` actions and held movement is sampled once per fixed tick. Setup and settings remain fully keyboard operable through DOM controls with visible focus. Gameplay keys are ignored when an input, link, or button owns focus so Space can still activate controls. Window blur and document visibility loss clear held input and pause the scheduler. Reduced-motion mode removes nonessential camera shake and large flashes without changing simulation timing or hit windows.
 
 ## 10. Loading, Empty, Error, and Disabled States
 
@@ -62,11 +62,11 @@ Remote analytics, session replay, advertising, and automatic error upload are ex
 
 ## 14. Test Strategy
 
-Vitest covers pure state and presentation-model behavior. Playwright Test covers setup, keyboard input, focus recovery, one complete round, failure handling, and restart. Visual review checks readability of telegraphs, collapse warnings, human identity, mass state, and reduced-motion behavior. Oxfmt and Oxlint do not replace product interaction testing.
+Vitest covers pure state, input edges, settings tiers, and presentation-independent behavior. Playwright Test covers setup, fixed-tick progress, keyboard movement and shove, active-round pause/resume, focus entry, and settings return. Complete-round failure, elimination, result, and restart coverage remains pending with lifecycle implementation. Visual review checks readability of telegraphs, human identity, mass state, and reduced-motion behavior. Oxfmt and Oxlint do not replace product interaction testing.
 
 ## 15. Implementation Sequence
 
-Bootstrap the toolchain and empty DOM/Pixi boundary first. Add a deterministic simulation without presentation coupling. Build the gray-box movement, shove, dodge, simultaneous-impact, support, and restart slice before item art or visual polish. Promote AI, collapse, scale, items, and final presentation only after their preceding behavior gates pass.
+The toolchain, deterministic simulation, gray-box movement and combat, browser scheduler, keyboard adapter, and procedural PixiJS presentation are implemented. Add utility bots and then the complete collapsing-round lifecycle before items or final visual polish. Promote scale, items, and presentation only after their preceding behavior gates pass.
 
 ## 16. Open Questions and Decisions Log
 

@@ -1,13 +1,13 @@
 # Shovefall
 
-- Status: Headless gray-box combat implemented; browser gameplay integration pending
+- Status: Playable browser gray-box; bots and collapse pending
 - Scope: frontend
 - Repository Type: web-app
 - Addons: none
 
 Shovefall is a short single-player browser party game about shoving opponents off a collapsing arena. One participant is human and the remaining participants are deterministic rule-based bots. The MVP is a static client application with no backend, database, account system, runtime LLM, or remote analytics.
 
-The repository contains a runnable semantic DOM setup shell, PixiJS WebGL arena preview, exact package graph, and local validation commands. Its renderer-independent 60 Hz simulation now implements mass-sensitive movement, weak circular contact, shove windup/active/recovery, deterministic dodge evasion, missed-shove stumble, same-tick batch impulses, support grace, falling, elimination, stable hashing, and three checked-in replay fixtures. Browser input and rendering integration, bots, collapsing tiles, items, final visual direction, CI, and deployment remain later slices.
+The repository contains a playable semantic DOM and PixiJS WebGL gray-box, exact package graph, and local validation commands. WASD, Space, and Shift produce versioned commands for the renderer-independent 60 Hz simulation. The browser renders mass-sensitive movement, weak contact, shove and dodge states, missed-shove stumble, same-tick batch impulses, support grace, falling, elimination, stable hashes, and reproducible seeds. Bots, collapsing tiles, items, final visual direction, CI, and deployment remain later slices.
 
 ## Accepted Toolchain Baseline
 
@@ -52,4 +52,4 @@ binary diffs, local files, build outputs, caches, and secret files under control
 
 ## Scope Notes
 
-The toolchain, bootstrap layout, deterministic replay, and first gray-box physics tuning are implemented. The current tuning is an automated-test baseline and still needs visual integration and external playtest evidence before it is treated as fun or final. Static hosting, final visual direction, and the asset inventory remain unimplemented or separately undecided. The grayscale setup surface is not the final art direction.
+The toolchain, deterministic replay, first gray-box physics tuning, fixed-step browser scheduler, keyboard adapter, and procedural PixiJS renderer are implemented. The current tuning still needs external playtest evidence before it is treated as fun or final. Stationary gray-box opponents prove collision and presentation only; they are not the approved bot AI. Static hosting, final visual direction, and the asset inventory remain unimplemented or separately undecided.

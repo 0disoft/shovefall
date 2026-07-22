@@ -73,4 +73,4 @@ These are pre-submission quality gates, not population-level market claims.
 
 ## Current Implementation Slice
 
-Version `0.3.0` implements the first headless gray-box combat slice: mass-sensitive acceleration and speed, weak circular contact, exact shove and dodge windows, missed-shove stumble, same-tick batch impulses, center-tile support grace, falling, elimination, finite caps, and regenerated replay fixtures under simulation version `2.0.0`. These numbers are an automated baseline, not final fun approval; the browser integration and external gray-box playtest still gate promotion to collapse and content.
+Version `0.4.0` connects simulation version `2.0.0` to a fixed-step browser scheduler, keyboard command adapter, procedural PixiJS renderer, local seed/tick/state telemetry, pause-on-focus-loss lifecycle, and bounded arena tiers. The gray-box is now directly playable, but stationary opponents are test bodies rather than approved AI. External gray-box playtest evidence still gates promotion to collapse and content.

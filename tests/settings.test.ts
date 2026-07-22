@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { getPresetPlayerCount, normalizePlayerCount, normalizeSettings } from "../src/app/settings";
+import {
+  getArenaSize,
+  getPresetPlayerCount,
+  normalizePlayerCount,
+  normalizeSettings,
+} from "../src/app/settings";
 
 describe("settings normalization", () => {
   it("clamps participant counts to the supported range", () => {
@@ -24,5 +29,14 @@ describe("settings normalization", () => {
     expect(getPresetPlayerCount("default")).toBe(12);
     expect(getPresetPlayerCount("relaxed")).toBe(8);
     expect(getPresetPlayerCount("chaos")).toBe(32);
+  });
+
+  it("derives larger arenas at the participant tier boundaries", () => {
+    expect(getArenaSize(4)).toEqual({ columns: 9, rows: 7 });
+    expect(getArenaSize(8)).toEqual({ columns: 9, rows: 7 });
+    expect(getArenaSize(9)).toEqual({ columns: 11, rows: 9 });
+    expect(getArenaSize(24)).toEqual({ columns: 15, rows: 11 });
+    expect(getArenaSize(25)).toEqual({ columns: 17, rows: 13 });
+    expect(getArenaSize(32)).toEqual({ columns: 17, rows: 13 });
   });
 });

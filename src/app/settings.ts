@@ -7,6 +7,11 @@ export interface GameSettings {
   readonly preset: PresetName;
 }
 
+export interface ArenaSize {
+  readonly columns: number;
+  readonly rows: number;
+}
+
 export const PLAYER_COUNT_LIMITS = Object.freeze({
   minimum: 4,
   maximum: 32,
@@ -45,4 +50,22 @@ export function normalizeSettings(input: {
     playerCount: normalizePlayerCount(input.playerCount),
     preset,
   });
+}
+
+export function getArenaSize(playerCount: number): ArenaSize {
+  const normalizedCount = normalizePlayerCount(playerCount);
+
+  if (normalizedCount <= 8) {
+    return Object.freeze({ columns: 9, rows: 7 });
+  }
+
+  if (normalizedCount <= 16) {
+    return Object.freeze({ columns: 11, rows: 9 });
+  }
+
+  if (normalizedCount <= 24) {
+    return Object.freeze({ columns: 15, rows: 11 });
+  }
+
+  return Object.freeze({ columns: 17, rows: 13 });
 }
