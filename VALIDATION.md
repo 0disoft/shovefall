@@ -34,6 +34,10 @@ Final responses must list executed validations, passed validations, skipped vali
 
 Ssealed runner remains `none`; package scripts are the application command surface rather than a generated task-runner file. Agents must use the configured `shovefall_*` mustflow intents. Unconfigured commands must fail, not pass with fake success.
 
+## Hosted CI Boundary
+
+GitHub Actions runs `check` and `smoke-dist` on `ubuntu-24.04` with Bun `1.3.14` and the committed lockfile. The workflow is source-owned at `.github/workflows/ci.yml`, uses a read-only token, and performs no deployment, release, publication, cache restore, or artifact upload. Local success is not hosted evidence, and a hosted green check is not merge enforcement until branch protection requires it.
+
 ## Hygiene Validation
 
 Repository hygiene file changes must check line-ending churn, binary diff pollution,
