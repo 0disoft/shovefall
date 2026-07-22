@@ -7,6 +7,7 @@ import {
   getPresetPlayerCount,
   getRecommendedInitialItemCount,
   isBotDifficulty,
+  isCollapseSpeed,
   normalizeInitialItemCount,
   normalizeItemRespawnSeconds,
   normalizePlayerCount,
@@ -29,10 +30,27 @@ describe("settings normalization", () => {
     expect(normalizeSettings({ playerCount: 20, preset: "unknown" })).toEqual({
       playerCount: 20,
       preset: "default",
+      collapseSpeed: "normal",
       initialItemCount: 7,
       itemRespawnSeconds: 5,
       botDifficulty: "normal",
     });
+  });
+
+  it("uses preset collapse defaults and accepts an explicit bounded override", () => {
+    expect(isCollapseSpeed("slow")).toBe(true);
+    expect(isCollapseSpeed("normal")).toBe(true);
+    expect(isCollapseSpeed("fast")).toBe(true);
+    expect(isCollapseSpeed("instant")).toBe(false);
+    expect(normalizeSettings({ playerCount: 8, preset: "relaxed" })).toMatchObject({
+      collapseSpeed: "slow",
+    });
+    expect(
+      normalizeSettings({ playerCount: 16, preset: "default", collapseSpeed: "slow" }),
+    ).toMatchObject({ collapseSpeed: "slow" });
+    expect(
+      normalizeSettings({ playerCount: 16, preset: "default", collapseSpeed: "instant" }),
+    ).toMatchObject({ collapseSpeed: "normal" });
   });
 
   it("accepts only the bounded bot difficulty values", () => {

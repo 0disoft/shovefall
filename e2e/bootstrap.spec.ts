@@ -67,10 +67,12 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await expect(page.getByText("WebGL 준비됨")).toBeVisible();
   await expect(page.locator("#arena-host canvas")).toBeVisible();
   await expect(page.locator("#setup-summary")).toHaveText(
-    "16명 · AI 보통 · 시작 아이템 6개 · 5초마다 1개",
+    "16명 · AI 보통 · 붕괴 보통 · 시작 아이템 6개 · 5초마다 1개",
   );
   await page.getByLabel("어려움").check();
+  await page.locator('input[name="collapseSpeed"][value="slow"]').check();
   await expect(page.locator("#setup-summary")).toContainText("AI 어려움");
+  await expect(page.locator("#setup-summary")).toContainText("붕괴 느림");
 
   await page.getByRole("button", { name: "빠른 시작" }).click();
 
@@ -82,6 +84,7 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await expect(page.locator("#game-telemetry")).toBeVisible();
   await expect(page.locator("#app")).toHaveAttribute("data-initial-items", "6");
   await expect(page.locator("#app")).toHaveAttribute("data-bot-difficulty", "hard");
+  await expect(page.locator("#app")).toHaveAttribute("data-collapse-speed", "slow");
   await page.keyboard.press("Space");
   await page.evaluate(() => window.dispatchEvent(new Event("blur")));
   await expect(page.locator("#renderer-status")).toHaveText("일시 정지");

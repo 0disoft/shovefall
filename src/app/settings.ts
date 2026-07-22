@@ -8,6 +8,7 @@ export type PresetName = (typeof PRESET_NAMES)[number];
 export interface GameSettings {
   readonly playerCount: number;
   readonly preset: PresetName;
+  readonly collapseSpeed: CollapseSpeed;
   readonly initialItemCount: number;
   readonly itemRespawnSeconds: number;
   readonly botDifficulty: BotDifficulty;
@@ -54,6 +55,10 @@ export function isPresetName(value: string): value is PresetName {
 
 export function isBotDifficulty(value: string): value is BotDifficulty {
   return BOT_DIFFICULTIES.some((difficulty) => difficulty === value);
+}
+
+export function isCollapseSpeed(value: string): value is CollapseSpeed {
+  return value === "slow" || value === "normal" || value === "fast";
 }
 
 export function getPresetPlayerCount(preset: PresetName): number {
@@ -110,6 +115,7 @@ export function normalizeSettings(input: {
   readonly initialItemCount?: number;
   readonly itemRespawnSeconds?: number;
   readonly botDifficulty?: string;
+  readonly collapseSpeed?: string;
 }): GameSettings {
   const preset = isPresetName(input.preset) ? input.preset : "default";
   const playerCount = normalizePlayerCount(input.playerCount);
@@ -117,6 +123,10 @@ export function normalizeSettings(input: {
   return Object.freeze({
     playerCount,
     preset,
+    collapseSpeed:
+      input.collapseSpeed !== undefined && isCollapseSpeed(input.collapseSpeed)
+        ? input.collapseSpeed
+        : getPresetCollapseSpeed(preset),
     initialItemCount: normalizeInitialItemCount(input.initialItemCount ?? Number.NaN, playerCount),
     itemRespawnSeconds: normalizeItemRespawnSeconds(input.itemRespawnSeconds ?? Number.NaN, preset),
     botDifficulty:

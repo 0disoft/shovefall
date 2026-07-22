@@ -11,6 +11,7 @@ import {
   createNeutralCommand,
   normalizeGameConfig,
   type ActorId,
+  type CollapseSpeed,
   type GameConfigV1,
   type ItemDefinitionId,
   type RenderFrameV1,
@@ -36,6 +37,9 @@ const CONTROLLED_MASS_PARTICIPANT_COUNT = 16;
 const CONTROLLED_ITEM_SAMPLE_COUNT = 64;
 const CONTROLLED_ITEM_PARTICIPANT_COUNT = 8;
 const CONTROLLED_ITEM_CHI_SQUARE_LIMIT = 7.815;
+const CONTROLLED_COLLAPSE_SAMPLE_COUNT = 16;
+const CONTROLLED_COLLAPSE_PARTICIPANT_COUNT = 16;
+const COLLAPSE_SPEEDS = ["slow", "normal", "fast"] as const satisfies readonly CollapseSpeed[];
 const ROUND_LIMIT_SECONDS = 75;
 const MASS_BANDS = ["light", "normal", "heavy"] as const;
 const ITEM_SPAWN_BANDS = ["edge", "near-edge", "interior"] as const;
@@ -116,6 +120,21 @@ function roundSeconds(ticks: number): number {
 
 function roundRatio(numerator: number, denominator: number): number | null {
   return denominator === 0 ? null : Math.round((numerator / denominator) * 10_000) / 10_000;
+}
+
+function summarizeRoundDurations(rounds: readonly RoundObservation[]) {
+  const sortedTicks = rounds.map(({ completedTick }) => completedTick).toSorted((a, b) => a - b);
+  const meanTicks =
+    rounds.length === 0
+      ? 0
+      : rounds.reduce((sum, { completedTick }) => sum + completedTick, 0) / rounds.length;
+  return Object.freeze({
+    minimum: roundSeconds(sortedTicks[0] ?? 0),
+    mean: roundSeconds(meanTicks),
+    p50: roundSeconds(percentile(sortedTicks, 0.5)),
+    p95: roundSeconds(percentile(sortedTicks, 0.95)),
+    maximum: roundSeconds(sortedTicks.at(-1) ?? 0),
+  });
 }
 
 function createAuditConfig(participantCount: (typeof PARTICIPANT_COUNTS)[number]): GameConfigV1 {
@@ -397,7 +416,6 @@ function auditParticipantCount(participantCount: (typeof PARTICIPANT_COUNTS)[num
     auditRound(config, `round-audit-v2-${participantCount}-${index}`),
   );
   const rounds = results.map(({ round }) => round);
-  const sortedTicks = rounds.map(({ completedTick }) => completedTick).toSorted((a, b) => a - b);
   const reasonCounts: Record<RoundEndReason, number> = {
     "last-standing": 0,
     "no-survivors": 0,
@@ -425,12 +443,7 @@ function auditParticipantCount(participantCount: (typeof PARTICIPANT_COUNTS)[num
       itemSpawnIntervalTicks: config.itemSpawnIntervalTicks,
       roundLimitTicks: config.roundLimitTicks,
     }),
-    durationSeconds: Object.freeze({
-      minimum: roundSeconds(sortedTicks[0] ?? 0),
-      p50: roundSeconds(percentile(sortedTicks, 0.5)),
-      p95: roundSeconds(percentile(sortedTicks, 0.95)),
-      maximum: roundSeconds(sortedTicks.at(-1) ?? 0),
-    }),
+    durationSeconds: summarizeRoundDurations(rounds),
     reasonCounts: Object.freeze(reasonCounts),
     winnerCoverage: Object.freeze({
       distinctActors: winnerCounts.size,
@@ -719,9 +732,74 @@ function auditControlledItems() {
   });
 }
 
+function auditControlledCollapse() {
+  const arena = getArenaSize(CONTROLLED_COLLAPSE_PARTICIPANT_COUNT);
+  const runSpeed = (collapseSpeed: CollapseSpeed) => {
+    const config = normalizeGameConfig({
+      participantCount: CONTROLLED_COLLAPSE_PARTICIPANT_COUNT,
+      arenaColumns: arena.columns,
+      arenaRows: arena.rows,
+      roundLimitSeconds: ROUND_LIMIT_SECONDS,
+      collapseSpeed,
+      difficulty: "normal",
+      itemsEnabled: true,
+      initialItemCount: getRecommendedInitialItemCount(CONTROLLED_COLLAPSE_PARTICIPANT_COUNT),
+      itemRespawnSeconds: getPresetItemRespawnSeconds("default"),
+    });
+    const rounds = Array.from({ length: CONTROLLED_COLLAPSE_SAMPLE_COUNT }, (_, sampleIndex) =>
+      auditRound(config, `collapse-audit-v1-${sampleIndex}`),
+    ).map(({ round }) => round);
+
+    return Object.freeze({
+      collapseSpeed,
+      durationSeconds: summarizeRoundDurations(rounds),
+      timeLimitCount: rounds.filter(({ reason }) => reason === "time-limit").length,
+      rounds: Object.freeze(rounds),
+    });
+  };
+  const speeds = Object.freeze({
+    slow: runSpeed("slow"),
+    normal: runSpeed("normal"),
+    fast: runSpeed("fast"),
+  });
+  const pairedDurations = Object.freeze(
+    Array.from({ length: CONTROLLED_COLLAPSE_SAMPLE_COUNT }, (_, sampleIndex) => {
+      const slow = speeds.slow.rounds[sampleIndex];
+      const normal = speeds.normal.rounds[sampleIndex];
+      const fast = speeds.fast.rounds[sampleIndex];
+
+      if (slow === undefined || normal === undefined || fast === undefined) {
+        throw new Error(`controlled collapse sample ${sampleIndex} is incomplete`);
+      }
+
+      return Object.freeze({
+        seed: `collapse-audit-v1-${sampleIndex}`,
+        slowSeconds: slow.durationSeconds,
+        normalSeconds: normal.durationSeconds,
+        fastSeconds: fast.durationSeconds,
+        slowMinusFastSeconds: roundSeconds(slow.completedTick - fast.completedTick),
+      });
+    }),
+  );
+  const slowAtLeastFastCount = pairedDurations.filter(
+    ({ slowSeconds, fastSeconds }) => slowSeconds >= fastSeconds,
+  ).length;
+
+  return Object.freeze({
+    participantCount: CONTROLLED_COLLAPSE_PARTICIPANT_COUNT,
+    sampleCountPerSpeed: CONTROLLED_COLLAPSE_SAMPLE_COUNT,
+    assignment:
+      "The same 16 fixed seeds run with identical Normal-difficulty production settings except collapse speed.",
+    speeds,
+    pairedSlowAtLeastFastShare: roundRatio(slowAtLeastFastCount, CONTROLLED_COLLAPSE_SAMPLE_COUNT),
+    pairedDurations,
+  });
+}
+
 const scenarios = PARTICIPANT_COUNTS.map(auditParticipantCount);
 const controlledMass = auditControlledMass();
 const controlledItems = auditControlledItems();
+const controlledCollapse = auditControlledCollapse();
 const structuralOk = scenarios.every(
   ({ reasonCounts, rounds }) =>
     rounds.length === SAMPLE_COUNT &&
@@ -743,14 +821,26 @@ const controlledItemsOk =
     const ratio = controlledItems.groups[group].relativeToEqualSlotExpectation;
     return ratio !== null && ratio >= 0.4 && ratio <= 1.8;
   });
-const ok = structuralOk && edgePreferenceOk && controlledMassOk && controlledItemsOk;
+const controlledCollapseOk =
+  COLLAPSE_SPEEDS.every((speed) => controlledCollapse.speeds[speed].timeLimitCount === 0) &&
+  controlledCollapse.speeds.slow.durationSeconds.mean >=
+    controlledCollapse.speeds.normal.durationSeconds.mean &&
+  controlledCollapse.speeds.normal.durationSeconds.mean >=
+    controlledCollapse.speeds.fast.durationSeconds.mean &&
+  controlledCollapse.speeds.normal.durationSeconds.p50 >=
+    controlledCollapse.speeds.fast.durationSeconds.p50 &&
+  controlledCollapse.speeds.slow.durationSeconds.p50 >=
+    controlledCollapse.speeds.fast.durationSeconds.p50 &&
+  (controlledCollapse.pairedSlowAtLeastFastShare ?? 0) >= 0.6;
+const ok =
+  structuralOk && edgePreferenceOk && controlledMassOk && controlledItemsOk && controlledCollapseOk;
 
 process.stdout.write(
   `${JSON.stringify(
     {
       ok,
       kind: "deterministic-round-and-balance-audit",
-      auditVersion: 3,
+      auditVersion: 5,
       productVersion: PRODUCT_VERSION,
       simulationVersion: SIMULATION_VERSION,
       fixedTicksPerSecond: FIXED_TICKS_PER_SECOND,
@@ -759,6 +849,7 @@ process.stdout.write(
       scenarios,
       controlledMass,
       controlledItems,
+      controlledCollapse,
       decisionRules: [
         "Every sampled production-preset round must produce a structurally valid terminal result within 75 seconds.",
         "No sampled all-bot production-preset round may rely on the time-limit draw to terminate.",
@@ -766,6 +857,7 @@ process.stdout.write(
         "Each controlled base-mass band must remain between 0.4x and 1.8x of equal-slot expected win rate.",
         "Each controlled tick-zero item grant group must remain between 0.4x and 1.8x of equal-slot expected win rate.",
         "The controlled item winner-distribution chi-square statistic must not exceed 7.815 for three degrees of freedom.",
+        "Controlled collapse mean duration must order slow >= normal >= fast; slow and normal p50 must each remain at least fast p50; at least 60% of paired slow rounds must last at least as long as fast; and no speed may rely on time-limit draws.",
       ],
       limitations: [
         "This is deterministic rule-based bot workload evidence, not a human-play balance test.",
@@ -774,6 +866,8 @@ process.stdout.write(
         "The controlled mass audit isolates base mass with items disabled at 16 participants; it does not prove every item and participant-count interaction.",
         "The controlled item audit rotates synthetic tick-zero grants at 8 participants and bypasses the production simultaneous-item cap; it isolates grant effects but does not model edge pickup cost, spawn timing, or every participant-count interaction.",
         "The chi-square threshold is a deterministic regression screen over fixed seeds, not a population-significance claim.",
+        "The controlled collapse audit isolates one 16-participant Normal-difficulty bot workload; it does not predict human duration or every participant-count interaction.",
+        "Adjacent collapse tiers need not order by p50 because bot combat can end before the first collapse transition; all descriptive percentiles remain visible even when they are not gates.",
         "Actor 1 is bot-commanded for this audit even though the browser reserves actor 1 for the human.",
       ],
     },

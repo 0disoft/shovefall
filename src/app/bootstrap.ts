@@ -5,6 +5,7 @@ import {
   getPresetPlayerCount,
   getRecommendedInitialItemCount,
   isBotDifficulty,
+  isCollapseSpeed,
   isPresetName,
   normalizeSettings,
   type GameSettings,
@@ -69,6 +70,21 @@ function readSelectedBotDifficulty(form: HTMLFormElement): GameSettings["botDiff
   return typeof value === "string" && isBotDifficulty(value) ? value : "normal";
 }
 
+function readSelectedCollapseSpeed(form: HTMLFormElement): GameSettings["collapseSpeed"] {
+  const data = new FormData(form);
+  const value = data.get("collapseSpeed");
+  return typeof value === "string" && isCollapseSpeed(value) ? value : "normal";
+}
+
+function setSelectedCollapseSpeed(
+  form: HTMLFormElement,
+  speed: GameSettings["collapseSpeed"],
+): void {
+  for (const input of form.querySelectorAll<HTMLInputElement>('input[name="collapseSpeed"]')) {
+    input.checked = input.value === speed;
+  }
+}
+
 function setPlayerCount(input: HTMLInputElement, output: HTMLOutputElement, value: number): void {
   input.value = String(value);
   output.value = `${value}명`;
@@ -87,7 +103,7 @@ function createConfig(settings: GameSettings) {
     arenaColumns: arenaSize.columns,
     arenaRows: arenaSize.rows,
     roundLimitSeconds: 75,
-    collapseSpeed: getPresetCollapseSpeed(settings.preset),
+    collapseSpeed: settings.collapseSpeed,
     difficulty: settings.botDifficulty,
     itemsEnabled: settings.initialItemCount > 0 || settings.itemRespawnSeconds > 0,
     initialItemCount: settings.initialItemCount,
@@ -177,6 +193,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
       initialItemCount: Number(initialItemCount.value),
       itemRespawnSeconds: Number(itemRespawn.value),
       botDifficulty: readSelectedBotDifficulty(form),
+      collapseSpeed: readSelectedCollapseSpeed(form),
     });
 
   const setRecommendedInitialItems = (participantCount: number): void => {
@@ -199,7 +216,13 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
         : settings.botDifficulty === "hard"
           ? "AI 어려움"
           : "AI 보통";
-    setupSummary.textContent = `${settings.playerCount}명 · ${difficultyLabel} · 시작 아이템 ${settings.initialItemCount}개 · ${
+    const collapseLabel =
+      settings.collapseSpeed === "slow"
+        ? "붕괴 느림"
+        : settings.collapseSpeed === "fast"
+          ? "붕괴 빠름"
+          : "붕괴 보통";
+    setupSummary.textContent = `${settings.playerCount}명 · ${difficultyLabel} · ${collapseLabel} · 시작 아이템 ${settings.initialItemCount}개 · ${
       settings.itemRespawnSeconds === 0
         ? "추가 생성 없음"
         : `${settings.itemRespawnSeconds}초마다 1개`
@@ -366,6 +389,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     delete root.dataset.humanEliminated;
     root.dataset.initialItems = String(settings.initialItemCount);
     root.dataset.botDifficulty = settings.botDifficulty;
+    root.dataset.collapseSpeed = settings.collapseSpeed;
     form.hidden = true;
     arenaActions.hidden = false;
     telemetry.hidden = false;
@@ -399,6 +423,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
       setPlayerCount(playerCount, playerCountValue, getPresetPlayerCount(target.value));
       setRecommendedInitialItems(getPresetPlayerCount(target.value));
       itemRespawn.value = String(getPresetItemRespawnSeconds(target.value));
+      setSelectedCollapseSpeed(form, getPresetCollapseSpeed(target.value));
       renderSetupPreview();
     }
 

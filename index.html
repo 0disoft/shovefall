@@ -108,6 +108,31 @@
               </div>
             </div>
 
+            <fieldset class="preset-fieldset">
+              <legend>바닥 붕괴</legend>
+              <label class="preset-card">
+                <input type="radio" name="collapseSpeed" value="slow" />
+                <span>
+                  <strong>느림</strong>
+                  <small>숨 돌릴 틈이 많아</small>
+                </span>
+              </label>
+              <label class="preset-card">
+                <input type="radio" name="collapseSpeed" value="normal" checked />
+                <span>
+                  <strong>보통</strong>
+                  <small>기본 템포로 무너져</small>
+                </span>
+              </label>
+              <label class="preset-card">
+                <input type="radio" name="collapseSpeed" value="fast" />
+                <span>
+                  <strong>빠름</strong>
+                  <small>쉴 새 없이 좁아져</small>
+                </span>
+              </label>
+            </fieldset>
+
             <div class="player-control">
               <div class="player-control__label">
                 <label for="initial-item-count">시작 아이템</label>
@@ -141,7 +166,7 @@
             </div>
 
             <p id="setup-summary" class="settings-summary" aria-live="polite">
-              16명 · AI 보통 · 시작 아이템 6개 · 5초마다 1개
+              16명 · AI 보통 · 붕괴 보통 · 시작 아이템 6개 · 5초마다 1개
             </p>
 
             <button class="primary-action" type="submit">

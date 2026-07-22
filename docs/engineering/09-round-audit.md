@@ -2,19 +2,19 @@
 
 - Status: Local bot-workload evidence; human-play approval pending
 - Command: `audit-rounds` through the configured `shovefall_audit_rounds` intent
-- Audit schema: `deterministic-round-and-balance-audit` version 3
+- Audit schema: `deterministic-round-and-balance-audit` version 5
 
 ## Question and Boundary
 
-The audit asks four bounded questions: whether each production preset terminates without a hard-limit draw, where the item policy actually places rewards, whether controlled base-mass groups show an obvious win-rate skew, and whether equal-slot synthetic item grants show an obvious winner-distribution skew. It also reports live item-exposure outcomes, but those are descriptive rather than causal because longer-lived actors have more time to collect items.
+The audit asks five bounded questions: whether each production preset terminates without a hard-limit draw, where the item policy actually places rewards, whether controlled base-mass groups show an obvious win-rate skew, whether equal-slot synthetic item grants show an obvious winner-distribution skew, and whether collapse-speed choices preserve a useful pacing relationship. It also reports live item-exposure outcomes, but those are descriptive rather than causal because longer-lived actors have more time to collect items.
 
 The production workload uses 8, 16, 24, and 32 participants with the Small, Default, Crowded, and Mayhem rules at Normal bot difficulty. Each count runs sixteen fixed seeds with production arena size, recommended initial items, preset respawn interval, preset collapse speed, and a 75-second limit. Actor 1 receives the same deterministic bot policy as every other actor only inside this harness.
 
 Duration is `completedTick / 60`, not command wall time. Percentiles use nearest-rank selection. Every raw round reports its seed, completion tick, terminal reason, winner, and state hash. Item exposure counts one actor-round when that actor collected the named item at least once; the same actor-round may appear under several items. Mass exposure counts active actor-ticks, so winners necessarily contribute more ticks.
 
-## Version 3 Production-Preset Observation
+## Version 5 Production-Preset Observation
 
-The accepted product `0.15.0`, simulation `5.3.0`, and content `3.1.0` run produced:
+The accepted product `0.16.0`, simulation `5.3.0`, and content `3.1.0` run produced:
 
 | Participants | Preset | Minimum | p50 | p95 | Maximum | Last standing | No survivors | Time limit |
 |---:|---|---:|---:|---:|---:|---:|---:|---:|
@@ -66,6 +66,20 @@ The winner-distribution chi-square statistic is `4.7460` with three degrees of f
 
 This is causal evidence only for receiving one effect at tick zero inside the harness. It does not include the intended cost of reaching a dangerous edge spawn, later pickup timing, production item caps, repeated pickups, every participant count, or human decision-making. Those remain gray-box playtest questions.
 
+## Controlled Collapse-Pacing Observation
+
+The pacing check holds 16 participants, Normal bot difficulty, arena size, item policy, and sixteen seeds constant while varying only collapse speed:
+
+| Collapse speed | Mean | p50 | p95 | Maximum | Time-limit draws |
+|---|---:|---:|---:|---:|---:|
+| Slow | 23.855 s | 21.000 s | 47.467 s | 47.467 s | 0 |
+| Normal | 21.356 s | 21.933 s | 34.233 s | 34.233 s | 0 |
+| Fast | 16.915 s | 17.100 s | 23.467 s | 23.467 s | 0 |
+
+Slow lasted at least as long as Fast in 13 of 16 paired seeds (`81.25%`). Mean duration orders Slow above Normal above Fast, and both Slow and Normal p50 remain above Fast. The initially attempted `Slow p50 >= Normal p50 >= Fast p50` gate failed because Normal's p50 exceeded Slow by 0.933 seconds; bot combat can settle before the first collapse transition and later geometry changes can reorder adjacent outcomes. Audit version 5 keeps every percentile visible but gates the supported claim instead of pretending every individual or adjacent-tier result is monotonic.
+
+The result supports a pacing control, not a promise that Slow lengthens every round. Human duration and perceived tempo still require playtest evidence.
+
 ## Controlled Base-Mass Observation
 
 The mass check disables items in a 16-participant normal arena and rotates every actor through light, normal, and heavy base mass over twenty-four fixed seeds. Each band receives 128 actor-round slots. The initial `0.7 / 1.0 / 1.5` run produced only 3 light wins versus 12 heavy wins, failing the lower 0.4× gate for light actors. The accepted `0.8 / 1.0 / 1.4` range produced:
@@ -80,8 +94,8 @@ The accepted result passes the deliberately broad `0.4×..1.8×` screening gate.
 
 ## Decision
 
-The 8/16/24/32 production presets, 3/2/1 edge weighting, `0.8..1.4` mass bounds, and current three item effects are accepted for the next gray-box playtest. Combat impulse, dodge timing, support, item duration, item multipliers, and the 75-second limit are unchanged. The audit remains a regression screen, not permission to tune toward bot statistics at the expense of readable human play.
+The 8/16/24/32 production presets, selectable collapse speeds, 3/2/1 edge weighting, `0.8..1.4` mass bounds, and current three item effects are accepted for the next gray-box playtest. Combat impulse, dodge timing, support, item duration, item multipliers, and the 75-second limit are unchanged. The audit remains a regression screen, not permission to tune toward bot statistics at the expense of readable human play.
 
 ## Reproduction and Drift
 
-Production seeds use `round-audit-v2-<participantCount>-<0..15>`, controlled mass seeds use `mass-audit-v1-<0..23>`, and controlled item seeds use `item-grant-audit-v1-<0..63>`. Changing the sample set, exposure denominator, percentile rule, bot policy, item policy, arena sizing, collapse cadence, fixed-tick rate, controlled assignment, or terminal semantics requires an audit-version review. A passing rerun proves only the checked-in deterministic scenarios on the executing code. It does not prove browser frame rate, physical-device performance, cross-browser behavior, hosted behavior, risky live pickup balance, or human balance.
+Production seeds use `round-audit-v2-<participantCount>-<0..15>`, controlled mass seeds use `mass-audit-v1-<0..23>`, controlled item seeds use `item-grant-audit-v1-<0..63>`, and paired pacing seeds use `collapse-audit-v1-<0..15>`. Changing the sample set, exposure denominator, duration statistic, bot policy, item policy, arena sizing, collapse cadence, fixed-tick rate, controlled assignment, or terminal semantics requires an audit-version review. A passing rerun proves only the checked-in deterministic scenarios on the executing code. It does not prove browser frame rate, physical-device performance, cross-browser behavior, hosted behavior, risky live pickup balance, or human balance.
