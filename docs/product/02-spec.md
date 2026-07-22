@@ -7,7 +7,7 @@
 
 ## Product
 
-Shovefall is a one-to-two-minute single-player browser party-action game. One human and deterministic rule-based bots shove each other from a collapsing tile arena. The game must explain itself through movement, telegraphs, impacts, and falling rather than a long tutorial.
+Shovefall is a brief single-player browser party-action game with a 75-second hard round limit. One human and deterministic rule-based bots shove each other from a collapsing tile arena. The game must explain itself through movement, telegraphs, impacts, and falling rather than a long tutorial. A target human-play duration distribution remains a playtest decision rather than a claim inferred from bot-only rounds.
 
 The central promise is a readable comic reversal: a player can dodge an incoming shove so that the attacker stumbles into the void, or two attackers can collide on the same tick and both fly away. A result may be chaotic, but it must follow visible state and deterministic rules rather than a hidden probability roll.
 
@@ -73,4 +73,4 @@ These are pre-submission quality gates, not population-level market claims.
 
 ## Current Implementation Slice
 
-Version `0.11.0` adds a pausable 1.5-second `3→2→1` countdown owned by the browser session scheduler. The fresh world renders immediately, but simulation ticks, bot decisions, and human input remain closed until the countdown completes; blur and renderer loss freeze the remaining countdown instead of consuming hidden time. Restart follows the same boundary. A separate bounded `smoke-dist` command builds and exercises all six production-safe browser scenarios through `vite preview`; the development-only fatal injector remains excluded from production. Simulation remains `5.0.0`, content remains `3.0.0`, and replay fixtures change only to record the product version. Physical-device, cross-browser, hosted-deployment, round-duration, balance, final-art readability, audio-device, and external playtest approval remain pending.
+Version `0.12.0` adds a deterministic all-bot round audit for 4, 12, 24, and 32 participants. It commands actor 1 through the normal bot policy only inside the headless harness, emits every fixed-seed terminal observation, and rejects malformed results or reliance on the 75-second time-limit draw. The first 16-seed-per-count run completed all 64 samples without a time-limit result, but its much shorter bot-only durations do not approve human round length or balance. Simulation remains `5.0.0`, content remains `3.0.0`, and replay fixtures change only to record the product version. Physical-device, cross-browser, hosted-deployment, human round-duration, balance, final-art readability, audio-device, and external playtest approval remain pending.

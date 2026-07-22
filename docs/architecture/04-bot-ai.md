@@ -7,6 +7,8 @@
 
 `BotDirector` is headless application policy outside the authoritative simulation. It consumes only immutable `RenderFrameV1` data and produces `ActorCommandV1`. It cannot import PixiJS or browser globals, inspect human key state, read unannounced future collapse state, or mutate participant bodies, actions, cooldowns, items, or tiles.
 
+The browser passes actor 1 as the excluded human actor. Repository-owned headless audits may pass an explicit `null` exclusion so the same policy commands every active participant. This audit mode does not change `SimulationWorld` control labels, command validation, physics, or replay semantics, and it is not used by the browser application.
+
 The repository architecture check applies the same renderer, DOM, wall-clock, and ambient-randomness restrictions to `src/ai` and `src/simulation`.
 
 ## Perception and Scheduling

@@ -30,6 +30,18 @@ describe("utility bot director", () => {
     );
   });
 
+  it("can explicitly control every active actor for headless audits", () => {
+    const world = createBotWorld(4);
+    const director = new BotDirector("all-bot-audit", null, {
+      reactionDelayTicks: 0,
+      decisionIntervalTicks: 1,
+    });
+
+    expect(
+      director.createCommands(0, world.createRenderFrame()).map(({ actorId }) => actorId),
+    ).toEqual([1, 2, 3, 4]);
+  });
+
   it("repeats personalities, commands, and final state for the same seed", () => {
     function run() {
       const world = createBotWorld(8, [], "deterministic-bots");

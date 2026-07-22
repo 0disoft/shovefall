@@ -172,7 +172,7 @@ function isThreatening(candidate: RenderParticipantV1, self: RenderParticipantV1
 }
 
 export class BotDirector {
-  readonly #humanActorId: ActorId;
+  readonly #humanActorId: ActorId | null;
   readonly #reactionDelayTicks: number;
   readonly #decisionIntervalTicks: number;
   readonly #nearbyCandidateLimit: number;
@@ -182,7 +182,7 @@ export class BotDirector {
 
   public constructor(
     masterSeed: SeedInput,
-    humanActorId: ActorId,
+    humanActorId: ActorId | null,
     options: BotDirectorOptions = {},
   ) {
     this.#reactionDelayTicks = options.reactionDelayTicks ?? DEFAULT_REACTION_DELAY_TICKS;
@@ -233,7 +233,10 @@ export class BotDirector {
     const commands: ActorCommandV1[] = [];
 
     for (const current of currentFrame.participants) {
-      if (current.actorId === this.#humanActorId || !isControllable(current)) {
+      if (
+        (this.#humanActorId !== null && current.actorId === this.#humanActorId) ||
+        !isControllable(current)
+      ) {
         continue;
       }
 

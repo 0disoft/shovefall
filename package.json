@@ -1,6 +1,6 @@
 {
   "name": "shovefall",
-  "version": "0.11.0",
+  "version": "0.12.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -12,6 +12,7 @@
     "contract": "bun tools/check-architecture.ts",
     "fixtures:replay": "bun tools/generate-replay-fixtures.ts",
     "profile:scale": "bun tools/profile-scale.ts",
+    "audit:rounds": "bun tools/audit-rounds.ts",
     "profile:browser": "bun run build && playwright test --config=playwright.scale.config.ts --grep @profile",
     "profile:seeds": "bun tools/select-browser-profile-seeds.ts",
     "test": "vitest run",
