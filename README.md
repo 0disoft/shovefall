@@ -1,13 +1,13 @@
 # Shovefall
 
-- Status: Runnable application bootstrap; gameplay pending
+- Status: Deterministic simulation foundation; gray-box combat pending
 - Scope: frontend
 - Repository Type: web-app
 - Addons: none
 
 Shovefall is a short single-player browser party game about shoving opponents off a collapsing arena. One participant is human and the remaining participants are deterministic rule-based bots. The MVP is a static client application with no backend, database, account system, runtime LLM, or remote analytics.
 
-The repository now contains a runnable semantic DOM setup shell, a PixiJS WebGL arena preview, exact package metadata, a Bun lockfile, and local validation commands. Movement, shove and dodge physics, bots, collapsing tiles, items, final visual direction, CI, and deployment remain outside this bootstrap slice.
+The repository contains a runnable semantic DOM setup shell, PixiJS WebGL arena preview, exact package graph, and local validation commands. It also contains the renderer-independent 60 Hz world contract, stable identifiers, independent named random streams, quantized state hashing, strict replay parsing, and three checked-in replay fixtures. Gray-box shove and dodge physics, bots, collapsing tiles, items, final visual direction, CI, and deployment remain later slices.
 
 ## Accepted Toolchain Baseline
 
@@ -26,6 +26,7 @@ The complete adoption constraints, rollback path, and version policy are in [doc
 - package.json and bun.lock: exact dependency and local command graph
 - src/app/: DOM lifecycle and normalized setup state
 - src/presentation/: PixiJS-only arena presentation
+- src/simulation/: renderer-independent fixed-tick contracts, world, random streams, hashing, and replay
 - tests/: Vitest unit and application-model tests
 - e2e/: Playwright browser smoke
 - tools/: Bun TypeScript contract and documentation checks
@@ -35,6 +36,8 @@ The complete adoption constraints, rollback path, and version policy are in [doc
 - .agents/context-map.md: agent route map
 - docs/engineering/08-toolchain-baseline.md: accepted technology and tool ownership
 - docs/frontend/FRONTEND_DESIGN.md: PixiJS, DOM, state, accessibility, and presentation boundaries
+- docs/product/02-spec.md: accepted game scope, controls, quality tiers, gates, and non-goals
+- docs/architecture/: authoritative boundary, domain model, and fixed-tick runtime order
 - docs/: design, operations, architecture, and engineering standards
 
 ## Repository Shape Notes
@@ -49,4 +52,4 @@ binary diffs, local files, build outputs, caches, and secret files under control
 
 ## Scope Notes
 
-The toolchain and bootstrap layout are implemented. The static hosting provider, gameplay tuning, final visual direction, and asset inventory remain unimplemented or separately undecided. The current grayscale setup surface is a functional gray-box baseline, not the final art direction.
+The toolchain, bootstrap layout, and deterministic simulation/replay foundation are implemented. The current displacement is a contract probe, not final movement tuning. Static hosting, gameplay tuning, final visual direction, and the asset inventory remain unimplemented or separately undecided. The grayscale setup surface is a functional gray-box baseline, not the final art direction.

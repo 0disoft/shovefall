@@ -1,6 +1,6 @@
 {
   "name": "shovefall",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -10,6 +10,7 @@
     "lint": "oxlint src tests e2e tools vite.config.ts vitest.config.ts playwright.config.ts",
     "typecheck": "tsc --noEmit",
     "contract": "bun tools/check-architecture.ts",
+    "fixtures:replay": "bun tools/generate-replay-fixtures.ts",
     "test": "vitest run",
     "docs": "bun tools/check-doc-links.ts",
     "build": "vite build",

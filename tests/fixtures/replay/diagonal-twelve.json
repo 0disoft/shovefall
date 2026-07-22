@@ -1,0 +1,96 @@
+{
+  "formatVersion": 1,
+  "productVersion": "0.2.0",
+  "simulationVersion": "1.0.0",
+  "contentVersion": "1.0.0",
+  "buildId": "fixture-v1",
+  "config": {
+    "configVersion": 1,
+    "participantCount": 12,
+    "arenaColumns": 11,
+    "arenaRows": 9,
+    "roundLimitTicks": 600,
+    "density": "normal",
+    "difficulty": "normal",
+    "itemsEnabled": false
+  },
+  "masterSeed": "diagonal-twelve-v1",
+  "humanActorId": 1,
+  "endTick": 240,
+  "commands": [
+    {
+      "commandVersion": 1,
+      "tick": 0,
+      "actorId": 1,
+      "move": {
+        "x": 0.7071067811865475,
+        "y": 0.7071067811865475
+      },
+      "shovePressed": false,
+      "dodgePressed": false
+    },
+    {
+      "commandVersion": 1,
+      "tick": 40,
+      "actorId": 1,
+      "move": {
+        "x": -0.7071067811865475,
+        "y": 0.7071067811865475
+      },
+      "shovePressed": false,
+      "dodgePressed": false
+    },
+    {
+      "commandVersion": 1,
+      "tick": 80,
+      "actorId": 1,
+      "move": {
+        "x": -0.7071067811865475,
+        "y": -0.7071067811865475
+      },
+      "shovePressed": false,
+      "dodgePressed": false
+    },
+    {
+      "commandVersion": 1,
+      "tick": 120,
+      "actorId": 1,
+      "move": {
+        "x": 0.7071067811865475,
+        "y": -0.7071067811865475
+      },
+      "shovePressed": false,
+      "dodgePressed": false
+    },
+    {
+      "commandVersion": 1,
+      "tick": 160,
+      "actorId": 1,
+      "move": {
+        "x": 1,
+        "y": 0
+      },
+      "shovePressed": false,
+      "dodgePressed": false
+    }
+  ],
+  "checkpoints": [
+    {
+      "tick": 60,
+      "stateHash": "fnv1a32:1ecf4637"
+    },
+    {
+      "tick": 120,
+      "stateHash": "fnv1a32:0bf01574"
+    },
+    {
+      "tick": 180,
+      "stateHash": "fnv1a32:d0068193"
+    },
+    {
+      "tick": 240,
+      "stateHash": "fnv1a32:8a508380"
+    }
+  ],
+  "finalHash": "fnv1a32:8a508380"
+}

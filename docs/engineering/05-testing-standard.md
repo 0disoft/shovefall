@@ -1,6 +1,6 @@
 # Testing Standard
 
-- Status: Bootstrap suites active; gameplay suites pending
+- Status: Deterministic foundation suites active; gameplay suites expanding
 
 ## Contract
 
@@ -24,9 +24,9 @@ The testing standard defines merge-blocking evidence for the deterministic simul
 
 ## Behavioral Evidence
 
-- The current Vitest suite covers configuration normalization and supported participant bounds.
+- The Vitest suite covers configuration normalization, command bounds and normalization, duplicate-command rejection, neutral missing input, command-order independence, a versioned PRNG vector, named-stream independence, 100-run state-hash stability, strict replay parsing, checked-in replay fixtures, checkpoint verification, and corrupted-hash rejection.
 - The current Playwright suite covers browser boot, WebGL initialization, setup-to-arena transition, and focus recovery.
-- Future simulation tests must cover pure math, state transitions, seeded randomness, finite-value invariants, shove timing, dodge timing, simultaneous impacts, mass behavior, support loss, and deterministic replay inputs as those behaviors are introduced.
+- Combat promotion tests must cover finite-value invariants, speed caps, shove timing, dodge boundary ticks, simultaneous-impact order independence, mass monotonicity, weak-contact separation, support grace, irreversible falling, and restart as those behaviors are introduced.
 - Future Playwright cases must add keyboard input, focus loss during play, round completion, failure recovery, restart, and static-build smoke as those surfaces become real.
 - Visual and audio timing still require explicit manual evidence; screenshots alone do not prove interaction quality.
 
@@ -43,4 +43,5 @@ The testing standard defines merge-blocking evidence for the deterministic simul
 - Human and bot commands reach different simulation paths without an approved contract change.
 - A missing or skipped validation is reported as passed.
 - A snapshot replaces behavior assertions for collision, action, or round invariants.
+- Replay fixtures are regenerated without explaining a deliberate simulation rule or version change.
 - A change lacks failure, recovery, security, performance, or test evidence where relevant.

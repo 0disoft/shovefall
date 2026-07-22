@@ -1,0 +1,36 @@
+{
+  "formatVersion": 1,
+  "productVersion": "0.2.0",
+  "simulationVersion": "1.0.0",
+  "contentVersion": "1.0.0",
+  "buildId": "fixture-v1",
+  "config": {
+    "configVersion": 1,
+    "participantCount": 4,
+    "arenaColumns": 11,
+    "arenaRows": 9,
+    "roundLimitTicks": 600,
+    "density": "normal",
+    "difficulty": "normal",
+    "itemsEnabled": false
+  },
+  "masterSeed": "idle-four-v1",
+  "humanActorId": 1,
+  "endTick": 180,
+  "commands": [],
+  "checkpoints": [
+    {
+      "tick": 60,
+      "stateHash": "fnv1a32:181f8270"
+    },
+    {
+      "tick": 120,
+      "stateHash": "fnv1a32:e0b96675"
+    },
+    {
+      "tick": 180,
+      "stateHash": "fnv1a32:1f272bcf"
+    }
+  ],
+  "finalHash": "fnv1a32:1f272bcf"
+}

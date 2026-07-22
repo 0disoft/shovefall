@@ -1,0 +1,89 @@
+{
+  "formatVersion": 1,
+  "productVersion": "0.2.0",
+  "simulationVersion": "1.0.0",
+  "contentVersion": "1.0.0",
+  "buildId": "fixture-v1",
+  "config": {
+    "configVersion": 1,
+    "participantCount": 4,
+    "arenaColumns": 11,
+    "arenaRows": 9,
+    "roundLimitTicks": 600,
+    "density": "normal",
+    "difficulty": "normal",
+    "itemsEnabled": false
+  },
+  "masterSeed": "cardinal-four-v1",
+  "humanActorId": 1,
+  "endTick": 180,
+  "commands": [
+    {
+      "commandVersion": 1,
+      "tick": 0,
+      "actorId": 1,
+      "move": {
+        "x": 1,
+        "y": 0
+      },
+      "shovePressed": false,
+      "dodgePressed": false
+    },
+    {
+      "commandVersion": 1,
+      "tick": 30,
+      "actorId": 1,
+      "move": {
+        "x": 0,
+        "y": 1
+      },
+      "shovePressed": false,
+      "dodgePressed": false
+    },
+    {
+      "commandVersion": 1,
+      "tick": 60,
+      "actorId": 1,
+      "move": {
+        "x": -1,
+        "y": 0
+      },
+      "shovePressed": false,
+      "dodgePressed": false
+    },
+    {
+      "commandVersion": 1,
+      "tick": 90,
+      "actorId": 1,
+      "move": {
+        "x": 0,
+        "y": -1
+      },
+      "shovePressed": false,
+      "dodgePressed": false
+    }
+  ],
+  "checkpoints": [
+    {
+      "tick": 30,
+      "stateHash": "fnv1a32:486f37f5"
+    },
+    {
+      "tick": 60,
+      "stateHash": "fnv1a32:827dca02"
+    },
+    {
+      "tick": 90,
+      "stateHash": "fnv1a32:ab551dc3"
+    },
+    {
+      "tick": 120,
+      "stateHash": "fnv1a32:34548469"
+    },
+    {
+      "tick": 180,
+      "stateHash": "fnv1a32:c74e4aa3"
+    }
+  ],
+  "finalHash": "fnv1a32:c74e4aa3"
+}
