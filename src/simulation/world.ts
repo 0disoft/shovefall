@@ -6,6 +6,8 @@ import {
   type ActorCommandV1,
   type ActorId,
   type GameConfigV1,
+  type ItemDefinitionId,
+  type ItemId,
   type ParticipantActionKind,
   type ParticipantState,
   type RenderFrameV1,
@@ -36,6 +38,20 @@ import {
 } from "./math";
 import { RandomStreamSet, type SeedInput } from "./random";
 import { ParticipantSpatialHash, type ActorPair } from "./spatial-hash";
+import {
+  advanceItemSpawns,
+  clearEffects,
+  consumeSpringGlove,
+  createItemSystem,
+  expireEffects,
+  getDodgeSpeedMultiplier,
+  hasSpringGlove,
+  resolveItemPickups,
+  type ItemEventFact,
+  type ItemSpawnOverride,
+  type ItemSystemState,
+} from "./items";
+import { getItemDefinition } from "../content/items";
 import { getMovementProfile, normalizeMassFactor, SIMULATION_TUNING } from "./tuning";
 import { SYSTEM_ORDER } from "./versions";
 
@@ -64,12 +80,15 @@ export interface SimulationWorldOptions {
   readonly roundId?: RoundId;
   readonly humanActorId?: ActorId;
   readonly participantOverrides?: readonly ParticipantSpawnOverride[];
+  readonly itemOverrides?: readonly ItemSpawnOverride[];
 }
 
 interface EventDetails {
   readonly actorId?: ActorId;
   readonly targetActorId?: ActorId;
   readonly tileId?: TileId;
+  readonly itemId?: ItemId;
+  readonly itemDefinitionId?: ItemDefinitionId;
   readonly winnerActorId?: ActorId;
   readonly vector?: Vector2;
   readonly reason?: SimulationEventV1["reason"];
@@ -102,6 +121,7 @@ function createReadyAction(tick: number): ActionState {
     hitActorIds: Object.freeze([]),
     resolvedActorIds: Object.freeze([]),
     lockedDirection: null,
+    springBoosted: false,
   });
 }
 
@@ -112,6 +132,7 @@ function createTimedAction(
   lockedDirection: Vector2 | null,
   hitActorIds: readonly ActorId[] = [],
   resolvedActorIds: readonly ActorId[] = [],
+  springBoosted = false,
 ): ActionState {
   return Object.freeze({
     kind,
@@ -120,6 +141,7 @@ function createTimedAction(
     hitActorIds: Object.freeze([...hitActorIds].toSorted((left, right) => left - right)),
     resolvedActorIds: Object.freeze([...resolvedActorIds].toSorted((left, right) => left - right)),
     lockedDirection,
+    springBoosted,
   });
 }
 
@@ -208,11 +230,15 @@ function createParticipants(
           velocity,
           facing,
           radius: SIMULATION_TUNING.body.radius,
+          baseMassFactor: normalizeMassFactor(
+            override?.massFactor ?? SIMULATION_TUNING.mass.default,
+          ),
           massFactor: normalizeMassFactor(override?.massFactor ?? SIMULATION_TUNING.mass.default),
           unsupportedTicks: 0,
         }),
         action: createReadyAction(0),
         cooldowns: Object.freeze({ shoveReadyTick: 0, dodgeReadyTick: 0 }),
+        effects: Object.freeze([]),
         active: true,
       }),
     );
@@ -244,8 +270,11 @@ export class SimulationWorld {
   readonly #config: GameConfigV1;
   readonly #roundId: RoundId;
   readonly #collapsePlan: readonly CollapseWave[];
+  readonly #itemRandom;
+  readonly #tieBreakRandom;
   #tiles: readonly TileState[];
   #participants: readonly ParticipantState[];
+  #itemState: ItemSystemState;
   #round: RoundStateV1 = Object.freeze({
     status: "Active",
     winnerActorId: null,
@@ -294,6 +323,15 @@ export class SimulationWorld {
       humanActorId,
       options.participantOverrides ?? [],
     );
+    this.#itemRandom = streams.get("items");
+    this.#tieBreakRandom = streams.get("tie-break");
+    this.#itemState = createItemSystem(
+      config,
+      this.#tiles,
+      this.#participants,
+      this.#itemRandom,
+      options.itemOverrides,
+    );
   }
 
   public get tick(): number {
@@ -326,6 +364,7 @@ export class SimulationWorld {
     );
 
     participants = this.#advanceExpiredActions(participants, events);
+    participants = expireEffects(participants, this.#tick);
     participants = this.#startRequestedActions(participants, commandsByActor, events);
     participants = this.#applyMovementIntent(participants, commandsByActor);
     participants = this.#integratePositions(participants);
@@ -343,9 +382,29 @@ export class SimulationWorld {
     participants = this.#resolveWeakContacts(participants, candidatePairs);
     participants = this.#resolveShoves(participants, candidatePairs, events);
     participants = this.#resolveSupport(participants, events);
+    const pickupResult = resolveItemPickups(
+      participants,
+      this.#itemState,
+      this.#tick,
+      this.#tieBreakRandom,
+    );
+    participants = pickupResult.participants;
+    this.#itemState = pickupResult.state;
+    this.#emitItemFacts(pickupResult.facts, events);
 
     this.#participants = Object.freeze(participants);
-    this.#advanceCollapse(events);
+    const arenaChanged = this.#advanceCollapse(events);
+    const spawnResult = advanceItemSpawns(
+      this.#config,
+      this.#itemState,
+      this.#tiles,
+      participants,
+      this.#tick,
+      this.#itemRandom,
+      arenaChanged,
+    );
+    this.#itemState = spawnResult.state;
+    this.#emitItemFacts(spawnResult.facts, events);
     this.#evaluateRound(participants, events);
     this.#tick += 1;
 
@@ -365,6 +424,9 @@ export class SimulationWorld {
       roundId: this.#roundId,
       tick: this.#tick,
       participants: this.#participants,
+      items: this.#itemState.items,
+      nextItemId: this.#itemState.nextItemId,
+      nextItemSpawnTick: this.#itemState.nextSpawnTick,
       tiles: this.#tiles,
       round: this.#round,
     });
@@ -391,9 +453,12 @@ export class SimulationWorld {
               unsupportedTicks: participant.body.unsupportedTicks,
               shoveReadyTick: participant.cooldowns.shoveReadyTick,
               dodgeReadyTick: participant.cooldowns.dodgeReadyTick,
+              effects: participant.effects,
+              springBoosted: participant.action.springBoosted,
             }),
           ),
       ),
+      items: this.#itemState.items,
       tiles: this.#tiles,
       round: this.#round,
     });
@@ -455,6 +520,9 @@ export class SimulationWorld {
             this.#tick,
             SIMULATION_TUNING.shove.activeTicks,
             action.lockedDirection,
+            action.hitActorIds,
+            action.resolvedActorIds,
+            action.springBoosted,
           ),
         });
       }
@@ -566,6 +634,10 @@ export class SimulationWorld {
       }
 
       if (command.shovePressed && this.#tick >= participant.cooldowns.shoveReadyTick) {
+        const springBoosted = hasSpringGlove(participant);
+        const participantWithoutSpring = springBoosted
+          ? consumeSpringGlove(participant)
+          : participant;
         events.push(
           this.#createEvent("shove-started", {
             actorId: participant.actorId,
@@ -573,16 +645,19 @@ export class SimulationWorld {
           }),
         );
         return Object.freeze({
-          ...participant,
-          body: Object.freeze({ ...participant.body, facing: direction }),
+          ...participantWithoutSpring,
+          body: Object.freeze({ ...participantWithoutSpring.body, facing: direction }),
           action: createTimedAction(
             "ShoveWindup",
             this.#tick,
             SIMULATION_TUNING.shove.windupTicks,
             direction,
+            [],
+            [],
+            springBoosted,
           ),
           cooldowns: Object.freeze({
-            ...participant.cooldowns,
+            ...participantWithoutSpring.cooldowns,
             shoveReadyTick: this.#tick + SIMULATION_TUNING.shove.cooldownTicks,
           }),
         });
@@ -636,8 +711,14 @@ export class SimulationWorld {
           const direction = participant.action.lockedDirection ?? facing;
           const forwardSpeed = dotVectors(velocity, direction);
           const lateralVelocity = subtractVectors(velocity, scaleVector(direction, forwardSpeed));
+          const shoveSpeedMultiplier = participant.action.springBoosted
+            ? getItemDefinition("spring-glove").shoveSpeedMultiplier
+            : 1;
           velocity = addVectors(
-            scaleVector(direction, Math.max(forwardSpeed, SIMULATION_TUNING.shove.activeSpeed)),
+            scaleVector(
+              direction,
+              Math.max(forwardSpeed, SIMULATION_TUNING.shove.activeSpeed * shoveSpeedMultiplier),
+            ),
             scaleVector(lateralVelocity, 0.25),
           );
           facing = direction;
@@ -657,7 +738,10 @@ export class SimulationWorld {
         }
         case "DodgeActive": {
           const direction = participant.action.lockedDirection ?? facing;
-          velocity = scaleVector(direction, SIMULATION_TUNING.dodge.speed);
+          velocity = scaleVector(
+            direction,
+            SIMULATION_TUNING.dodge.speed * getDodgeSpeedMultiplier(participant),
+          );
           facing = direction;
           break;
         }
@@ -883,7 +967,10 @@ export class SimulationWorld {
         const rawImpulse =
           (SIMULATION_TUNING.shove.baseImpulse +
             forwardSpeed * SIMULATION_TUNING.shove.velocityImpulseScale) *
-          (attacker.body.massFactor / target.body.massFactor);
+          (attacker.body.massFactor / target.body.massFactor) *
+          (attacker.action.springBoosted
+            ? getItemDefinition("spring-glove").shoveImpulseMultiplier
+            : 1);
         const impulse = scaleVector(
           normal,
           Math.min(rawImpulse, SIMULATION_TUNING.shove.maximumImpulse),
@@ -992,10 +1079,11 @@ export class SimulationWorld {
           vector: participant.body.velocity,
         }),
       );
+      const participantWithoutEffects = clearEffects(participant);
       return Object.freeze({
-        ...participant,
+        ...participantWithoutEffects,
         body: Object.freeze({
-          ...participant.body,
+          ...participantWithoutEffects.body,
           velocity: ZERO_VECTOR,
           unsupportedTicks,
         }),
@@ -1009,7 +1097,7 @@ export class SimulationWorld {
     });
   }
 
-  #advanceCollapse(events: SimulationEventV1[]): void {
+  #advanceCollapse(events: SimulationEventV1[]): boolean {
     const result = advanceCollapse(this.#tiles, this.#collapsePlan, this.#tick);
     this.#tiles = result.tiles;
 
@@ -1021,6 +1109,20 @@ export class SimulationWorld {
             ? "tile-collapsing"
             : "tile-void";
       events.push(this.#createEvent(kind, { tileId: transition.tileId }));
+    }
+
+    return result.transitions.length > 0;
+  }
+
+  #emitItemFacts(facts: readonly ItemEventFact[], events: SimulationEventV1[]): void {
+    for (const fact of facts) {
+      events.push(
+        this.#createEvent(fact.kind, {
+          ...(fact.actorId === undefined ? {} : { actorId: fact.actorId }),
+          itemId: fact.itemId,
+          itemDefinitionId: fact.itemDefinitionId,
+        }),
+      );
     }
   }
 
@@ -1074,6 +1176,10 @@ export class SimulationWorld {
       ...(details.actorId === undefined ? {} : { actorId: details.actorId }),
       ...(details.targetActorId === undefined ? {} : { targetActorId: details.targetActorId }),
       ...(details.tileId === undefined ? {} : { tileId: details.tileId }),
+      ...(details.itemId === undefined ? {} : { itemId: details.itemId }),
+      ...(details.itemDefinitionId === undefined
+        ? {}
+        : { itemDefinitionId: details.itemDefinitionId }),
       ...(details.winnerActorId === undefined ? {} : { winnerActorId: details.winnerActorId }),
       ...(details.vector === undefined ? {} : { vector: details.vector }),
       ...(details.reason === undefined ? {} : { reason: details.reason }),

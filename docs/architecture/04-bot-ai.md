@@ -17,7 +17,7 @@ Perception contains participant positions, velocities, facing, visible action st
 
 ## Personalities
 
-`Aggressor`, `Survivor`, `Opportunist`, `Disruptor`, and `Collector` are weight records over one decision implementation. They adjust approach, edge opportunity, stumbling opportunity, self-safety, heavy-target penalty, shove distance, and small aim jitter. They do not own separate state machines or physical advantages. `Collector` retains a conservative combat profile until items add an approved collection utility.
+`Aggressor`, `Survivor`, `Opportunist`, `Disruptor`, and `Collector` are weight records over one decision implementation. They adjust approach, edge opportunity, stumbling opportunity, self-safety, heavy-target penalty, shove distance, item interest, and small aim jitter. They do not own separate state machines or physical advantages. `Collector` gives nearby visible items a higher utility without receiving item locations outside its delayed frame.
 
 Personality selection and decision jitter use `bot-personality:<ActorId>` and `bot-jitter:<ActorId>` streams. Randomness breaks near-equal directions but never changes collision, dodge, mass, support, or action results.
 
@@ -34,6 +34,6 @@ Actor control type and human identity are not fields in the perception participa
 ## Known Limits
 
 - Ten-tick perception is longer than the six-tick shove windup, so normal bots primarily dodge dangerous approach trajectories rather than reading every shove start perfectly.
-- The current arena has collapse but no items, so `Collector` cannot yet demonstrate its intended priority.
+- Item utility is intentionally shallow: bots do not predict future spawns, hidden collapse plans, or an optimal inventory route.
 - Utility weights have automated invariants but no external evidence of fun, aggression balance, or personality readability.
 - Explicit coordination is limited to incidental target geometry; side-pressure and anti-dogpile rules remain future tuning.

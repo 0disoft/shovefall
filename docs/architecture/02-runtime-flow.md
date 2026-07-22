@@ -30,7 +30,7 @@ Each 60 Hz tick uses this versioned order:
 13. Decide round result.
 14. Emit ordered events, an immutable render frame, and a quantized state hash.
 
-Stages 1 through 10 and 12 through 14 are implemented. Item and item-spawn work in stages 11 and 12 remain explicit no-op responsibilities. Collapse advances after the current tick's support decision, so a tile that becomes void cannot retroactively remove support earlier in the same tick. Later work cannot reorder the pipeline without a simulation-version decision and regenerated replay evidence.
+All fourteen stages are implemented. Timed effects expire with action transitions before movement. Item pickup runs after support, so a valid pickup wins over a tile that begins collapsing later in the same tick. Collapse then advances, void-tile items are removed, the safe-area cap is enforced, and at most one due item is spawned on a stable interior tile. Collapse still cannot retroactively remove support earlier in the same tick. Later work cannot reorder the pipeline without a simulation-version decision and regenerated replay evidence.
 
 ## Browser Scheduling
 

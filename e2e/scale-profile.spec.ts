@@ -38,8 +38,8 @@ const PROFILE_CASES = Object.freeze([
   {
     participantCount: 32,
     preset: "chaos",
-    seed: "0000002000000000",
-    seedWords: [32, 0],
+    seed: "0000002000000001",
+    seedWords: [32, 1],
     p95Budget: 22,
     tickRateBudget: 42,
   },

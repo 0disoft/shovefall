@@ -1,8 +1,8 @@
 {
   "formatVersion": 1,
-  "productVersion": "0.7.0",
-  "simulationVersion": "3.0.0",
-  "contentVersion": "2.0.0",
+  "productVersion": "0.8.0",
+  "simulationVersion": "4.0.0",
+  "contentVersion": "3.0.0",
   "buildId": "fixture-v3",
   "config": {
     "configVersion": 1,
@@ -13,7 +13,11 @@
     "density": "normal",
     "difficulty": "normal",
     "collapseSpeed": "normal",
-    "itemsEnabled": false
+    "itemsEnabled": false,
+    "itemPolicyVersion": 1,
+    "initialItemCount": 0,
+    "maximumItemCount": 2,
+    "itemSpawnIntervalTicks": 0
   },
   "masterSeed": "cardinal-four-v1",
   "humanActorId": 1,
@@ -67,24 +71,24 @@
   "checkpoints": [
     {
       "tick": 30,
-      "stateHash": "fnv1a32:c686aeea"
+      "stateHash": "fnv1a32:322e735b"
     },
     {
       "tick": 60,
-      "stateHash": "fnv1a32:abcff2cd"
+      "stateHash": "fnv1a32:f356a800"
     },
     {
       "tick": 90,
-      "stateHash": "fnv1a32:97e2212f"
+      "stateHash": "fnv1a32:7f13c22a"
     },
     {
       "tick": 120,
-      "stateHash": "fnv1a32:7cb851ef"
+      "stateHash": "fnv1a32:3571746a"
     },
     {
       "tick": 180,
-      "stateHash": "fnv1a32:4df31f49"
+      "stateHash": "fnv1a32:15e93c34"
     }
   ],
-  "finalHash": "fnv1a32:4df31f49"
+  "finalHash": "fnv1a32:15e93c34"
 }

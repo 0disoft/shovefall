@@ -74,6 +74,42 @@
               </div>
             </div>
 
+            <div class="player-control">
+              <div class="player-control__label">
+                <label for="initial-item-count">시작 아이템</label>
+                <output id="initial-item-count-value" for="initial-item-count">4개</output>
+              </div>
+              <input
+                id="initial-item-count"
+                name="initialItemCount"
+                type="range"
+                min="0"
+                max="6"
+                step="1"
+                value="4"
+              />
+            </div>
+
+            <div class="player-control">
+              <div class="player-control__label">
+                <label for="item-respawn">아이템 추가</label>
+                <output id="item-respawn-value" for="item-respawn">5초</output>
+              </div>
+              <input
+                id="item-respawn"
+                name="itemRespawnSeconds"
+                type="range"
+                min="0"
+                max="15"
+                step="1"
+                value="5"
+              />
+            </div>
+
+            <p id="setup-summary" class="settings-summary" aria-live="polite">
+              12명 · 시작 아이템 4개 · 5초마다 1개
+            </p>
+
             <button class="primary-action" type="submit">
               <span>빠른 시작</span>
               <span aria-hidden="true">→</span>
@@ -118,6 +154,14 @@
             <div>
               <dt>몸무게</dt>
               <dd><output id="mass-value">보통</output></dd>
+            </div>
+            <div>
+              <dt>효과</dt>
+              <dd><output id="effect-value">없음</output></dd>
+            </div>
+            <div>
+              <dt>아이템</dt>
+              <dd><output id="item-value">0</output></dd>
             </div>
             <div>
               <dt>생존</dt>

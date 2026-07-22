@@ -21,7 +21,7 @@ On 2026-07-22, Bun 1.3.14 ran 7,200 ticks each across sequential seeded rounds o
 | 24 | 0.647 ms | 2.844 ms | 0.2527 | 1 |
 | 32 | 1.159 ms | 5.286 ms | 0.2704 | 1 |
 
-The 24-participant AI maximum was 104.102 ms and the 32-participant simulation maximum was 97.162 ms. The tail budgets pass, but these isolated maxima remain profiling targets. Headless heap deltas are observational because the harness does not force garbage collection and must not be compared with the Chrome restart measurement.
+The 24-participant AI maximum was 104.102 ms and the 32-participant simulation maximum was 97.162 ms. Those pre-item tail budgets passed. The first two item-enabled runs exposed allocation pressure in pickup scans. The second run brought p95 back under the 3/4/6 ms thresholds at 2.261/3.855/5.824 ms, but three 24-participant steps exceeded 100 ms, so the full headless gate remained failed. Pickup, expiry, item hashing, and bot item targeting were then changed to avoid steady-state allocation. A third run was not executed because the configured session policy stops an intent after two failures. Headless heap deltas remain observational because the harness does not force garbage collection and must not be compared with the Chrome restart measurement.
 
 ## Local Production-Chrome Evidence
 
@@ -29,11 +29,11 @@ A Vite production build ran in local headless Chrome at 1280×720. Each four-sec
 
 | Participants | Seed | Frame p95 | Maximum frame | Delivered ticks / requested simulation second | Long frames over 100 ms |
 |---:|---|---:|---:|---:|---:|
-| 12 | `0000000c00000000` | 17.0 ms | 17.3 ms | 61.33 | 0 |
-| 24 | `0000001800000001` | 16.8 ms | 17.9 ms | 63.21 | 0 |
-| 32 | `0000002000000000` | 16.8 ms | 17.8 ms | 60.67 | 0 |
+| 12 | `0000000c00000000` | 16.8 ms | 66.7 ms | 61.23 | 0 |
+| 24 | `0000001800000001` | 16.8 ms | 17.7 ms | 61.46 | 0 |
+| 32 | `0000002000000001` | 16.8 ms | 19.3 ms | 62.47 | 0 |
 
-Twenty immediate 32-participant restarts followed by CDP garbage collection increased used heap by 1,572,448 bytes and left one canvas. This is Chromium-specific lab evidence. The host reports device pixel ratio 1, so the run confirms the Mayhem upper bound but does not exercise a physical high-DPR display.
+These 2026-07-22 samples include the recommended item policy and Collector item interest. Twenty immediate 32-participant restarts followed by CDP garbage collection increased used heap by 1,391,252 bytes and left one canvas. This is Chromium-specific lab evidence. The host reports device pixel ratio 1, so the run confirms the Mayhem upper bound but does not exercise a physical high-DPR display.
 
 ## Limits
 

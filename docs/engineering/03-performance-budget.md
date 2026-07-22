@@ -17,7 +17,7 @@ The physical baseline device and repeatable browser capture procedure are still 
 
 - The 100-run determinism test executes 12,000 ticks with 12 participants and must finish within its 15-second Vitest budget. Observed 2026-07-22 local runs completed in approximately 2.7 to 13.5 seconds under varying concurrent test load; this is evidence from one workstation, not a portable forecast. Repeated approach to the upper bound requires profiling rather than a silent timeout increase.
 - A 32-participant `RenderFrameV1` has a 256 KiB warning threshold. Production code must not JSON-serialize the full frame every render.
-- Total compressed production JavaScript has a 180 KiB warning budget and CSS has a 20 KiB warning budget before art/audio assets. The scale-enabled 2026-07-22 Vite build reports approximately 153.80 KiB gzip across emitted JavaScript chunks, a 44.73 KiB gzip entry chunk, and 2.17 KiB gzip CSS. Chunk count alone is not a failure when Vite and PixiJS load the provider-neutral static artifact correctly.
+- Total compressed production JavaScript has a 180 KiB warning budget and CSS has a 20 KiB warning budget before art/audio assets. The item-enabled 2026-07-22 Vite build reports approximately 157.15 KiB gzip across emitted JavaScript chunks, a 48.08 KiB gzip entry chunk, and 2.25 KiB gzip CSS. Chunk count alone is not a failure when Vite and PixiJS load the provider-neutral static artifact correctly.
 - Replay JSON is capped at 5 MiB and 7,200 ticks before parsing or execution.
 
 ## Hot-path Rules
@@ -25,6 +25,7 @@ The physical baseline device and repeatable browser capture procedure are still 
 - Simulation work is renderer-independent and allocation changes must be measured with 12, 24, and 32 participants.
 - Same-tick shove contacts remain batched for correctness. A stable 1.7-unit spatial hash supplies same and adjacent-cell pairs to weak contacts and shoves, preserves ActorId order, and reports candidate/full-pair source counts.
 - Bot decisions run on staggered 12-tick schedules, retain intent between decisions, query a bounded spatial neighborhood, and score at most six nearby candidates. Browser composition reuses the last emitted `RenderFrameV1` for AI and presentation instead of rebuilding and hashing the world multiple times per tick.
+- Item pickup uses bounded direct squared-distance scans without per-item steady-state sorting. Spawn and safe-area work is skipped on ticks with neither a due spawn nor an arena transition. Item-enabled Chrome evidence passes at 12/24/32, while the final headless tail rerun remains required after the latest allocation optimization.
 - No background job, application network request, analytics upload, or remote model call belongs in the MVP runtime.
 
 ## Review Blockers

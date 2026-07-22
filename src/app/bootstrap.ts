@@ -1,7 +1,9 @@
 import {
   getArenaSize,
   getPresetCollapseSpeed,
+  getPresetItemRespawnSeconds,
   getPresetPlayerCount,
+  getRecommendedInitialItemCount,
   isPresetName,
   normalizeSettings,
   type GameSettings,
@@ -27,6 +29,12 @@ const ACTION_LABELS = Object.freeze({
   Anchored: "고정",
   Falling: "낙하",
   Eliminated: "탈락",
+} as const);
+
+const ITEM_LABELS = Object.freeze({
+  "iron-boots": "철 장화",
+  feather: "깃털",
+  "spring-glove": "스프링 장갑",
 } as const);
 
 function requireElement<T extends Element>(
@@ -68,6 +76,9 @@ function createConfig(settings: GameSettings) {
     arenaRows: arenaSize.rows,
     roundLimitSeconds: 75,
     collapseSpeed: getPresetCollapseSpeed(settings.preset),
+    itemsEnabled: settings.initialItemCount > 0 || settings.itemRespawnSeconds > 0,
+    initialItemCount: settings.initialItemCount,
+    itemRespawnSeconds: settings.itemRespawnSeconds,
   });
 }
 
@@ -86,6 +97,10 @@ function getEventMessage(event: SimulationEventV1): string | undefined {
       return event.actorId === 1 ? "회피 성공!" : undefined;
     case "falling-started":
       return event.actorId === 1 ? "발밑이 없어!" : undefined;
+    case "item-picked-up":
+      return event.actorId === 1 && event.itemDefinitionId !== undefined
+        ? `${ITEM_LABELS[event.itemDefinitionId]} 획득!`
+        : undefined;
     default:
       return undefined;
   }
@@ -95,6 +110,15 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   const form = requireElement(root, "#game-settings", HTMLFormElement);
   const playerCount = requireElement(root, "#player-count", HTMLInputElement);
   const playerCountValue = requireElement(root, "#player-count-value", HTMLOutputElement);
+  const initialItemCount = requireElement(root, "#initial-item-count", HTMLInputElement);
+  const initialItemCountValue = requireElement(
+    root,
+    "#initial-item-count-value",
+    HTMLOutputElement,
+  );
+  const itemRespawn = requireElement(root, "#item-respawn", HTMLInputElement);
+  const itemRespawnValue = requireElement(root, "#item-respawn-value", HTMLOutputElement);
+  const setupSummary = requireElement(root, "#setup-summary", HTMLElement);
   const arenaActions = requireElement(root, "#arena-actions", HTMLElement);
   const readyMessage = requireElement(root, "#round-message", HTMLElement);
   const restartButton = requireElement(root, "#restart-round", HTMLButtonElement);
@@ -105,6 +129,8 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   const tickValue = requireElement(root, "#tick-value", HTMLOutputElement);
   const actionValue = requireElement(root, "#action-value", HTMLOutputElement);
   const massValue = requireElement(root, "#mass-value", HTMLOutputElement);
+  const effectValue = requireElement(root, "#effect-value", HTMLOutputElement);
+  const itemValue = requireElement(root, "#item-value", HTMLOutputElement);
   const survivorValue = requireElement(root, "#survivor-value", HTMLOutputElement);
   const rateValue = requireElement(root, "#rate-value", HTMLOutputElement);
   const positionValue = requireElement(root, "#position-value", HTMLOutputElement);
@@ -115,15 +141,42 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   let session: GameSession | undefined;
   let latestSettings = normalizeSettings({ playerCount: 12, preset: "default" });
 
+  const readSettings = (): GameSettings =>
+    normalizeSettings({
+      playerCount: Number(playerCount.value),
+      preset: readSelectedPreset(form),
+      initialItemCount: Number(initialItemCount.value),
+      itemRespawnSeconds: Number(itemRespawn.value),
+    });
+
+  const setRecommendedInitialItems = (participantCount: number): void => {
+    initialItemCount.max = String(Math.ceil(participantCount * 0.5));
+    initialItemCount.value = String(getRecommendedInitialItemCount(participantCount));
+  };
+
+  const renderSettingsSummary = (): void => {
+    const settings = readSettings();
+    const isMayhem = settings.playerCount >= 25;
+    initialItemCount.max = String(Math.ceil(settings.playerCount * 0.5));
+    initialItemCount.value = String(settings.initialItemCount);
+    initialItemCountValue.value = `${settings.initialItemCount}개`;
+    itemRespawn.value = String(settings.itemRespawnSeconds);
+    itemRespawnValue.value =
+      settings.itemRespawnSeconds === 0 ? "추가 없음" : `${settings.itemRespawnSeconds}초`;
+    setupSummary.textContent = `${settings.playerCount}명 · 시작 아이템 ${settings.initialItemCount}개 · ${
+      settings.itemRespawnSeconds === 0
+        ? "추가 생성 없음"
+        : `${settings.itemRespawnSeconds}초마다 1개`
+    }${isMayhem ? " · 난장판" : ""}`;
+    root.dataset.scale = isMayhem ? "mayhem" : "normal";
+  };
+
   const renderSetupPreview = (): void => {
     if (renderer === undefined) {
       return;
     }
 
-    const settings = normalizeSettings({
-      playerCount: Number(playerCount.value),
-      preset: readSelectedPreset(form),
-    });
+    const settings = readSettings();
     const previewWorld = new SimulationWorld(
       createConfig(settings),
       `setup-${settings.playerCount}`,
@@ -146,6 +199,13 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     actionValue.value = ACTION_LABELS[human.action];
     massValue.value =
       human.massFactor < 0.9 ? "가벼움" : human.massFactor > 1.1 ? "무거움" : "보통";
+    effectValue.value =
+      human.effects.length === 0
+        ? human.springBoosted
+          ? "스프링 발동"
+          : "없음"
+        : human.effects.map(({ definitionId }) => ITEM_LABELS[definitionId]).join(" · ");
+    itemValue.value = String(current.frame.items.length);
     survivorValue.value = String(
       current.frame.participants.filter(
         (participant) =>
@@ -230,6 +290,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     latestSettings = settings;
     root.dataset.screen = "arena";
     root.dataset.round = "active";
+    root.dataset.initialItems = String(settings.initialItemCount);
     form.hidden = true;
     arenaActions.hidden = false;
     telemetry.hidden = false;
@@ -244,8 +305,13 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
 
   playerCount.addEventListener("input", () => {
     setPlayerCount(playerCount, playerCountValue, Number(playerCount.value));
+    setRecommendedInitialItems(Number(playerCount.value));
+    renderSettingsSummary();
     renderSetupPreview();
   });
+
+  initialItemCount.addEventListener("input", renderSettingsSummary);
+  itemRespawn.addEventListener("input", renderSettingsSummary);
 
   form.addEventListener("change", (event) => {
     const target = event.target;
@@ -256,18 +322,16 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
 
     if (isPresetName(target.value)) {
       setPlayerCount(playerCount, playerCountValue, getPresetPlayerCount(target.value));
+      setRecommendedInitialItems(getPresetPlayerCount(target.value));
+      itemRespawn.value = String(getPresetItemRespawnSeconds(target.value));
+      renderSettingsSummary();
       renderSetupPreview();
     }
   });
 
   form.addEventListener("submit", (event) => {
     event.preventDefault();
-    startRound(
-      normalizeSettings({
-        playerCount: Number(playerCount.value),
-        preset: readSelectedPreset(form),
-      }),
-    );
+    startRound(readSettings());
   });
 
   restartButton.addEventListener("click", () => startRound(latestSettings));
@@ -294,4 +358,6 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     },
     { once: true },
   );
+
+  renderSettingsSummary();
 }

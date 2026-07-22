@@ -88,7 +88,14 @@ function parseConfig(value: unknown): GameConfigV1 {
       value.collapseSpeed === "fast"
         ? value.collapseSpeed
         : fail("config.collapseSpeed is unsupported"),
-    itemsEnabled: value.itemsEnabled === false ? false : fail("config.itemsEnabled must be false"),
+    itemsEnabled: readBoolean(value, "itemsEnabled"),
+    itemPolicyVersion:
+      readInteger(value, "itemPolicyVersion") === 1
+        ? 1
+        : fail("config.itemPolicyVersion is unsupported"),
+    initialItemCount: readInteger(value, "initialItemCount"),
+    maximumItemCount: readInteger(value, "maximumItemCount"),
+    itemSpawnIntervalTicks: readInteger(value, "itemSpawnIntervalTicks"),
   });
 
   if (config.configVersion !== readInteger(value, "configVersion")) {
@@ -104,6 +111,27 @@ function parseConfig(value: unknown): GameConfigV1 {
 
   if (config.roundLimitTicks < 1 || config.roundLimitTicks > MAX_REPLAY_TICKS) {
     throw new SimulationContractError("config round limit is outside replay bounds");
+  }
+
+  assertIntegerInRange(
+    config.maximumItemCount,
+    "config.maximumItemCount",
+    2,
+    Math.ceil(config.participantCount * 0.5),
+  );
+  assertIntegerInRange(
+    config.initialItemCount,
+    "config.initialItemCount",
+    0,
+    config.maximumItemCount,
+  );
+  assertIntegerInRange(config.itemSpawnIntervalTicks, "config.itemSpawnIntervalTicks", 0, 1_800);
+
+  if (
+    config.maximumItemCount !== Math.ceil(config.participantCount * 0.5) ||
+    (!config.itemsEnabled && (config.initialItemCount !== 0 || config.itemSpawnIntervalTicks !== 0))
+  ) {
+    throw new SimulationContractError("config item policy is inconsistent");
   }
 
   return config;

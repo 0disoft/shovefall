@@ -22,6 +22,8 @@ function survivesProfileWindow(participantCount: number, seed: string): boolean 
       arenaRows: arenaSize.rows,
       roundLimitSeconds: 120,
       collapseSpeed: participantCount >= 25 ? "fast" : "normal",
+      itemsEnabled: true,
+      itemRespawnSeconds: participantCount >= 25 ? 3 : 5,
     }),
     seed,
     { humanActorId: 1 },

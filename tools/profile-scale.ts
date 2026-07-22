@@ -53,6 +53,8 @@ function profileParticipantCount(participantCount: number) {
     arenaRows: arenaSize.rows,
     roundLimitSeconds: 120,
     collapseSpeed: "slow",
+    itemsEnabled: true,
+    itemRespawnSeconds: participantCount >= 25 ? 3 : 5,
   });
   const aiDurations: number[] = [];
   const simulationDurations: number[] = [];

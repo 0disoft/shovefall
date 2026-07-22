@@ -4,6 +4,7 @@ import {
   type ActorCommandV1,
   type ActorId,
   type RenderFrameV1,
+  type RenderItemV1,
   type RenderParticipantV1,
 } from "../simulation/contracts";
 import {
@@ -253,6 +254,7 @@ export class BotDirector {
           perceived,
           current,
           perceivedSpatialHash,
+          perceptionFrame.items,
           bounds,
           memory,
         );
@@ -302,6 +304,7 @@ export class BotDirector {
     perceived: RenderParticipantV1,
     current: RenderParticipantV1,
     perceivedSpatialHash: ParticipantSpatialHash<RenderParticipantV1>,
+    perceivedItems: readonly RenderItemV1[],
     bounds: ArenaBounds,
     memory: BotMemory,
   ): BotDecision {
@@ -327,6 +330,32 @@ export class BotDirector {
         move: getPerpendicularTowardCenter(threat.facing, current.position, bounds.center),
         shovePressed: false,
         dodgePressed: true,
+      });
+    }
+
+    let nearestItem: { item: RenderItemV1; distance: number } | undefined;
+
+    for (const item of perceivedItems) {
+      const distance = vectorLength(subtractVectors(item.position, perceived.position));
+
+      if (
+        nearestItem === undefined ||
+        distance < nearestItem.distance ||
+        (distance === nearestItem.distance && item.itemId < nearestItem.item.itemId)
+      ) {
+        nearestItem = { item, distance };
+      }
+    }
+
+    if (
+      nearestItem !== undefined &&
+      nearestItem.distance <= 3.5 * personality.itemInterestWeight &&
+      current.action === "Ready"
+    ) {
+      return Object.freeze({
+        move: normalizeVector(subtractVectors(nearestItem.item.position, current.position)),
+        shovePressed: false,
+        dodgePressed: false,
       });
     }
 

@@ -17,6 +17,7 @@ export interface BotPersonality {
   readonly heavyTargetPenalty: number;
   readonly shoveDistance: number;
   readonly jitterRadians: number;
+  readonly itemInterestWeight: number;
 }
 
 export const BOT_PERSONALITIES: Readonly<Record<BotPersonalityKind, BotPersonality>> =
@@ -30,6 +31,7 @@ export const BOT_PERSONALITIES: Readonly<Record<BotPersonalityKind, BotPersonali
       heavyTargetPenalty: 0.2,
       shoveDistance: 1.28,
       jitterRadians: 0.11,
+      itemInterestWeight: 0.28,
     }),
     Survivor: Object.freeze({
       kind: "Survivor",
@@ -40,6 +42,7 @@ export const BOT_PERSONALITIES: Readonly<Record<BotPersonalityKind, BotPersonali
       heavyTargetPenalty: 0.55,
       shoveDistance: 1.08,
       jitterRadians: 0.08,
+      itemInterestWeight: 0.42,
     }),
     Opportunist: Object.freeze({
       kind: "Opportunist",
@@ -50,6 +53,7 @@ export const BOT_PERSONALITIES: Readonly<Record<BotPersonalityKind, BotPersonali
       heavyTargetPenalty: 0.35,
       shoveDistance: 1.18,
       jitterRadians: 0.09,
+      itemInterestWeight: 0.34,
     }),
     Disruptor: Object.freeze({
       kind: "Disruptor",
@@ -60,6 +64,7 @@ export const BOT_PERSONALITIES: Readonly<Record<BotPersonalityKind, BotPersonali
       heavyTargetPenalty: 0.15,
       shoveDistance: 1.32,
       jitterRadians: 0.14,
+      itemInterestWeight: 0.22,
     }),
     Collector: Object.freeze({
       kind: "Collector",
@@ -70,5 +75,6 @@ export const BOT_PERSONALITIES: Readonly<Record<BotPersonalityKind, BotPersonali
       heavyTargetPenalty: 0.4,
       shoveDistance: 1.12,
       jitterRadians: 0.12,
+      itemInterestWeight: 1.8,
     }),
   });

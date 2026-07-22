@@ -1,8 +1,8 @@
 {
   "formatVersion": 1,
-  "productVersion": "0.7.0",
-  "simulationVersion": "3.0.0",
-  "contentVersion": "2.0.0",
+  "productVersion": "0.8.0",
+  "simulationVersion": "4.0.0",
+  "contentVersion": "3.0.0",
   "buildId": "fixture-v3",
   "config": {
     "configVersion": 1,
@@ -13,7 +13,11 @@
     "density": "normal",
     "difficulty": "normal",
     "collapseSpeed": "normal",
-    "itemsEnabled": false
+    "itemsEnabled": false,
+    "itemPolicyVersion": 1,
+    "initialItemCount": 0,
+    "maximumItemCount": 6,
+    "itemSpawnIntervalTicks": 0
   },
   "masterSeed": "diagonal-twelve-v1",
   "humanActorId": 1,
@@ -78,20 +82,20 @@
   "checkpoints": [
     {
       "tick": 60,
-      "stateHash": "fnv1a32:8cdb301b"
+      "stateHash": "fnv1a32:38aafc76"
     },
     {
       "tick": 120,
-      "stateHash": "fnv1a32:a42ad6c9"
+      "stateHash": "fnv1a32:911d2ca4"
     },
     {
       "tick": 180,
-      "stateHash": "fnv1a32:9f971ff2"
+      "stateHash": "fnv1a32:7b71f933"
     },
     {
       "tick": 240,
-      "stateHash": "fnv1a32:5d58a3e3"
+      "stateHash": "fnv1a32:2c50397e"
     }
   ],
-  "finalHash": "fnv1a32:5d58a3e3"
+  "finalHash": "fnv1a32:2c50397e"
 }

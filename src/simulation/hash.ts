@@ -1,10 +1,20 @@
 import { quantize } from "./math";
-import type { ParticipantState, RoundId, RoundStateV1, Tick, TileState } from "./contracts";
+import type {
+  ItemState,
+  ParticipantState,
+  RoundId,
+  RoundStateV1,
+  Tick,
+  TileState,
+} from "./contracts";
 
 export interface HashableWorldState {
   readonly roundId: RoundId;
   readonly tick: Tick;
   readonly participants: readonly ParticipantState[];
+  readonly items: readonly ItemState[];
+  readonly nextItemId: number;
+  readonly nextItemSpawnTick: Tick | null;
   readonly tiles: readonly TileState[];
   readonly round: RoundStateV1;
 }
@@ -38,6 +48,7 @@ export function hashWorldState(state: HashableWorldState): string {
         quantize(body.facing.x),
         quantize(body.facing.y),
         quantize(body.radius),
+        quantize(body.baseMassFactor),
         quantize(body.massFactor),
         body.unsupportedTicks,
         participant.action.startedTick,
@@ -49,8 +60,18 @@ export function hashWorldState(state: HashableWorldState): string {
           : `${quantize(participant.action.lockedDirection.x)},${quantize(participant.action.lockedDirection.y)}`,
         participant.cooldowns.shoveReadyTick,
         participant.cooldowns.dodgeReadyTick,
+        participant.action.springBoosted ? 1 : 0,
+        participant.effects
+          .map(
+            (effect) => `${effect.definitionId},${effect.appliedTick},${effect.endsTick ?? "none"}`,
+          )
+          .join("/"),
       ].join(":");
     });
+  const itemParts = state.items.map(
+    (item) =>
+      `${item.itemId}:${item.definitionId}:${quantize(item.position.x)}:${quantize(item.position.y)}:${item.spawnedTick}`,
+  );
   const tileParts = state.tiles
     .toSorted((left, right) => left.tileId.localeCompare(right.tileId))
     .map((tile) => `${tile.tileId}:${tile.state}`);
@@ -58,6 +79,8 @@ export function hashWorldState(state: HashableWorldState): string {
     `round:${state.roundId}`,
     `tick:${state.tick}`,
     `participants:${participantParts.join("|")}`,
+    `items:${itemParts.join("|")}`,
+    `item-cursor:${state.nextItemId}:${state.nextItemSpawnTick ?? "none"}`,
     `tiles:${tileParts.join("|")}`,
     `result:${state.round.status}:${state.round.winnerActorId ?? "none"}:${state.round.reason ?? "none"}:${state.round.completedTick ?? -1}`,
   ].join(";");

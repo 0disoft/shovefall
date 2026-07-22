@@ -19,6 +19,7 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await expect(page.getByRole("heading", { level: 1, name: "끝까지 남아." })).toBeVisible();
   await expect(page.getByText("WebGL 준비됨")).toBeVisible();
   await expect(page.locator("#arena-host canvas")).toBeVisible();
+  await expect(page.locator("#setup-summary")).toHaveText("12명 · 시작 아이템 4개 · 5초마다 1개");
 
   await page.getByRole("button", { name: "빠른 시작" }).click();
 
@@ -26,6 +27,7 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await expect(page.getByText("움직여서 가장자리로 몰아붙여.")).toBeVisible();
   await expect(page.locator("#arena-host")).toBeFocused();
   await expect(page.locator("#game-telemetry")).toBeVisible();
+  await expect(page.locator("#app")).toHaveAttribute("data-initial-items", "4");
   await expect
     .poll(async () => Number(await page.locator("#game-telemetry").getAttribute("data-tick")))
     .toBeGreaterThan(0);
@@ -59,8 +61,13 @@ test("completes a collapsing round and starts a fresh world", async ({ page }) =
   await page.goto("/");
 
   await page.getByLabel("난장판").check();
+  await expect(page.locator("#setup-summary")).toContainText("32명");
+  await expect(page.locator("#setup-summary")).toContainText("난장판");
+  await expect(page.locator("#initial-item-count-value")).toHaveText("11개");
+  await expect(page.locator("#item-respawn-value")).toHaveText("3초");
   await page.locator("#player-count").fill("4");
   await expect(page.locator("#player-count-value")).toHaveText("4명");
+  await expect(page.locator("#initial-item-count-value")).toHaveText("2개");
   await page.getByRole("button", { name: "빠른 시작" }).click();
 
   await expect(page.locator("#app")).toHaveAttribute("data-round", "active");

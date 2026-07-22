@@ -2,6 +2,7 @@ import { Application, Graphics } from "pixi.js";
 import type {
   ParticipantActionKind,
   RenderFrameV1,
+  RenderItemV1,
   RenderParticipantV1,
   TileState,
 } from "../simulation/contracts";
@@ -34,6 +35,11 @@ const ACTION_COLORS: Readonly<Record<ParticipantActionKind, number>> = Object.fr
   Falling: 0x727b78,
   Eliminated: 0x727b78,
 });
+const ITEM_COLORS = Object.freeze({
+  "iron-boots": 0x56626f,
+  feather: 0xe9f5ff,
+  "spring-glove": 0xff8f5c,
+} as const);
 
 function getArenaDimensions(frame: RenderFrameV1): { columns: number; rows: number } {
   return frame.tiles.reduce(
@@ -127,6 +133,43 @@ function drawDirection(
     });
 }
 
+function drawItem(graphics: Graphics, item: RenderItemV1, transform: ArenaTransform): void {
+  const x = transform.originX + item.position.x * transform.pitch - TILE_GAP / 2;
+  const y = transform.originY + item.position.y * transform.pitch - TILE_GAP / 2;
+  const radius = Math.max(5, transform.tileSize * 0.16);
+  const color = ITEM_COLORS[item.definitionId];
+
+  graphics.circle(x, y, radius * 1.55).fill({ color: 0x101514, alpha: 0.72 });
+
+  if (item.definitionId === "iron-boots") {
+    graphics
+      .roundRect(x - radius * 0.72, y - radius * 0.9, radius * 0.58, radius * 1.5, 2)
+      .roundRect(x + radius * 0.14, y - radius * 0.9, radius * 0.58, radius * 1.5, 2)
+      .fill({ color })
+      .stroke({ color: 0xe2e8ec, width: 1.5 });
+  } else if (item.definitionId === "feather") {
+    graphics
+      .moveTo(x - radius * 0.65, y + radius * 0.72)
+      .bezierCurveTo(
+        x - radius * 0.15,
+        y - radius * 0.95,
+        x + radius * 0.9,
+        y - radius * 0.72,
+        x + radius * 0.48,
+        y + radius * 0.3,
+      )
+      .lineTo(x - radius * 0.65, y + radius * 0.72)
+      .fill({ color })
+      .stroke({ color: 0x50708a, width: 1.5 });
+  } else {
+    graphics
+      .circle(x, y, radius * 0.78)
+      .stroke({ color, width: Math.max(2, radius * 0.3) })
+      .circle(x, y, radius * 0.25)
+      .fill({ color: 0xffd166 });
+  }
+}
+
 function drawParticipant(
   graphics: Graphics,
   participant: RenderParticipantV1,
@@ -154,6 +197,7 @@ function drawParticipant(
     ? 0xf6f5ef
     : (BOT_COLORS[(participant.actorId - 2) % BOT_COLORS.length] ?? 0xb8c1bd);
   const actionColor = getActionColor(participant.action);
+  const effectIds = new Set(participant.effects.map(({ definitionId }) => definitionId));
 
   if (participant.action === "DodgeActive") {
     const previousX =
@@ -186,12 +230,24 @@ function drawParticipant(
 
   const massRingRadius = visualRadius + Math.max(3, transform.tileSize * 0.06);
   graphics.circle(x, y, massRingRadius).stroke({
-    color: actionColor,
+    color: effectIds.has("iron-boots")
+      ? ITEM_COLORS["iron-boots"]
+      : effectIds.has("feather")
+        ? ITEM_COLORS.feather
+        : actionColor,
     width: Math.max(1, participant.massFactor * 1.6),
     alpha: 0.78,
   });
 
   drawDirection(graphics, participant, x, y, visualRadius);
+
+  if (effectIds.has("spring-glove") || participant.springBoosted) {
+    const markerY = y - visualRadius - Math.max(6, transform.tileSize * 0.12);
+    graphics.circle(x, markerY, Math.max(3, transform.tileSize * 0.07)).stroke({
+      color: ITEM_COLORS["spring-glove"],
+      width: participant.springBoosted ? 4 : 2,
+    });
+  }
 
   if (participant.action === "Stumbling" || participant.action === "Falling") {
     const markerSize = visualRadius * 0.55;
@@ -223,8 +279,9 @@ export async function createArenaRenderer(host: HTMLElement): Promise<ArenaRende
   host.replaceChildren(application.canvas);
 
   const tiles = new Graphics();
+  const items = new Graphics();
   const participants = new Graphics();
-  application.stage.addChild(tiles, participants);
+  application.stage.addChild(tiles, items, participants);
   let latestFrame: RenderFrameV1 | undefined;
   let latestInterpolationAlpha = 0;
   let latestHumanActorId = 1;
@@ -240,10 +297,15 @@ export async function createArenaRenderer(host: HTMLElement): Promise<ArenaRende
       application.screen.height,
     );
     tiles.clear();
+    items.clear();
     participants.clear();
 
     for (const tile of latestFrame.tiles) {
       drawTile(tiles, tile, transform);
+    }
+
+    for (const item of latestFrame.items) {
+      drawItem(items, item, transform);
     }
 
     for (const participant of latestFrame.participants) {

@@ -3,11 +3,13 @@ import { FIXED_TICKS_PER_SECOND } from "./versions";
 
 export type RoundId = number;
 export type ActorId = number;
+export type ItemId = number;
 export type Tick = number;
 export type TileId = `${number}:${number}`;
 export type CollapseSpeed = "slow" | "normal" | "fast";
 export type TileStateKind = "Stable" | "Warning" | "Collapsing" | "Void";
 export type RoundEndReason = "last-standing" | "no-survivors" | "time-limit";
+export type ItemDefinitionId = "iron-boots" | "feather" | "spring-glove";
 
 export type ParticipantActionKind =
   | "Ready"
@@ -29,7 +31,11 @@ export interface GameConfigV1 {
   readonly density: "normal";
   readonly difficulty: "normal";
   readonly collapseSpeed: CollapseSpeed;
-  readonly itemsEnabled: false;
+  readonly itemsEnabled: boolean;
+  readonly itemPolicyVersion: 1;
+  readonly initialItemCount: number;
+  readonly maximumItemCount: number;
+  readonly itemSpawnIntervalTicks: number;
 }
 
 export interface GameConfigInput {
@@ -38,6 +44,9 @@ export interface GameConfigInput {
   readonly arenaRows?: number;
   readonly roundLimitSeconds?: number;
   readonly collapseSpeed?: CollapseSpeed;
+  readonly itemsEnabled?: boolean;
+  readonly initialItemCount?: number;
+  readonly itemRespawnSeconds?: number;
 }
 
 export interface ActorCommandV1 {
@@ -55,6 +64,7 @@ export interface BodyState {
   readonly velocity: Vector2;
   readonly facing: Vector2;
   readonly radius: number;
+  readonly baseMassFactor: number;
   readonly massFactor: number;
   readonly unsupportedTicks: number;
 }
@@ -66,6 +76,13 @@ export interface ActionState {
   readonly hitActorIds: readonly ActorId[];
   readonly resolvedActorIds: readonly ActorId[];
   readonly lockedDirection: Vector2 | null;
+  readonly springBoosted: boolean;
+}
+
+export interface EffectInstance {
+  readonly definitionId: ItemDefinitionId;
+  readonly appliedTick: Tick;
+  readonly endsTick: Tick | null;
 }
 
 export interface CooldownState {
@@ -79,7 +96,15 @@ export interface ParticipantState {
   readonly body: BodyState;
   readonly action: ActionState;
   readonly cooldowns: CooldownState;
+  readonly effects: readonly EffectInstance[];
   readonly active: boolean;
+}
+
+export interface ItemState {
+  readonly itemId: ItemId;
+  readonly definitionId: ItemDefinitionId;
+  readonly position: Vector2;
+  readonly spawnedTick: Tick;
 }
 
 export interface TileState {
@@ -109,6 +134,15 @@ export interface RenderParticipantV1 {
   readonly unsupportedTicks: number;
   readonly shoveReadyTick: Tick;
   readonly dodgeReadyTick: Tick;
+  readonly effects: readonly EffectInstance[];
+  readonly springBoosted: boolean;
+}
+
+export interface RenderItemV1 {
+  readonly itemId: ItemId;
+  readonly definitionId: ItemDefinitionId;
+  readonly position: Vector2;
+  readonly spawnedTick: Tick;
 }
 
 export interface RenderFrameV1 {
@@ -117,6 +151,7 @@ export interface RenderFrameV1 {
   readonly tick: Tick;
   readonly stateHash: string;
   readonly participants: readonly RenderParticipantV1[];
+  readonly items: readonly RenderItemV1[];
   readonly tiles: readonly TileState[];
   readonly round: RoundStateV1;
 }
@@ -129,6 +164,9 @@ export type SimulationEventKind =
   | "dodge-started"
   | "dodge-succeeded"
   | "falling-started"
+  | "item-picked-up"
+  | "item-spawned"
+  | "item-removed"
   | "eliminated"
   | "tile-warning"
   | "tile-collapsing"
@@ -144,6 +182,8 @@ export interface SimulationEventV1 {
   readonly actorId?: ActorId;
   readonly targetActorId?: ActorId;
   readonly tileId?: TileId;
+  readonly itemId?: ItemId;
+  readonly itemDefinitionId?: ItemDefinitionId;
   readonly winnerActorId?: ActorId;
   readonly vector?: Vector2;
   readonly reason?: "inactive-actor" | "unknown-actor" | RoundEndReason;
@@ -188,11 +228,20 @@ export function normalizeGameConfig(input: GameConfigInput): GameConfigV1 {
   const arenaRows = Math.round(input.arenaRows ?? 9);
   const roundLimitSeconds = Math.round(input.roundLimitSeconds ?? 75);
   const collapseSpeed = input.collapseSpeed ?? "normal";
+  const itemsEnabled = input.itemsEnabled ?? false;
+  const maximumItemCount = Math.ceil(participantCount * 0.5);
+  const defaultInitialItemCount = Math.ceil(participantCount * 0.33);
+  const initialItemCount = itemsEnabled
+    ? Math.round(input.initialItemCount ?? defaultInitialItemCount)
+    : 0;
+  const itemRespawnSeconds = itemsEnabled ? Math.round(input.itemRespawnSeconds ?? 5) : 0;
 
   assertIntegerInRange(participantCount, "participantCount", 4, 32);
   assertIntegerInRange(arenaColumns, "arenaColumns", 7, 31);
   assertIntegerInRange(arenaRows, "arenaRows", 7, 31);
   assertIntegerInRange(roundLimitSeconds, "roundLimitSeconds", 1, 120);
+  assertIntegerInRange(initialItemCount, "initialItemCount", 0, maximumItemCount);
+  assertIntegerInRange(itemRespawnSeconds, "itemRespawnSeconds", 0, 30);
 
   if (collapseSpeed !== "slow" && collapseSpeed !== "normal" && collapseSpeed !== "fast") {
     throw new SimulationContractError("collapseSpeed is unsupported");
@@ -207,7 +256,11 @@ export function normalizeGameConfig(input: GameConfigInput): GameConfigV1 {
     density: "normal",
     difficulty: "normal",
     collapseSpeed,
-    itemsEnabled: false,
+    itemsEnabled,
+    itemPolicyVersion: 1,
+    initialItemCount,
+    maximumItemCount,
+    itemSpawnIntervalTicks: itemRespawnSeconds * FIXED_TICKS_PER_SECOND,
   });
 }
 

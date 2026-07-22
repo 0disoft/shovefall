@@ -12,11 +12,11 @@
 
 ## Round Configuration
 
-`GameConfigV1` is normalized before world creation. The current foundation supports 4 through 32 participants, arenas from 7 through 31 columns and rows, a maximum 120-second replay horizon, slow, normal, or fast collapse, normal density and difficulty, and no active items. Later schema versions must add settings explicitly rather than interpreting unknown fields.
+`GameConfigV1` is normalized before world creation. It supports 4 through 32 participants, arenas from 7 through 31 columns and rows, a maximum 120-second replay horizon, slow, normal, or fast collapse, normal density and difficulty, item policy version 1, a bounded initial item count, a participant-derived simultaneous cap, and a zero-to-thirty-second spawn interval. The same raw values normalize identically, and disabled items require zero initial and spawn values.
 
 ## Participant
 
-A participant contains stable identity, human or scripted control ownership, an active flag, a circular body, and an action state. The body owns position, velocity, facing, radius, continuous `massFactor`, and integer unsupported ticks.
+A participant contains stable identity, human or scripted control ownership, an active flag, a circular body, effects, and an action state. The body owns position, velocity, facing, radius, base and effective continuous `massFactor`, and integer unsupported ticks. Timed Iron Boots and Feather effects refresh rather than stack duplicates; opposite effects may coexist and their product is clamped to the global mass range. Spring Glove is one held charge consumed when a shove starts.
 
 Action kinds are `Ready`, `ShoveWindup`, `ShoveActive`, `ShoveRecovery`, `DodgeActive`, `Stumbling`, `Anchored`, `Falling`, and `Eliminated`. Action transitions are tick-bounded. If shove and dodge edges arrive together while both are ready, dodge has deterministic priority. `Falling` is irreversible and later transitions to `Eliminated`.
 
@@ -33,7 +33,7 @@ A tile has an integer grid location, stable `column:row` ID, and a `Stable`, `Wa
 ## Commands, Frames, and Events
 
 - `ActorCommandV1` contains tick, actor ID, normalized movement, and shove/dodge edge flags.
-- `RenderFrameV1` is an immutable presentation snapshot with current and previous positions, facing, mass, action, tiles, tick, and state hash.
+- `RenderFrameV1` is an immutable presentation snapshot with current and previous positions, facing, mass, effects, Spring Glove telegraph, items, action, tiles, tick, and state hash.
 - `SimulationEventV1` is a versioned, ordered fact stream for one-time presentation and diagnostics. Events do not drive authoritative physics.
 
 Human input and bots must use the same command path. A bot cannot directly set position, velocity, cooldown, action state, or tile state.
@@ -50,7 +50,7 @@ Randomness may select arena variants, content placement, bot personality data, a
 
 The current format accepts UTF-8 JSON up to 5 MiB and 7,200 ticks. Unknown replay majors, incompatible simulation versions, malformed booleans or numbers, commands for bots, duplicate or unordered ticks, range violations, and hash mismatches are errors. Compatibility is never guessed.
 
-Simulation version `3.0.0` adds collapse configuration, tile lifecycle, and round result to authoritative state. Content version `2.0.0` owns the first seeded collapse schedule. Replay fixtures from simulation `2.0.0` are intentionally incompatible rather than silently receiving new collapse and result semantics.
+Simulation version `4.0.0` adds item instances, timed effects, effective mass, Spring Glove shove state, item cursors, and item events to authoritative state. Content version `3.0.0` owns the three item definitions and placement constants. Replay fixtures from simulation `3.0.0` are intentionally incompatible rather than silently receiving item semantics.
 
 ## Version Ownership
 
