@@ -77,4 +77,4 @@ Stop and revisit the decision when any of the following occurs:
 
 ## Rollback
 
-Because no application source, public API, or persistent user data exists yet, rollback is cheap. Revert the toolchain commit and lockfile together. If only the TypeScript compiler track fails, adopt the official TypeScript 6 compatibility package temporarily and record the blocked TS7 capability. If an Oxc tool fails, pin the last passing version or temporarily replace only that responsibility without changing simulation or product contracts.
+Application source now depends on this baseline, so a toolchain rollback is a deliberate port rather than a lockfile-only revert. Revert or replace one tool responsibility together with its package scripts, lockfile, configuration, CI contract, and validation evidence. If only the TypeScript compiler track fails, adopt the official TypeScript 6 compatibility package temporarily and record the blocked TS7 capability. If an Oxc tool fails, pin the last passing version or temporarily replace only that responsibility without changing simulation or product contracts.

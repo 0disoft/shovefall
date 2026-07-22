@@ -11,7 +11,7 @@ The repository architecture check applies the same renderer, DOM, wall-clock, an
 
 ## Perception and Scheduling
 
-Normal bots perceive public state ten ticks late and reconsider intent every twelve ticks. Initial decision ticks are staggered by stable actor ID so all bots do not spike one frame. Between decisions, a bot preserves its movement intent and emits no repeated shove or dodge edge. A bot may inspect its own current position for immediate edge recovery; it cannot use current opponent positions to bypass delayed perception.
+Normal bots perceive public state ten ticks late and reconsider intent every twelve ticks. Initial decision ticks are staggered by stable actor ID so all bots do not spike one frame. Between decisions, a bot preserves its movement intent and emits no repeated shove or dodge edge. A bot may inspect its own current position and currently visible tile state for immediate edge or unstable-tile recovery; it cannot inspect the private future collapse plan or use current opponent positions to bypass delayed perception.
 
 Perception contains participant positions, velocities, facing, visible action state, mass, active state, and public cooldown readiness from a prior render frame. At most six nearest active candidates enter utility scoring.
 
@@ -23,7 +23,7 @@ Personality selection and decision jitter use `bot-personality:<ActorId>` and `b
 
 ## Utility Order
 
-1. Current self edge emergency moves toward arena center without attacking.
+1. Current self tile emergency moves toward the nearest stable tile, then an edge emergency moves toward arena center; neither attacks.
 2. A perceived nearby actor facing and advancing toward the bot can trigger a perpendicular dodge if the bot is ready.
 3. Remaining perceived candidates are scored by distance, edge exposure, stumble state, and mass mismatch.
 4. Self safety blends the target direction toward center near an edge.
@@ -34,6 +34,6 @@ Actor control type and human identity are not fields in the perception participa
 ## Known Limits
 
 - Ten-tick perception is longer than the six-tick shove windup, so normal bots primarily dodge dangerous approach trajectories rather than reading every shove start perfectly.
-- The current arena has no collapse or items, so `Collector` cannot yet demonstrate its intended priority.
+- The current arena has collapse but no items, so `Collector` cannot yet demonstrate its intended priority.
 - Utility weights have automated invariants but no external evidence of fun, aggression balance, or personality readability.
 - Explicit coordination is limited to incidental target geometry; side-pressure and anti-dogpile rules remain future tuning.

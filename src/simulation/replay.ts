@@ -82,6 +82,12 @@ function parseConfig(value: unknown): GameConfigV1 {
     roundLimitTicks: readInteger(value, "roundLimitTicks"),
     density: value.density === "normal" ? "normal" : fail("config.density is unsupported"),
     difficulty: value.difficulty === "normal" ? "normal" : fail("config.difficulty is unsupported"),
+    collapseSpeed:
+      value.collapseSpeed === "slow" ||
+      value.collapseSpeed === "normal" ||
+      value.collapseSpeed === "fast"
+        ? value.collapseSpeed
+        : fail("config.collapseSpeed is unsupported"),
     itemsEnabled: value.itemsEnabled === false ? false : fail("config.itemsEnabled must be false"),
   });
 

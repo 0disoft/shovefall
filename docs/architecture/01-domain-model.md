@@ -1,6 +1,6 @@
 # Domain Model
 
-- Status: Accepted combat model; collapse states staged
+- Status: Accepted combat, collapse, and round-result model
 - Owner: Repository owner
 
 ## Identity and Time
@@ -12,7 +12,7 @@
 
 ## Round Configuration
 
-`GameConfigV1` is normalized before world creation. The current foundation supports 4 through 32 participants, arenas from 7 through 31 columns and rows, a maximum 120-second replay horizon, normal density and difficulty, and no active items. Later schema versions must add settings explicitly rather than interpreting unknown fields.
+`GameConfigV1` is normalized before world creation. The current foundation supports 4 through 32 participants, arenas from 7 through 31 columns and rows, a maximum 120-second replay horizon, slow, normal, or fast collapse, normal density and difficulty, and no active items. Later schema versions must add settings explicitly rather than interpreting unknown fields.
 
 ## Participant
 
@@ -24,7 +24,11 @@ The initial tuning uses six shove-windup ticks, seven active ticks, fifteen reco
 
 ## Tile
 
-A tile has an integer grid location, stable `column:row` ID, and a lifecycle. The foundation implements `Stable`; later gameplay adds `Warning`, `Collapsing`, and `Void`. Participant support is decided from the tile state at the participant center after collision and impulse resolution, followed by an integer grace window.
+A tile has an integer grid location, stable `column:row` ID, and a `Stable`, `Warning`, `Collapsing`, or `Void` lifecycle. The private collapse plan orders outer layers before inner layers and shuffles only within a layer through the named collapse stream. Future plan data is not exposed in `RenderFrameV1`. Stable, warning, and collapsing tiles support a participant; void tiles do not. Support is decided at the participant center after collision and impulse resolution, followed by an integer grace window.
+
+## Round Result
+
+`RoundStateV1` is `Active` or `Completed`. A completed result records exactly one of `last-standing`, `no-survivors`, or `time-limit`, an optional winner, and the completion tick. The world becomes sealed after completion and rejects additional steps. Falling is already irreversible, so one grounded participant may win while the others are still completing their fall animation. A hard time limit with multiple standing participants does not invent a winner.
 
 ## Commands, Frames, and Events
 
@@ -46,7 +50,7 @@ Randomness may select arena variants, content placement, bot personality data, a
 
 The current format accepts UTF-8 JSON up to 5 MiB and 7,200 ticks. Unknown replay majors, incompatible simulation versions, malformed booleans or numbers, commands for bots, duplicate or unordered ticks, range violations, and hash mismatches are errors. Compatibility is never guessed.
 
-Simulation version `2.0.0` owns the first combat semantics. Replay fixtures generated under `1.0.0` are intentionally incompatible because movement, action state, cooldowns, previous positions, support, and collision response became authoritative hash inputs.
+Simulation version `3.0.0` adds collapse configuration, tile lifecycle, and round result to authoritative state. Content version `2.0.0` owns the first seeded collapse schedule. Replay fixtures from simulation `2.0.0` are intentionally incompatible rather than silently receiving new collapse and result semantics.
 
 ## Version Ownership
 

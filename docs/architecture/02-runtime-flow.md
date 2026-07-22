@@ -1,6 +1,6 @@
 # Runtime Flow
 
-- Status: Combat pipeline implemented; application scheduler pending
+- Status: Combat, collapse, result, and browser scheduler implemented
 - Owner: Repository owner
 
 ## Round Start
@@ -30,13 +30,15 @@ Each 60 Hz tick uses this versioned order:
 13. Decide round result.
 14. Emit ordered events, an immutable render frame, and a quantized state hash.
 
-The combat checkpoint implements stages 1 through 10 and 14. Item, collapse, spawn, and round-result stages remain explicit no-op responsibilities until their slices are implemented. Later work cannot reorder the pipeline without a simulation-version decision and regenerated replay evidence.
+Stages 1 through 10 and 12 through 14 are implemented. Item and item-spawn work in stages 11 and 12 remain explicit no-op responsibilities. Collapse advances after the current tick's support decision, so a tile that becomes void cannot retroactively remove support earlier in the same tick. Later work cannot reorder the pipeline without a simulation-version decision and regenerated replay evidence.
 
 ## Browser Scheduling
 
 The application accumulates monotonic browser time and executes whole fixed ticks. It may interpolate presentation between the two latest render frames. It may not pass render delta into the simulation, skip authoritative ticks, or allow PixiJS callbacks to mutate the world.
 
 When the browser cannot keep up, the application caps work per render frame and exposes backlog diagnostics. Normal play may slow temporarily instead of silently dropping rule steps. Focus loss clears held input and pauses or resumes through the application lifecycle contract.
+
+When the human enters irreversible falling, command input closes and accumulated browser time advances the same authoritative simulation at six times normal speed. Physics and bot rules do not change. Completion publishes the final frame before the DOM result so telemetry cannot overwrite result state, then stops scheduling until restart creates a new world.
 
 ## Replay Flow
 
@@ -48,7 +50,7 @@ Checked-in fixtures cover idle, cardinal, and diagonal inputs across 4- and 12-p
 
 - A command for the wrong tick or duplicate actor is a contract error.
 - An unknown or inactive actor command emits an ordered ignored-command event.
-- A step beyond the round limit is rejected.
+- A step after a completed result or beyond the round limit is rejected.
 - Invalid replay input never partially mutates a live application round; parsing and construction complete first.
 - Renderer initialization failure shows a DOM error and leaves the setup path recoverable.
 - Restart discards the completed world and creates a fresh round from normalized settings and a new or explicitly reused seed.

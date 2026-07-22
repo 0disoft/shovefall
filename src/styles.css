@@ -337,10 +337,17 @@ button:disabled {
 }
 
 .renderer-status[data-state="paused"],
-.renderer-status[data-state="eliminated"] {
+.renderer-status[data-state="spectating"],
+.renderer-status[data-state="completed"] {
   color: #755218;
   border-color: #d9c18d;
   background: #faf3df;
+}
+
+.renderer-status[data-state="victory"] {
+  color: #164e3d;
+  border-color: #7fb69f;
+  background: #e3f3ed;
 }
 
 .arena-host {

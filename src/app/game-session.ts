@@ -1,6 +1,11 @@
 import { createKeyboardInput, type KeyboardInput } from "./keyboard-input";
 import { BotDirector } from "../ai/bot-director";
-import type { GameConfigV1, RenderFrameV1, SimulationEventV1 } from "../simulation/contracts";
+import type {
+  GameConfigV1,
+  RenderFrameV1,
+  RoundStateV1,
+  SimulationEventV1,
+} from "../simulation/contracts";
 import { clamp } from "../simulation/math";
 import { FIXED_TICKS_PER_SECOND } from "../simulation/versions";
 import { SimulationWorld } from "../simulation/world";
@@ -9,6 +14,7 @@ import type { ArenaRenderer } from "../presentation/arena-renderer";
 const FIXED_STEP_MILLISECONDS = 1_000 / FIXED_TICKS_PER_SECOND;
 const MAX_STEPS_PER_RENDER = 8;
 const HUMAN_ACTOR_ID = 1;
+const POST_HUMAN_ELIMINATION_RATE = 6;
 
 export interface SessionTelemetry {
   readonly frame: RenderFrameV1;
@@ -16,12 +22,14 @@ export interface SessionTelemetry {
   readonly backlogTicks: number;
   readonly paused: boolean;
   readonly masterSeed: string;
+  readonly simulationRate: number;
 }
 
 export interface GameSessionHooks {
   readonly onTelemetry: (telemetry: SessionTelemetry) => void;
   readonly onEvents: (events: readonly SimulationEventV1[]) => void;
   readonly onHumanEliminated: () => void;
+  readonly onRoundCompleted: (round: RoundStateV1) => void;
   readonly onPauseChanged: (paused: boolean) => void;
   readonly onFatalError: (error: unknown) => void;
 }
@@ -43,7 +51,8 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
   let active = false;
   let paused = false;
   let currentSeed = "not-started";
-  const keyboard: KeyboardInput = createKeyboardInput(() => active && !paused);
+  let humanEliminated = false;
+  const keyboard: KeyboardInput = createKeyboardInput(() => active && !paused && !humanEliminated);
 
   const publishFrame = (): void => {
     if (world === undefined || latestFrame === undefined) {
@@ -59,6 +68,7 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
         backlogTicks: Math.floor(accumulatorMilliseconds / FIXED_STEP_MILLISECONDS),
         paused,
         masterSeed: currentSeed,
+        simulationRate: humanEliminated ? POST_HUMAN_ELIMINATION_RATE : 1,
       }),
     );
   };
@@ -82,7 +92,9 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
     if (previousTimestamp === undefined) {
       previousTimestamp = timestamp;
     } else {
-      accumulatorMilliseconds += Math.max(0, timestamp - previousTimestamp);
+      accumulatorMilliseconds +=
+        Math.max(0, timestamp - previousTimestamp) *
+        (humanEliminated ? POST_HUMAN_ELIMINATION_RATE : 1);
       previousTimestamp = timestamp;
     }
 
@@ -103,11 +115,21 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
           (participant) => participant.actorId === HUMAN_ACTOR_ID,
         );
 
-        if (human?.active === false) {
-          active = false;
+        if (
+          !humanEliminated &&
+          (human?.active === false || human?.action === "Falling" || human?.action === "Eliminated")
+        ) {
+          humanEliminated = true;
           keyboard.state.clear();
           hooks.onHumanEliminated();
+        }
+
+        if (result.frame.round.status === "Completed") {
+          active = false;
+          keyboard.state.clear();
+          animationFrameId = undefined;
           publishFrame();
+          hooks.onRoundCompleted(result.frame.round);
           return;
         }
       }
@@ -161,6 +183,7 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
       previousTimestamp = undefined;
       paused = document.visibilityState !== "visible";
       currentSeed = String(masterSeed);
+      humanEliminated = false;
       active = true;
       keyboard.state.clear();
       publishFrame();
@@ -174,6 +197,7 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
       latestFrame = undefined;
       accumulatorMilliseconds = 0;
       previousTimestamp = undefined;
+      humanEliminated = false;
       keyboard.state.clear();
 
       if (animationFrameId !== undefined) {

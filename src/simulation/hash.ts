@@ -1,11 +1,12 @@
 import { quantize } from "./math";
-import type { ParticipantState, RoundId, Tick, TileState } from "./contracts";
+import type { ParticipantState, RoundId, RoundStateV1, Tick, TileState } from "./contracts";
 
 export interface HashableWorldState {
   readonly roundId: RoundId;
   readonly tick: Tick;
   readonly participants: readonly ParticipantState[];
   readonly tiles: readonly TileState[];
+  readonly round: RoundStateV1;
 }
 
 function fnv1aHex(value: string): string {
@@ -58,6 +59,7 @@ export function hashWorldState(state: HashableWorldState): string {
     `tick:${state.tick}`,
     `participants:${participantParts.join("|")}`,
     `tiles:${tileParts.join("|")}`,
+    `result:${state.round.status}:${state.round.winnerActorId ?? "none"}:${state.round.reason ?? "none"}:${state.round.completedTick ?? -1}`,
   ].join(";");
 
   return `fnv1a32:${fnv1aHex(canonical)}`;

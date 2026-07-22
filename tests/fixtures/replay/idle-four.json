@@ -1,9 +1,9 @@
 {
   "formatVersion": 1,
-  "productVersion": "0.5.0",
-  "simulationVersion": "2.0.0",
-  "contentVersion": "1.0.0",
-  "buildId": "fixture-v2",
+  "productVersion": "0.6.0",
+  "simulationVersion": "3.0.0",
+  "contentVersion": "2.0.0",
+  "buildId": "fixture-v3",
   "config": {
     "configVersion": 1,
     "participantCount": 4,
@@ -12,6 +12,7 @@
     "roundLimitTicks": 600,
     "density": "normal",
     "difficulty": "normal",
+    "collapseSpeed": "normal",
     "itemsEnabled": false
   },
   "masterSeed": "idle-four-v1",
@@ -21,16 +22,16 @@
   "checkpoints": [
     {
       "tick": 60,
-      "stateHash": "fnv1a32:13057406"
+      "stateHash": "fnv1a32:63db4ca6"
     },
     {
       "tick": 120,
-      "stateHash": "fnv1a32:0615675b"
+      "stateHash": "fnv1a32:5947b839"
     },
     {
       "tick": 180,
-      "stateHash": "fnv1a32:b991a6b5"
+      "stateHash": "fnv1a32:e2377b7b"
     }
   ],
-  "finalHash": "fnv1a32:b991a6b5"
+  "finalHash": "fnv1a32:e2377b7b"
 }

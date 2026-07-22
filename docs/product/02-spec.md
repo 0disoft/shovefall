@@ -73,4 +73,4 @@ These are pre-submission quality gates, not population-level market claims.
 
 ## Current Implementation Slice
 
-Version `0.5.0` adds deterministic utility bots on top of the playable gray-box. Five personalities share one scoring implementation, consume delayed public render frames, stagger decisions, search at most six nearby candidates, use isolated personality and jitter streams, and submit the same `ActorCommandV1` as the human. Human identity is absent from target scoring. The weights remain an automated baseline pending external playtest; collapse and content are still gated.
+Version `0.6.0` completes a playable gray-box round. Seeded outer-in waves expose non-color-only warning and collapsing marks before tiles become void. Slow, normal, and fast collapse cadences come from the selected preset. The simulation seals last-standing, no-survivor, and time-limit results; the browser accelerates after irreversible human defeat, moves focus to the result action, and restarts with a new world and seed. Collapse cadence, bot weights, and readability remain automated baselines pending external playtest; items and final presentation are still gated.

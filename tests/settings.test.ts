@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   getArenaSize,
+  getPresetCollapseSpeed,
   getPresetPlayerCount,
   normalizePlayerCount,
   normalizeSettings,
@@ -29,6 +30,9 @@ describe("settings normalization", () => {
     expect(getPresetPlayerCount("default")).toBe(12);
     expect(getPresetPlayerCount("relaxed")).toBe(8);
     expect(getPresetPlayerCount("chaos")).toBe(32);
+    expect(getPresetCollapseSpeed("default")).toBe("normal");
+    expect(getPresetCollapseSpeed("relaxed")).toBe("slow");
+    expect(getPresetCollapseSpeed("chaos")).toBe("fast");
   });
 
   it("derives larger arenas at the participant tier boundaries", () => {

@@ -3,6 +3,7 @@ import type {
   ParticipantActionKind,
   RenderFrameV1,
   RenderParticipantV1,
+  TileState,
 } from "../simulation/contracts";
 import { clamp } from "../simulation/math";
 
@@ -64,6 +65,43 @@ function createTransform(frame: RenderFrameV1, width: number, height: number): A
 
 function getActionColor(action: ParticipantActionKind): number {
   return ACTION_COLORS[action];
+}
+
+function drawTile(graphics: Graphics, tile: TileState, transform: ArenaTransform): void {
+  if (tile.state === "Void") {
+    return;
+  }
+
+  const x = transform.originX + tile.column * transform.pitch;
+  const y = transform.originY + tile.row * transform.pitch;
+  const radius = Math.max(2, transform.tileSize * 0.08);
+  const fillColor =
+    tile.state === "Stable" ? 0x46524e : tile.state === "Warning" ? 0xb9852c : 0x8f3f38;
+  const strokeColor =
+    tile.state === "Stable" ? 0x5b6863 : tile.state === "Warning" ? 0xffd278 : 0xff796e;
+
+  graphics
+    .roundRect(x, y, transform.tileSize, transform.tileSize, radius)
+    .fill({ color: fillColor, alpha: tile.state === "Collapsing" ? 0.72 : 1 })
+    .stroke({ color: strokeColor, width: tile.state === "Stable" ? 1 : 2 });
+
+  if (tile.state === "Warning") {
+    const inset = transform.tileSize * 0.2;
+    graphics
+      .moveTo(x + inset, y + transform.tileSize - inset)
+      .lineTo(x + transform.tileSize - inset, y + inset)
+      .stroke({ color: 0x2d2111, width: Math.max(2, transform.tileSize * 0.055) });
+  }
+
+  if (tile.state === "Collapsing") {
+    const inset = transform.tileSize * 0.18;
+    graphics
+      .moveTo(x + inset, y + inset)
+      .lineTo(x + transform.tileSize - inset, y + transform.tileSize - inset)
+      .moveTo(x + transform.tileSize - inset, y + inset)
+      .lineTo(x + inset, y + transform.tileSize - inset)
+      .stroke({ color: 0x251414, width: Math.max(2, transform.tileSize * 0.07) });
+  }
 }
 
 function drawDirection(
@@ -203,16 +241,7 @@ export async function createArenaRenderer(host: HTMLElement): Promise<ArenaRende
     participants.clear();
 
     for (const tile of latestFrame.tiles) {
-      tiles
-        .roundRect(
-          transform.originX + tile.column * transform.pitch,
-          transform.originY + tile.row * transform.pitch,
-          transform.tileSize,
-          transform.tileSize,
-          Math.max(2, transform.tileSize * 0.08),
-        )
-        .fill({ color: 0x46524e })
-        .stroke({ color: 0x5b6863, width: 1 });
+      drawTile(tiles, tile, transform);
     }
 
     for (const participant of latestFrame.participants) {

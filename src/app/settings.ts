@@ -12,6 +12,8 @@ export interface ArenaSize {
   readonly rows: number;
 }
 
+export type CollapseSpeed = "slow" | "normal" | "fast";
+
 export const PLAYER_COUNT_LIMITS = Object.freeze({
   minimum: 4,
   maximum: 32,
@@ -23,12 +25,22 @@ const PRESET_PLAYER_COUNTS: Readonly<Record<PresetName, number>> = Object.freeze
   chaos: 32,
 });
 
+const PRESET_COLLAPSE_SPEEDS: Readonly<Record<PresetName, CollapseSpeed>> = Object.freeze({
+  default: "normal",
+  relaxed: "slow",
+  chaos: "fast",
+});
+
 export function isPresetName(value: string): value is PresetName {
   return PRESET_NAMES.some((preset) => preset === value);
 }
 
 export function getPresetPlayerCount(preset: PresetName): number {
   return PRESET_PLAYER_COUNTS[preset];
+}
+
+export function getPresetCollapseSpeed(preset: PresetName): CollapseSpeed {
+  return PRESET_COLLAPSE_SPEEDS[preset];
 }
 
 export function normalizePlayerCount(value: number): number {

@@ -1,13 +1,13 @@
 # Shovefall
 
-- Status: Playable browser gray-box with utility bots; collapse pending
+- Status: Complete playable gray-box rounds; items and visual polish pending
 - Scope: frontend
 - Repository Type: web-app
 - Addons: none
 
 Shovefall is a short single-player browser party game about shoving opponents off a collapsing arena. One participant is human and the remaining participants are deterministic rule-based bots. The MVP is a static client application with no backend, database, account system, runtime LLM, or remote analytics.
 
-The repository contains a playable semantic DOM and PixiJS WebGL gray-box, exact package graph, and local validation commands. WASD, Space, and Shift produce versioned commands for the renderer-independent 60 Hz simulation. Deterministic utility bots use the same command shape, delayed public perception, staggered decisions, data-driven personalities, and isolated jitter streams. The browser renders mass-sensitive movement, shove and dodge states, batch impulses, support grace, falling, stable hashes, and reproducible seeds. Collapsing tiles, complete round results, items, final visual direction, CI, and deployment remain later slices.
+The repository contains a playable semantic DOM and PixiJS WebGL gray-box, exact package graph, and local validation commands. WASD, Space, and Shift produce versioned commands for the renderer-independent 60 Hz simulation. Deterministic utility bots use the same command shape, delayed public perception, staggered decisions, data-driven personalities, and isolated jitter streams. Seeded outer-in collapse waves visibly progress through warning, collapsing, and void states before the last standing participant wins. Human defeat accelerates the remaining simulation and the DOM result path starts a fresh world. Items, final visual direction, CI, and deployment remain later slices.
 
 ## Accepted Toolchain Baseline
 
@@ -54,4 +54,4 @@ binary diffs, local files, build outputs, caches, and secret files under control
 
 ## Scope Notes
 
-The toolchain, deterministic replay, first gray-box physics tuning, fixed-step browser scheduler, keyboard adapter, procedural PixiJS renderer, and first utility-bot policy are implemented. The current tuning and bot weights still need external playtest evidence before they are treated as fun or final. Static hosting, collapse, final visual direction, and the asset inventory remain unimplemented or separately undecided.
+The toolchain, deterministic replay, first gray-box physics tuning, fixed-step browser scheduler, keyboard adapter, procedural PixiJS renderer, utility bots, collapse, round results, accelerated defeat resolution, and restart are implemented. The current tuning, collapse cadence, and bot weights still need external playtest evidence before they are treated as fun or final. Static hosting, items, final visual direction, and the asset inventory remain unimplemented or separately undecided.

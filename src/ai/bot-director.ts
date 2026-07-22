@@ -87,6 +87,44 @@ function getEdgeDistance(participant: RenderParticipantV1, bounds: ArenaBounds):
   );
 }
 
+function getImmediateTileEscape(
+  frame: RenderFrameV1,
+  participant: RenderParticipantV1,
+): Vector2 | undefined {
+  const column = Math.floor(participant.position.x);
+  const row = Math.floor(participant.position.y);
+  const currentTile = frame.tiles.find((tile) => tile.column === column && tile.row === row);
+
+  if (currentTile?.state === "Stable") {
+    return undefined;
+  }
+
+  const safeTile = frame.tiles
+    .filter(({ state }) => state === "Stable")
+    .map((tile) => ({
+      tile,
+      distance: vectorLength(
+        subtractVectors(
+          Object.freeze({ x: tile.column + 0.5, y: tile.row + 0.5 }),
+          participant.position,
+        ),
+      ),
+    }))
+    .toSorted(
+      (left, right) =>
+        left.distance - right.distance || left.tile.tileId.localeCompare(right.tile.tileId),
+    )[0]?.tile;
+
+  return safeTile === undefined
+    ? undefined
+    : normalizeVector(
+        subtractVectors(
+          Object.freeze({ x: safeTile.column + 0.5, y: safeTile.row + 0.5 }),
+          participant.position,
+        ),
+      );
+}
+
 function rotateVector(vector: Vector2, radians: number): Vector2 {
   const cosine = Math.cos(radians);
   const sine = Math.sin(radians);
@@ -197,9 +235,11 @@ export class BotDirector {
       let shovePressed = false;
       let dodgePressed = false;
       const edgeDistance = getEdgeDistance(current, bounds);
+      const tileEscape = getImmediateTileEscape(currentFrame, current);
 
-      if (edgeDistance < EDGE_EMERGENCY_DISTANCE) {
-        memory.intent = normalizeVector(subtractVectors(bounds.center, current.position));
+      if (tileEscape !== undefined || edgeDistance < EDGE_EMERGENCY_DISTANCE) {
+        memory.intent =
+          tileEscape ?? normalizeVector(subtractVectors(bounds.center, current.position));
         memory.nextDecisionTick = Math.min(memory.nextDecisionTick, tick + 1);
       } else if (tick >= memory.nextDecisionTick) {
         const decision = this.#decide(

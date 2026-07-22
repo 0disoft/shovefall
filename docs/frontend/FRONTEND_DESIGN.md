@@ -62,11 +62,11 @@ Remote analytics, session replay, advertising, and automatic error upload are ex
 
 ## 14. Test Strategy
 
-Vitest covers pure state, input edges, settings tiers, and presentation-independent behavior. Playwright Test covers setup, fixed-tick progress, keyboard movement and shove, active-round pause/resume, focus entry, and settings return. Complete-round failure, elimination, result, and restart coverage remains pending with lifecycle implementation. Visual review checks readability of telegraphs, human identity, mass state, and reduced-motion behavior. Oxfmt and Oxlint do not replace product interaction testing.
+Vitest covers pure state, input edges, settings tiers, collapse phases, result sealing, and presentation-independent behavior. Playwright Test covers setup, fixed-tick progress, keyboard movement and shove, active-round pause/resume, focus entry, settings return, collapse completion, result focus, and fresh-world restart. Explicit human-defeat injection and fatal-invariant recovery remain pending. Visual review checks readability of telegraphs, human identity, mass state, and reduced-motion behavior. Oxfmt and Oxlint do not replace product interaction testing.
 
 ## 15. Implementation Sequence
 
-The toolchain, deterministic simulation, gray-box movement and combat, browser scheduler, keyboard adapter, procedural PixiJS presentation, and first utility bots are implemented. Add the complete collapsing-round lifecycle before items or final visual polish. Promote scale, items, and presentation only after their preceding behavior gates pass.
+The toolchain, deterministic simulation, gray-box movement and combat, browser scheduler, keyboard adapter, procedural PixiJS presentation, utility bots, readable collapse states, round results, accelerated defeat resolution, and restart are implemented. Add the first bounded item set before final visual polish. Promote scale, items, and presentation only after their preceding behavior gates pass.
 
 ## 16. Open Questions and Decisions Log
 

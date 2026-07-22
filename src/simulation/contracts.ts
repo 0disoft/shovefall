@@ -5,6 +5,9 @@ export type RoundId = number;
 export type ActorId = number;
 export type Tick = number;
 export type TileId = `${number}:${number}`;
+export type CollapseSpeed = "slow" | "normal" | "fast";
+export type TileStateKind = "Stable" | "Warning" | "Collapsing" | "Void";
+export type RoundEndReason = "last-standing" | "no-survivors" | "time-limit";
 
 export type ParticipantActionKind =
   | "Ready"
@@ -25,6 +28,7 @@ export interface GameConfigV1 {
   readonly roundLimitTicks: number;
   readonly density: "normal";
   readonly difficulty: "normal";
+  readonly collapseSpeed: CollapseSpeed;
   readonly itemsEnabled: false;
 }
 
@@ -33,6 +37,7 @@ export interface GameConfigInput {
   readonly arenaColumns?: number;
   readonly arenaRows?: number;
   readonly roundLimitSeconds?: number;
+  readonly collapseSpeed?: CollapseSpeed;
 }
 
 export interface ActorCommandV1 {
@@ -81,7 +86,14 @@ export interface TileState {
   readonly tileId: TileId;
   readonly column: number;
   readonly row: number;
-  readonly state: "Stable";
+  readonly state: TileStateKind;
+}
+
+export interface RoundStateV1 {
+  readonly status: "Active" | "Completed";
+  readonly winnerActorId: ActorId | null;
+  readonly reason: RoundEndReason | null;
+  readonly completedTick: Tick | null;
 }
 
 export interface RenderParticipantV1 {
@@ -106,6 +118,7 @@ export interface RenderFrameV1 {
   readonly stateHash: string;
   readonly participants: readonly RenderParticipantV1[];
   readonly tiles: readonly TileState[];
+  readonly round: RoundStateV1;
 }
 
 export type SimulationEventKind =
@@ -116,7 +129,11 @@ export type SimulationEventKind =
   | "dodge-started"
   | "dodge-succeeded"
   | "falling-started"
-  | "eliminated";
+  | "eliminated"
+  | "tile-warning"
+  | "tile-collapsing"
+  | "tile-void"
+  | "round-completed";
 
 export interface SimulationEventV1 {
   readonly eventVersion: 1;
@@ -126,8 +143,10 @@ export interface SimulationEventV1 {
   readonly kind: SimulationEventKind;
   readonly actorId?: ActorId;
   readonly targetActorId?: ActorId;
+  readonly tileId?: TileId;
+  readonly winnerActorId?: ActorId;
   readonly vector?: Vector2;
-  readonly reason?: "inactive-actor" | "unknown-actor";
+  readonly reason?: "inactive-actor" | "unknown-actor" | RoundEndReason;
 }
 
 export interface ReplayCheckpointV1 {
@@ -168,11 +187,16 @@ export function normalizeGameConfig(input: GameConfigInput): GameConfigV1 {
   const arenaColumns = Math.round(input.arenaColumns ?? 11);
   const arenaRows = Math.round(input.arenaRows ?? 9);
   const roundLimitSeconds = Math.round(input.roundLimitSeconds ?? 75);
+  const collapseSpeed = input.collapseSpeed ?? "normal";
 
   assertIntegerInRange(participantCount, "participantCount", 4, 32);
   assertIntegerInRange(arenaColumns, "arenaColumns", 7, 31);
   assertIntegerInRange(arenaRows, "arenaRows", 7, 31);
   assertIntegerInRange(roundLimitSeconds, "roundLimitSeconds", 1, 120);
+
+  if (collapseSpeed !== "slow" && collapseSpeed !== "normal" && collapseSpeed !== "fast") {
+    throw new SimulationContractError("collapseSpeed is unsupported");
+  }
 
   return Object.freeze({
     configVersion: 1,
@@ -182,6 +206,7 @@ export function normalizeGameConfig(input: GameConfigInput): GameConfigV1 {
     roundLimitTicks: roundLimitSeconds * FIXED_TICKS_PER_SECOND,
     density: "normal",
     difficulty: "normal",
+    collapseSpeed,
     itemsEnabled: false,
   });
 }

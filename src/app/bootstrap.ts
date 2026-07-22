@@ -1,5 +1,6 @@
 import {
   getArenaSize,
+  getPresetCollapseSpeed,
   getPresetPlayerCount,
   isPresetName,
   normalizeSettings,
@@ -66,6 +67,7 @@ function createConfig(settings: GameSettings) {
     arenaColumns: arenaSize.columns,
     arenaRows: arenaSize.rows,
     roundLimitSeconds: 75,
+    collapseSpeed: getPresetCollapseSpeed(settings.preset),
   });
 }
 
@@ -103,6 +105,8 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   const tickValue = requireElement(root, "#tick-value", HTMLOutputElement);
   const actionValue = requireElement(root, "#action-value", HTMLOutputElement);
   const massValue = requireElement(root, "#mass-value", HTMLOutputElement);
+  const survivorValue = requireElement(root, "#survivor-value", HTMLOutputElement);
+  const rateValue = requireElement(root, "#rate-value", HTMLOutputElement);
   const positionValue = requireElement(root, "#position-value", HTMLOutputElement);
   const seedValue = requireElement(root, "#seed-value", HTMLOutputElement);
   const hashValue = requireElement(root, "#hash-value", HTMLOutputElement);
@@ -140,15 +144,30 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     actionValue.value = ACTION_LABELS[human.action];
     massValue.value =
       human.massFactor < 0.9 ? "가벼움" : human.massFactor > 1.1 ? "무거움" : "보통";
+    survivorValue.value = String(
+      current.frame.participants.filter(
+        (participant) =>
+          participant.active &&
+          participant.action !== "Falling" &&
+          participant.action !== "Eliminated",
+      ).length,
+    );
+    rateValue.value = `${current.simulationRate}×`;
     positionValue.value = `${human.position.x.toFixed(2)}, ${human.position.y.toFixed(2)}`;
     seedValue.value = current.masterSeed;
     hashValue.value = current.frame.stateHash;
-    rendererStatus.dataset.state = current.paused ? "paused" : "playing";
+    rendererStatus.dataset.state = current.paused
+      ? "paused"
+      : current.simulationRate > 1
+        ? "spectating"
+        : "playing";
     rendererStatus.textContent = current.paused
       ? "일시 정지"
-      : current.backlogTicks > 0
-        ? `따라잡는 중 · ${current.backlogTicks}`
-        : "플레이 중";
+      : current.simulationRate > 1
+        ? `빠른 관전 · ${current.simulationRate}×`
+        : current.backlogTicks > 0
+          ? `따라잡는 중 · ${current.backlogTicks}`
+          : "플레이 중";
   };
 
   try {
@@ -163,9 +182,18 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
         }
       },
       onHumanEliminated(): void {
-        readyMessage.textContent = "떨어졌어. 바로 다시 시작해.";
-        rendererStatus.dataset.state = "eliminated";
-        rendererStatus.textContent = "탈락";
+        readyMessage.textContent = "떨어졌어. 남은 승부를 빠르게 돌리는 중.";
+      },
+      onRoundCompleted(round): void {
+        root.dataset.round = "completed";
+        rendererStatus.dataset.state = round.winnerActorId === 1 ? "victory" : "completed";
+        rendererStatus.textContent = round.winnerActorId === 1 ? "승리" : "라운드 종료";
+        readyMessage.textContent =
+          round.winnerActorId === 1
+            ? "끝까지 남았어. 한 판 더?"
+            : round.winnerActorId === null
+              ? "마지막 순간에 모두 떨어졌어. 다시 붙자."
+              : `${round.winnerActorId}번이 마지막까지 남았어.`;
         restartButton.focus();
       },
       onPauseChanged(paused): void {
@@ -199,6 +227,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
 
     latestSettings = settings;
     root.dataset.screen = "arena";
+    root.dataset.round = "active";
     form.hidden = true;
     arenaActions.hidden = false;
     telemetry.hidden = false;
@@ -244,6 +273,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   backButton.addEventListener("click", () => {
     session?.stop();
     root.dataset.screen = "setup";
+    delete root.dataset.round;
     arenaActions.hidden = true;
     telemetry.hidden = true;
     form.hidden = false;

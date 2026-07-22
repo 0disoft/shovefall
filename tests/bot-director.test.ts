@@ -71,6 +71,60 @@ describe("utility bot director", () => {
     expect(bot?.shovePressed).toBe(false);
   });
 
+  it("leaves a currently warning tile without reading the private collapse plan", () => {
+    const world = new SimulationWorld(
+      normalizeGameConfig({
+        participantCount: 4,
+        arenaColumns: 9,
+        arenaRows: 7,
+        roundLimitSeconds: 20,
+        collapseSpeed: "fast",
+      }),
+      "bot-tile-safety",
+    );
+
+    while (world.tick < 361) {
+      world.step();
+    }
+
+    const frame = world.createRenderFrame();
+    const warningTile = frame.tiles.find(({ state }) => state === "Warning");
+    expect(warningTile).toBeDefined();
+    const warningPosition = Object.freeze({
+      x: (warningTile?.column ?? 0) + 0.5,
+      y: (warningTile?.row ?? 0) + 0.5,
+    });
+    const adjustedFrame = Object.freeze({
+      ...frame,
+      participants: Object.freeze(
+        frame.participants.map((participant) =>
+          participant.actorId === 2
+            ? Object.freeze({
+                ...participant,
+                position: warningPosition,
+                previousPosition: warningPosition,
+              })
+            : participant,
+        ),
+      ),
+    });
+    const director = new BotDirector("bot-tile-safety", 1, {
+      reactionDelayTicks: 0,
+      decisionIntervalTicks: 1,
+    });
+    const bot = director
+      .createCommands(adjustedFrame.tick, adjustedFrame)
+      .find(({ actorId }) => actorId === 2);
+    const destinationColumn = Math.floor(warningPosition.x + (bot?.move.x ?? 0) * 0.75);
+    const destinationRow = Math.floor(warningPosition.y + (bot?.move.y ?? 0) * 0.75);
+    const destinationTile = adjustedFrame.tiles.find(
+      ({ column, row }) => column === destinationColumn && row === destinationRow,
+    );
+
+    expect(destinationTile?.state).toBe("Stable");
+    expect(bot?.shovePressed).toBe(false);
+  });
+
   it("prefers an equally close edge opportunity without checking human identity", () => {
     const world = createBotWorld(4, [
       { actorId: 1, position: { x: 3.5, y: 4.5 }, facing: { x: 1, y: 0 } },

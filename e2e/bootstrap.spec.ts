@@ -1,4 +1,16 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
+
+async function fastForwardUntilRoundCompleted(page: Page, remainingFrames = 250): Promise<void> {
+  if (
+    remainingFrames === 0 ||
+    (await page.locator("#app").getAttribute("data-round")) === "completed"
+  ) {
+    return;
+  }
+
+  await page.clock.fastForward(150);
+  return fastForwardUntilRoundCompleted(page, remainingFrames - 1);
+}
 
 test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) => {
   await page.goto("/");
@@ -40,4 +52,30 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await expect(page.locator("#app")).toHaveAttribute("data-screen", "setup");
   await expect(page.getByRole("button", { name: "빠른 시작" })).toBeFocused();
   await expect(page.locator("#game-telemetry")).toBeHidden();
+});
+
+test("completes a collapsing round and starts a fresh world", async ({ page }) => {
+  await page.clock.install();
+  await page.goto("/");
+
+  await page.getByLabel("난장판").check();
+  await page.locator("#player-count").fill("4");
+  await expect(page.locator("#player-count-value")).toHaveText("4명");
+  await page.getByRole("button", { name: "빠른 시작" }).click();
+
+  await expect(page.locator("#app")).toHaveAttribute("data-round", "active");
+  await fastForwardUntilRoundCompleted(page);
+  await expect(page.locator("#app")).toHaveAttribute("data-round", "completed");
+  await expect(page.getByRole("button", { name: "다시 시작" })).toBeFocused();
+  await expect(page.locator("#renderer-status")).toHaveText(/승리|라운드 종료/u);
+
+  const completedTick = Number(await page.locator("#tick-value").textContent());
+  const completedHash = await page.locator("#hash-value").textContent();
+  await page.getByRole("button", { name: "다시 시작" }).click();
+
+  await expect(page.locator("#app")).toHaveAttribute("data-round", "active");
+  await expect(page.locator("#arena-host")).toBeFocused();
+  const restartedTick = Number(await page.locator("#tick-value").textContent());
+  expect(restartedTick).toBeLessThan(completedTick);
+  await expect(page.locator("#hash-value")).not.toHaveText(completedHash ?? "");
 });

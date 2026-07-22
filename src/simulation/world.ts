@@ -10,10 +10,13 @@ import {
   type ParticipantState,
   type RenderFrameV1,
   type RoundId,
+  type RoundStateV1,
   type SimulationEventKind,
   type SimulationEventV1,
+  type TileId,
   type TileState,
 } from "./contracts";
+import { advanceCollapse, createCollapsePlan, type CollapseWave } from "./collapse";
 import { hashWorldState } from "./hash";
 import {
   addVectors,
@@ -58,6 +61,8 @@ export interface SimulationWorldOptions {
 interface EventDetails {
   readonly actorId?: ActorId;
   readonly targetActorId?: ActorId;
+  readonly tileId?: TileId;
+  readonly winnerActorId?: ActorId;
   readonly vector?: Vector2;
   readonly reason?: SimulationEventV1["reason"];
 }
@@ -230,9 +235,15 @@ function getMissedStumbleTicks(participant: ParticipantState): number {
 export class SimulationWorld {
   readonly #config: GameConfigV1;
   readonly #roundId: RoundId;
-  readonly #tiles: readonly TileState[];
-  readonly #stableTileIds: ReadonlySet<string>;
+  readonly #collapsePlan: readonly CollapseWave[];
+  #tiles: readonly TileState[];
   #participants: readonly ParticipantState[];
+  #round: RoundStateV1 = Object.freeze({
+    status: "Active",
+    winnerActorId: null,
+    reason: null,
+    completedTick: null,
+  });
   #tick = 0;
   #eventSequence = 0;
 
@@ -262,7 +273,13 @@ export class SimulationWorld {
     this.#config = config;
     this.#roundId = roundId;
     this.#tiles = createTiles(config);
-    this.#stableTileIds = new Set(this.#tiles.map((tile) => tile.tileId));
+    this.#collapsePlan = createCollapsePlan(
+      this.#tiles,
+      config.arenaColumns,
+      config.arenaRows,
+      config.collapseSpeed,
+      streams.get("collapse"),
+    );
     this.#participants = createParticipants(
       config,
       streams,
@@ -280,6 +297,10 @@ export class SimulationWorld {
   }
 
   public step(commands: readonly ActorCommandV1[] = []): SimulationStepResult {
+    if (this.#round.status === "Completed") {
+      throw new SimulationContractError("round has already completed");
+    }
+
     if (this.#tick >= this.#config.roundLimitTicks) {
       throw new SimulationContractError("round tick limit has been reached");
     }
@@ -305,6 +326,8 @@ export class SimulationWorld {
     participants = this.#resolveSupport(participants, events);
 
     this.#participants = Object.freeze(participants);
+    this.#advanceCollapse(events);
+    this.#evaluateRound(participants, events);
     this.#tick += 1;
 
     return Object.freeze({
@@ -319,6 +342,7 @@ export class SimulationWorld {
       tick: this.#tick,
       participants: this.#participants,
       tiles: this.#tiles,
+      round: this.#round,
     });
 
     return Object.freeze({
@@ -347,6 +371,7 @@ export class SimulationWorld {
           ),
       ),
       tiles: this.#tiles,
+      round: this.#round,
     });
   }
 
@@ -893,12 +918,16 @@ export class SimulationWorld {
     participants: readonly ParticipantState[],
     events: SimulationEventV1[],
   ): readonly ParticipantState[] {
+    const supportedTileIds = new Set(
+      this.#tiles.filter(({ state }) => state !== "Void").map(({ tileId }) => tileId),
+    );
+
     return participants.map((participant) => {
       if (!participant.active || !isGroundAction(participant.action.kind)) {
         return participant;
       }
 
-      if (hasTileSupport(participant.body.position, this.#stableTileIds)) {
+      if (hasTileSupport(participant.body.position, supportedTileIds)) {
         if (participant.body.unsupportedTicks === 0) {
           return participant;
         }
@@ -941,6 +970,61 @@ export class SimulationWorld {
     });
   }
 
+  #advanceCollapse(events: SimulationEventV1[]): void {
+    const result = advanceCollapse(this.#tiles, this.#collapsePlan, this.#tick);
+    this.#tiles = result.tiles;
+
+    for (const transition of result.transitions) {
+      const kind: SimulationEventKind =
+        transition.to === "Warning"
+          ? "tile-warning"
+          : transition.to === "Collapsing"
+            ? "tile-collapsing"
+            : "tile-void";
+      events.push(this.#createEvent(kind, { tileId: transition.tileId }));
+    }
+  }
+
+  #evaluateRound(participants: readonly ParticipantState[], events: SimulationEventV1[]): void {
+    const standing = participants.filter(
+      (participant) =>
+        participant.active &&
+        participant.action.kind !== "Falling" &&
+        participant.action.kind !== "Eliminated",
+    );
+    const attritionStarted = participants.some(
+      (participant) =>
+        !participant.active ||
+        participant.action.kind === "Falling" ||
+        participant.action.kind === "Eliminated",
+    );
+    const reachedTimeLimit = this.#tick + 1 >= this.#config.roundLimitTicks;
+
+    if ((!attritionStarted || standing.length > 1) && !reachedTimeLimit) {
+      return;
+    }
+
+    const winnerActorId = standing.length === 1 ? (standing[0]?.actorId ?? null) : null;
+    const reason =
+      attritionStarted && standing.length === 1
+        ? "last-standing"
+        : attritionStarted && standing.length === 0
+          ? "no-survivors"
+          : "time-limit";
+    this.#round = Object.freeze({
+      status: "Completed",
+      winnerActorId,
+      reason,
+      completedTick: this.#tick + 1,
+    });
+    events.push(
+      this.#createEvent(
+        "round-completed",
+        winnerActorId === null ? { reason } : { winnerActorId, reason },
+      ),
+    );
+  }
+
   #createEvent(kind: SimulationEventKind, details: EventDetails = {}): SimulationEventV1 {
     const event: SimulationEventV1 = Object.freeze({
       eventVersion: 1,
@@ -950,6 +1034,8 @@ export class SimulationWorld {
       kind,
       ...(details.actorId === undefined ? {} : { actorId: details.actorId }),
       ...(details.targetActorId === undefined ? {} : { targetActorId: details.targetActorId }),
+      ...(details.tileId === undefined ? {} : { tileId: details.tileId }),
+      ...(details.winnerActorId === undefined ? {} : { winnerActorId: details.winnerActorId }),
       ...(details.vector === undefined ? {} : { vector: details.vector }),
       ...(details.reason === undefined ? {} : { reason: details.reason }),
     });
