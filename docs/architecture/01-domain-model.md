@@ -1,6 +1,6 @@
 # Domain Model
 
-- Status: Accepted foundation; combat and collapse states staged
+- Status: Accepted combat model; collapse states staged
 - Owner: Repository owner
 
 ## Identity and Time
@@ -18,7 +18,9 @@
 
 A participant contains stable identity, human or scripted control ownership, an active flag, a circular body, and an action state. The body owns position, velocity, facing, radius, continuous `massFactor`, and integer unsupported ticks.
 
-Action kinds are `Ready`, `ShoveWindup`, `ShoveActive`, `ShoveRecovery`, `DodgeActive`, `Stumbling`, `Anchored`, `Falling`, and `Eliminated`. Action transitions are tick-bounded. `Falling` is irreversible and later transitions to `Eliminated`.
+Action kinds are `Ready`, `ShoveWindup`, `ShoveActive`, `ShoveRecovery`, `DodgeActive`, `Stumbling`, `Anchored`, `Falling`, and `Eliminated`. Action transitions are tick-bounded. If shove and dodge edges arrive together while both are ready, dodge has deterministic priority. `Falling` is irreversible and later transitions to `Eliminated`.
+
+The initial tuning uses six shove-windup ticks, seven active ticks, fifteen recovery ticks, eight dodge ticks with five evasion ticks, nine unsupported grace ticks, and twenty-four falling ticks. `src/simulation/tuning.ts` owns exact numeric values. Product settings cannot expose these internals.
 
 ## Tile
 
@@ -43,6 +45,8 @@ Randomness may select arena variants, content placement, bot personality data, a
 `ReplayFixtureV1` stores format, product, simulation, and content versions; build ID; normalized config; master seed; human actor ID; end tick; strictly increasing human commands; ordered hash checkpoints; and a final hash.
 
 The current format accepts UTF-8 JSON up to 5 MiB and 7,200 ticks. Unknown replay majors, incompatible simulation versions, malformed booleans or numbers, commands for bots, duplicate or unordered ticks, range violations, and hash mismatches are errors. Compatibility is never guessed.
+
+Simulation version `2.0.0` owns the first combat semantics. Replay fixtures generated under `1.0.0` are intentionally incompatible because movement, action state, cooldowns, previous positions, support, and collision response became authoritative hash inputs.
 
 ## Version Ownership
 

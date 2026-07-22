@@ -67,7 +67,7 @@ await mkdir(outputDirectory, { recursive: true });
 await Promise.all(
   definitions.map(async (definition) => {
     const fixture = createReplayFixture({
-      buildId: "fixture-v1",
+      buildId: "fixture-v2",
       config: normalizeGameConfig({
         participantCount: definition.participantCount,
         roundLimitSeconds: 10,

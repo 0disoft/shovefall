@@ -46,6 +46,7 @@ export interface ActorCommandV1 {
 
 export interface BodyState {
   readonly position: Vector2;
+  readonly previousPosition: Vector2;
   readonly velocity: Vector2;
   readonly facing: Vector2;
   readonly radius: number;
@@ -58,6 +59,13 @@ export interface ActionState {
   readonly startedTick: Tick;
   readonly endsTick: Tick | null;
   readonly hitActorIds: readonly ActorId[];
+  readonly resolvedActorIds: readonly ActorId[];
+  readonly lockedDirection: Vector2 | null;
+}
+
+export interface CooldownState {
+  readonly shoveReadyTick: Tick;
+  readonly dodgeReadyTick: Tick;
 }
 
 export interface ParticipantState {
@@ -65,6 +73,7 @@ export interface ParticipantState {
   readonly control: "human" | "scripted";
   readonly body: BodyState;
   readonly action: ActionState;
+  readonly cooldowns: CooldownState;
   readonly active: boolean;
 }
 
@@ -79,11 +88,15 @@ export interface RenderParticipantV1 {
   readonly actorId: ActorId;
   readonly position: Vector2;
   readonly previousPosition: Vector2;
+  readonly velocity: Vector2;
   readonly facing: Vector2;
   readonly radius: number;
   readonly massFactor: number;
   readonly action: ParticipantActionKind;
   readonly active: boolean;
+  readonly unsupportedTicks: number;
+  readonly shoveReadyTick: Tick;
+  readonly dodgeReadyTick: Tick;
 }
 
 export interface RenderFrameV1 {
@@ -95,7 +108,15 @@ export interface RenderFrameV1 {
   readonly tiles: readonly TileState[];
 }
 
-export type SimulationEventKind = "round-started" | "command-ignored";
+export type SimulationEventKind =
+  | "command-ignored"
+  | "shove-started"
+  | "shove-hit"
+  | "shove-missed"
+  | "dodge-started"
+  | "dodge-succeeded"
+  | "falling-started"
+  | "eliminated";
 
 export interface SimulationEventV1 {
   readonly eventVersion: 1;
@@ -104,6 +125,8 @@ export interface SimulationEventV1 {
   readonly sequence: number;
   readonly kind: SimulationEventKind;
   readonly actorId?: ActorId;
+  readonly targetActorId?: ActorId;
+  readonly vector?: Vector2;
   readonly reason?: "inactive-actor" | "unknown-actor";
 }
 

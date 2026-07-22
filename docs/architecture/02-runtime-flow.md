@@ -1,6 +1,6 @@
 # Runtime Flow
 
-- Status: Accepted deterministic order; application scheduler pending
+- Status: Combat pipeline implemented; application scheduler pending
 - Owner: Repository owner
 
 ## Round Start
@@ -30,7 +30,7 @@ Each 60 Hz tick uses this versioned order:
 13. Decide round result.
 14. Emit ordered events, an immutable render frame, and a quantized state hash.
 
-The foundation checkpoint implements command validation, deterministic displacement, snapshots, hashes, and replay around this order. Unimplemented systems remain explicit no-op stages conceptually; later combat work cannot reorder the pipeline accidentally.
+The combat checkpoint implements stages 1 through 10 and 14. Item, collapse, spawn, and round-result stages remain explicit no-op responsibilities until their slices are implemented. Later work cannot reorder the pipeline without a simulation-version decision and regenerated replay evidence.
 
 ## Browser Scheduling
 

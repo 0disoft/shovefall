@@ -14,10 +14,10 @@ This document owns stable validation names for this scaffold.
 | `format-check` | Oxfmt check mode | Fails when approved project-owned paths are not formatted. |
 | `lint` | Oxlint and `oxlint-tsgolint@7` | Runs correctness, import, and type-aware rules without replacing the authoritative type gate. |
 | `typecheck` | TypeScript 7 `tsc --noEmit` | Authoritative TypeScript diagnostics. |
-| `test` | Vitest 4 | Runs the implemented settings and application-model unit coverage; deterministic simulation and scenario coverage becomes mandatory when that source exists. |
+| `test` | Vitest 4 | Runs settings, deterministic simulation, replay, mass, action timing, batch impulse, dodge, support, falling, and application-model coverage. |
 | `contract` | Repository-owned Bun TypeScript checks | Validates module boundaries, forbidden dependencies, asset provenance, and other repository contracts that Oxlint cannot express reliably. |
 | `migration-check` | Not applicable until a persisted format or compatible migration surface exists | Must report `NOT_APPLICABLE`, not fake success. |
-| `smoke` | Playwright Test | Currently proves Chrome boot, WebGL initialization, setup-to-arena transition, and focus recovery. Input, round, failure, and restart cases become mandatory with gameplay. |
+| `smoke` | Playwright Test | Currently proves Chrome boot, WebGL initialization, setup-to-arena transition, and focus recovery. Direct gameplay input, active-round focus loss, failure, result, and restart become mandatory when the headless combat is connected to the browser. |
 | `docs` | Repository and ssealed documentation checks | Validates source-of-truth links, scaffold state, and Markdown hygiene. |
 | `build` | Vite 8 | Produces the provider-neutral static `dist` artifact. |
 | `check` | Aggregate command | Runs the configured merge-blocking validations without silently skipping a missing command. |
@@ -41,7 +41,7 @@ Frontend validations use the accepted stack in `docs/engineering/08-toolchain-ba
 
 ## Repository Shape
 
-Web-app validation covers the implemented DOM and PixiJS bootstrap without claiming that gameplay exists.
+Web-app validation covers the implemented DOM and PixiJS bootstrap without claiming that the headless combat is already playable in the browser.
 
 ## Formatting Boundary
 

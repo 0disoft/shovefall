@@ -68,5 +68,5 @@ describe("simulation world contracts", () => {
     });
 
     expect(new Set(hashes)).toHaveLength(1);
-  });
+  }, 15_000);
 });

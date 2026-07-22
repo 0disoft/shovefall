@@ -30,6 +30,8 @@ export function hashWorldState(state: HashableWorldState): string {
         participant.action.kind,
         quantize(body.position.x),
         quantize(body.position.y),
+        quantize(body.previousPosition.x),
+        quantize(body.previousPosition.y),
         quantize(body.velocity.x),
         quantize(body.velocity.y),
         quantize(body.facing.x),
@@ -37,6 +39,15 @@ export function hashWorldState(state: HashableWorldState): string {
         quantize(body.radius),
         quantize(body.massFactor),
         body.unsupportedTicks,
+        participant.action.startedTick,
+        participant.action.endsTick ?? -1,
+        participant.action.hitActorIds.join(","),
+        participant.action.resolvedActorIds.join(","),
+        participant.action.lockedDirection === null
+          ? "none"
+          : `${quantize(participant.action.lockedDirection.x)},${quantize(participant.action.lockedDirection.y)}`,
+        participant.cooldowns.shoveReadyTick,
+        participant.cooldowns.dodgeReadyTick,
       ].join(":");
     });
   const tileParts = state.tiles

@@ -25,8 +25,9 @@ The testing standard defines merge-blocking evidence for the deterministic simul
 ## Behavioral Evidence
 
 - The Vitest suite covers configuration normalization, command bounds and normalization, duplicate-command rejection, neutral missing input, command-order independence, a versioned PRNG vector, named-stream independence, 100-run state-hash stability, strict replay parsing, checked-in replay fixtures, checkpoint verification, and corrupted-hash rejection.
+- Gray-box scenarios cover the mass speed curve, identical-input mass movement, exact shove windows, dodge priority and cooldown boundary, finite speed caps, same-tick mutual hits, ActorId-swap symmetry, target-mass impulse monotonicity, geometric dodge success, support recovery, falling boundary, and irreversible elimination.
 - The current Playwright suite covers browser boot, WebGL initialization, setup-to-arena transition, and focus recovery.
-- Combat promotion tests must cover finite-value invariants, speed caps, shove timing, dodge boundary ticks, simultaneous-impact order independence, mass monotonicity, weak-contact separation, support grace, irreversible falling, and restart as those behaviors are introduced.
+- Browser promotion must add direct keyboard input, readable combat telegraphs, restart, focus loss during an active round, and a complete gray-box round. Weak-contact triple-overlap and high-speed crossing fuzz remain required before scale promotion.
 - Future Playwright cases must add keyboard input, focus loss during play, round completion, failure recovery, restart, and static-build smoke as those surfaces become real.
 - Visual and audio timing still require explicit manual evidence; screenshots alone do not prove interaction quality.
 

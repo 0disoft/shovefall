@@ -73,4 +73,4 @@ These are pre-submission quality gates, not population-level market claims.
 
 ## Current Implementation Slice
 
-Version `0.2.0` establishes fixed-tick commands, stable actor and tile identifiers, independent named PRNG streams, quantized state hashes, strict replay parsing, checked-in replay fixtures, and a headless world. The movement in this checkpoint is a temporary deterministic displacement used to prove the contracts; it is not the approved final physics tuning.
+Version `0.3.0` implements the first headless gray-box combat slice: mass-sensitive acceleration and speed, weak circular contact, exact shove and dodge windows, missed-shove stumble, same-tick batch impulses, center-tile support grace, falling, elimination, finite caps, and regenerated replay fixtures under simulation version `2.0.0`. These numbers are an automated baseline, not final fun approval; the browser integration and external gray-box playtest still gate promotion to collapse and content.
