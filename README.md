@@ -1,13 +1,13 @@
 # Shovefall
 
-- Status: Playable 4–32 participant gray-box rounds with three deterministic items; visual polish pending
+- Status: Playable 4–32 participant gray-box rounds with deterministic items and functional feedback; final art pending
 - Scope: frontend
 - Repository Type: web-app
 - Addons: none
 
 Shovefall is a short single-player browser party game about shoving opponents off a collapsing arena. One participant is human and the remaining participants are deterministic rule-based bots. The MVP is a static client application with no backend, database, account system, runtime LLM, or remote analytics.
 
-The repository contains a playable semantic DOM and PixiJS WebGL gray-box, exact package graph, and local validation commands. WASD, Space, and Shift produce versioned commands for the renderer-independent 60 Hz simulation. Deterministic utility bots use delayed public perception and spatially bounded candidate search. A stable ActorId-ordered spatial hash reduces contact candidates without changing collision order. Seeded outer-in collapse waves visibly progress through warning, collapsing, and void states before the last standing participant wins. Iron Boots, Feather, and Spring Glove alter the existing mass, movement, dodge, inertia, and shove axes through deterministic effects. Human defeat accelerates the remaining simulation and the DOM result path starts a fresh world. Final visual direction, CI, and deployment remain later slices.
+The repository contains a playable semantic DOM and PixiJS WebGL gray-box, exact package graph, and local validation commands. WASD, Space, and Shift produce versioned commands for the renderer-independent 60 Hz simulation. Deterministic utility bots use delayed public perception and spatially bounded candidate search. A stable ActorId-ordered spatial hash reduces contact candidates without changing collision order. Seeded outer-in collapse waves visibly progress through warning, collapsing, and void states before the last standing participant wins. Iron Boots, Feather, and Spring Glove alter the existing mass, movement, dodge, inertia, and shove axes through deterministic effects. Human defeat accelerates the remaining simulation and the DOM result path starts a fresh world. A deduplicated presentation boundary drives capped procedural audio, transient PixiJS feedback, reduced-motion behavior, and recoverable renderer loss without mutating simulation state. Final visual direction, CI, and deployment remain later slices.
 
 ## Accepted Toolchain Baseline
 
@@ -43,6 +43,7 @@ The complete adoption constraints, rollback path, and version policy are in [doc
 - docs/architecture/04-bot-ai.md: bot fairness, personality, scheduling, and command boundaries
 - docs/architecture/05-scale-performance.md: broad-phase semantics and bounded local performance evidence
 - docs/architecture/06-items-and-effects.md: deterministic item definitions, lifecycle, and ownership
+- docs/architecture/07-presentation-feedback.md: event consumption, audio, motion, and renderer-recovery boundaries
 - docs/: design, operations, architecture, and engineering standards
 
 ## Repository Shape Notes
@@ -57,4 +58,4 @@ binary diffs, local files, build outputs, caches, and secret files under control
 
 ## Scope Notes
 
-The toolchain, deterministic replay, gray-box physics, fixed-step browser scheduler, keyboard adapter, procedural PixiJS renderer, utility bots, collapse, results, spatial broad phase, 4–32 participant presets, bounded item settings, Iron Boots, Feather, Spring Glove, accelerated defeat resolution, and restart are implemented. Item-enabled headless and production-Chrome profiles pass at 12/24/32 after steady-state item allocations were removed. Physical-device, cross-browser, external playtest, static hosting, final visual direction, and the asset inventory remain pending or separately undecided.
+The toolchain, deterministic replay, gray-box physics, fixed-step browser scheduler, keyboard adapter, procedural PixiJS renderer, utility bots, collapse, results, spatial broad phase, 4–32 participant presets, bounded item settings, Iron Boots, Feather, Spring Glove, accelerated defeat resolution, restart, optional procedural audio, reduced motion, and renderer recovery are implemented. Item-enabled headless and production-Chrome profiles pass at 12/24/32 after steady-state item allocations were removed. Physical-device, cross-browser, external playtest, static hosting, final visual direction, and the image asset inventory remain pending or separately undecided.

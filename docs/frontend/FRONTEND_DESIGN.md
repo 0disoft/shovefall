@@ -62,15 +62,15 @@ Remote analytics, session replay, advertising, and automatic error upload are ex
 
 ## 14. Test Strategy
 
-Vitest covers pure state, input edges, settings tiers, collapse phases, result sealing, and presentation-independent behavior. Playwright Test covers setup, fixed-tick progress, keyboard movement and shove, active-round pause/resume, focus entry, settings return, collapse completion, result focus, and fresh-world restart. Explicit human-defeat injection and fatal-invariant recovery remain pending. Visual review checks readability of telegraphs, human identity, mass state, and reduced-motion behavior. Oxfmt and Oxlint do not replace product interaction testing.
+Vitest covers pure state, input edges, settings tiers, collapse phases, result sealing, presentation-event deduplication, optional-audio fallback, mute state, and voice limits. Playwright Test covers setup, fixed-tick progress, keyboard movement and shove, sound controls, active-round pause/resume, focus entry, settings return, collapse completion, result focus, fresh-world restart, deterministic human defeat, reduced motion, fatal recovery, and WebGL context loss and restoration. Visual review still must check telegraph, human identity, mass, item, and transient-effect readability. Oxfmt and Oxlint do not replace product interaction testing.
 
 ## 15. Implementation Sequence
 
-The toolchain, deterministic simulation, gray-box movement and combat, browser scheduler, keyboard adapter, procedural PixiJS presentation, utility bots, readable collapse states, round results, accelerated defeat resolution, restart, spatial broad phase, local 12/24/32 profiles, three procedural item markers, effect HUD, and bounded item settings are implemented. Refresh the scale profiles with items enabled before final visual polish. Final art and audio remain gated on behavior, performance, and user-provided or approved assets.
+The toolchain, deterministic simulation, gray-box movement and combat, browser scheduler, keyboard adapter, procedural PixiJS presentation, utility bots, readable collapse states, round results, accelerated defeat resolution, restart, spatial broad phase, local 12/24/32 profiles, three procedural item markers, effect HUD, bounded item settings, presentation-event deduplication, optional procedural audio, reduced-motion effects, and renderer recovery are implemented. Final art remains gated on an approved visual direction and user-provided or approved assets.
 
 ## 16. Open Questions and Decisions Log
 
-Open decisions include the final visual direction, palette, typography, image and audio asset inventory, hosting provider, exact supported viewport and browser matrix, and whether generated images are required. When visual assets become necessary, the implementation owner must give the repository owner a complete generation prompt instead of invoking a metered image-generation tool. Aesthetic frontend work should use the user-designated Umans GLM 5.2 path when available; if unavailable, prepare a self-contained handoff prompt for the user.
+Open decisions include the final visual direction, palette, typography, image asset inventory, hosting provider, exact supported viewport and browser matrix, and whether generated images are required. Procedural oscillator cues are the current optional audio baseline; recorded audio assets are not required. When visual assets become necessary, the implementation owner must give the repository owner a complete generation prompt instead of invoking a metered image-generation tool. Aesthetic frontend work should use the user-designated Umans GLM 5.2 path when available; if unavailable, prepare a self-contained handoff prompt for the user.
 
 ## Technology Reference
 

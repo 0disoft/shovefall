@@ -36,6 +36,8 @@ export interface GameSessionHooks {
 
 export interface GameSession {
   readonly active: boolean;
+  failForDiagnostics(error: unknown): void;
+  setRendererAvailable(available: boolean): void;
   start(config: GameConfigV1, masterSeed: string | number): void;
   stop(): void;
   destroy(): void;
@@ -52,6 +54,8 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
   let paused = false;
   let currentSeed = "not-started";
   let humanEliminated = false;
+  let nextRoundId = 1;
+  let rendererAvailable = true;
   const keyboard: KeyboardInput = createKeyboardInput(() => active && !paused && !humanEliminated);
 
   const publishFrame = (): void => {
@@ -107,6 +111,7 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
           ...(bots?.createCommands(world.tick, latestFrame ?? world.createRenderFrame()) ?? []),
         ]);
         latestFrame = result.frame;
+        renderer.consumeEvents(result.events, result.frame);
         hooks.onEvents(result.events);
         accumulatorMilliseconds -= FIXED_STEP_MILLISECONDS;
         steps += 1;
@@ -137,9 +142,7 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
       publishFrame();
       schedule();
     } catch (error: unknown) {
-      active = false;
-      keyboard.state.clear();
-      hooks.onFatalError(error);
+      fail(error);
     }
   };
 
@@ -157,11 +160,24 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
 
   const handleWindowBlur = (): void => setPaused(true);
   const handleWindowFocus = (): void => {
-    if (document.visibilityState === "visible") {
+    if (document.visibilityState === "visible" && rendererAvailable) {
       setPaused(false);
     }
   };
-  const handleVisibilityChange = (): void => setPaused(document.visibilityState !== "visible");
+  const handleVisibilityChange = (): void =>
+    setPaused(document.visibilityState !== "visible" || !rendererAvailable);
+
+  const fail = (error: unknown): void => {
+    active = false;
+    keyboard.state.clear();
+
+    if (animationFrameId !== undefined) {
+      window.cancelAnimationFrame(animationFrameId);
+      animationFrameId = undefined;
+    }
+
+    hooks.onFatalError(error);
+  };
 
   window.addEventListener("blur", handleWindowBlur);
   window.addEventListener("focus", handleWindowFocus);
@@ -171,17 +187,28 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
     get active(): boolean {
       return active;
     },
+    failForDiagnostics(error: unknown): void {
+      fail(error);
+    },
+    setRendererAvailable(available: boolean): void {
+      rendererAvailable = available;
+      setPaused(!rendererAvailable || document.visibilityState !== "visible");
+    },
     start(config: GameConfigV1, masterSeed: string | number): void {
       if (animationFrameId !== undefined) {
         window.cancelAnimationFrame(animationFrameId);
       }
 
-      world = new SimulationWorld(config, masterSeed, { humanActorId: HUMAN_ACTOR_ID });
+      world = new SimulationWorld(config, masterSeed, {
+        roundId: nextRoundId,
+        humanActorId: HUMAN_ACTOR_ID,
+      });
+      nextRoundId += 1;
       bots = new BotDirector(masterSeed, HUMAN_ACTOR_ID);
       latestFrame = world.createRenderFrame();
       accumulatorMilliseconds = 0;
       previousTimestamp = undefined;
-      paused = document.visibilityState !== "visible";
+      paused = document.visibilityState !== "visible" || !rendererAvailable;
       currentSeed = String(masterSeed);
       humanEliminated = false;
       active = true;

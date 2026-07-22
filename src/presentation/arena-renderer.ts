@@ -4,13 +4,21 @@ import type {
   RenderFrameV1,
   RenderItemV1,
   RenderParticipantV1,
+  SimulationEventV1,
   TileState,
 } from "../simulation/contracts";
-import { clamp } from "../simulation/math";
+import { clamp, type Vector2 } from "../simulation/math";
+import { SimulationEventLedger } from "./event-ledger";
 
 export interface ArenaRenderer {
+  consumeEvents(events: readonly SimulationEventV1[], frame: RenderFrameV1): void;
   destroy(): void;
   render(frame: RenderFrameV1, interpolationAlpha: number, humanActorId: number): void;
+}
+
+export interface ArenaRendererOptions {
+  readonly onContextLost?: () => void;
+  readonly onContextRestored?: () => void;
 }
 
 interface ArenaTransform {
@@ -20,9 +28,28 @@ interface ArenaTransform {
   readonly tileSize: number;
 }
 
+type VisualEffectKind =
+  | "shove-hit"
+  | "shove-missed"
+  | "dodge-succeeded"
+  | "falling-started"
+  | "item-picked-up";
+
+interface VisualEffect {
+  readonly key: string;
+  readonly kind: VisualEffectKind;
+  readonly roundId: number;
+  readonly startTick: number;
+  readonly endTick: number;
+  readonly position: Vector2;
+  readonly vector: Vector2 | undefined;
+}
+
 const TILE_GAP = 4;
 const DEFAULT_RESOLUTION_CAP = 1.5;
 const MAYHEM_RESOLUTION_CAP = 1;
+const NORMAL_EFFECT_CAP = 36;
+const MAYHEM_EFFECT_CAP = 14;
 const BOT_COLORS = [0xb8c1bd, 0xd5aaa7, 0xc9bd91, 0xaab8d5, 0xc0a8cf];
 const ACTION_COLORS: Readonly<Record<ParticipantActionKind, number>> = Object.freeze({
   Ready: 0xe8ecea,
@@ -133,6 +160,36 @@ function drawDirection(
     });
 }
 
+function drawMassMarker(
+  graphics: Graphics,
+  participant: RenderParticipantV1,
+  x: number,
+  y: number,
+  radius: number,
+): void {
+  const markerY = y + radius * 1.55;
+  const markerSize = Math.max(2.5, radius * 0.28);
+
+  if (participant.massFactor < 0.9) {
+    graphics
+      .moveTo(x - markerSize, markerY - markerSize)
+      .lineTo(x, markerY + markerSize)
+      .lineTo(x + markerSize, markerY - markerSize)
+      .stroke({ color: ITEM_COLORS.feather, width: 2, cap: "round" });
+    return;
+  }
+
+  if (participant.massFactor > 1.1) {
+    graphics
+      .rect(x - markerSize, markerY - markerSize * 0.7, markerSize * 2, markerSize * 1.4)
+      .fill({ color: ITEM_COLORS["iron-boots"] })
+      .stroke({ color: 0xe2e8ec, width: 1 });
+    return;
+  }
+
+  graphics.circle(x, markerY, markerSize * 0.55).fill({ color: 0xd5dbd8 });
+}
+
 function drawItem(graphics: Graphics, item: RenderItemV1, transform: ArenaTransform): void {
   const x = transform.originX + item.position.x * transform.pitch - TILE_GAP / 2;
   const y = transform.originY + item.position.y * transform.pitch - TILE_GAP / 2;
@@ -176,6 +233,8 @@ function drawParticipant(
   humanActorId: number,
   transform: ArenaTransform,
   interpolationAlpha: number,
+  reducedMotion: boolean,
+  mayhem: boolean,
 ): void {
   if (!participant.active && participant.action === "Eliminated") {
     return;
@@ -197,9 +256,15 @@ function drawParticipant(
     ? 0xf6f5ef
     : (BOT_COLORS[(participant.actorId - 2) % BOT_COLORS.length] ?? 0xb8c1bd);
   const actionColor = getActionColor(participant.action);
-  const effectIds = new Set(participant.effects.map(({ definitionId }) => definitionId));
+  const hasIronBoots = participant.effects.some(
+    ({ definitionId }) => definitionId === "iron-boots",
+  );
+  const hasFeather = participant.effects.some(({ definitionId }) => definitionId === "feather");
+  const hasSpringGlove = participant.effects.some(
+    ({ definitionId }) => definitionId === "spring-glove",
+  );
 
-  if (participant.action === "DodgeActive") {
+  if (participant.action === "DodgeActive" && !reducedMotion && (!mayhem || isHuman)) {
     const previousX =
       transform.originX + participant.previousPosition.x * transform.pitch - TILE_GAP / 2;
     const previousY =
@@ -230,9 +295,9 @@ function drawParticipant(
 
   const massRingRadius = visualRadius + Math.max(3, transform.tileSize * 0.06);
   graphics.circle(x, y, massRingRadius).stroke({
-    color: effectIds.has("iron-boots")
+    color: hasIronBoots
       ? ITEM_COLORS["iron-boots"]
-      : effectIds.has("feather")
+      : hasFeather
         ? ITEM_COLORS.feather
         : actionColor,
     width: Math.max(1, participant.massFactor * 1.6),
@@ -240,13 +305,34 @@ function drawParticipant(
   });
 
   drawDirection(graphics, participant, x, y, visualRadius);
+  drawMassMarker(graphics, participant, x, y, visualRadius);
 
-  if (effectIds.has("spring-glove") || participant.springBoosted) {
+  if (hasSpringGlove || participant.springBoosted) {
     const markerY = y - visualRadius - Math.max(6, transform.tileSize * 0.12);
     graphics.circle(x, markerY, Math.max(3, transform.tileSize * 0.07)).stroke({
       color: ITEM_COLORS["spring-glove"],
       width: participant.springBoosted ? 4 : 2,
     });
+  }
+
+  if (hasIronBoots || hasFeather) {
+    const badgeX = x + visualRadius * 0.82;
+    const badgeY = y - visualRadius * 0.82;
+    const badgeSize = Math.max(2.5, transform.tileSize * 0.055);
+
+    if (hasIronBoots) {
+      graphics
+        .rect(badgeX - badgeSize, badgeY - badgeSize, badgeSize * 2, badgeSize * 2)
+        .fill({ color: ITEM_COLORS["iron-boots"] })
+        .stroke({ color: 0xf3f5f4, width: 1 });
+    }
+
+    if (hasFeather) {
+      graphics
+        .moveTo(badgeX - badgeSize, badgeY + badgeSize)
+        .lineTo(badgeX + badgeSize, badgeY - badgeSize)
+        .stroke({ color: ITEM_COLORS.feather, width: 2, cap: "round" });
+    }
   }
 
   if (participant.action === "Stumbling" || participant.action === "Falling") {
@@ -260,7 +346,69 @@ function drawParticipant(
   }
 }
 
-export async function createArenaRenderer(host: HTMLElement): Promise<ArenaRenderer> {
+function getEffectPosition(event: SimulationEventV1, frame: RenderFrameV1): Vector2 | undefined {
+  const actorId = event.kind === "shove-hit" ? event.targetActorId : event.actorId;
+  return frame.participants.find((participant) => participant.actorId === actorId)?.position;
+}
+
+function isVisualEffectKind(kind: SimulationEventV1["kind"]): kind is VisualEffectKind {
+  return (
+    kind === "shove-hit" ||
+    kind === "shove-missed" ||
+    kind === "dodge-succeeded" ||
+    kind === "falling-started" ||
+    kind === "item-picked-up"
+  );
+}
+
+function drawWorldEffect(
+  graphics: Graphics,
+  effect: VisualEffect,
+  frameTick: number,
+  transform: ArenaTransform,
+  reducedMotion: boolean,
+): void {
+  const duration = Math.max(1, effect.endTick - effect.startTick);
+  const progress = clamp((frameTick - effect.startTick) / duration, 0, 1);
+  const x = transform.originX + effect.position.x * transform.pitch - TILE_GAP / 2;
+  const y = transform.originY + effect.position.y * transform.pitch - TILE_GAP / 2;
+  const baseRadius = Math.max(5, transform.tileSize * 0.14);
+  const expansion = reducedMotion ? 1 : 1 + progress * 1.8;
+  const alpha = Math.max(0, 1 - progress);
+
+  if (effect.kind === "shove-hit") {
+    graphics.circle(x, y, baseRadius * expansion).stroke({ color: 0xff695c, width: 3, alpha });
+  } else if (effect.kind === "dodge-succeeded") {
+    graphics
+      .circle(x, y, baseRadius * (reducedMotion ? 1.2 : 1.3 + progress))
+      .stroke({ color: 0x68d8d6, width: 2, alpha });
+  } else if (effect.kind === "item-picked-up") {
+    const size = baseRadius * (reducedMotion ? 0.8 : 0.8 + progress * 0.7);
+    graphics
+      .moveTo(x - size, y)
+      .lineTo(x + size, y)
+      .moveTo(x, y - size)
+      .lineTo(x, y + size)
+      .stroke({ color: 0xffd166, width: 2, alpha, cap: "round" });
+  } else {
+    const direction = effect.vector ?? { x: 1, y: 0 };
+    const length = baseRadius * (reducedMotion ? 1.4 : 1.4 + progress * 1.6);
+    graphics
+      .moveTo(x, y)
+      .lineTo(x + direction.x * length, y + direction.y * length)
+      .stroke({
+        color: effect.kind === "falling-started" ? 0x727b78 : 0xd58bea,
+        width: 3,
+        alpha,
+        cap: "round",
+      });
+  }
+}
+
+export async function createArenaRenderer(
+  host: HTMLElement,
+  options: ArenaRendererOptions = {},
+): Promise<ArenaRenderer> {
   const application = new Application();
 
   await application.init({
@@ -277,11 +425,17 @@ export async function createArenaRenderer(host: HTMLElement): Promise<ArenaRende
   application.canvas.setAttribute("aria-hidden", "true");
   application.canvas.tabIndex = -1;
   host.replaceChildren(application.canvas);
+  host.dataset.renderer = "ready";
 
   const tiles = new Graphics();
   const items = new Graphics();
   const participants = new Graphics();
-  application.stage.addChild(tiles, items, participants);
+  const effectLayer = new Graphics();
+  application.stage.addChild(tiles, items, participants, effectLayer);
+  const eventLedger = new SimulationEventLedger();
+  const motionPreference = window.matchMedia("(prefers-reduced-motion: reduce)");
+  let reducedMotion = motionPreference.matches;
+  let visualEffects: readonly VisualEffect[] = Object.freeze([]);
   let latestFrame: RenderFrameV1 | undefined;
   let latestInterpolationAlpha = 0;
   let latestHumanActorId = 1;
@@ -299,6 +453,8 @@ export async function createArenaRenderer(host: HTMLElement): Promise<ArenaRende
     tiles.clear();
     items.clear();
     participants.clear();
+    effectLayer.clear();
+    const mayhem = latestFrame.participants.length >= 25;
 
     for (const tile of latestFrame.tiles) {
       drawTile(tiles, tile, transform);
@@ -315,15 +471,79 @@ export async function createArenaRenderer(host: HTMLElement): Promise<ArenaRende
         latestHumanActorId,
         transform,
         latestInterpolationAlpha,
+        reducedMotion,
+        mayhem,
       );
+    }
+
+    visualEffects = Object.freeze(
+      visualEffects.filter(
+        (effect) => effect.roundId === latestFrame?.roundId && effect.endTick >= latestFrame.tick,
+      ),
+    );
+
+    for (const effect of visualEffects) {
+      drawWorldEffect(effectLayer, effect, latestFrame.tick, transform, reducedMotion);
     }
   };
 
+  const handleMotionPreference = (event: MediaQueryListEvent): void => {
+    reducedMotion = event.matches;
+    host.dataset.motion = reducedMotion ? "reduced" : "full";
+    draw();
+  };
+  const handleContextLost = (event: Event): void => {
+    event.preventDefault();
+    host.dataset.renderer = "lost";
+    options.onContextLost?.();
+  };
+  const handleContextRestored = (): void => {
+    host.dataset.renderer = "ready";
+    draw();
+    options.onContextRestored?.();
+  };
+
   application.renderer.on("resize", draw);
+  motionPreference.addEventListener("change", handleMotionPreference);
+  application.canvas.addEventListener("webglcontextlost", handleContextLost);
+  application.canvas.addEventListener("webglcontextrestored", handleContextRestored);
+  host.dataset.motion = reducedMotion ? "reduced" : "full";
 
   return Object.freeze({
+    consumeEvents(events: readonly SimulationEventV1[], frame: RenderFrameV1): void {
+      const accepted = eventLedger.consume(events);
+      const durationTicks = reducedMotion ? 3 : frame.participants.length >= 25 ? 7 : 12;
+      const cap = frame.participants.length >= 25 ? MAYHEM_EFFECT_CAP : NORMAL_EFFECT_CAP;
+      const appended = accepted.flatMap((event): readonly VisualEffect[] => {
+        if (!isVisualEffectKind(event.kind)) {
+          return [];
+        }
+
+        const position = getEffectPosition(event, frame);
+
+        if (position === undefined) {
+          return [];
+        }
+
+        return [
+          Object.freeze({
+            key: `${event.roundId}:${event.tick}:${event.sequence}`,
+            kind: event.kind,
+            roundId: event.roundId,
+            startTick: event.tick,
+            endTick: event.tick + durationTicks,
+            position,
+            vector: event.vector,
+          }),
+        ];
+      });
+      visualEffects = Object.freeze([...visualEffects, ...appended].slice(-cap));
+    },
     destroy(): void {
       application.renderer.off("resize", draw);
+      motionPreference.removeEventListener("change", handleMotionPreference);
+      application.canvas.removeEventListener("webglcontextlost", handleContextLost);
+      application.canvas.removeEventListener("webglcontextrestored", handleContextRestored);
       application.destroy(true, { children: true });
     },
     render(frame: RenderFrameV1, interpolationAlpha: number, humanActorId: number): void {
@@ -337,6 +557,9 @@ export async function createArenaRenderer(host: HTMLElement): Promise<ArenaRende
       }
 
       latestFrame = frame;
+      visualEffects = Object.freeze(
+        visualEffects.filter((effect) => effect.roundId === frame.roundId),
+      );
       latestInterpolationAlpha = clamp(interpolationAlpha, 0, 1);
       latestHumanActorId = humanActorId;
       draw();

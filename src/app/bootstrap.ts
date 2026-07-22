@@ -14,6 +14,11 @@ import type { SimulationEventV1 } from "../simulation/contracts";
 import { normalizeGameConfig } from "../simulation/contracts";
 import { SimulationWorld } from "../simulation/world";
 import { createArenaRenderer, type ArenaRenderer } from "../presentation/arena-renderer";
+import {
+  createAudioFeedback,
+  type AudioFeedback,
+  type AudioFeedbackState,
+} from "../presentation/audio-feedback";
 
 interface ElementConstructor<T extends Element> {
   new (): T;
@@ -123,6 +128,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   const readyMessage = requireElement(root, "#round-message", HTMLElement);
   const restartButton = requireElement(root, "#restart-round", HTMLButtonElement);
   const backButton = requireElement(root, "#back-to-settings", HTMLButtonElement);
+  const soundButton = requireElement(root, "#toggle-sound", HTMLButtonElement);
   const arenaHost = requireElement(root, "#arena-host", HTMLElement);
   const rendererStatus = requireElement(root, "#renderer-status", HTMLElement);
   const telemetry = requireElement(root, "#game-telemetry", HTMLElement);
@@ -139,7 +145,22 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
 
   let renderer: ArenaRenderer | undefined;
   let session: GameSession | undefined;
+  let audio: AudioFeedback | undefined;
   let latestSettings = normalizeSettings({ playerCount: 12, preset: "default" });
+
+  const updateSoundControl = (state: AudioFeedbackState): void => {
+    root.dataset.audio = state;
+    const unavailable = state === "unavailable" || state === "closed";
+    soundButton.disabled = unavailable;
+    soundButton.textContent = unavailable
+      ? "무음"
+      : audio?.muted === true
+        ? "소리 켜기"
+        : "소리 끄기";
+    soundButton.setAttribute("aria-pressed", String(audio?.muted === true));
+  };
+
+  audio = createAudioFeedback(undefined, updateSoundControl);
 
   const readSettings = (): GameSettings =>
     normalizeSettings({
@@ -218,25 +239,43 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     positionValue.value = `${human.position.x.toFixed(2)}, ${human.position.y.toFixed(2)}`;
     seedValue.value = current.masterSeed;
     hashValue.value = current.frame.stateHash;
-    rendererStatus.dataset.state = current.paused
-      ? "paused"
-      : current.simulationRate > 1
-        ? "spectating"
-        : "playing";
-    rendererStatus.textContent = current.paused
-      ? "일시 정지"
-      : current.simulationRate > 1
-        ? `빠른 관전 · ${current.simulationRate}×`
-        : current.backlogTicks > 0
-          ? `따라잡는 중 · ${current.backlogTicks}`
-          : "플레이 중";
+    const rendererLost = arenaHost.dataset.renderer === "lost";
+    rendererStatus.dataset.state = rendererLost
+      ? "error"
+      : current.paused
+        ? "paused"
+        : current.simulationRate > 1
+          ? "spectating"
+          : "playing";
+    rendererStatus.textContent = rendererLost
+      ? "그래픽 연결이 끊겼어"
+      : current.paused
+        ? "일시 정지"
+        : current.simulationRate > 1
+          ? `빠른 관전 · ${current.simulationRate}×`
+          : current.backlogTicks > 0
+            ? `따라잡는 중 · ${current.backlogTicks}`
+            : "플레이 중";
   };
 
   try {
-    renderer = await createArenaRenderer(arenaHost);
+    renderer = await createArenaRenderer(arenaHost, {
+      onContextLost(): void {
+        session?.setRendererAvailable(false);
+        rendererStatus.dataset.state = "error";
+        rendererStatus.textContent = "그래픽 연결이 끊겼어";
+        readyMessage.textContent = "화면이 돌아올 때까지 멈췄어.";
+      },
+      onContextRestored(): void {
+        session?.setRendererAvailable(true);
+        rendererStatus.dataset.state = session?.active === true ? "playing" : "ready";
+        rendererStatus.textContent = session?.active === true ? "플레이 중" : "WebGL 준비됨";
+      },
+    });
     session = createGameSession(renderer, {
       onTelemetry: updateTelemetry,
       onEvents(events): void {
+        audio?.consumeEvents(events);
         const message = events.map(getEventMessage).find((value) => value !== undefined);
 
         if (message !== undefined) {
@@ -244,6 +283,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
         }
       },
       onHumanEliminated(): void {
+        root.dataset.humanEliminated = "true";
         readyMessage.textContent = "떨어졌어. 남은 승부를 빠르게 돌리는 중.";
       },
       onRoundCompleted(round): void {
@@ -266,6 +306,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
         }
       },
       onFatalError(error): void {
+        root.dataset.round = "fatal";
         rendererStatus.dataset.state = "error";
         rendererStatus.textContent = "라운드를 멈췄어";
         readyMessage.textContent = "문제가 생겼어. 다시 시작해 줘.";
@@ -288,8 +329,10 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     }
 
     latestSettings = settings;
+    void audio?.unlock();
     root.dataset.screen = "arena";
     root.dataset.round = "active";
+    delete root.dataset.humanEliminated;
     root.dataset.initialItems = String(settings.initialItemCount);
     form.hidden = true;
     arenaActions.hidden = false;
@@ -336,6 +379,27 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
 
   restartButton.addEventListener("click", () => startRound(latestSettings));
 
+  soundButton.addEventListener("click", () => {
+    if (audio === undefined) {
+      return;
+    }
+
+    audio.setMuted(!audio.muted);
+    updateSoundControl(audio.state);
+
+    if (!audio.muted) {
+      void audio.unlock();
+    }
+  });
+
+  const handleDiagnosticFatal = (): void => {
+    session?.failForDiagnostics(new Error("Injected diagnostic failure"));
+  };
+
+  if (import.meta.env.DEV) {
+    window.addEventListener("shovefall:diagnostic-fatal", handleDiagnosticFatal);
+  }
+
   backButton.addEventListener("click", () => {
     session?.stop();
     root.dataset.screen = "setup";
@@ -355,6 +419,11 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     () => {
       session?.destroy();
       renderer?.destroy();
+      audio?.destroy();
+
+      if (import.meta.env.DEV) {
+        window.removeEventListener("shovefall:diagnostic-fatal", handleDiagnosticFatal);
+      }
     },
     { once: true },
   );

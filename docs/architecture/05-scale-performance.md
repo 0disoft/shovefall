@@ -37,11 +37,11 @@ A Vite production build ran in local headless Chrome at 1280×720. Each four-sec
 
 | Participants | Seed | Frame p95 | Maximum frame | Delivered ticks / requested simulation second | Long frames over 100 ms |
 |---:|---|---:|---:|---:|---:|
-| 12 | `0000000c00000000` | 16.8 ms | 66.7 ms | 61.23 | 0 |
-| 24 | `0000001800000001` | 16.8 ms | 17.7 ms | 61.46 | 0 |
-| 32 | `0000002000000001` | 16.8 ms | 19.3 ms | 62.47 | 0 |
+| 12 | `0000000c00000000` | 16.8 ms | 17.8 ms | 61.04 | 0 |
+| 24 | `0000001800000001` | 16.8 ms | 17.6 ms | 60.70 | 0 |
+| 32 | `0000002000000001` | 16.8 ms | 17.3 ms | 61.22 | 0 |
 
-These 2026-07-22 samples include the recommended item policy and Collector item interest. Twenty immediate 32-participant restarts followed by CDP garbage collection increased used heap by 1,391,252 bytes and left one canvas. This is Chromium-specific lab evidence. The host reports device pixel ratio 1, so the run confirms the Mayhem upper bound but does not exercise a physical high-DPR display.
+These refreshed 2026-07-22 samples include the recommended item policy, Collector item interest, presentation-event feedback, and Mayhem effect caps. Twenty immediate 32-participant restarts followed by CDP garbage collection increased used heap by 655,284 bytes and left one canvas. This is Chromium-specific lab evidence. The host reports device pixel ratio 1, so the run confirms the Mayhem upper bound but does not exercise a physical high-DPR display.
 
 ## Limits
 
