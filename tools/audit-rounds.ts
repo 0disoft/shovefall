@@ -8,6 +8,7 @@ import {
   type PresetName,
 } from "../src/app/settings";
 import {
+  createNeutralCommand,
   normalizeGameConfig,
   type ActorId,
   type GameConfigV1,
@@ -15,7 +16,11 @@ import {
   type RenderFrameV1,
   type RoundEndReason,
 } from "../src/simulation/contracts";
-import { getItemSpawnBand, type ItemSpawnBand } from "../src/simulation/items";
+import {
+  getItemSpawnBand,
+  type ItemSpawnBand,
+  type ItemSpawnOverride,
+} from "../src/simulation/items";
 import { SIMULATION_TUNING } from "../src/simulation/tuning";
 import {
   FIXED_TICKS_PER_SECOND,
@@ -28,11 +33,16 @@ const PARTICIPANT_COUNTS = [8, 16, 24, 32] as const;
 const SAMPLE_COUNT = 16;
 const CONTROLLED_MASS_SAMPLE_COUNT = 24;
 const CONTROLLED_MASS_PARTICIPANT_COUNT = 16;
+const CONTROLLED_ITEM_SAMPLE_COUNT = 64;
+const CONTROLLED_ITEM_PARTICIPANT_COUNT = 8;
+const CONTROLLED_ITEM_CHI_SQUARE_LIMIT = 7.815;
 const ROUND_LIMIT_SECONDS = 75;
 const MASS_BANDS = ["light", "normal", "heavy"] as const;
 const ITEM_SPAWN_BANDS = ["edge", "near-edge", "interior"] as const;
+const CONTROLLED_ITEM_GROUPS = ["control", ...ITEM_DEFINITION_IDS] as const;
 
 type MassBand = (typeof MASS_BANDS)[number];
+type ControlledItemGroup = (typeof CONTROLLED_ITEM_GROUPS)[number];
 
 const PRESET_BY_PARTICIPANT_COUNT: Readonly<
   Record<(typeof PARTICIPANT_COUNTS)[number], PresetName>
@@ -81,6 +91,10 @@ function createMassCounts(): Record<MassBand, number> {
 
 function createSpawnBandCounts(): Record<ItemSpawnBand, number> {
   return { edge: 0, "near-edge": 0, interior: 0 };
+}
+
+function createControlledItemCounts(): Record<ControlledItemGroup, number> {
+  return { control: 0, "iron-boots": 0, feather: 0, "spring-glove": 0 };
 }
 
 function getMassBand(massFactor: number): MassBand {
@@ -531,8 +545,183 @@ function auditControlledMass() {
   });
 }
 
+function getControlledItemGroup(actorId: ActorId, sampleIndex: number): ControlledItemGroup {
+  return (
+    CONTROLLED_ITEM_GROUPS[(actorId - 1 + sampleIndex) % CONTROLLED_ITEM_GROUPS.length] ?? "control"
+  );
+}
+
+function auditControlledItems() {
+  const arena = getArenaSize(CONTROLLED_ITEM_PARTICIPANT_COUNT);
+  const config = normalizeGameConfig({
+    participantCount: CONTROLLED_ITEM_PARTICIPANT_COUNT,
+    arenaColumns: arena.columns,
+    arenaRows: arena.rows,
+    roundLimitSeconds: ROUND_LIMIT_SECONDS,
+    collapseSpeed: "slow",
+    itemsEnabled: false,
+  });
+  const slots = createControlledItemCounts();
+  const wins = createControlledItemCounts();
+  const rounds = Array.from({ length: CONTROLLED_ITEM_SAMPLE_COUNT }, (_, sampleIndex) => {
+    const seed = `item-grant-audit-v1-${sampleIndex}`;
+    const groupByActor = new Map<ActorId, ControlledItemGroup>();
+
+    for (let actorId = 1; actorId <= CONTROLLED_ITEM_PARTICIPANT_COUNT; actorId += 1) {
+      const group = getControlledItemGroup(actorId, sampleIndex);
+      groupByActor.set(actorId, group);
+      slots[group] += 1;
+    }
+
+    const probeFrame = new SimulationWorld(config, seed, {
+      humanActorId: 1,
+    }).createRenderFrame();
+    const itemOverrides: ItemSpawnOverride[] = [];
+    let nextItemId = 1;
+
+    for (const participant of probeFrame.participants) {
+      const group = groupByActor.get(participant.actorId) ?? "control";
+
+      if (group === "control") {
+        continue;
+      }
+
+      itemOverrides.push(
+        Object.freeze({
+          itemId: nextItemId,
+          definitionId: group,
+          position: participant.position,
+          spawnedTick: 0,
+        }),
+      );
+      nextItemId += 1;
+    }
+
+    const world = new SimulationWorld(config, seed, {
+      humanActorId: 1,
+      itemOverrides: Object.freeze(itemOverrides),
+    });
+    let frame = world.createRenderFrame();
+    const grantResult = world.step(
+      frame.participants.map(({ actorId }) => createNeutralCommand(world.tick, actorId)),
+    );
+    frame = grantResult.frame;
+    const pickupsByActor = new Map<ActorId, ItemDefinitionId[]>();
+
+    for (const event of grantResult.events) {
+      if (
+        event.kind !== "item-picked-up" ||
+        event.actorId === undefined ||
+        event.itemDefinitionId === undefined
+      ) {
+        continue;
+      }
+
+      const pickups = pickupsByActor.get(event.actorId) ?? [];
+      pickups.push(event.itemDefinitionId);
+      pickupsByActor.set(event.actorId, pickups);
+    }
+
+    for (const [actorId, group] of groupByActor) {
+      const pickups = pickupsByActor.get(actorId) ?? [];
+
+      if (
+        group === "control" ? pickups.length !== 0 : pickups.length !== 1 || pickups[0] !== group
+      ) {
+        throw new Error(
+          `controlled item round ${seed} failed to grant ${group} to actor ${actorId}`,
+        );
+      }
+    }
+
+    const bots = new BotDirector(seed, null);
+
+    while (frame.round.status === "Active") {
+      frame = world.step(bots.createCommands(world.tick, frame)).frame;
+    }
+
+    if (frame.round.completedTick === null || frame.round.reason === null) {
+      throw new Error(`controlled item round ${seed} completed without a terminal result`);
+    }
+
+    const winnerGroup =
+      frame.round.winnerActorId === null
+        ? null
+        : (groupByActor.get(frame.round.winnerActorId) ?? null);
+
+    if (winnerGroup !== null) {
+      wins[winnerGroup] += 1;
+    }
+
+    return Object.freeze({
+      seed,
+      completedTick: frame.round.completedTick,
+      reason: frame.round.reason,
+      winnerActorId: frame.round.winnerActorId,
+      winnerItemGroup: winnerGroup,
+      finalStateHash: frame.stateHash,
+    });
+  });
+  const totalWins = Object.values(wins).reduce((sum, count) => sum + count, 0);
+  const totalSlots = Object.values(slots).reduce((sum, count) => sum + count, 0);
+  const expectedSlotWinRate = roundRatio(totalWins, totalSlots);
+  const expectedWinsPerGroup = totalWins / CONTROLLED_ITEM_GROUPS.length;
+  const winnerDistributionChiSquare =
+    expectedWinsPerGroup === 0
+      ? null
+      : Math.round(
+          (Object.values(wins).reduce(
+            (sum, count) => sum + (count - expectedWinsPerGroup) ** 2 / expectedWinsPerGroup,
+            0,
+          ) +
+            Number.EPSILON) *
+            10_000,
+        ) / 10_000;
+  const createGroupResult = (group: ControlledItemGroup) => {
+    const winRate = roundRatio(wins[group], slots[group]);
+    return Object.freeze({
+      actorRoundSlots: slots[group],
+      wins: wins[group],
+      winRate,
+      relativeToEqualSlotExpectation:
+        winRate === null || expectedSlotWinRate === null || expectedSlotWinRate === 0
+          ? null
+          : roundRatio(winRate, expectedSlotWinRate),
+    });
+  };
+  const groups = Object.freeze({
+    control: createGroupResult("control"),
+    "iron-boots": createGroupResult("iron-boots"),
+    feather: createGroupResult("feather"),
+    "spring-glove": createGroupResult("spring-glove"),
+  });
+  const terminalOk = rounds.every(
+    ({ completedTick, reason, winnerItemGroup }) =>
+      completedTick > 0 &&
+      ((reason === "last-standing" && winnerItemGroup !== null) ||
+        (reason === "no-survivors" && winnerItemGroup === null)),
+  );
+
+  return Object.freeze({
+    participantCount: CONTROLLED_ITEM_PARTICIPANT_COUNT,
+    sampleCount: CONTROLLED_ITEM_SAMPLE_COUNT,
+    productionSpawnsEnabled: false,
+    grantTick: 0,
+    assignment:
+      "Every actor rotates through control, Iron Boots, Feather, and Spring Glove grants across fixed seeds.",
+    expectedSlotWinRate,
+    winnerDistributionChiSquare,
+    chiSquareDegreesOfFreedom: CONTROLLED_ITEM_GROUPS.length - 1,
+    chiSquareScreenLimit: CONTROLLED_ITEM_CHI_SQUARE_LIMIT,
+    terminalOk,
+    groups,
+    rounds: Object.freeze(rounds),
+  });
+}
+
 const scenarios = PARTICIPANT_COUNTS.map(auditParticipantCount);
 const controlledMass = auditControlledMass();
+const controlledItems = auditControlledItems();
 const structuralOk = scenarios.every(
   ({ reasonCounts, rounds }) =>
     rounds.length === SAMPLE_COUNT &&
@@ -546,14 +735,22 @@ const controlledMassOk = MASS_BANDS.every((band) => {
   const ratio = controlledMass.bands[band].relativeToEqualSlotExpectation;
   return ratio !== null && ratio >= 0.4 && ratio <= 1.8;
 });
-const ok = structuralOk && edgePreferenceOk && controlledMassOk;
+const controlledItemsOk =
+  controlledItems.terminalOk &&
+  controlledItems.winnerDistributionChiSquare !== null &&
+  controlledItems.winnerDistributionChiSquare <= CONTROLLED_ITEM_CHI_SQUARE_LIMIT &&
+  CONTROLLED_ITEM_GROUPS.every((group) => {
+    const ratio = controlledItems.groups[group].relativeToEqualSlotExpectation;
+    return ratio !== null && ratio >= 0.4 && ratio <= 1.8;
+  });
+const ok = structuralOk && edgePreferenceOk && controlledMassOk && controlledItemsOk;
 
 process.stdout.write(
   `${JSON.stringify(
     {
       ok,
       kind: "deterministic-round-and-balance-audit",
-      auditVersion: 2,
+      auditVersion: 3,
       productVersion: PRODUCT_VERSION,
       simulationVersion: SIMULATION_VERSION,
       fixedTicksPerSecond: FIXED_TICKS_PER_SECOND,
@@ -561,17 +758,22 @@ process.stdout.write(
       seedPattern: "round-audit-v2-<participantCount>-<0..15>",
       scenarios,
       controlledMass,
+      controlledItems,
       decisionRules: [
         "Every sampled production-preset round must produce a structurally valid terminal result within 75 seconds.",
         "No sampled all-bot production-preset round may rely on the time-limit draw to terminate.",
         "At least 60% of observed item spawns must land in the outer two stable tile rings.",
         "Each controlled base-mass band must remain between 0.4x and 1.8x of equal-slot expected win rate.",
+        "Each controlled tick-zero item grant group must remain between 0.4x and 1.8x of equal-slot expected win rate.",
+        "The controlled item winner-distribution chi-square statistic must not exceed 7.815 for three degrees of freedom.",
       ],
       limitations: [
         "This is deterministic rule-based bot workload evidence, not a human-play balance test.",
         "Item exposure win rates are observational and overlap; survival time, bot personality, and pickup opportunity confound them.",
         "Mass exposure tick shares are descriptive because winners necessarily contribute more surviving ticks.",
         "The controlled mass audit isolates base mass with items disabled at 16 participants; it does not prove every item and participant-count interaction.",
+        "The controlled item audit rotates synthetic tick-zero grants at 8 participants and bypasses the production simultaneous-item cap; it isolates grant effects but does not model edge pickup cost, spawn timing, or every participant-count interaction.",
+        "The chi-square threshold is a deterministic regression screen over fixed seeds, not a population-significance claim.",
         "Actor 1 is bot-commanded for this audit even though the browser reserves actor 1 for the human.",
       ],
     },

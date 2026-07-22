@@ -2,19 +2,19 @@
 
 - Status: Local bot-workload evidence; human-play approval pending
 - Command: `audit-rounds` through the configured `shovefall_audit_rounds` intent
-- Audit schema: `deterministic-round-and-balance-audit` version 2
+- Audit schema: `deterministic-round-and-balance-audit` version 3
 
 ## Question and Boundary
 
-The audit asks three bounded questions: whether each production preset terminates without a hard-limit draw, where the item policy actually places rewards, and whether controlled base-mass groups show an obvious win-rate skew. It also reports item-exposure outcomes, but those are descriptive rather than causal because longer-lived actors have more time to collect items.
+The audit asks four bounded questions: whether each production preset terminates without a hard-limit draw, where the item policy actually places rewards, whether controlled base-mass groups show an obvious win-rate skew, and whether equal-slot synthetic item grants show an obvious winner-distribution skew. It also reports live item-exposure outcomes, but those are descriptive rather than causal because longer-lived actors have more time to collect items.
 
 The production workload uses 8, 16, 24, and 32 participants with the Small, Default, Crowded, and Mayhem rules. Each count runs sixteen fixed seeds with production arena size, recommended initial items, preset respawn interval, preset collapse speed, and a 75-second limit. Actor 1 receives the same deterministic bot policy as every other actor only inside this harness.
 
 Duration is `completedTick / 60`, not command wall time. Percentiles use nearest-rank selection. Every raw round reports its seed, completion tick, terminal reason, winner, and state hash. Item exposure counts one actor-round when that actor collected the named item at least once; the same actor-round may appear under several items. Mass exposure counts active actor-ticks, so winners necessarily contribute more ticks.
 
-## Version 2 Production-Preset Observation
+## Version 3 Production-Preset Observation
 
-The accepted product `0.14.0`, simulation `5.2.0`, and content `3.1.0` run produced:
+The accepted product `0.14.1`, simulation `5.2.0`, and content `3.1.0` run produced:
 
 | Participants | Preset | Minimum | p50 | p95 | Maximum | Last standing | No survivors | Time limit |
 |---:|---|---:|---:|---:|---:|---:|---:|---:|
@@ -49,7 +49,22 @@ The exposed-actor win rate divided by the no-item-exposure win rate varied by pa
 | 24 | 1.366× | 1.568× | 0.946× |
 | 32 | 3.034× | 4.335× | 2.311× |
 
-This table is not an item-power ranking. All three items move together, exposure overlaps, Collector personality is not uniformly distributed, and surviving longer creates more pickup opportunities. The evidence is retained as a drift baseline, but no item multiplier is changed solely from this correlation. A future causal item comparison must rotate an explicitly defined grant or opportunity across equal actor slots and declare how the synthetic grant differs from risky live pickup.
+This table is not an item-power ranking. All three items move together, exposure overlaps, Collector personality is not uniformly distributed, and surviving longer creates more pickup opportunities. The evidence is retained as a drift baseline, but no item multiplier is changed solely from this correlation.
+
+## Controlled Item-Grant Observation
+
+The item check disables production spawns in an 8-participant slow-collapse arena and rotates every actor through control, Iron Boots, Feather, and Spring Glove over sixty-four fixed seeds. Each group receives 128 actor-round slots. Six synthetic items are placed directly under their assigned actors and consumed on tick zero; this deliberately bypasses the production simultaneous-item cap so every non-control slot receives exactly one grant. One round ended with no survivors, leaving 63 winners:
+
+| Grant group | Actor-round slots | Wins | Slot win rate | Relative to equal-slot expectation |
+|---|---:|---:|---:|---:|
+| Control | 128 | 15 | 11.72% | 0.953× |
+| Iron Boots | 128 | 23 | 17.97% | 1.461× |
+| Feather | 128 | 13 | 10.16% | 0.826× |
+| Spring Glove | 128 | 12 | 9.38% | 0.763× |
+
+The winner-distribution chi-square statistic is `4.7460` with three degrees of freedom, below the predeclared `7.815` screen. Every group also remains inside the broad `0.4×..1.8×` slot-rate gate. Iron Boots leads this fixed sample, but the result does not cross either regression boundary, so changing its defense multiplier would be tuning toward bot noise rather than demonstrated breakage.
+
+This is causal evidence only for receiving one effect at tick zero inside the harness. It does not include the intended cost of reaching a dangerous edge spawn, later pickup timing, production item caps, repeated pickups, every participant count, or human decision-making. Those remain gray-box playtest questions.
 
 ## Controlled Base-Mass Observation
 
@@ -65,8 +80,8 @@ The accepted result passes the deliberately broad `0.4×..1.8×` screening gate.
 
 ## Decision
 
-The 8/16/24/32 production presets, 3/2/1 edge weighting, and `0.8..1.4` mass bounds are accepted for the next gray-box playtest. Combat impulse, dodge timing, support, item duration, Spring Glove strength, and the 75-second limit are unchanged. The audit remains a regression screen, not permission to tune toward bot statistics at the expense of readable human play.
+The 8/16/24/32 production presets, 3/2/1 edge weighting, `0.8..1.4` mass bounds, and current three item effects are accepted for the next gray-box playtest. Combat impulse, dodge timing, support, item duration, item multipliers, and the 75-second limit are unchanged. The audit remains a regression screen, not permission to tune toward bot statistics at the expense of readable human play.
 
 ## Reproduction and Drift
 
-Production seeds use `round-audit-v2-<participantCount>-<0..15>` and controlled mass seeds use `mass-audit-v1-<0..23>`. Changing the sample set, exposure denominator, percentile rule, bot policy, item policy, arena sizing, collapse cadence, fixed-tick rate, mass assignment, or terminal semantics requires an audit-version review. A passing rerun proves only the checked-in deterministic scenarios on the executing code. It does not prove browser frame rate, physical-device performance, cross-browser behavior, hosted behavior, or human balance.
+Production seeds use `round-audit-v2-<participantCount>-<0..15>`, controlled mass seeds use `mass-audit-v1-<0..23>`, and controlled item seeds use `item-grant-audit-v1-<0..63>`. Changing the sample set, exposure denominator, percentile rule, bot policy, item policy, arena sizing, collapse cadence, fixed-tick rate, controlled assignment, or terminal semantics requires an audit-version review. A passing rerun proves only the checked-in deterministic scenarios on the executing code. It does not prove browser frame rate, physical-device performance, cross-browser behavior, hosted behavior, risky live pickup balance, or human balance.
