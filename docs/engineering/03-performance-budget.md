@@ -25,7 +25,7 @@ The physical baseline device and repeatable browser capture procedure are still 
 - Simulation work is renderer-independent and allocation changes must be measured with 12, 24, and 32 participants.
 - Same-tick shove contacts remain batched for correctness. A stable 1.7-unit spatial hash supplies same and adjacent-cell pairs to weak contacts and shoves, preserves ActorId order, and reports candidate/full-pair source counts.
 - Bot decisions run on staggered 12-tick schedules, retain intent between decisions, query a bounded spatial neighborhood, and score at most six nearby candidates. Browser composition reuses the last emitted `RenderFrameV1` for AI and presentation instead of rebuilding and hashing the world multiple times per tick.
-- Item pickup uses bounded direct squared-distance scans without per-item steady-state sorting. Spawn and safe-area work is skipped on ticks with neither a due spawn nor an arena transition. Item-enabled Chrome evidence passes at 12/24/32, while the final headless tail rerun remains required after the latest allocation optimization.
+- Item pickup uses bounded direct squared-distance scans without per-item steady-state sorting. Spawn and safe-area work is skipped on ticks with neither a due spawn nor an arena transition. Item-enabled headless and Chrome evidence passes at 12/24/32 after the allocation optimization.
 - No background job, application network request, analytics upload, or remote model call belongs in the MVP runtime.
 
 ## Review Blockers

@@ -21,7 +21,15 @@ On 2026-07-22, Bun 1.3.14 ran 7,200 ticks each across sequential seeded rounds o
 | 24 | 0.647 ms | 2.844 ms | 0.2527 | 1 |
 | 32 | 1.159 ms | 5.286 ms | 0.2704 | 1 |
 
-The 24-participant AI maximum was 104.102 ms and the 32-participant simulation maximum was 97.162 ms. Those pre-item tail budgets passed. The first two item-enabled runs exposed allocation pressure in pickup scans. The second run brought p95 back under the 3/4/6 ms thresholds at 2.261/3.855/5.824 ms, but three 24-participant steps exceeded 100 ms, so the full headless gate remained failed. Pickup, expiry, item hashing, and bot item targeting were then changed to avoid steady-state allocation. A third run was not executed because the configured session policy stops an intent after two failures. Headless heap deltas remain observational because the harness does not force garbage collection and must not be compared with the Chrome restart measurement.
+The first two item-enabled runs exposed allocation pressure in pickup scans. After pickup, expiry, item hashing, and bot item targeting stopped allocating on steady-state ticks, a fresh 2026-07-22 run passed all tail gates:
+
+| Participants | AI p95 | Simulation p95 | Candidate/full pairs | Long steps over 100 ms |
+|---:|---:|---:|---:|---:|
+| 12 | 0.381 ms | 2.261 ms | 0.3868 | 0 |
+| 24 | 0.709 ms | 3.448 ms | 0.2545 | 0 |
+| 32 | 1.231 ms | 5.591 ms | 0.1925 | 0 |
+
+The maximum combined step components remained below 100 ms. Headless heap deltas are observational because the harness does not force garbage collection and must not be compared with the Chrome restart measurement.
 
 ## Local Production-Chrome Evidence
 
