@@ -9,7 +9,7 @@
 - The normal 12- and 24-participant modes target 60 rendered frames per second on the named desktop baseline.
 - The 25- to 32-participant Mayhem tier must sustain at least 45 rendered frames per second and preserve input delivery. Presentation quality may reduce particles, shadows, shake, and device-pixel ratio before changing rules.
 - The fixed 60 Hz simulation cannot drop authoritative ticks. The application caps catch-up work per render frame and exposes backlog rather than silently changing results.
-- Setup-to-ready and restart-to-ready should complete within one second when assets are already local. Human defeat must offer restart or accelerated resolution within five seconds.
+- Setup-to-rendered-tick-zero and restart-to-rendered-tick-zero should complete within one second when assets are already local. The deliberate 1.5-second countdown begins only after that ready state and is excluded from this loading budget. Human defeat must offer restart or accelerated resolution within five seconds.
 
 The physical baseline device and repeatable browser capture procedure are still pending, so browser frame targets are release blockers only after that evidence is named.
 
@@ -17,7 +17,7 @@ The physical baseline device and repeatable browser capture procedure are still 
 
 - The 100-run determinism test executes 12,000 ticks with 12 participants and must finish within its 15-second Vitest budget. Observed 2026-07-22 local runs completed in approximately 2.7 to 13.5 seconds under varying concurrent test load; this is evidence from one workstation, not a portable forecast. Repeated approach to the upper bound requires profiling rather than a silent timeout increase.
 - A 32-participant `RenderFrameV1` has a 256 KiB warning threshold. Production code must not JSON-serialize the full frame every render.
-- Total compressed production JavaScript has a 180 KiB warning budget and CSS has a 20 KiB warning budget before image assets. The swept-contact 2026-07-22 Vite build reports approximately 159.51 KiB gzip across emitted JavaScript chunks, a 50.44 KiB gzip entry chunk, and 2.25 KiB gzip CSS. Procedural oscillator audio adds no downloaded media. Chunk count alone is not a failure when Vite and PixiJS load the provider-neutral static artifact correctly.
+- Total compressed production JavaScript has a 180 KiB warning budget and CSS has a 20 KiB warning budget before image assets. The countdown-enabled 2026-07-23 Vite build reports approximately 159.66 KiB gzip across emitted JavaScript chunks, a 50.59 KiB gzip entry chunk, and 2.28 KiB gzip CSS. Procedural oscillator audio adds no downloaded media. Chunk count alone is not a failure when Vite and PixiJS load the provider-neutral static artifact correctly.
 - Replay JSON is capped at 5 MiB and 7,200 ticks before parsing or execution.
 
 ## Hot-path Rules

@@ -216,6 +216,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     telemetry.dataset.action = human.action;
     telemetry.dataset.backlogTicks = String(current.backlogTicks);
     telemetry.dataset.simulationRate = String(current.simulationRate);
+    telemetry.dataset.countdown = current.countdown === null ? "" : String(current.countdown);
     tickValue.value = String(current.frame.tick);
     actionValue.value = ACTION_LABELS[human.action];
     massValue.value =
@@ -239,23 +240,35 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     positionValue.value = `${human.position.x.toFixed(2)}, ${human.position.y.toFixed(2)}`;
     seedValue.value = current.masterSeed;
     hashValue.value = current.frame.stateHash;
+    if (current.countdown !== null) {
+      root.dataset.round = "countdown";
+      readyMessage.textContent = String(current.countdown);
+    } else if (root.dataset.round === "countdown") {
+      root.dataset.round = "active";
+      readyMessage.textContent = "시작! 움직여서 가장자리로 몰아붙여.";
+    }
+
     const rendererLost = arenaHost.dataset.renderer === "lost";
     rendererStatus.dataset.state = rendererLost
       ? "error"
       : current.paused
         ? "paused"
-        : current.simulationRate > 1
-          ? "spectating"
-          : "playing";
+        : current.countdown !== null
+          ? "countdown"
+          : current.simulationRate > 1
+            ? "spectating"
+            : "playing";
     rendererStatus.textContent = rendererLost
       ? "그래픽 연결이 끊겼어"
       : current.paused
         ? "일시 정지"
-        : current.simulationRate > 1
-          ? `빠른 관전 · ${current.simulationRate}×`
-          : current.backlogTicks > 0
-            ? `따라잡는 중 · ${current.backlogTicks}`
-            : "플레이 중";
+        : current.countdown !== null
+          ? `시작까지 ${current.countdown}`
+          : current.simulationRate > 1
+            ? `빠른 관전 · ${current.simulationRate}×`
+            : current.backlogTicks > 0
+              ? `따라잡는 중 · ${current.backlogTicks}`
+              : "플레이 중";
   };
 
   try {
@@ -268,8 +281,11 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
       },
       onContextRestored(): void {
         session?.setRendererAvailable(true);
-        rendererStatus.dataset.state = session?.active === true ? "playing" : "ready";
-        rendererStatus.textContent = session?.active === true ? "플레이 중" : "WebGL 준비됨";
+        const countingDown = root.dataset.round === "countdown";
+        rendererStatus.dataset.state =
+          session?.active === true ? (countingDown ? "countdown" : "playing") : "ready";
+        rendererStatus.textContent =
+          session?.active === true ? (countingDown ? "다시 준비" : "플레이 중") : "WebGL 준비됨";
       },
     });
     session = createGameSession(renderer, {
@@ -301,7 +317,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
       onPauseChanged(paused): void {
         if (paused) {
           readyMessage.textContent = "잠시 멈췄어.";
-        } else if (session?.active === true) {
+        } else if (session?.active === true && root.dataset.round !== "countdown") {
           readyMessage.textContent = "움직여서 가장자리로 몰아붙여.";
         }
       },
@@ -331,13 +347,13 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     latestSettings = settings;
     void audio?.unlock();
     root.dataset.screen = "arena";
-    root.dataset.round = "active";
+    root.dataset.round = "countdown";
     delete root.dataset.humanEliminated;
     root.dataset.initialItems = String(settings.initialItemCount);
     form.hidden = true;
     arenaActions.hidden = false;
     telemetry.hidden = false;
-    readyMessage.textContent = "움직여서 가장자리로 몰아붙여.";
+    readyMessage.textContent = "3";
     arenaHost.setAttribute(
       "aria-label",
       `${settings.playerCount}명이 참가하는 Shovefall 회색 상자 아레나. WASD로 이동하고 Space로 밀치며 Shift로 회피해.`,

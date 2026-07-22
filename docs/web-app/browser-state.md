@@ -31,4 +31,4 @@ The local HUD exposes tick, human action, mass category, standing participant co
 
 ## Pending States
 
-Countdown remains pending. Deterministic human-defeat restart, fatal recovery, reduced motion, unavailable audio, and WebGL loss/restoration are covered in browser smoke. Bot weights, collapse cadence, and personality readability remain unapproved until external gray-box observation.
+The session owns a 1.5-second `3→2→1` countdown. It renders the new tick-zero world while closing bot work and keyboard command delivery. Blur, visibility loss, and renderer loss freeze elapsed countdown time; restart creates a new world and starts the same boundary again. Development smoke covers the diagnostic fatal path, while generated-`dist` smoke covers the six production-safe flows. Bot weights, collapse cadence, and personality readability remain unapproved until external gray-box observation.

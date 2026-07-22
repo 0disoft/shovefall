@@ -38,6 +38,8 @@ The application accumulates monotonic browser time and executes whole fixed tick
 
 When the browser cannot keep up, the application caps work per render frame and exposes backlog diagnostics. Normal play may slow temporarily instead of silently dropping rule steps. Focus loss clears held input and pauses or resumes through the application lifecycle contract.
 
+Start and restart create and render the new tick-zero world immediately, then the same animation-frame scheduler advances a 1.5-second `3→2→1` countdown before accumulating simulation time. Human input and bot decisions remain closed during this state. Pause and renderer-loss paths update the reference timestamp without advancing countdown elapsed time, so hidden wall time never starts a round.
+
 When the human enters irreversible falling, command input closes and accumulated browser time advances the same authoritative simulation at six times normal speed. Physics and bot rules do not change. Completion publishes the final frame before the DOM result so telemetry cannot overwrite result state, then stops scheduling until restart creates a new world.
 
 ## Replay Flow

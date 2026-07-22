@@ -14,7 +14,7 @@ The primary surface is a short desktop-browser single-player game reached throug
 
 ## 2. User Flow Map
 
-The minimum user flow is load, setup, quick start, countdown, play, elimination or victory, and immediate restart. Optional settings branch from setup and return to countdown. Required initialization failure enters a DOM fatal-error state with a retry path. There are no application permission or authentication flows.
+The minimum user flow is load, setup, quick start, a pausable `3→2→1` countdown, play, elimination or victory, and immediate restart through a fresh countdown. Optional settings branch from setup and return to countdown. Required initialization failure enters a DOM fatal-error state with a retry path. There are no application permission or authentication flows.
 
 ## 3. Routing Contract
 
@@ -26,7 +26,7 @@ The DOM shell owns setup, settings, HUD overlays outside the game world, results
 
 ## 5. State Ownership Model
 
-The pure simulation owns round state. The application layer owns the fixed-step accumulator, screen and round lifecycle, generated local seed, pause/resume, and command delivery. The DOM shell owns draft settings, focus, textual telemetry, restart, and settings return. PixiJS owns presentation objects derived from read-only render state. There is no server state or durable URL state. Presentation layers cannot mutate simulation entities directly.
+The pure simulation owns round state. The application layer owns the fixed-step accumulator, countdown elapsed time, screen and round lifecycle, generated local seed, pause/resume, and command delivery. The DOM shell owns draft settings, focus, textual telemetry, restart, and settings return. PixiJS owns presentation objects derived from read-only render state. There is no server state or durable URL state. Presentation layers cannot mutate simulation entities directly.
 
 ## 6. Data Fetching and Cache Policy
 
@@ -62,11 +62,11 @@ Remote analytics, session replay, advertising, and automatic error upload are ex
 
 ## 14. Test Strategy
 
-Vitest covers pure state, input edges, settings tiers, collapse phases, result sealing, presentation-event deduplication, optional-audio fallback, mute state, and voice limits. Playwright Test covers setup, fixed-tick progress, keyboard movement and shove, sound controls, active-round pause/resume, focus entry, settings return, collapse completion, result focus, fresh-world restart, deterministic human defeat, reduced motion, fatal recovery, and WebGL context loss and restoration. Visual review still must check telegraph, human identity, mass, item, and transient-effect readability. Oxfmt and Oxlint do not replace product interaction testing.
+Vitest covers pure state, input edges, settings tiers, collapse phases, result sealing, presentation-event deduplication, optional-audio fallback, mute state, and voice limits. Playwright Test covers setup, countdown tick-zero and input isolation, countdown pause/resume, fixed-tick progress, keyboard movement and shove, sound controls, active-round pause/resume, focus entry, settings return, collapse completion, result focus, fresh-world countdown restart, deterministic human defeat, reduced motion, development fatal recovery, and WebGL context loss and restoration. The same production-safe paths run against the generated `dist` preview. Visual review still must check telegraph, human identity, mass, item, and transient-effect readability. Oxfmt and Oxlint do not replace product interaction testing.
 
 ## 15. Implementation Sequence
 
-The toolchain, deterministic simulation, gray-box movement and combat, browser scheduler, keyboard adapter, procedural PixiJS presentation, utility bots, readable collapse states, round results, accelerated defeat resolution, restart, spatial broad phase, local 12/24/32 profiles, three procedural item markers, effect HUD, bounded item settings, presentation-event deduplication, optional procedural audio, reduced-motion effects, and renderer recovery are implemented. Final art remains gated on an approved visual direction and user-provided or approved assets.
+The toolchain, deterministic simulation, gray-box movement and combat, browser scheduler, pausable countdown, keyboard adapter, procedural PixiJS presentation, utility bots, readable collapse states, round results, accelerated defeat resolution, restart, spatial broad phase, local 12/24/32 profiles, production-artifact smoke, three procedural item markers, effect HUD, bounded item settings, presentation-event deduplication, optional procedural audio, reduced-motion effects, and renderer recovery are implemented. Final art remains gated on an approved visual direction and user-provided or approved assets.
 
 ## 16. Open Questions and Decisions Log
 

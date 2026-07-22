@@ -54,6 +54,11 @@ async function fastForwardUntilAttribute(
   return fastForwardUntilAttribute(page, selector, attribute, expected, remainingFrames - 1);
 }
 
+async function finishInstalledClockCountdown(page: Page): Promise<void> {
+  await page.clock.fastForward(1_600);
+  await expect(page.locator("#app")).toHaveAttribute("data-round", "active");
+}
+
 test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) => {
   await page.goto("/");
 
@@ -66,10 +71,27 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await page.getByRole("button", { name: "빠른 시작" }).click();
 
   await expect(page.locator("#app")).toHaveAttribute("data-screen", "arena");
-  await expect(page.getByText("움직여서 가장자리로 몰아붙여.")).toBeVisible();
+  await expect(page.locator("#app")).toHaveAttribute("data-round", "countdown");
+  await expect(page.locator("#renderer-status")).toHaveText("시작까지 3");
+  await expect(page.locator("#tick-value")).toHaveText("0");
   await expect(page.locator("#arena-host")).toBeFocused();
   await expect(page.locator("#game-telemetry")).toBeVisible();
   await expect(page.locator("#app")).toHaveAttribute("data-initial-items", "4");
+  await page.keyboard.press("Space");
+  await page.evaluate(() => window.dispatchEvent(new Event("blur")));
+  await expect(page.locator("#renderer-status")).toHaveText("일시 정지");
+  const countdownBeforePause = await page.locator("#game-telemetry").getAttribute("data-countdown");
+  expect(countdownBeforePause).toMatch(/^[123]$/u);
+  await page.waitForTimeout(600);
+  await expect(page.locator("#tick-value")).toHaveText("0");
+  await expect(page.locator("#game-telemetry")).toHaveAttribute(
+    "data-countdown",
+    countdownBeforePause ?? "",
+  );
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await expect(page.locator("#app")).toHaveAttribute("data-round", "active");
+  await expect(page.getByText("시작! 움직여서 가장자리로 몰아붙여.")).toBeVisible();
+  await expect(page.locator("#game-telemetry")).toHaveAttribute("data-action", "Ready");
   await expect
     .poll(async () => Number(await page.locator("#game-telemetry").getAttribute("data-tick")))
     .toBeGreaterThan(0);
@@ -125,7 +147,7 @@ test("completes a collapsing round and starts a fresh world", async ({ page }) =
   await expect(page.locator("#initial-item-count-value")).toHaveText("2개");
   await page.getByRole("button", { name: "빠른 시작" }).click();
 
-  await expect(page.locator("#app")).toHaveAttribute("data-round", "active");
+  await finishInstalledClockCountdown(page);
   await fastForwardUntilRoundCompleted(page);
   await expect(page.locator("#app")).toHaveAttribute("data-round", "completed");
   await expect(page.getByRole("button", { name: "다시 시작" })).toBeFocused();
@@ -135,7 +157,9 @@ test("completes a collapsing round and starts a fresh world", async ({ page }) =
   const completedHash = await page.locator("#hash-value").textContent();
   await page.getByRole("button", { name: "다시 시작" }).click();
 
-  await expect(page.locator("#app")).toHaveAttribute("data-round", "active");
+  await expect(page.locator("#app")).toHaveAttribute("data-round", "countdown");
+  await expect(page.locator("#tick-value")).toHaveText("0");
+  await finishInstalledClockCountdown(page);
   await expect(page.locator("#arena-host")).toBeFocused();
   const restartedTick = Number(await page.locator("#tick-value").textContent());
   expect(restartedTick).toBeLessThan(completedTick);
@@ -150,12 +174,15 @@ test("allows an immediate fresh restart after a deterministic human defeat", asy
   await page.locator("#player-count").fill("4");
   await page.getByRole("button", { name: "빠른 시작" }).click();
 
+  await finishInstalledClockCountdown(page);
+
   await fastForwardUntilAttribute(page, "#app", "data-human-eliminated", "true");
   await expect(page.locator("#app")).toHaveAttribute("data-human-eliminated", "true");
   await expect(page.locator("#game-telemetry")).toHaveAttribute("data-simulation-rate", "6");
   await page.getByRole("button", { name: "다시 시작" }).click();
 
-  await expect(page.locator("#app")).toHaveAttribute("data-round", "active");
+  await expect(page.locator("#app")).toHaveAttribute("data-round", "countdown");
+  await finishInstalledClockCountdown(page);
   await expect(page.locator("#app")).not.toHaveAttribute("data-human-eliminated", "true");
   await expect(page.locator("#game-telemetry")).toHaveAttribute("data-simulation-rate", "1");
   await expect(page.locator("#arena-host")).toBeFocused();
@@ -188,7 +215,7 @@ test("honors reduced motion without removing the playable arena", async ({ page 
     .toBeGreaterThan(0);
 });
 
-test("recovers from an explicitly injected fatal round error", async ({ page }) => {
+test("@dev-only recovers from an explicitly injected fatal round error", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "빠른 시작" }).click();
   await expect

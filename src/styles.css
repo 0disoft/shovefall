@@ -352,6 +352,7 @@ button:disabled {
 }
 
 .renderer-status[data-state="paused"],
+.renderer-status[data-state="countdown"],
 .renderer-status[data-state="spectating"],
 .renderer-status[data-state="completed"] {
   color: #755218;
@@ -375,6 +376,13 @@ button:disabled {
 
 .arena-host:focus-visible {
   outline-color: #70a9ff;
+}
+
+.app-shell[data-round="countdown"] .ready-message {
+  min-height: 1.1em;
+  font-size: 3rem;
+  line-height: 1;
+  letter-spacing: -0.08em;
 }
 
 .arena-canvas {

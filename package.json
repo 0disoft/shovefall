@@ -1,13 +1,13 @@
 {
   "name": "shovefall",
-  "version": "0.10.0",
+  "version": "0.11.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "format": "oxfmt index.html package.json tsconfig.json .oxlintrc.json vite.config.ts vitest.config.ts playwright.config.ts playwright.scale.config.ts src tests e2e tools",
-    "format-check": "oxfmt --check index.html package.json tsconfig.json .oxlintrc.json vite.config.ts vitest.config.ts playwright.config.ts playwright.scale.config.ts src tests e2e tools",
-    "lint": "oxlint src tests e2e tools vite.config.ts vitest.config.ts playwright.config.ts playwright.scale.config.ts",
+    "format": "oxfmt index.html package.json tsconfig.json .oxlintrc.json vite.config.ts vitest.config.ts playwright.config.ts playwright.scale.config.ts playwright.dist.config.ts src tests e2e tools",
+    "format-check": "oxfmt --check index.html package.json tsconfig.json .oxlintrc.json vite.config.ts vitest.config.ts playwright.config.ts playwright.scale.config.ts playwright.dist.config.ts src tests e2e tools",
+    "lint": "oxlint src tests e2e tools vite.config.ts vitest.config.ts playwright.config.ts playwright.scale.config.ts playwright.dist.config.ts",
     "typecheck": "tsc --noEmit",
     "contract": "bun tools/check-architecture.ts",
     "fixtures:replay": "bun tools/generate-replay-fixtures.ts",
@@ -19,6 +19,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "smoke": "playwright test --grep-invert @profile",
+    "smoke:dist": "bun run build && playwright test --config=playwright.dist.config.ts",
     "check": "bun run format-check && bun run lint && bun run typecheck && bun run contract && bun run test && bun run docs && bun run build"
   },
   "dependencies": {

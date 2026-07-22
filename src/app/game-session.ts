@@ -15,6 +15,9 @@ const FIXED_STEP_MILLISECONDS = 1_000 / FIXED_TICKS_PER_SECOND;
 const MAX_STEPS_PER_RENDER = 8;
 const HUMAN_ACTOR_ID = 1;
 const POST_HUMAN_ELIMINATION_RATE = 6;
+const COUNTDOWN_STEP_MILLISECONDS = 500;
+
+export type RoundCountdownValue = 3 | 2 | 1 | null;
 
 export interface SessionTelemetry {
   readonly frame: RenderFrameV1;
@@ -23,6 +26,7 @@ export interface SessionTelemetry {
   readonly paused: boolean;
   readonly masterSeed: string;
   readonly simulationRate: number;
+  readonly countdown: RoundCountdownValue;
 }
 
 export interface GameSessionHooks {
@@ -56,7 +60,11 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
   let humanEliminated = false;
   let nextRoundId = 1;
   let rendererAvailable = true;
-  const keyboard: KeyboardInput = createKeyboardInput(() => active && !paused && !humanEliminated);
+  let countdown: RoundCountdownValue = null;
+  let countdownElapsedMilliseconds = 0;
+  const keyboard: KeyboardInput = createKeyboardInput(
+    () => active && !paused && countdown === null && !humanEliminated,
+  );
 
   const publishFrame = (): void => {
     if (world === undefined || latestFrame === undefined) {
@@ -73,6 +81,7 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
         paused,
         masterSeed: currentSeed,
         simulationRate: humanEliminated ? POST_HUMAN_ELIMINATION_RATE : 1,
+        countdown,
       }),
     );
   };
@@ -88,6 +97,25 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
 
     if (paused) {
       previousTimestamp = timestamp;
+      publishFrame();
+      schedule();
+      return;
+    }
+
+    if (countdown !== null) {
+      if (previousTimestamp !== undefined) {
+        countdownElapsedMilliseconds += Math.max(0, timestamp - previousTimestamp);
+      }
+
+      previousTimestamp = timestamp;
+      countdown =
+        countdownElapsedMilliseconds < COUNTDOWN_STEP_MILLISECONDS
+          ? 3
+          : countdownElapsedMilliseconds < COUNTDOWN_STEP_MILLISECONDS * 2
+            ? 2
+            : countdownElapsedMilliseconds < COUNTDOWN_STEP_MILLISECONDS * 3
+              ? 1
+              : null;
       publishFrame();
       schedule();
       return;
@@ -211,6 +239,8 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
       paused = document.visibilityState !== "visible" || !rendererAvailable;
       currentSeed = String(masterSeed);
       humanEliminated = false;
+      countdown = 3;
+      countdownElapsedMilliseconds = 0;
       active = true;
       keyboard.state.clear();
       publishFrame();
@@ -225,6 +255,8 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
       accumulatorMilliseconds = 0;
       previousTimestamp = undefined;
       humanEliminated = false;
+      countdown = null;
+      countdownElapsedMilliseconds = 0;
       keyboard.state.clear();
 
       if (animationFrameId !== undefined) {
