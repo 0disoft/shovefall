@@ -11,6 +11,27 @@ const ROOT_DOCUMENTS = [
   "VALIDATION.md",
 ];
 
+const REQUIRED_CUSTOM_DOCUMENTS = [
+  "docs/README.md",
+  "docs/product/00-product-brief.md",
+  "docs/product/01-roadmap.md",
+  "docs/product/02-spec.md",
+  "docs/product/03-risk-register.md",
+  "docs/product/04-playtest-protocol.md",
+  "docs/frontend/FRONTEND_DESIGN.md",
+  "docs/web-app/README.md",
+  "docs/web-app/routing-and-rendering.md",
+  "docs/web-app/browser-state.md",
+  "docs/integrations/backend-api.md",
+] as const;
+
+const SCAFFOLD_MARKERS = [
+  "Status: Draft",
+  "UNASSIGNED",
+  "UNDECIDED",
+  "intentionally a scaffold",
+] as const;
+
 async function listMarkdownFiles(directory: string): Promise<readonly string[]> {
   const entries = await readdir(directory, { withFileTypes: true });
   const files = await Promise.all(
@@ -91,15 +112,34 @@ async function main(): Promise<void> {
     }),
   );
   const missing = checks.flat();
+  const scaffoldMarkers = (
+    await Promise.all(
+      REQUIRED_CUSTOM_DOCUMENTS.map(async (path): Promise<readonly string[]> => {
+        const markdown = await readFile(join(root, path), "utf8");
 
-  if (missing.length > 0) {
-    process.stderr.write(`${JSON.stringify({ ok: false, missing }, null, 2)}\n`);
+        return SCAFFOLD_MARKERS.filter((marker) => markdown.includes(marker)).map(
+          (marker) => `${path} -> ${marker}`,
+        );
+      }),
+    )
+  ).flat();
+
+  if (missing.length > 0 || scaffoldMarkers.length > 0) {
+    process.stderr.write(`${JSON.stringify({ ok: false, missing, scaffoldMarkers }, null, 2)}\n`);
     process.exitCode = 1;
     return;
   }
 
   process.stdout.write(
-    `${JSON.stringify({ ok: true, checkedDocuments: markdownFiles.length }, null, 2)}\n`,
+    `${JSON.stringify(
+      {
+        ok: true,
+        checkedDocuments: markdownFiles.length,
+        checkedCustomDocuments: REQUIRED_CUSTOM_DOCUMENTS.length,
+      },
+      null,
+      2,
+    )}\n`,
   );
 }
 
