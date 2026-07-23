@@ -45,6 +45,21 @@ function roundSummary(summary: Percentiles): Percentiles {
   });
 }
 
+function createProfileHumanCommand(tick: number) {
+  const cardinalDirections = [
+    { x: 0, y: -1 },
+    { x: 1, y: 0 },
+    { x: 0, y: 1 },
+    { x: -1, y: 0 },
+  ] as const;
+  const direction = cardinalDirections[tick % cardinalDirections.length] ?? { x: 1, y: 0 };
+  return {
+    ...createNeutralCommand(tick, 1),
+    move: direction,
+    useItemSlot: tick < 12 ? (0 as const) : null,
+  };
+}
+
 function profileParticipantCount(participantCount: number) {
   const arenaSize = getArenaSize(participantCount);
   const config = normalizeGameConfig({
@@ -65,12 +80,17 @@ function profileParticipantCount(participantCount: number) {
   let completedRounds = 0;
   let totalTicks = 0;
   let roundIndex = 0;
+  let peakBrickWalls = 0;
+  let totalBrickWallSamples = 0;
   const heapBefore = process.memoryUsage().heapUsed;
   const profileStarted = performance.now();
 
   while (totalTicks < PROFILE_TICKS) {
     const seed = `scale-${participantCount}-${roundIndex}`;
-    const world = new SimulationWorld(config, seed, { humanActorId: 1 });
+    const world = new SimulationWorld(config, seed, {
+      humanActorId: 1,
+      participantOverrides: [{ actorId: 1, startingItems: ["brick-bag"] }],
+    });
     const bots = new BotDirector(seed, 1, { difficulty: config.difficulty });
     let frame = world.createRenderFrame();
 
@@ -78,7 +98,7 @@ function profileParticipantCount(participantCount: number) {
       const aiStarted = performance.now();
       const botCommands = bots.createCommands(world.tick, frame);
       const simulationStarted = performance.now();
-      const result = world.step([createNeutralCommand(world.tick, 1), ...botCommands]);
+      const result = world.step([createProfileHumanCommand(world.tick), ...botCommands]);
       const stepFinished = performance.now();
       const aiDuration = simulationStarted - aiStarted;
       const simulationDuration = stepFinished - simulationStarted;
@@ -88,6 +108,8 @@ function profileParticipantCount(participantCount: number) {
       totalFullPairs += result.diagnostics.fullPairCount;
       longSteps += aiDuration + simulationDuration > 100 ? 1 : 0;
       frame = result.frame;
+      peakBrickWalls = Math.max(peakBrickWalls, frame.brickWalls.length);
+      totalBrickWallSamples += frame.brickWalls.length;
       totalTicks += 1;
     }
 
@@ -114,6 +136,8 @@ function profileParticipantCount(participantCount: number) {
       totalFullPairs === 0
         ? 0
         : Math.round((totalCandidatePairs / totalFullPairs) * 10_000) / 10_000,
+    peakBrickWalls,
+    meanBrickWallsPerTick: Math.round((totalBrickWallSamples / totalTicks) * 1_000) / 1_000,
     longStepsOver100Milliseconds: longSteps,
     heapDeltaBytes: heapAfter - heapBefore,
   });
@@ -124,7 +148,8 @@ const thresholds = new Map([[50, 10]]);
 const ok = profiles.every(
   (profile) =>
     profile.simulationMilliseconds.p95 <= (thresholds.get(profile.participantCount) ?? 0) &&
-    profile.longStepsOver100Milliseconds <= 1,
+    profile.longStepsOver100Milliseconds <= 1 &&
+    profile.peakBrickWalls >= 1,
 );
 
 process.stdout.write(
@@ -137,6 +162,7 @@ process.stdout.write(
       profiles,
       limitations: [
         "This measures hard-difficulty headless AI plus simulation on the current workstation, not browser rendering.",
+        "Each round gives the scripted human a Brick Bag and requests cardinal placements so static-wall work is sampled.",
         "Heap deltas are observational because the harness does not force garbage collection.",
       ],
     },

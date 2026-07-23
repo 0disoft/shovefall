@@ -4,6 +4,10 @@
 - Owner: Repository owner
 - Source of truth: `docs/product/02-spec.md` and this document
 
+## Product 0.28.0 Local Result
+
+The Brick Bag profile exercises real static-wall work rather than measuring an empty wall collection. The scripted human maintains up to three walls across the 7,200-tick fixed-50 headless run; simulation p95 is `2.525 ms`, no combined step exceeds 100 ms, and throughput is `6.61×` real time. The local production Chrome case equips and places Brick Bag before sampling and reports frame p95 `18.5 ms`, maximum `35.7 ms`, zero backlog, no frame above 100 ms, `62.09` delivered ticks per requested simulation second, and a `2,779,444`-byte forced-GC heap delta after twenty restarts. This passes the existing local budgets but does not replace physical-device, cross-browser, or field evidence.
+
 ## Product 0.27.0 Local Result
 
 The Wind Blast system and its DOM/PixiJS feedback preserve the fixed-50 budgets on the current workstation. The accepted 7,200-tick rerun measured simulation p95 `5.454 ms`, zero combined steps above 100 ms, and `2.74×` real-time throughput. Local production Chrome measured frame p95 `16.8 ms`, maximum `17.5 ms`, zero backlog, no frame above 100 ms, and a `2,984,412`-byte forced-GC heap delta after twenty restarts. One preceding headless run failed only the tail gate with two host-level spikes despite simulation p95 `5.749 ms`; the rerun and the failed tail are both recorded in the scale evidence rather than weakening the gate.

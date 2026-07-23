@@ -3,6 +3,12 @@
 - Status: Accepted local automated baseline; physical and cross-browser evidence pending
 - Owner: Repository owner
 
+## 0.28.0 Brick Bag Profile
+
+On 2026-07-24, the 7,200-tick fixed-50 profile equipped the scripted human with Brick Bag and kept a peak of three walls with `2.999` mean walls sampled per tick. It completed in `18,142.957 ms`, or `6.61×` real time. AI p95 was `4.875 ms`, simulation p95 was `2.525 ms`, the spatial candidate/full-pair ratio was `0.096`, and no combined step exceeded 100 ms. The `14,987,032`-byte heap delta remains observational because the harness does not force garbage collection.
+
+The production Chrome profile equipped and placed Brick Bag before its four-second sample. At 1280×720 and effective DPR 1 it measured `18.5 ms` frame p95, `35.7 ms` maximum, `62.09` delivered ticks per requested simulation second, zero backlog, and no frame above 100 ms. Twenty immediate restarts followed by CDP garbage collection left a `2,779,444`-byte used-heap delta. The p95 is `1.7 ms` slower than the prior `0.27.0` Wind Blast sample but remains inside the declared browser budget. This is one local Chrome run, not physical-device, cross-browser, or field evidence.
+
 ## 0.27.0 Wind Blast Profile
 
 On 2026-07-24, the accepted 7,200-tick fixed-50 rerun completed in `43,839.502 ms`, or `2.74×` real time. AI p95 was `10.034 ms`, simulation p95 was `5.454 ms`, the spatial candidate/full-pair ratio remained `0.1679`, and no combined step exceeded 100 ms. The `49,304,313`-byte heap delta is observational because the harness does not force garbage collection. An immediately preceding run had similar p95 values but two host-level 100 ms spikes and failed the declared tail gate; the passing rerun is retained without hiding that first result.

@@ -22,6 +22,6 @@ Previous position already entered authoritative participant state, but simulatio
 
 ## Evidence and Limits
 
-Vitest covers the containment inequality, three equal bodies at one coordinate, 21 deterministic grazing geometries across three horizontal and seven vertical separations, Wind Blast transfer into a third body, and Brick Bag's swept static-wall stop. Replay, determinism, shove, item, and spatial suites remain merge blocking. The `0.28.0` browser and headless profiles must be refreshed before extending the earlier fixed-50 performance claim to walls.
+Vitest covers the containment inequality, three equal bodies at one coordinate, 21 deterministic grazing geometries across three horizontal and seven vertical separations, Wind Blast transfer into a third body, and Brick Bag's swept static-wall stop. Replay, determinism, shove, item, and spatial suites remain merge blocking. The wall-active `0.28.0` profiles pass at headless simulation p95 `2.525 ms` and local Chrome frame p95 `18.5 ms`; physical-device, cross-browser, and field evidence remain pending.
 
 The solver handles one analytic contact per candidate on the first iteration, followed by overlap correction. It is not a general rigid-body engine and does not promise exact multi-impact time ordering, angular momentum, friction, or rotating shapes.
