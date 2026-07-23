@@ -145,9 +145,26 @@ async function fastForwardUntilAttribute(
   return fastForwardUntilAttribute(page, selector, attribute, expected, remainingFrames - 1);
 }
 
-async function finishInstalledClockCountdown(page: Page): Promise<void> {
-  await page.clock.fastForward(1_600);
-  await expect(page.locator("#app")).toHaveAttribute("data-round", "active");
+async function finishInstalledClockCountdown(page: Page, remainingSteps = 24): Promise<void> {
+  const round = await page.locator("#app").getAttribute("data-round");
+
+  if (round === "active") {
+    return;
+  }
+
+  if (remainingSteps === 0) {
+    throw new Error(
+      `Countdown did not become active; current round state is ${round ?? "missing"}.`,
+    );
+  }
+
+  if (remainingSteps === 24) {
+    await page.clock.fastForward(1_450);
+  } else {
+    await page.clock.fastForward(10);
+  }
+
+  return finishInstalledClockCountdown(page, remainingSteps - 1);
 }
 
 async function openSettings(page: Page): Promise<void> {
@@ -192,93 +209,18 @@ async function faceArenaDirection(page: Page, direction: string): Promise<void> 
   }
 }
 
-async function useBrickBagFromAvailableDirection(
+async function useActiveItemAndWaitForCharge(
   page: Page,
-  slotIndex = 1,
-  directions: readonly string[] = ["ArrowUp", "ArrowRight", "ArrowDown", "ArrowLeft"],
-  index = 0,
-  completedPasses = 0,
+  slotIndex: 0 | 1,
+  expectedChargeLabel: string,
 ): Promise<void> {
-  const direction = directions[index];
-
-  if (direction === undefined) {
-    if (completedPasses >= 4) {
-      throw new Error("Unable to find a free adjacent tile for Brick Bag placement.");
-    }
-
-    await page.clock.fastForward(100);
-    return useBrickBagFromAvailableDirection(page, slotIndex, directions, 0, completedPasses + 1);
-  }
-
   const slot = page.locator(`#use-item-slot-${slotIndex}`);
   await expect(slot).toBeEnabled();
-  const tickBeforeFacing = await readSimulationTick(page);
-  await page.keyboard.down(direction);
-  await page.clock.fastForward(20);
-  await page.keyboard.up(direction);
-  await expect.poll(() => readSimulationTick(page)).toBeGreaterThan(tickBeforeFacing);
-
-  if (!(await slot.isEnabled())) {
-    return useBrickBagFromAvailableDirection(
-      page,
-      slotIndex,
-      directions,
-      index + 1,
-      completedPasses,
-    );
-  }
-
   const tickBeforeUse = await readSimulationTick(page);
   await slot.click();
   await page.clock.fastForward(20);
   await expect.poll(() => readSimulationTick(page)).toBeGreaterThan(tickBeforeUse);
-
-  if ((await slot.textContent())?.includes("3회") === true) {
-    return;
-  }
-
-  return useBrickBagFromAvailableDirection(page, slotIndex, directions, index + 1, completedPasses);
-}
-
-async function placeSoapFromAvailableDirection(
-  page: Page,
-  directions: readonly string[] = ["ArrowUp", "ArrowRight", "ArrowDown", "ArrowLeft"],
-  index = 0,
-  completedPasses = 0,
-): Promise<void> {
-  const direction = directions[index];
-
-  if (direction === undefined) {
-    if (completedPasses >= 4) {
-      throw new Error("Unable to find a free adjacent tile for Soap placement.");
-    }
-
-    await page.clock.fastForward(100);
-    return placeSoapFromAvailableDirection(page, directions, 0, completedPasses + 1);
-  }
-
-  const slot = page.locator("#use-item-slot-1");
-  await expect(slot).toBeEnabled();
-  const tickBeforeFacing = await readSimulationTick(page);
-  await page.keyboard.down(direction);
-  await page.clock.fastForward(20);
-  await page.keyboard.up(direction);
-  await expect.poll(() => readSimulationTick(page)).toBeGreaterThan(tickBeforeFacing);
-
-  if (!(await slot.isEnabled())) {
-    return placeSoapFromAvailableDirection(page, directions, index + 1, completedPasses);
-  }
-
-  const tickBeforeUse = await readSimulationTick(page);
-  await slot.click();
-  await page.clock.fastForward(20);
-  await expect.poll(() => readSimulationTick(page)).toBeGreaterThan(tickBeforeUse);
-
-  if ((await slot.textContent())?.includes("2회") === true) {
-    return;
-  }
-
-  return placeSoapFromAvailableDirection(page, directions, index + 1, completedPasses);
+  await expect(slot).toContainText(expectedChargeLabel);
 }
 
 test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) => {
@@ -463,13 +405,14 @@ test("equips and places a Brick Bag wall in a fresh round", async ({ page }) => 
   await page.locator('input[name="startingItem"][value="spring-glove"]').uncheck();
   await page.locator('input[name="startingItem"][value="brick-bag"]').check();
   await page.locator('input[name="startingItem"][value="iron-boots"]').check();
+  await page.locator("#initial-item-count").fill("0");
   await expect(page.locator("#setup-summary")).toContainText("철 장화 + 벽돌 가방");
   await saveSettings(page);
   await startGame(page);
   await finishInstalledClockCountdown(page);
   await expect(page.locator("#use-item-slot-1")).toContainText("벽돌 가방 · 4회");
 
-  await useBrickBagFromAvailableDirection(page, 1);
+  await useActiveItemAndWaitForCharge(page, 1, "벽돌 가방 · 3회");
 
   await expect(page.locator("#use-item-slot-1")).toContainText("벽돌 가방 · 3회");
 });
@@ -526,13 +469,14 @@ test("selects Soap and places a slippery patch in a fresh production-safe round"
   await page.locator('input[name="startingItem"][value="spring-glove"]').uncheck();
   await page.locator('input[name="startingItem"][value="iron-boots"]').check();
   await soapCard.check();
+  await page.locator("#initial-item-count").fill("0");
   await expect(page.locator("#setup-summary")).toContainText("철 장화 + 비누");
   await saveSettings(page);
   await startGame(page);
   await finishInstalledClockCountdown(page);
   await expect(page.locator("#use-item-slot-1")).toContainText("비누 · 3회");
 
-  await placeSoapFromAvailableDirection(page);
+  await useActiveItemAndWaitForCharge(page, 1, "비누 · 2회");
 
   await expect(page.locator("#use-item-slot-1")).toContainText("비누 · 2회");
 });
