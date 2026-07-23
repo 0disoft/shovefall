@@ -181,6 +181,38 @@ async function useBrickBagFromAvailableDirection(
   return useBrickBagFromAvailableDirection(page, slotIndex, directions, index + 1, completedPasses);
 }
 
+async function placeSoapFromAvailableDirection(
+  page: Page,
+  directions: readonly string[] = ["ArrowUp", "ArrowRight", "ArrowDown", "ArrowLeft"],
+  index = 0,
+  completedPasses = 0,
+): Promise<void> {
+  const direction = directions[index];
+
+  if (direction === undefined) {
+    if (completedPasses >= 4) {
+      throw new Error("Unable to find a free adjacent tile for Soap placement.");
+    }
+
+    await page.waitForTimeout(300);
+    return placeSoapFromAvailableDirection(page, directions, 0, completedPasses + 1);
+  }
+
+  const slot = page.locator("#use-item-slot-1");
+  await expect(slot).toBeEnabled();
+  await page.keyboard.down(direction);
+  await page.waitForTimeout(80);
+  await page.keyboard.up(direction);
+  await slot.click();
+  await page.waitForTimeout(250);
+
+  if ((await slot.textContent())?.includes("2회") === true) {
+    return;
+  }
+
+  return placeSoapFromAvailableDirection(page, directions, index + 1, completedPasses);
+}
+
 test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) => {
   test.slow();
   await installFixedRoundSeed(page, 1, 0);
@@ -201,9 +233,9 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await versionHistoryButton.click();
   await expect(page.locator("#app")).toHaveAttribute("data-screen", "history");
   await expect(page.getByRole("heading", { level: 2, name: "버전 기록" })).toBeFocused();
-  await expect(page.locator("#current-version")).toHaveText("v0.30.0");
-  await expect(page.locator("#version-history-list > li")).toHaveCount(11);
-  await expect(page.getByText("왜 바꿨냐면")).toHaveCount(11);
+  await expect(page.locator("#current-version")).toHaveText("v0.31.0");
+  await expect(page.locator("#version-history-list > li")).toHaveCount(12);
+  await expect(page.getByText("왜 바꿨냐면")).toHaveCount(12);
   await expect(page.locator("#arena-host canvas")).toBeHidden();
   await page.keyboard.press("Escape");
   await expect(page.locator("#app")).toHaveAttribute("data-screen", "menu");
@@ -404,6 +436,31 @@ test("equips and places a timed bomb in a fresh round", async ({ page }) => {
   await page.locator("#use-item-slot-1").click();
   await expect(page.locator("#use-item-slot-1")).toContainText("시한폭탄 · 1회");
   await expect(page.getByText("폭탄을 놨어. 5초 뒤 터져.")).toBeVisible();
+});
+
+test("selects Soap and places a slippery patch in a fresh production-safe round", async ({
+  page,
+}) => {
+  await installFixedRoundSeed(page, 1, 0);
+  await page.goto("/");
+  await openSettings(page);
+  const soapCard = page.locator('input[name="startingItem"][value="soap"]');
+  await expect(soapCard).toHaveCount(1);
+  await expect(page.getByText("3개 · 앞 칸에 미끄럼 함정", { exact: true })).toBeVisible();
+  await page.locator('input[name="startingItem"][value="iron-boots"]').uncheck();
+  await page.locator('input[name="startingItem"][value="spring-glove"]').uncheck();
+  await page.locator('input[name="startingItem"][value="iron-boots"]').check();
+  await soapCard.check();
+  await expect(page.locator("#setup-summary")).toContainText("철 장화 + 비누");
+  await saveSettings(page);
+  await startGame(page);
+  await expect(page.locator("#app")).toHaveAttribute("data-round", "active", { timeout: 5_000 });
+  await expect(page.locator("#use-item-slot-1")).toContainText("비누 · 3회");
+
+  await placeSoapFromAvailableDirection(page);
+
+  await expect(page.locator("#use-item-slot-1")).toContainText("비누 · 2회");
+  await expect(page.getByText("비누를 앞 칸에 놨어.")).toBeVisible();
 });
 
 test("offers a working touch joystick and action buttons on a narrow viewport", async ({

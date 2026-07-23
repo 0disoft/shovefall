@@ -27,6 +27,7 @@ people, then publishing the exact candidate without burying combat telegraphs.
 - [x] Hard utility-bot reaction profile fixed for public play without bot-only physics advantages.
 - [x] Slow, Normal, and Fast collapse controls with deterministic warning and collapse schedules.
 - [x] Iron Boots, Feather, and Spring Glove with a bounded 3/2/1 outer-ring placement preference.
+- [x] Human Wind Blast, Brick Bag, Boat, Bomb, and Soap activation through the shared two-slot input contract.
 - [x] Deterministic round, mass, item-grant, collapse-pacing, headless scale, and production-Chrome
       regression evidence.
 - [x] Local aggregate validation and production-artifact browser smoke.

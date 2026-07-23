@@ -132,11 +132,19 @@ function getEventMessage(event: SimulationEventV1): string | undefined {
               ? "배를 띄웠어. 5초 동안 물을 건널 수 있어."
               : event.itemDefinitionId === "bomb"
                 ? "폭탄을 놨어. 5초 뒤 터져."
-                : undefined;
+                : event.itemDefinitionId === "soap"
+                  ? "비누를 앞 칸에 놨어."
+                  : undefined;
     case "wind-blast-hit":
       return event.actorId === 1 ? "장풍 적중!" : undefined;
     case "bomb-detonated":
       return event.actorId === 1 ? "폭탄 폭발!" : undefined;
+    case "soap-triggered":
+      return event.targetActorId === 1
+        ? "비누를 밟고 미끄러졌어!"
+        : event.actorId === 1
+          ? "비누 함정 발동!"
+          : undefined;
     case "stat-point-earned":
       return event.actorId === 1 ? "처치 인정! 스탯 포인트를 얻었어." : undefined;
     case "stat-upgraded":
@@ -427,7 +435,8 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
         (slot?.definitionId !== "wind-blast" &&
           slot?.definitionId !== "brick-bag" &&
           slot?.definitionId !== "boat" &&
-          slot?.definitionId !== "bomb") ||
+          slot?.definitionId !== "bomb" &&
+          slot?.definitionId !== "soap") ||
         slot.charges === null ||
         slot.charges < 1;
     }

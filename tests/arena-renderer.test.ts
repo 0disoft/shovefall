@@ -4,6 +4,12 @@ import { normalizeGameConfig } from "../src/simulation/contracts";
 import { SimulationWorld } from "../src/simulation/world";
 
 const applicationRender = vi.hoisted(() => vi.fn<() => void>());
+const graphicsFill = vi.hoisted(() =>
+  vi.fn<(options?: { readonly color?: number; readonly alpha?: number }) => void>(),
+);
+const graphicsStroke = vi.hoisted(() =>
+  vi.fn<(options?: { readonly color?: number; readonly alpha?: number }) => void>(),
+);
 
 vi.mock("pixi.js", () => {
   class FakeGraphics {
@@ -26,7 +32,8 @@ vi.mock("pixi.js", () => {
       return this;
     }
 
-    public fill(): this {
+    public fill(options?: { readonly color?: number; readonly alpha?: number }): this {
+      graphicsFill(options);
       return this;
     }
 
@@ -50,7 +57,8 @@ vi.mock("pixi.js", () => {
       return this;
     }
 
-    public stroke(): this {
+    public stroke(options?: { readonly color?: number; readonly alpha?: number }): this {
+      graphicsStroke(options);
       return this;
     }
   }
@@ -128,6 +136,8 @@ function createHost(): HTMLElement {
 describe("arena renderer presentation", () => {
   beforeEach(() => {
     applicationRender.mockClear();
+    graphicsFill.mockClear();
+    graphicsStroke.mockClear();
     vi.stubGlobal("window", {
       devicePixelRatio: 1,
       matchMedia: () => ({
@@ -329,6 +339,69 @@ describe("arena renderer presentation", () => {
     renderer.render(frame, 1, 1);
 
     expect(applicationRender).toHaveBeenCalledTimes(1);
+    expect(frame.stateHash).toBe(stateHash);
+  });
+
+  it("renders a low Soap patch plus placement and trigger feedback without changing simulation", async () => {
+    const host = createHost();
+    const renderer = await createArenaRenderer(host);
+    const baseFrame = new SimulationWorld(
+      normalizeGameConfig({ participantCount: 4 }),
+      "soap-presentation",
+    ).createRenderFrame();
+    const stateHash = baseFrame.stateHash;
+    const tile = baseFrame.tiles.find(({ state }) => state === "Stable");
+
+    expect(tile).toBeDefined();
+
+    if (tile === undefined) {
+      throw new Error("Soap renderer test requires one stable tile.");
+    }
+
+    const frame = Object.freeze({
+      ...baseFrame,
+      soapPatches: Object.freeze([
+        Object.freeze({
+          ownerActorId: 1,
+          tileId: tile.tileId,
+          column: tile.column,
+          row: tile.row,
+          placedTick: baseFrame.tick,
+        }),
+      ]),
+    });
+
+    renderer.consumeEvents(
+      [
+        {
+          eventVersion: 1,
+          roundId: frame.roundId,
+          tick: frame.tick,
+          sequence: 0,
+          kind: "soap-placed",
+          actorId: 1,
+          itemDefinitionId: "soap",
+          tileId: tile.tileId,
+        },
+        {
+          eventVersion: 1,
+          roundId: frame.roundId,
+          tick: frame.tick,
+          sequence: 1,
+          kind: "soap-triggered",
+          actorId: 1,
+          targetActorId: 2,
+          itemDefinitionId: "soap",
+          tileId: tile.tileId,
+        },
+      ],
+      frame,
+    );
+    renderer.render(frame, 1, 1);
+
+    expect(applicationRender).toHaveBeenCalledTimes(1);
+    expect(graphicsFill).toHaveBeenCalledWith(expect.objectContaining({ color: 0xc37adf }));
+    expect(graphicsStroke).toHaveBeenCalledWith(expect.objectContaining({ color: 0xf2b8ff }));
     expect(frame.stateHash).toBe(stateHash);
   });
 });

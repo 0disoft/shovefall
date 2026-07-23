@@ -18,6 +18,7 @@ import {
   type RoundStateV1,
   type SimulationEventKind,
   type SimulationEventV1,
+  type SoapPatchState,
   type TileId,
   type TileState,
   type UpgradeStatId,
@@ -196,6 +197,19 @@ function createTimedAction(
 function normalizeDirectionOrFallback(direction: Vector2, fallback: Vector2): Vector2 {
   const normalized = normalizeVector(direction);
   return isZeroVector(normalized) ? normalizeVector(fallback) : normalized;
+}
+
+function getUnitDirectionOrFallback(direction: Vector2, fallback: Vector2): Vector2 {
+  const directionLength = vectorLength(direction);
+
+  if (directionLength > 0) {
+    return scaleVector(direction, 1 / directionLength);
+  }
+
+  const fallbackLength = vectorLength(fallback);
+  return fallbackLength > 0
+    ? scaleVector(fallback, 1 / fallbackLength)
+    : Object.freeze({ x: 1, y: 0 });
 }
 
 function chooseOffensiveCredit(
@@ -555,6 +569,7 @@ export class SimulationWorld {
   #participants: readonly ParticipantState[];
   #brickWalls: readonly BrickWallState[] = Object.freeze([]);
   #bombs: readonly BombState[] = Object.freeze([]);
+  #soapPatches: readonly SoapPatchState[] = Object.freeze([]);
   #itemState: ItemSystemState;
   #round: RoundStateV1 = Object.freeze({
     status: "Active",
@@ -682,6 +697,7 @@ export class SimulationWorld {
     const candidatePairs = spatialHash.getCandidatePairs();
     participants = this.#resolveWeakContacts(participants, candidatePairs);
     participants = this.#resolveBrickWallContacts(participants, false);
+    participants = this.#resolveSoapPatches(participants, events);
     participants = this.#resolveShoves(participants, candidatePairs, events);
     participants = this.#resolveSupport(participants, events);
     const pickupResult = resolveItemPickups(
@@ -704,7 +720,10 @@ export class SimulationWorld {
       this.#tick,
       this.#itemRandom,
       arenaChanged,
-      new Set(this.#brickWalls.map(({ tileId }) => tileId)),
+      new Set([
+        ...this.#brickWalls.map(({ tileId }) => tileId),
+        ...this.#soapPatches.map(({ tileId }) => tileId),
+      ]),
     );
     this.#itemState = spawnResult.state;
     this.#emitItemFacts(spawnResult.facts, events);
@@ -730,6 +749,7 @@ export class SimulationWorld {
       items: this.#itemState.items,
       brickWalls: this.#brickWalls,
       bombs: this.#bombs,
+      soapPatches: this.#soapPatches,
       nextItemId: this.#itemState.nextItemId,
       nextItemSpawnTick: this.#itemState.nextSpawnTick,
       tiles: this.#tiles,
@@ -768,6 +788,7 @@ export class SimulationWorld {
       items: this.#itemState.items,
       brickWalls: this.#brickWalls,
       bombs: this.#bombs,
+      soapPatches: this.#soapPatches,
       tiles: this.#tiles,
       round: this.#round,
     });
@@ -990,7 +1011,9 @@ export class SimulationWorld {
           (slot?.definitionId === "boat" &&
             hasTileSupport(participant.body.position, this.#arenaTileIds)) ||
           (slot?.definitionId === "brick-bag" &&
-            this.#getBrickPlacement(participant, participants, [], direction) !== undefined);
+            this.#getBrickPlacement(participant, participants, [], direction) !== undefined) ||
+          (slot?.definitionId === "soap" &&
+            this.#getSoapPlacement(participant, participants, [], direction) !== undefined);
 
         if (canActivate && slot.charges !== null && slot.charges > 0) {
           activeItemSlots.set(participant.actorId, command.useItemSlot);
@@ -1258,6 +1281,56 @@ export class SimulationWorld {
       );
     }
 
+    const placedSoapPatches: SoapPatchState[] = [];
+
+    for (const participant of ordered) {
+      const slotIndex = activeItemSlots.get(participant.actorId);
+      const slot =
+        slotIndex === undefined
+          ? undefined
+          : participant.inventory.find((candidate) => candidate.slotIndex === slotIndex);
+
+      if (slotIndex === undefined || slot?.definitionId !== "soap" || !isCollidable(participant)) {
+        continue;
+      }
+
+      const patch = this.#getSoapPlacement(participant, ordered, placedSoapPatches);
+
+      if (patch === undefined) {
+        continue;
+      }
+
+      const consumed = consumeInventoryCharge(participant, slotIndex);
+
+      if (consumed === undefined) {
+        continue;
+      }
+
+      updatedById.set(participant.actorId, consumed);
+      placedSoapPatches.push(patch);
+      events.push(
+        this.#createEvent("item-used", {
+          actorId: participant.actorId,
+          itemDefinitionId: "soap",
+          tileId: patch.tileId,
+          vector: participant.body.facing,
+        }),
+        this.#createEvent("soap-placed", {
+          actorId: participant.actorId,
+          itemDefinitionId: "soap",
+          tileId: patch.tileId,
+        }),
+      );
+    }
+
+    if (placedSoapPatches.length > 0) {
+      this.#soapPatches = Object.freeze(
+        [...this.#soapPatches, ...placedSoapPatches].toSorted((left, right) =>
+          left.tileId.localeCompare(right.tileId),
+        ),
+      );
+    }
+
     for (const participant of ordered) {
       const slotIndex = activeItemSlots.get(participant.actorId);
       const slot =
@@ -1444,6 +1517,7 @@ export class SimulationWorld {
       tile === undefined ||
       tile.state === "Void" ||
       this.#brickWalls.some((wall) => wall.tileId === tileId) ||
+      this.#soapPatches.some((patch) => patch.tileId === tileId) ||
       [...this.#bombs, ...pendingBombs].some(
         (bomb) =>
           bomb.detonateTick > this.#tick &&
@@ -1479,6 +1553,7 @@ export class SimulationWorld {
       tile === undefined ||
       tile.state === "Void" ||
       [...this.#brickWalls, ...pendingWalls].some((wall) => wall.tileId === tileId) ||
+      this.#soapPatches.some((patch) => patch.tileId === tileId) ||
       this.#itemState.items.some(
         (item) => Math.floor(item.position.x) === column && Math.floor(item.position.y) === row,
       ) ||
@@ -1497,6 +1572,50 @@ export class SimulationWorld {
       column,
       row,
       ownerActorId: participant.actorId,
+      placedTick: this.#tick,
+    });
+  }
+
+  #getSoapPlacement(
+    participant: ParticipantState,
+    participants: readonly ParticipantState[],
+    pendingPatches: readonly SoapPatchState[] = [],
+    direction: Vector2 = participant.body.facing,
+  ): SoapPatchState | undefined {
+    const offset = getDominantCardinalOffset(direction);
+    const column = Math.floor(participant.body.position.x) + offset.x;
+    const row = Math.floor(participant.body.position.y) + offset.y;
+    const tileId = createTileId(column, row);
+    const tile = this.#tiles.find((candidate) => candidate.tileId === tileId);
+
+    if (
+      tile === undefined ||
+      tile.state === "Void" ||
+      this.#brickWalls.some((wall) => wall.tileId === tileId) ||
+      this.#bombs.some(
+        (bomb) =>
+          bomb.detonateTick > this.#tick &&
+          Math.floor(bomb.position.x) === column &&
+          Math.floor(bomb.position.y) === row,
+      ) ||
+      [...this.#soapPatches, ...pendingPatches].some((patch) => patch.tileId === tileId) ||
+      this.#itemState.items.some(
+        (item) => Math.floor(item.position.x) === column && Math.floor(item.position.y) === row,
+      ) ||
+      participants.some(
+        (candidate) =>
+          isCollidable(candidate) &&
+          circleIntersectsTile(candidate.body.position, candidate.body.radius, column, row),
+      )
+    ) {
+      return undefined;
+    }
+
+    return Object.freeze({
+      ownerActorId: participant.actorId,
+      tileId,
+      column,
+      row,
       placedTick: this.#tick,
     });
   }
@@ -1828,6 +1947,94 @@ export class SimulationWorld {
         }),
       }),
     );
+  }
+
+  #resolveSoapPatches(
+    participants: readonly ParticipantState[],
+    events: SimulationEventV1[],
+  ): readonly ParticipantState[] {
+    if (this.#soapPatches.length === 0) {
+      return participants;
+    }
+
+    const orderedParticipants = participants.toSorted(
+      (left, right) => left.actorId - right.actorId,
+    );
+    const triggeredByActor = new Map<ActorId, SoapPatchState>();
+    const triggeredTileIds = new Set<TileId>();
+
+    for (const patch of this.#soapPatches.toSorted((left, right) =>
+      left.tileId.localeCompare(right.tileId),
+    )) {
+      const target = orderedParticipants.find(
+        (participant) =>
+          isCollidable(participant) &&
+          Math.floor(participant.body.position.x) === patch.column &&
+          Math.floor(participant.body.position.y) === patch.row,
+      );
+
+      if (target === undefined) {
+        continue;
+      }
+
+      triggeredByActor.set(target.actorId, patch);
+      triggeredTileIds.add(patch.tileId);
+      events.push(
+        this.#createEvent("soap-triggered", {
+          actorId: patch.ownerActorId,
+          targetActorId: target.actorId,
+          itemDefinitionId: "soap",
+          tileId: patch.tileId,
+        }),
+      );
+    }
+
+    if (triggeredTileIds.size === 0) {
+      return participants;
+    }
+
+    this.#soapPatches = Object.freeze(
+      this.#soapPatches.filter((patch) => !triggeredTileIds.has(patch.tileId)),
+    );
+
+    return participants.map((participant) => {
+      const patch = triggeredByActor.get(participant.actorId);
+
+      if (patch === undefined) {
+        return participant;
+      }
+
+      const direction = getUnitDirectionOrFallback(
+        participant.body.velocity,
+        participant.body.facing,
+      );
+      const speed = Math.min(
+        Math.max(vectorLength(participant.body.velocity), SIMULATION_TUNING.soap.minimumSpeed),
+        SIMULATION_TUNING.soap.maximumSpeed,
+      );
+
+      return Object.freeze({
+        ...participant,
+        body: Object.freeze({
+          ...participant.body,
+          velocity: scaleVector(direction, speed),
+        }),
+        action: createTimedAction(
+          "Stumbling",
+          this.#tick,
+          SIMULATION_TUNING.soap.stumbleTicks,
+          direction,
+        ),
+        shoveCredit:
+          participant.actorId === patch.ownerActorId
+            ? participant.shoveCredit
+            : chooseOffensiveCredit(
+                participant.shoveCredit,
+                Object.freeze({ attackerActorId: patch.ownerActorId, strength: speed }),
+                this.#tick,
+              ),
+      });
+    });
   }
 
   #resolveShoves(
@@ -2171,6 +2378,10 @@ export class SimulationWorld {
           }),
         );
       }
+
+      this.#soapPatches = Object.freeze(
+        this.#soapPatches.filter(({ tileId }) => !voidTileIds.has(tileId)),
+      );
     }
 
     return result.transitions.length > 0;

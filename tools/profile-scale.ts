@@ -56,7 +56,7 @@ function createProfileHumanCommand(tick: number) {
   return {
     ...createNeutralCommand(tick, 1),
     move: direction,
-    useItemSlot: tick < 12 ? (0 as const) : tick === 12 ? (1 as const) : null,
+    useItemSlot: tick === 0 ? (0 as const) : tick < 13 ? (1 as const) : null,
   };
 }
 
@@ -85,6 +85,10 @@ function profileParticipantCount(participantCount: number) {
   let peakBombs = 0;
   let totalBombSamples = 0;
   let maximumSimultaneousBombDetonations = 0;
+  let peakSoapPatches = 0;
+  let totalSoapPatchSamples = 0;
+  let soapTriggers = 0;
+  let maximumSimultaneousSoapTriggers = 0;
   const heapBefore = process.memoryUsage().heapUsed;
   const profileStarted = performance.now();
 
@@ -95,9 +99,15 @@ function profileParticipantCount(participantCount: number) {
       participantOverrides: [
         {
           actorId: 1,
-          startingItems: ["brick-bag", "bomb"],
+          position: {
+            x: Math.floor(arenaSize.columns / 2) + 0.5,
+            y: Math.floor(arenaSize.rows / 2) + 0.5,
+          },
+          facing: { x: 1, y: 0 },
+          startingItems: ["brick-bag", "soap"],
         },
         { actorId: 2, startingItems: ["bomb"] },
+        { actorId: 3, startingItems: ["bomb"] },
       ],
     });
     const bots = new BotDirector(seed, 1, { difficulty: config.difficulty });
@@ -107,17 +117,17 @@ function profileParticipantCount(participantCount: number) {
       const aiStarted = performance.now();
       const botCommands = bots.createCommands(world.tick, frame);
       const simulationStarted = performance.now();
-      const keepActorTwoNeutral = world.tick <= 12;
+      const keepBombActorsNeutral = world.tick <= 12;
       const result = world.step([
         createProfileHumanCommand(world.tick),
-        ...botCommands.filter(({ actorId }) => !keepActorTwoNeutral || actorId !== 2),
-        ...(keepActorTwoNeutral
-          ? [
-              {
-                ...createNeutralCommand(world.tick, 2),
-                useItemSlot: world.tick === 12 ? (0 as const) : null,
-              },
-            ]
+        ...botCommands.filter(
+          ({ actorId }) => !keepBombActorsNeutral || (actorId !== 2 && actorId !== 3),
+        ),
+        ...(keepBombActorsNeutral
+          ? [2, 3].map((actorId) => ({
+              ...createNeutralCommand(world.tick, actorId),
+              useItemSlot: world.tick === 12 ? (0 as const) : null,
+            }))
           : []),
       ]);
       const stepFinished = performance.now();
@@ -136,6 +146,16 @@ function profileParticipantCount(participantCount: number) {
       maximumSimultaneousBombDetonations = Math.max(
         maximumSimultaneousBombDetonations,
         result.events.filter(({ kind }) => kind === "bomb-detonated").length,
+      );
+      peakSoapPatches = Math.max(peakSoapPatches, frame.soapPatches.length);
+      totalSoapPatchSamples += frame.soapPatches.length;
+      const simultaneousSoapTriggers = result.events.filter(
+        ({ kind }) => kind === "soap-triggered",
+      ).length;
+      soapTriggers += simultaneousSoapTriggers;
+      maximumSimultaneousSoapTriggers = Math.max(
+        maximumSimultaneousSoapTriggers,
+        simultaneousSoapTriggers,
       );
       totalTicks += 1;
     }
@@ -168,6 +188,10 @@ function profileParticipantCount(participantCount: number) {
     peakBombs,
     meanBombsPerTick: Math.round((totalBombSamples / totalTicks) * 1_000) / 1_000,
     maximumSimultaneousBombDetonations,
+    peakSoapPatches,
+    meanSoapPatchesPerTick: Math.round((totalSoapPatchSamples / totalTicks) * 1_000) / 1_000,
+    soapTriggers,
+    maximumSimultaneousSoapTriggers,
     longStepsOver100Milliseconds: longSteps,
     heapDeltaBytes: heapAfter - heapBefore,
   });
@@ -181,7 +205,8 @@ const ok = profiles.every(
     profile.longStepsOver100Milliseconds <= 1 &&
     profile.peakBrickWalls >= 1 &&
     profile.peakBombs >= 2 &&
-    profile.maximumSimultaneousBombDetonations >= 2,
+    profile.maximumSimultaneousBombDetonations >= 2 &&
+    profile.peakSoapPatches >= 1,
 );
 
 process.stdout.write(
@@ -194,7 +219,7 @@ process.stdout.write(
       profiles,
       limitations: [
         "This measures hard-difficulty headless AI plus simulation on the current workstation, not browser rendering.",
-        "Each round gives actors 1 and 2 Bomb, keeps actor 2 neutral through tick 12, and forces both placements and detonations on the same ticks while actor 1 also exercises Brick Bag.",
+        "Each round gives actors 2 and 3 Bomb, keeps them neutral through tick 12, and forces both placements and detonations on the same ticks while actor 1 exercises Brick Bag and Soap.",
         "Heap deltas are observational because the harness does not force garbage collection.",
       ],
     },

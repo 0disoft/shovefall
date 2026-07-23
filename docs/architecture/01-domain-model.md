@@ -82,6 +82,8 @@ Product `0.29.0`, simulation `12.0.0`, and content `6.0.0` add Boat's 300-tick c
 
 Product `0.30.0`, simulation `13.0.0`, and content `7.0.0` add Bomb placement, independent hashed fuse entities, deterministic radial impulse falloff, owner vulnerability, same-tick Dodge, flooding persistence, and Bomb-plus-Wind impulse batching. Replay remains v2 because loadout IDs and slot commands already carry Bomb use; simulation-version rejection and regenerated checkpoints protect the new world state.
 
+Product `0.31.0`, simulation `14.0.0`, and content `8.0.0` add Soap placement, canonical one-use patch entities, actor-ID placement and trigger arbitration, post-contact slip state, external-credit preservation on self-trigger, Void removal, and symmetric Brick/Bomb/Soap occupancy. Replay remains v2 because the existing loadout IDs and slot commands already carry Soap use; regenerated simulation-version checkpoints protect the added hashed world state.
+
 ## Version Ownership
 
 - Product version: `package.json` and `PRODUCT_VERSION`.

@@ -77,6 +77,11 @@ export const SIMULATION_TUNING = Object.freeze({
     maximumImpulse: 0.42,
     stumbleTicks: 24,
   }),
+  soap: Object.freeze({
+    minimumSpeed: 0.105,
+    maximumSpeed: 0.42,
+    stumbleTicks: 24,
+  }),
   dodge: Object.freeze({
     activeTicks: 5,
     evasionTicks: 5,

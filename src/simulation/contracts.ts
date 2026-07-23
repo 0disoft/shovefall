@@ -167,6 +167,14 @@ export interface BombState {
   readonly detonateTick: Tick;
 }
 
+export interface SoapPatchState {
+  readonly ownerActorId: ActorId;
+  readonly tileId: TileId;
+  readonly column: number;
+  readonly row: number;
+  readonly placedTick: Tick;
+}
+
 export interface TileState {
   readonly tileId: TileId;
   readonly column: number;
@@ -216,6 +224,7 @@ export interface RenderFrameV1 {
   readonly items: readonly RenderItemV1[];
   readonly brickWalls: readonly BrickWallState[];
   readonly bombs: readonly BombState[];
+  readonly soapPatches: readonly SoapPatchState[];
   readonly tiles: readonly TileState[];
   readonly round: RoundStateV1;
 }
@@ -232,6 +241,8 @@ export type SimulationEventKind =
   | "item-used"
   | "wind-blast-hit"
   | "bomb-detonated"
+  | "soap-placed"
+  | "soap-triggered"
   | "brick-wall-placed"
   | "brick-wall-removed"
   | "item-spawned"

@@ -8,6 +8,7 @@ import type {
   RenderItemV1,
   RenderParticipantV1,
   SimulationEventV1,
+  SoapPatchState,
   TileState,
 } from "../simulation/contracts";
 import { clamp, type Vector2 } from "../simulation/math";
@@ -42,7 +43,9 @@ type VisualEffectKind =
   | "item-picked-up"
   | "item-used"
   | "wind-blast-hit"
-  | "bomb-detonated";
+  | "bomb-detonated"
+  | "soap-placed"
+  | "soap-triggered";
 
 interface VisualEffect {
   readonly key: string;
@@ -423,6 +426,36 @@ function drawBomb(
   }
 }
 
+function drawSoapPatch(
+  graphics: Graphics,
+  patch: SoapPatchState,
+  projection: ArenaProjection,
+): void {
+  const { x, y } = projectArenaPoint({ x: patch.column + 0.5, y: patch.row + 0.5 }, projection);
+  const width = projection.tileWidth * 0.62;
+  const height = Math.max(5, projection.tileDepth * 0.34);
+  const radius = Math.max(3, height * 0.45);
+  const grooveInset = width * 0.19;
+
+  graphics
+    .ellipse(x, y + height * 0.34, width * 0.58, height * 0.58)
+    .fill({ color: 0x4b1f57, alpha: 0.5 });
+  graphics
+    .roundRect(x - width / 2, y - height / 2, width, height, radius)
+    .fill({ color: 0xc37adf, alpha: 0.88 })
+    .stroke({ color: 0xf2b8ff, width: Math.max(2, projection.tileWidth * 0.035) });
+  graphics
+    .moveTo(x - grooveInset, y - height * 0.08)
+    .lineTo(x + grooveInset, y - height * 0.08)
+    .moveTo(x - grooveInset * 0.72, y + height * 0.18)
+    .lineTo(x + grooveInset * 0.72, y + height * 0.18)
+    .stroke({ color: 0x5e276d, width: Math.max(1, projection.tileWidth * 0.022), cap: "round" });
+  graphics
+    .circle(x + width * 0.36, y - height * 0.64, Math.max(2, height * 0.2))
+    .circle(x + width * 0.48, y - height * 0.88, Math.max(1.5, height * 0.13))
+    .stroke({ color: 0xf2b8ff, width: 1.5, alpha: 0.9 });
+}
+
 function drawParticipant(
   graphics: Graphics,
   participant: RenderParticipantV1,
@@ -604,8 +637,19 @@ function getEffectPosition(event: SimulationEventV1, frame: RenderFrameV1): Vect
     return event.position;
   }
 
+  if (
+    (event.kind === "soap-placed" || event.kind === "soap-triggered") &&
+    event.tileId !== undefined
+  ) {
+    const tile = frame.tiles.find(({ tileId }) => tileId === event.tileId);
+
+    if (tile !== undefined) {
+      return Object.freeze({ x: tile.column + 0.5, y: tile.row + 0.5 });
+    }
+  }
+
   const actorId =
-    event.kind === "shove-hit" || event.kind === "wind-blast-hit"
+    event.kind === "shove-hit" || event.kind === "wind-blast-hit" || event.kind === "soap-triggered"
       ? event.targetActorId
       : event.actorId;
   return frame.participants.find((participant) => participant.actorId === actorId)?.position;
@@ -620,7 +664,9 @@ function isVisualEffectKind(kind: SimulationEventV1["kind"]): kind is VisualEffe
     kind === "item-picked-up" ||
     kind === "item-used" ||
     kind === "wind-blast-hit" ||
-    kind === "bomb-detonated"
+    kind === "bomb-detonated" ||
+    kind === "soap-placed" ||
+    kind === "soap-triggered"
   );
 }
 
@@ -643,6 +689,19 @@ function drawWorldEffect(
     const radiusX = projection.pitch * 3 * explosionScale;
     const radiusY = projection.depthPitch * 3 * explosionScale;
     graphics.ellipse(x, y, radiusX, radiusY).stroke({ color: ITEM_COLORS.bomb, width: 5, alpha });
+  } else if (effect.kind === "soap-triggered") {
+    const slipWidth = baseRadius * (reducedMotion ? 2.4 : 2.4 + progress * 1.8);
+    const slipHeight = baseRadius * 0.48;
+    graphics.ellipse(x, y, slipWidth, slipHeight).stroke({ color: 0xf2b8ff, width: 4, alpha });
+    graphics
+      .moveTo(x - slipWidth * 0.38, y - slipHeight * 0.7)
+      .lineTo(x - slipWidth * 0.06, y + slipHeight * 0.7)
+      .moveTo(x + slipWidth * 0.06, y - slipHeight * 0.7)
+      .lineTo(x + slipWidth * 0.38, y + slipHeight * 0.7)
+      .stroke({ color: 0xc37adf, width: 3, alpha, cap: "round" });
+  } else if (effect.kind === "soap-placed") {
+    const placementRadius = baseRadius * (reducedMotion ? 1 : 0.75 + progress * 0.5);
+    graphics.circle(x, y, placementRadius).stroke({ color: 0xc37adf, width: 3, alpha });
   } else if (effect.kind === "wind-blast-hit") {
     graphics
       .circle(x, y, baseRadius * expansion * 1.35)
@@ -799,6 +858,10 @@ export async function createArenaRenderer(
       drawBomb(items, bomb, latestFrame.tick, projection, reducedMotion);
     }
 
+    for (const patch of latestFrame.soapPatches) {
+      drawSoapPatch(items, patch, projection);
+    }
+
     const depthEntries = [
       ...latestFrame.participants.map((participant) => ({
         kind: "participant" as const,
@@ -885,7 +948,10 @@ export async function createArenaRenderer(
       const durationTicks = reducedMotion ? 3 : frame.participants.length >= 25 ? 7 : 12;
       const cap = frame.participants.length >= 25 ? MAYHEM_EFFECT_CAP : NORMAL_EFFECT_CAP;
       const appended = accepted.flatMap((event): readonly VisualEffect[] => {
-        if (!isVisualEffectKind(event.kind)) {
+        if (
+          !isVisualEffectKind(event.kind) ||
+          (event.kind === "item-used" && event.itemDefinitionId === "soap")
+        ) {
           return [];
         }
 

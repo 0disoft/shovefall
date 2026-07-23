@@ -101,6 +101,22 @@ const SOUND_DEFINITIONS: Partial<Record<SimulationEventKind, SoundDefinition>> =
     priority: 5,
     oscillatorType: "sawtooth",
   }),
+  "soap-placed": Object.freeze({
+    frequency: 360,
+    endFrequency: 210,
+    durationSeconds: 0.11,
+    gain: 0.045,
+    priority: 2,
+    oscillatorType: "sine",
+  }),
+  "soap-triggered": Object.freeze({
+    frequency: 430,
+    endFrequency: 880,
+    durationSeconds: 0.18,
+    gain: 0.065,
+    priority: 4,
+    oscillatorType: "triangle",
+  }),
   "dodge-succeeded": Object.freeze({
     frequency: 420,
     endFrequency: 690,

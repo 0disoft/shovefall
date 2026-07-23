@@ -1,8 +1,8 @@
 {
   "formatVersion": 2,
-  "productVersion": "0.30.0",
-  "simulationVersion": "13.0.0",
-  "contentVersion": "7.0.0",
+  "productVersion": "0.31.0",
+  "simulationVersion": "14.0.0",
+  "contentVersion": "8.0.0",
   "buildId": "fixture-v4",
   "config": {
     "configVersion": 1,
@@ -96,20 +96,20 @@
   "checkpoints": [
     {
       "tick": 60,
-      "stateHash": "fnv1a32:9d065156"
+      "stateHash": "fnv1a32:5ecfe653"
     },
     {
       "tick": 120,
-      "stateHash": "fnv1a32:30f8bd34"
+      "stateHash": "fnv1a32:a6be8861"
     },
     {
       "tick": 180,
-      "stateHash": "fnv1a32:4709919b"
+      "stateHash": "fnv1a32:54a2037a"
     },
     {
       "tick": 240,
-      "stateHash": "fnv1a32:e90030ea"
+      "stateHash": "fnv1a32:fb761f97"
     }
   ],
-  "finalHash": "fnv1a32:e90030ea"
+  "finalHash": "fnv1a32:fb761f97"
 }

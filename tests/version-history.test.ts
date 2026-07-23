@@ -5,6 +5,11 @@ import { PRODUCT_VERSION } from "../src/simulation/versions";
 describe("version history", () => {
   it("keeps the current product version first and records concise reasons and changes", () => {
     expect(VERSION_HISTORY[0]?.version).toBe(PRODUCT_VERSION);
+    expect(VERSION_HISTORY[0]).toMatchObject({
+      version: "0.31.0",
+      title: expect.stringContaining("미끄러운"),
+      change: expect.stringContaining("비누"),
+    });
     expect(VERSION_HISTORY.length).toBeGreaterThanOrEqual(6);
 
     for (const entry of VERSION_HISTORY) {

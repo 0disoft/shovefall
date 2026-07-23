@@ -165,6 +165,30 @@ describe("optional Web Audio feedback", () => {
     expect(context.oscillators[1]?.frequency.values[0]).toBe(92);
   });
 
+  it("uses distinct procedural cues for Soap placement and triggering", async () => {
+    const context = new FakeAudioContext();
+    const audio = createAudioFeedback(() => context);
+    await audio.unlock();
+
+    audio.consumeEvents([
+      {
+        ...createEvent(1, 0, 0, "soap-placed"),
+        itemDefinitionId: "soap",
+        position: { x: 4.5, y: 5.5 },
+      },
+      {
+        ...createEvent(1, 1, 1, "soap-triggered"),
+        itemDefinitionId: "soap",
+        position: { x: 4.5, y: 5.5 },
+      },
+    ]);
+
+    expect(context.oscillators).toHaveLength(2);
+    expect(context.oscillators.map(({ type }) => type)).toEqual(["sine", "triangle"]);
+    expect(context.oscillators[0]?.frequency.values[0]).toBe(360);
+    expect(context.oscillators[1]?.frequency.values[0]).toBe(430);
+  });
+
   it("caps concurrent voices and lets a higher-priority result replace a low voice", async () => {
     const context = new FakeAudioContext();
     const audio = createAudioFeedback(() => context);

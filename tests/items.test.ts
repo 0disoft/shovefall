@@ -1039,6 +1039,558 @@ describe("deterministic item effects", () => {
     expect(removal?.frame.brickWalls).toHaveLength(0);
   });
 
+  it("places a three-charge Soap patch on the faced cardinal tile", () => {
+    const world = new SimulationWorld(createItemConfig(), "soap-placement", {
+      arenaLayout: "rectangular-fixture",
+      participantOverrides: [
+        {
+          actorId: 1,
+          position: { x: 4.5, y: 4.5 },
+          facing: { x: 1, y: 0 },
+          startingItems: ["soap"],
+        },
+        ...PARTICIPANT_OVERRIDES.slice(1),
+      ],
+    });
+    const result = world.step([{ ...createNeutralCommand(world.tick, 1), useItemSlot: 0 }]);
+
+    expect(result.frame.soapPatches).toEqual([
+      {
+        ownerActorId: 1,
+        tileId: "5:4",
+        column: 5,
+        row: 4,
+        placedTick: 0,
+      },
+    ]);
+    expect(getActor(world, 1).inventory[0]?.charges).toBe(2);
+    expect(result.events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: "item-used",
+          actorId: 1,
+          itemDefinitionId: "soap",
+          tileId: "5:4",
+        }),
+        expect.objectContaining({
+          kind: "soap-placed",
+          actorId: 1,
+          itemDefinitionId: "soap",
+          tileId: "5:4",
+        }),
+      ]),
+    );
+  });
+
+  it("resolves competing Soap placements by actor id without spending the loser charge", () => {
+    const run = (commandOrder: readonly number[]) => {
+      const world = new SimulationWorld(createItemConfig(), "soap-placement-order", {
+        arenaLayout: "rectangular-fixture",
+        participantOverrides: [
+          {
+            actorId: 1,
+            position: { x: 4.5, y: 4.5 },
+            facing: { x: 1, y: 0 },
+            startingItems: ["soap"],
+          },
+          {
+            actorId: 2,
+            position: { x: 6.5, y: 4.5 },
+            facing: { x: -1, y: 0 },
+            startingItems: ["soap"],
+          },
+          { actorId: 3, position: { x: 7.5, y: 1.5 } },
+          { actorId: 4, position: { x: 1.5, y: 7.5 } },
+        ],
+      });
+      world.step(
+        commandOrder.map((actorId) => ({
+          ...createNeutralCommand(world.tick, actorId),
+          useItemSlot: 0 as const,
+        })),
+      );
+      const retry = world.step([
+        { ...createNeutralCommand(world.tick, 2), useItemSlot: 0 as const },
+      ]);
+      return {
+        stateHash: retry.frame.stateHash,
+        patches: retry.frame.soapPatches,
+        charges: [
+          getActor(world, 1).inventory[0]?.charges,
+          getActor(world, 2).inventory[0]?.charges,
+        ],
+        retryUsedSoap: retry.events.some(
+          ({ kind, actorId }) => kind === "item-used" && actorId === 2,
+        ),
+      };
+    };
+
+    const forward = run([1, 2]);
+    const reverse = run([2, 1]);
+
+    expect(reverse).toEqual(forward);
+    expect(forward.patches).toEqual([
+      expect.objectContaining({ ownerActorId: 1, tileId: "5:4", placedTick: 0 }),
+    ]);
+    expect(forward.charges).toEqual([2, 3]);
+    expect(forward.retryUsedSoap).toBe(false);
+  });
+
+  it("rejects occupied Soap tiles without spending a charge", () => {
+    const bodyOccupied = new SimulationWorld(createItemConfig(), "soap-body-occupied", {
+      arenaLayout: "rectangular-fixture",
+      participantOverrides: [
+        {
+          actorId: 1,
+          position: { x: 4.5, y: 4.5 },
+          facing: { x: 1, y: 0 },
+          startingItems: ["soap"],
+        },
+        { actorId: 2, position: { x: 5.5, y: 4.5 } },
+        ...PARTICIPANT_OVERRIDES.slice(2),
+      ],
+    });
+    const bodyResult = bodyOccupied.step([
+      { ...createNeutralCommand(bodyOccupied.tick, 1), useItemSlot: 0 },
+    ]);
+
+    expect(bodyResult.frame.soapPatches).toHaveLength(0);
+    expect(getActor(bodyOccupied, 1).inventory[0]?.charges).toBe(3);
+
+    const itemOccupied = new SimulationWorld(createItemConfig(), "soap-item-occupied", {
+      arenaLayout: "rectangular-fixture",
+      participantOverrides: [
+        {
+          actorId: 1,
+          position: { x: 4.5, y: 4.5 },
+          facing: { x: 1, y: 0 },
+          startingItems: ["soap"],
+        },
+        ...PARTICIPANT_OVERRIDES.slice(1),
+      ],
+      itemOverrides: [{ itemId: 1, definitionId: "feather", position: { x: 5.5, y: 4.5 } }],
+    });
+    const itemResult = itemOccupied.step([
+      { ...createNeutralCommand(itemOccupied.tick, 1), useItemSlot: 0 },
+    ]);
+
+    expect(itemResult.frame.soapPatches).toHaveLength(0);
+    expect(getActor(itemOccupied, 1).inventory[0]?.charges).toBe(3);
+
+    const boundary = new SimulationWorld(createItemConfig(), "soap-boundary", {
+      arenaLayout: "rectangular-fixture",
+      participantOverrides: [
+        {
+          actorId: 1,
+          position: { x: 0.5, y: 4.5 },
+          facing: { x: -1, y: 0 },
+          startingItems: ["soap"],
+        },
+        ...PARTICIPANT_OVERRIDES.slice(1),
+      ],
+    });
+    boundary.step([{ ...createNeutralCommand(boundary.tick, 1), useItemSlot: 0 }]);
+    expect(boundary.createRenderFrame().soapPatches).toHaveLength(0);
+    expect(getActor(boundary, 1).inventory[0]?.charges).toBe(3);
+  });
+
+  it("commits Brick and armed Bomb occupancy before Soap", () => {
+    const brickWorld = new SimulationWorld(createItemConfig(), "brick-before-soap", {
+      arenaLayout: "rectangular-fixture",
+      participantOverrides: [
+        {
+          actorId: 1,
+          position: { x: 4.5, y: 4.5 },
+          facing: { x: 1, y: 0 },
+          startingItems: ["soap"],
+        },
+        {
+          actorId: 2,
+          position: { x: 5.5, y: 5.5 },
+          facing: { x: 0, y: -1 },
+          startingItems: ["brick-bag"],
+        },
+        { actorId: 3, position: { x: 7.5, y: 1.5 } },
+        { actorId: 4, position: { x: 1.5, y: 7.5 } },
+      ],
+    });
+    const brickResult = brickWorld.step([
+      { ...createNeutralCommand(brickWorld.tick, 1), useItemSlot: 0 },
+      { ...createNeutralCommand(brickWorld.tick, 2), useItemSlot: 0 },
+    ]);
+
+    expect(brickResult.frame.brickWalls).toEqual([
+      expect.objectContaining({ tileId: "5:4", ownerActorId: 2 }),
+    ]);
+    expect(brickResult.frame.soapPatches).toHaveLength(0);
+    expect(getActor(brickWorld, 1).inventory[0]?.charges).toBe(3);
+
+    const bombWorld = new SimulationWorld(createItemConfig(), "bomb-before-soap", {
+      arenaLayout: "rectangular-fixture",
+      participantOverrides: [
+        {
+          actorId: 1,
+          position: { x: 4.5, y: 4.5 },
+          facing: { x: 1, y: 0 },
+          startingItems: ["soap"],
+        },
+        {
+          actorId: 2,
+          position: { x: 5.5, y: 4.5 },
+          facing: { x: 1, y: 0 },
+          startingItems: ["bomb"],
+        },
+        { actorId: 3, position: { x: 7.5, y: 1.5 } },
+        { actorId: 4, position: { x: 1.5, y: 7.5 } },
+      ],
+    });
+    bombWorld.step([{ ...createNeutralCommand(bombWorld.tick, 2), useItemSlot: 0 }]);
+
+    for (let tick = 0; tick < 20; tick += 1) {
+      bombWorld.step([{ ...createNeutralCommand(bombWorld.tick, 2), move: { x: 1, y: 0 } }]);
+    }
+
+    const bombResult = bombWorld.step([
+      { ...createNeutralCommand(bombWorld.tick, 1), useItemSlot: 0 },
+    ]);
+    expect(bombResult.frame.bombs).toHaveLength(1);
+    expect(bombResult.frame.soapPatches).toHaveLength(0);
+    expect(getActor(bombWorld, 1).inventory[0]?.charges).toBe(3);
+  });
+
+  it("keeps an existing Soap patch from being covered by a later Brick wall", () => {
+    const world = new SimulationWorld(createItemConfig(), "soap-before-brick", {
+      arenaLayout: "rectangular-fixture",
+      participantOverrides: [
+        {
+          actorId: 1,
+          position: { x: 4.5, y: 4.5 },
+          facing: { x: 1, y: 0 },
+          startingItems: ["soap"],
+        },
+        {
+          actorId: 2,
+          position: { x: 5.5, y: 5.5 },
+          facing: { x: 0, y: -1 },
+          startingItems: ["brick-bag"],
+        },
+        { actorId: 3, position: { x: 7.5, y: 1.5 } },
+        { actorId: 4, position: { x: 1.5, y: 7.5 } },
+      ],
+    });
+
+    world.step([{ ...createNeutralCommand(world.tick, 1), useItemSlot: 0 }]);
+    const brickAttempt = world.step([{ ...createNeutralCommand(world.tick, 2), useItemSlot: 0 }]);
+
+    expect(brickAttempt.frame.soapPatches).toEqual([
+      expect.objectContaining({ ownerActorId: 1, tileId: "5:4" }),
+    ]);
+    expect(brickAttempt.frame.brickWalls).toHaveLength(0);
+    expect(getActor(world, 2).inventory[0]?.charges).toBe(4);
+  });
+
+  it("triggers one Soap victim by actor id after movement and body contacts", () => {
+    const world = new SimulationWorld(createItemConfig(), "soap-trigger-order", {
+      arenaLayout: "rectangular-fixture",
+      participantOverrides: [
+        {
+          actorId: 1,
+          position: { x: 6.4, y: 4.1 },
+          velocity: { x: -0.42, y: 0 },
+        },
+        {
+          actorId: 2,
+          position: { x: 6.4, y: 4.9 },
+          velocity: { x: -0.42, y: 0 },
+        },
+        { actorId: 3, position: { x: 7.5, y: 1.5 } },
+        {
+          actorId: 4,
+          position: { x: 4.5, y: 4.5 },
+          facing: { x: 1, y: 0 },
+          startingItems: ["soap"],
+        },
+      ],
+    });
+    world.step([{ ...createNeutralCommand(world.tick, 4), useItemSlot: 0 }]);
+    const result = world.step();
+
+    expect(result.frame.soapPatches).toHaveLength(0);
+    expect(result.events).toContainEqual(
+      expect.objectContaining({
+        kind: "soap-triggered",
+        actorId: 4,
+        targetActorId: 1,
+        itemDefinitionId: "soap",
+        tileId: "5:4",
+      }),
+    );
+    expect(getActor(world, 1).action).toBe("Stumbling");
+    expect(getActor(world, 2).action).toBe("Ready");
+  });
+
+  it("lets the installer trigger Soap and preserves launch direction and offensive credit", () => {
+    const world = new SimulationWorld(createItemConfig(), "soap-self-trigger", {
+      arenaLayout: "rectangular-fixture",
+      participantOverrides: [
+        {
+          actorId: 1,
+          position: { x: 4.6, y: 4.5 },
+          velocity: { x: 0.42, y: 0 },
+          facing: { x: 1, y: 0 },
+          startingItems: ["soap"],
+        },
+        ...PARTICIPANT_OVERRIDES.slice(1),
+      ],
+    });
+    const placement = world.step([
+      {
+        ...createNeutralCommand(world.tick, 1),
+        move: { x: 1, y: 0 },
+        useItemSlot: 0,
+      },
+    ]);
+    const result = world.step();
+    const actor = getActor(world, 1);
+
+    expect(placement.events.some(({ kind }) => kind === "soap-placed")).toBe(true);
+    expect(result.events).toContainEqual(
+      expect.objectContaining({ kind: "soap-triggered", actorId: 1, targetActorId: 1 }),
+    );
+    expect(actor.action).toBe("Stumbling");
+    expect(actor.velocity.x).toBeGreaterThanOrEqual(SIMULATION_TUNING.soap.minimumSpeed);
+    expect(actor.velocity.x).toBeLessThanOrEqual(SIMULATION_TUNING.soap.maximumSpeed);
+    expect(actor.velocity.y).toBe(0);
+  });
+
+  it("does not let Dodge ignore Soap", () => {
+    const world = new SimulationWorld(createItemConfig(), "soap-dodge", {
+      arenaLayout: "rectangular-fixture",
+      participantOverrides: [
+        { actorId: 1, position: { x: 6.4, y: 4.5 }, facing: { x: -1, y: 0 } },
+        { actorId: 2, position: { x: 7.5, y: 1.5 } },
+        { actorId: 3, position: { x: 1.5, y: 7.5 } },
+        {
+          actorId: 4,
+          position: { x: 4.5, y: 4.5 },
+          facing: { x: 1, y: 0 },
+          startingItems: ["soap"],
+        },
+      ],
+    });
+    world.step([{ ...createNeutralCommand(world.tick, 4), useItemSlot: 0 }]);
+    world.step([
+      {
+        ...createNeutralCommand(world.tick, 1),
+        move: { x: -1, y: 0 },
+        dodgePressed: true,
+      },
+    ]);
+    let triggerResult: ReturnType<SimulationWorld["step"]> | undefined;
+
+    for (let tick = 0; tick < 6 && triggerResult === undefined; tick += 1) {
+      const result = world.step();
+
+      if (result.events.some(({ kind }) => kind === "soap-triggered")) {
+        triggerResult = result;
+      }
+    }
+
+    expect(triggerResult).toBeDefined();
+    expect(triggerResult?.events.some(({ kind }) => kind === "dodge-succeeded")).toBe(false);
+    expect(getActor(world, 1).action).toBe("Stumbling");
+    const triggerTick = triggerResult?.events.find(({ kind }) => kind === "soap-triggered")?.tick;
+    expect(triggerTick).toBeDefined();
+
+    if (triggerTick === undefined) {
+      throw new Error("expected Soap trigger tick");
+    }
+
+    while (world.tick < triggerTick + SIMULATION_TUNING.soap.stumbleTicks) {
+      world.step();
+    }
+
+    expect(getActor(world, 1).action).toBe("Stumbling");
+    world.step();
+    expect(getActor(world, 1).action).toBe("Ready");
+  });
+
+  it("credits the Soap owner when the victim falls within 180 ticks", () => {
+    const world = new SimulationWorld(createItemConfig(), "soap-credit", {
+      arenaLayout: "rectangular-fixture",
+      participantOverrides: [
+        {
+          actorId: 1,
+          position: { x: 1.5, y: 4.9 },
+          facing: { x: -1, y: 0 },
+          startingItems: ["soap"],
+        },
+        {
+          actorId: 2,
+          position: { x: 1.35, y: 4.1 },
+          velocity: { x: -0.42, y: 0 },
+        },
+        { actorId: 3, position: { x: 7.5, y: 1.5 } },
+        { actorId: 4, position: { x: 7.5, y: 7.5 } },
+      ],
+    });
+    world.step([{ ...createNeutralCommand(world.tick, 1), useItemSlot: 0 }]);
+    let trigger: ReturnType<SimulationWorld["step"]> | undefined;
+
+    for (let tick = 0; tick < 6 && trigger === undefined; tick += 1) {
+      const result = world.step();
+
+      if (result.events.some(({ kind }) => kind === "soap-triggered")) {
+        trigger = result;
+      }
+    }
+
+    expect(trigger?.events).toContainEqual(
+      expect.objectContaining({ kind: "soap-triggered", actorId: 1, targetActorId: 2 }),
+    );
+    let credit: SimulationEventV1 | undefined;
+
+    for (let tick = 0; tick < 180 && credit === undefined; tick += 1) {
+      const result = world.step();
+      credit = result.events.find(({ kind }) => kind === "stat-point-earned");
+    }
+
+    expect(credit).toMatchObject({ kind: "stat-point-earned", actorId: 1, targetActorId: 2 });
+  });
+
+  it("preserves an earlier attacker credit when the victim triggers their own Soap", () => {
+    const world = new SimulationWorld(createItemConfig(), "soap-self-credit-preservation", {
+      arenaLayout: "rectangular-fixture",
+      participantOverrides: [
+        {
+          actorId: 1,
+          position: { x: 1.5, y: 4.5 },
+          facing: { x: -1, y: 0 },
+          startingItems: ["soap"],
+        },
+        { actorId: 2, position: { x: 2.2, y: 4.5 }, facing: { x: -1, y: 0 } },
+        { actorId: 3, position: { x: 7.5, y: 1.5 } },
+        { actorId: 4, position: { x: 7.5, y: 7.5 } },
+      ],
+    });
+
+    world.step([{ ...createNeutralCommand(world.tick, 1), useItemSlot: 0 }]);
+    beginShove(world, 2);
+    stepUntilHit(world);
+    let soapTriggered = false;
+    let credit: SimulationEventV1 | undefined;
+
+    for (let tick = 0; tick < 180 && credit === undefined; tick += 1) {
+      const result = world.step();
+      soapTriggered ||= result.events.some(
+        ({ kind, actorId, targetActorId }) =>
+          kind === "soap-triggered" && actorId === 1 && targetActorId === 1,
+      );
+      credit = result.events.find(
+        ({ kind, actorId, targetActorId }) =>
+          kind === "stat-point-earned" && actorId === 2 && targetActorId === 1,
+      );
+    }
+
+    expect(soapTriggered).toBe(true);
+    expect(credit).toMatchObject({ kind: "stat-point-earned", actorId: 2, targetActorId: 1 });
+  });
+
+  it("rejects Soap on Void even while Boat is active", () => {
+    const config = createItemConfig();
+    const seed = "soap-boat-void";
+    const probe = new SimulationWorld(config, seed);
+    const tiles = probe.createRenderFrame().tiles;
+    const tileById = new Map(tiles.map((tile) => [tile.tileId, tile] as const));
+    const placement = tiles
+      .filter(({ state }) => state !== "Void")
+      .flatMap((tile) =>
+        [
+          { x: 1, y: 0 },
+          { x: -1, y: 0 },
+          { x: 0, y: 1 },
+          { x: 0, y: -1 },
+        ].map((facing) => ({ tile, facing })),
+      )
+      .find(
+        ({ tile, facing }) =>
+          tileById.get(`${tile.column + facing.x}:${tile.row + facing.y}`)?.state === "Void",
+      );
+
+    expect(placement).toBeDefined();
+
+    if (placement === undefined) {
+      throw new Error("expected a supported tile adjacent to Void");
+    }
+
+    const world = new SimulationWorld(config, seed, {
+      participantOverrides: [
+        {
+          actorId: 1,
+          position: {
+            x: placement.tile.column + 0.5,
+            y: placement.tile.row + 0.5,
+          },
+          facing: placement.facing,
+          startingItems: ["boat", "soap"],
+        },
+      ],
+    });
+    world.step([{ ...createNeutralCommand(world.tick, 1), useItemSlot: 0 }]);
+    const result = world.step([{ ...createNeutralCommand(world.tick, 1), useItemSlot: 1 }]);
+
+    expect(getActor(world, 1).effects).toEqual([expect.objectContaining({ definitionId: "boat" })]);
+    expect(getActor(world, 1).inventory[1]?.charges).toBe(3);
+    expect(result.frame.soapPatches).toHaveLength(0);
+  });
+
+  it("removes a Soap patch when its tile becomes Void", () => {
+    const world = new SimulationWorld(
+      normalizeGameConfig({
+        participantCount: 4,
+        arenaColumns: 9,
+        arenaRows: 9,
+        roundLimitSeconds: 30,
+        collapseSpeed: "fast",
+        itemsEnabled: true,
+        initialItemCount: 0,
+        itemRespawnSeconds: 0,
+      }),
+      "soap-flood-removal",
+      {
+        arenaLayout: "rectangular-fixture",
+        participantOverrides: [
+          {
+            actorId: 1,
+            position: { x: 1.5, y: 1.5 },
+            facing: { x: 0, y: -1 },
+            startingItems: ["soap"],
+          },
+          { actorId: 2, position: { x: 4.5, y: 4.5 } },
+          { actorId: 3, position: { x: 5.5, y: 4.5 } },
+          { actorId: 4, position: { x: 4.5, y: 5.5 } },
+        ],
+      },
+    );
+    world.step([{ ...createNeutralCommand(world.tick, 1), useItemSlot: 0 }]);
+    expect(world.createRenderFrame().soapPatches).toEqual([
+      expect.objectContaining({ tileId: "1:0" }),
+    ]);
+    let flooded = false;
+
+    while (world.tick < 1_500 && !flooded) {
+      const result = world.step();
+      flooded = result.events.some((event) => event.kind === "tile-void" && event.tileId === "1:0");
+
+      if (result.frame.round.status === "Completed") {
+        break;
+      }
+    }
+
+    expect(flooded).toBe(true);
+    expect(world.createRenderFrame().soapPatches).toHaveLength(0);
+  });
+
   it("applies and refreshes timed mass effects within the global mass bounds", () => {
     const world = new SimulationWorld(createItemConfig(), "stacked-mass", {
       arenaLayout: "rectangular-fixture",
