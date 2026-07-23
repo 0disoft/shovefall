@@ -9,6 +9,7 @@
 - Rendered evidence:
   - `.cache/design-qa/menu-1440x900.png`
   - `.cache/design-qa/arena-live-1440x900.png`
+  - `.cache/design-qa/arena-58deg-local-1440x900.png`
 - Target: deployed GitHub Pages build at `https://0disoft.github.io/shovefall/`
 - Viewport: desktop Chrome, 1440 x 900 CSS pixels at DPR 1.
 
@@ -35,6 +36,14 @@
 4. P2: a saved-settings summary made the menu busier than requested. Removed.
 5. P2: the centered menu could become too tall on short screens. Bounded with `min(420px, 58dvh)` and responsive spacing.
 6. P3: final island art is intentionally still procedural gray-box artwork. Asset generation remains a separate visual-polish pass and does not block the requested navigation or camera behavior.
+
+## 58-degree projection review
+
+- Product `0.24.0` uses the GLM-recommended 58-degree camera elevation, verified at runtime through `data-projection-angle="58"` and `data-projection-scale-y="0.8480"`.
+- At 1440 x 900, the rendered 16-player arena uses a 1388 x 688 canvas and a bounded 6–14-pixel cliff front. The whole island remains outside one camera frame.
+- Simulation, support, collision, AI, and replay coordinates remain top-down; only presentation points, vectors, camera bounds, and draw ordering are projected.
+- Characters and items remain upright. Their short angle-derived shadows, projected action lines, participant depth ordering, tile-top highlights, and unsupported southern cliff fronts provide depth without hiding shove timing or shoreline support.
+- The chosen 58 degrees compresses depth by about 15.2%, making the terrain angle visible while retaining more shove and shoreline readability than the lower 55-degree edge of the reviewed range.
 
 No P0, P1, or P2 findings remain for this request. A network response audit reproduced no HTTP 4xx/5xx resources, and the deployed production smoke suite passed.
 

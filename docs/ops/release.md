@@ -2,7 +2,7 @@
 
 - Status: GitHub Pages deployment and public Chrome smoke verified
 - Primary owner: Repository owner
-- Current product version: `0.23.0`
+- Current product version: `0.24.0`
 - Validation source: [../../VALIDATION.md](../../VALIDATION.md)
 - Submission package: [../product/05-submission-package.md](../product/05-submission-package.md)
 - Asset ledger: [../assets/README.md](../assets/README.md)
@@ -14,6 +14,8 @@ Product `0.21.0` renames the public game to `바닥이 사라지는 술래잡기
 Product `0.22.0` and simulation `7.0.0` add seeded connected island coastlines, enclosed lakes, larger preset bounds, shoreline-aware bots and items, and a connected 20% collapse floor. Content remains `4.0.0`. Replay fixtures must be regenerated and the round, scale, browser, and hosted checks refreshed for the exact candidate SHA; evidence from the rectangular `0.21.0` map does not transfer.
 
 Product `0.23.0` and simulation `8.0.0` split the entry flow into menu, saved settings, and gameplay screens; remove the setup-map preview; add a player-follow camera; and expand the 8/16/24/32 bounds to `22×17`, `25×20`, `28×23`, and `31×26`. Coast seeds vary shape while preserving a fixed pre-lake land budget, so every larger preset has strictly more playable land even when its seed differs. Content remains `4.0.0`.
+
+Product `0.24.0` changes only PixiJS presentation: the local camera now renders a fixed 58-degree elevation with projected tile depth, bounded southern cliff fronts, upright participant shadows, projected action vectors, and Y-depth ordering. Simulation stays `8.0.0`, content stays `4.0.0`, and replay hashes are unchanged apart from the recorded product envelope. Exact-SHA Chrome smoke and hosted Pages evidence must be refreshed before this visual candidate replaces `0.23.0`.
 
 The current local tree passes merge-blocking checks, the production Chrome smoke suite, the 7,200-tick headless scale profile, and the 16/24/32 production Chrome profile after shoreline geometry caching. The monolithic controlled round audit timed out at its configured 300-second boundary without a result, so current procedural-island balance remains pending a split bounded audit and human playtest. Hosted evidence starts only after the exact commit is pushed and the Pages workflow succeeds.
 

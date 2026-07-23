@@ -8,6 +8,16 @@ import type {
   TileState,
 } from "../simulation/contracts";
 import { clamp, type Vector2 } from "../simulation/math";
+import {
+  ARENA_CAMERA_ELEVATION_DEGREES,
+  ARENA_DEPTH_SCALE,
+  ARENA_SHADOW_OFFSET_SCALE,
+  createArenaProjection,
+  getProjectedArenaSize,
+  projectArenaPoint,
+  projectArenaVector,
+  type ArenaProjection,
+} from "./arena-projection";
 import { SimulationEventLedger } from "./event-ledger";
 
 export interface ArenaRenderer {
@@ -19,13 +29,6 @@ export interface ArenaRenderer {
 export interface ArenaRendererOptions {
   readonly onContextLost?: () => void;
   readonly onContextRestored?: () => void;
-}
-
-interface ArenaTransform {
-  readonly originX: number;
-  readonly originY: number;
-  readonly pitch: number;
-  readonly tileSize: number;
 }
 
 type VisualEffectKind =
@@ -45,7 +48,6 @@ interface VisualEffect {
   readonly vector: Vector2 | undefined;
 }
 
-const TILE_GAP = 4;
 const DEFAULT_RESOLUTION_CAP = 1.5;
 const MAYHEM_RESOLUTION_CAP = 1;
 const NORMAL_EFFECT_CAP = 36;
@@ -78,20 +80,11 @@ function getArenaDimensions(frame: RenderFrameV1): { columns: number; rows: numb
   );
 }
 
-function createTransform(width: number, height: number): ArenaTransform {
-  const compact = width <= 820;
-  const visibleColumns = compact ? 10 : 18;
-  const visibleRows = compact ? 12 : 11;
-  const pitch = clamp(Math.min(width / visibleColumns, height / visibleRows), 28, 68);
-  const tileSize = pitch - TILE_GAP;
-  return Object.freeze({ originX: 0, originY: 0, pitch, tileSize });
-}
-
 function createCameraOffset(
   frame: RenderFrameV1,
   width: number,
   height: number,
-  transform: ArenaTransform,
+  projection: ArenaProjection,
   humanActorId: number,
   interpolationAlpha: number,
 ): Vector2 {
@@ -107,18 +100,19 @@ function createCameraOffset(
       ? rows / 2
       : human.previousPosition.y +
         (human.position.y - human.previousPosition.y) * interpolationAlpha;
-  const worldWidth = (columns - 1) * transform.pitch + transform.tileSize;
-  const worldHeight = (rows - 1) * transform.pitch + transform.tileSize;
-  const oceanMargin = transform.tileSize * 1.35;
-  const unclampedX = width / 2 - (focusX * transform.pitch - TILE_GAP / 2);
-  const unclampedY = height / 2 - (focusY * transform.pitch - TILE_GAP / 2);
-  const minimumX = width - worldWidth - oceanMargin;
+  const worldSize = getProjectedArenaSize(columns, rows, projection);
+  const focus = projectArenaPoint({ x: focusX, y: focusY }, projection);
+  const oceanMargin = projection.tileWidth * 1.35;
+  const unclampedX = width / 2 - focus.x;
+  const unclampedY = height / 2 - focus.y;
+  const minimumX = width - worldSize.width - oceanMargin;
   const maximumX = oceanMargin;
-  const minimumY = height - worldHeight - oceanMargin;
+  const minimumY = height - worldSize.height - oceanMargin;
   const maximumY = oceanMargin;
-  const x = minimumX > maximumX ? (width - worldWidth) / 2 : clamp(unclampedX, minimumX, maximumX);
+  const x =
+    minimumX > maximumX ? (width - worldSize.width) / 2 : clamp(unclampedX, minimumX, maximumX);
   const y =
-    minimumY > maximumY ? (height - worldHeight) / 2 : clamp(unclampedY, minimumY, maximumY);
+    minimumY > maximumY ? (height - worldSize.height) / 2 : clamp(unclampedY, minimumY, maximumY);
 
   return Object.freeze({ x, y });
 }
@@ -127,40 +121,84 @@ function getActionColor(action: ParticipantActionKind): number {
   return ACTION_COLORS[action];
 }
 
-function drawTile(graphics: Graphics, tile: TileState, transform: ArenaTransform): void {
+function getTileFillColor(tile: TileState): number {
+  return tile.state === "Stable" ? 0x2c3431 : tile.state === "Warning" ? 0x8a5a1e : 0x6b2a24;
+}
+
+function drawTileCliff(
+  graphics: Graphics,
+  tile: TileState,
+  projection: ArenaProjection,
+  hasSouthernNeighbor: boolean,
+): void {
+  if (tile.state === "Void" || hasSouthernNeighbor) {
+    return;
+  }
+
+  const x = projection.originX + tile.column * projection.pitch;
+  const y = projection.originY + tile.row * projection.depthPitch;
+  const frontY = y + projection.tileDepth;
+  const color = tile.state === "Stable" ? 0x202724 : tile.state === "Warning" ? 0x5a3918 : 0x421d1b;
+
+  graphics
+    .poly([
+      x,
+      frontY,
+      x + projection.tileWidth,
+      frontY,
+      x + projection.tileWidth,
+      frontY + projection.cliffDepth,
+      x,
+      frontY + projection.cliffDepth,
+    ])
+    .fill({ color, alpha: tile.state === "Collapsing" ? 0.68 : 1 })
+    .stroke({ color: 0x0d1210, width: 1 });
+}
+
+function drawTile(graphics: Graphics, tile: TileState, projection: ArenaProjection): void {
   if (tile.state === "Void") {
     return;
   }
 
-  const x = transform.originX + tile.column * transform.pitch;
-  const y = transform.originY + tile.row * transform.pitch;
-  const radius = Math.max(2, transform.tileSize * 0.08);
-  const fillColor =
-    tile.state === "Stable" ? 0x2c3431 : tile.state === "Warning" ? 0x8a5a1e : 0x6b2a24;
+  const x = projection.originX + tile.column * projection.pitch;
+  const y = projection.originY + tile.row * projection.depthPitch;
+  const radius = Math.max(2, projection.tileDepth * 0.08);
+  const fillColor = getTileFillColor(tile);
   const strokeColor =
     tile.state === "Stable" ? 0x3d4743 : tile.state === "Warning" ? 0xffc857 : 0xff5c4d;
 
   graphics
-    .roundRect(x, y, transform.tileSize, transform.tileSize, radius)
+    .roundRect(x, y, projection.tileWidth, projection.tileDepth, radius)
     .fill({ color: fillColor, alpha: tile.state === "Collapsing" ? 0.72 : 1 })
     .stroke({ color: strokeColor, width: tile.state === "Stable" ? 1 : 2 });
 
+  graphics
+    .moveTo(x + radius, y + 1)
+    .lineTo(x + projection.tileWidth - radius, y + 1)
+    .stroke({
+      color: tile.state === "Stable" ? 0x59645f : strokeColor,
+      width: 1,
+      alpha: tile.state === "Stable" ? 0.42 : 0.72,
+    });
+
   if (tile.state === "Warning") {
-    const inset = transform.tileSize * 0.2;
+    const insetX = projection.tileWidth * 0.2;
+    const insetY = projection.tileDepth * 0.2;
     graphics
-      .moveTo(x + inset, y + transform.tileSize - inset)
-      .lineTo(x + transform.tileSize - inset, y + inset)
-      .stroke({ color: 0x2d2111, width: Math.max(2, transform.tileSize * 0.055) });
+      .moveTo(x + insetX, y + projection.tileDepth - insetY)
+      .lineTo(x + projection.tileWidth - insetX, y + insetY)
+      .stroke({ color: 0x2d2111, width: Math.max(2, projection.tileWidth * 0.055) });
   }
 
   if (tile.state === "Collapsing") {
-    const inset = transform.tileSize * 0.18;
+    const insetX = projection.tileWidth * 0.18;
+    const insetY = projection.tileDepth * 0.18;
     graphics
-      .moveTo(x + inset, y + inset)
-      .lineTo(x + transform.tileSize - inset, y + transform.tileSize - inset)
-      .moveTo(x + transform.tileSize - inset, y + inset)
-      .lineTo(x + inset, y + transform.tileSize - inset)
-      .stroke({ color: 0x251414, width: Math.max(2, transform.tileSize * 0.07) });
+      .moveTo(x + insetX, y + insetY)
+      .lineTo(x + projection.tileWidth - insetX, y + projection.tileDepth - insetY)
+      .moveTo(x + projection.tileWidth - insetX, y + insetY)
+      .lineTo(x + insetX, y + projection.tileDepth - insetY)
+      .stroke({ color: 0x251414, width: Math.max(2, projection.tileWidth * 0.07) });
   }
 }
 
@@ -171,14 +209,15 @@ function drawDirection(
   y: number,
   radius: number,
 ): void {
+  const direction = projectArenaVector(participant.facing);
   const length =
     participant.action === "ShoveActive"
       ? radius * 2.05
       : participant.action === "ShoveWindup"
         ? radius * 1.18
         : radius * 1.45;
-  const endX = x + participant.facing.x * length;
-  const endY = y + participant.facing.y * length;
+  const endX = x + direction.x * length;
+  const endY = y + direction.y * length;
   graphics
     .moveTo(x, y)
     .lineTo(endX, endY)
@@ -226,13 +265,15 @@ function drawMassMarker(
   graphics.circle(x, markerY, markerSize * 0.55).fill({ color: 0xd5dbd8 });
 }
 
-function drawItem(graphics: Graphics, item: RenderItemV1, transform: ArenaTransform): void {
-  const x = transform.originX + item.position.x * transform.pitch - TILE_GAP / 2;
-  const y = transform.originY + item.position.y * transform.pitch - TILE_GAP / 2;
-  const radius = Math.max(5, transform.tileSize * 0.16);
+function drawItem(graphics: Graphics, item: RenderItemV1, projection: ArenaProjection): void {
+  const { x, y } = projectArenaPoint(item.position, projection);
+  const radius = Math.max(5, projection.tileWidth * 0.16);
   const color = ITEM_COLORS[item.definitionId];
 
-  graphics.circle(x, y, radius * 1.55).fill({ color: 0x101514, alpha: 0.72 });
+  graphics
+    .ellipse(x, y + radius * ARENA_SHADOW_OFFSET_SCALE, radius * 1.35, radius * 0.42)
+    .fill({ color: 0x070a09, alpha: 0.48 });
+  graphics.circle(x, y, radius * 1.36).fill({ color: 0x101514, alpha: 0.72 });
 
   if (item.definitionId === "iron-boots") {
     graphics
@@ -267,7 +308,7 @@ function drawParticipant(
   graphics: Graphics,
   participant: RenderParticipantV1,
   humanActorId: number,
-  transform: ArenaTransform,
+  projection: ArenaProjection,
   interpolationAlpha: number,
   reducedMotion: boolean,
   mayhem: boolean,
@@ -282,9 +323,8 @@ function drawParticipant(
   const worldY =
     participant.previousPosition.y +
     (participant.position.y - participant.previousPosition.y) * interpolationAlpha;
-  const x = transform.originX + worldX * transform.pitch - TILE_GAP / 2;
-  const y = transform.originY + worldY * transform.pitch - TILE_GAP / 2;
-  const collisionRadius = participant.radius * transform.pitch;
+  const { x, y } = projectArenaPoint({ x: worldX, y: worldY }, projection);
+  const collisionRadius = participant.radius * projection.pitch;
   const visualScale = 1 + (participant.massFactor - 1) * 0.16;
   const visualRadius = collisionRadius * visualScale;
   const isHuman = participant.actorId === humanActorId;
@@ -301,33 +341,42 @@ function drawParticipant(
   );
 
   if (participant.action === "DodgeActive" && !reducedMotion && (!mayhem || isHuman)) {
-    const previousX =
-      transform.originX + participant.previousPosition.x * transform.pitch - TILE_GAP / 2;
-    const previousY =
-      transform.originY + participant.previousPosition.y * transform.pitch - TILE_GAP / 2;
+    const { x: previousX, y: previousY } = projectArenaPoint(
+      participant.previousPosition,
+      projection,
+    );
     graphics.circle(previousX, previousY, visualRadius * 0.88).fill({
       color: actionColor,
       alpha: 0.2,
     });
   }
 
+  graphics
+    .ellipse(
+      x,
+      y + visualRadius * ARENA_SHADOW_OFFSET_SCALE,
+      visualRadius * 0.9,
+      Math.max(2, visualRadius * 0.24),
+    )
+    .fill({ color: 0x050706, alpha: participant.action === "Falling" ? 0.16 : 0.38 });
+
   graphics.circle(x, y, collisionRadius).stroke({
     color: 0x0a0d0c,
-    width: Math.max(1, transform.tileSize * 0.035),
+    width: Math.max(1, projection.tileWidth * 0.035),
     alpha: 0.9,
   });
 
   if (isHuman) {
-    const guardRadius = visualRadius + Math.max(5, transform.tileSize * 0.14);
+    const guardRadius = visualRadius + Math.max(5, projection.tileWidth * 0.14);
     graphics.circle(x, y, guardRadius).stroke({
       color: 0x3b8cff,
-      width: Math.max(2, transform.tileSize * 0.05),
+      width: Math.max(2, projection.tileWidth * 0.05),
       alpha: reducedMotion ? 0.4 : 0.55,
     });
     graphics
       .poly([x, y - visualRadius, x + visualRadius, y, x, y + visualRadius, x - visualRadius, y])
       .fill({ color: fillColor, alpha: participant.action === "Falling" ? 0.35 : 1 })
-      .stroke({ color: 0x3b8cff, width: Math.max(3, transform.tileSize * 0.07) });
+      .stroke({ color: 0x3b8cff, width: Math.max(3, projection.tileWidth * 0.07) });
   } else {
     graphics
       .circle(x, y, visualRadius)
@@ -335,7 +384,7 @@ function drawParticipant(
       .stroke({ color: actionColor, width: 2 });
   }
 
-  const massRingRadius = visualRadius + Math.max(3, transform.tileSize * 0.06);
+  const massRingRadius = visualRadius + Math.max(3, projection.tileWidth * 0.06);
   graphics.circle(x, y, massRingRadius).stroke({
     color: hasIronBoots
       ? ITEM_COLORS["iron-boots"]
@@ -350,8 +399,8 @@ function drawParticipant(
   drawMassMarker(graphics, participant, x, y, visualRadius);
 
   if (hasSpringGlove || participant.springBoosted) {
-    const markerY = y - visualRadius - Math.max(6, transform.tileSize * 0.12);
-    graphics.circle(x, markerY, Math.max(3, transform.tileSize * 0.07)).stroke({
+    const markerY = y - visualRadius - Math.max(6, projection.tileWidth * 0.12);
+    graphics.circle(x, markerY, Math.max(3, projection.tileWidth * 0.07)).stroke({
       color: ITEM_COLORS["spring-glove"],
       width: participant.springBoosted ? 4 : 2,
     });
@@ -360,7 +409,7 @@ function drawParticipant(
   if (hasIronBoots || hasFeather) {
     const badgeX = x + visualRadius * 0.82;
     const badgeY = y - visualRadius * 0.82;
-    const badgeSize = Math.max(2.5, transform.tileSize * 0.055);
+    const badgeSize = Math.max(2.5, projection.tileWidth * 0.055);
 
     if (hasIronBoots) {
       graphics
@@ -407,14 +456,13 @@ function drawWorldEffect(
   graphics: Graphics,
   effect: VisualEffect,
   frameTick: number,
-  transform: ArenaTransform,
+  projection: ArenaProjection,
   reducedMotion: boolean,
 ): void {
   const duration = Math.max(1, effect.endTick - effect.startTick);
   const progress = clamp((frameTick - effect.startTick) / duration, 0, 1);
-  const x = transform.originX + effect.position.x * transform.pitch - TILE_GAP / 2;
-  const y = transform.originY + effect.position.y * transform.pitch - TILE_GAP / 2;
-  const baseRadius = Math.max(5, transform.tileSize * 0.14);
+  const { x, y } = projectArenaPoint(effect.position, projection);
+  const baseRadius = Math.max(5, projection.tileWidth * 0.14);
   const expansion = reducedMotion ? 1 : 1 + progress * 1.8;
   const alpha = Math.max(0, 1 - progress);
 
@@ -433,7 +481,7 @@ function drawWorldEffect(
       .lineTo(x, y + size)
       .stroke({ color: 0xffd166, width: 2, alpha, cap: "round" });
   } else {
-    const direction = effect.vector ?? { x: 1, y: 0 };
+    const direction = projectArenaVector(effect.vector ?? { x: 1, y: 0 });
     const length = baseRadius * (reducedMotion ? 1.4 : 1.4 + progress * 1.6);
     graphics
       .moveTo(x, y)
@@ -488,12 +536,12 @@ export async function createArenaRenderer(
       return;
     }
 
-    const transform = createTransform(application.screen.width, application.screen.height);
+    const projection = createArenaProjection(application.screen.width, application.screen.height);
     const camera = createCameraOffset(
       latestFrame,
       application.screen.width,
       application.screen.height,
-      transform,
+      projection,
       latestHumanActorId,
       latestInterpolationAlpha,
     );
@@ -507,6 +555,9 @@ export async function createArenaRenderer(
     effectLayer.y = camera.y;
     host.dataset.cameraX = camera.x.toFixed(2);
     host.dataset.cameraY = camera.y.toFixed(2);
+    host.dataset.projectionAngle = ARENA_CAMERA_ELEVATION_DEGREES.toString();
+    host.dataset.projectionScaleY = ARENA_DEPTH_SCALE.toFixed(4);
+    host.dataset.cliffDepth = projection.cliffDepth.toFixed(2);
     items.clear();
     participants.clear();
     effectLayer.clear();
@@ -514,24 +565,46 @@ export async function createArenaRenderer(
 
     if (tileLayerDirty) {
       tiles.clear();
+      const supportedTileIds = new Set<string>(
+        latestFrame.tiles.filter(({ state }) => state !== "Void").map(({ tileId }) => tileId),
+      );
 
       for (const tile of latestFrame.tiles) {
-        drawTile(tiles, tile, transform);
+        drawTileCliff(
+          tiles,
+          tile,
+          projection,
+          supportedTileIds.has(`${tile.column}:${tile.row + 1}`),
+        );
+      }
+
+      for (const tile of latestFrame.tiles) {
+        drawTile(tiles, tile, projection);
       }
 
       tileLayerDirty = false;
     }
 
     for (const item of latestFrame.items) {
-      drawItem(items, item, transform);
+      drawItem(items, item, projection);
     }
 
-    for (const participant of latestFrame.participants) {
+    const orderedParticipants = latestFrame.participants.toSorted((left, right) => {
+      const leftY =
+        left.previousPosition.y +
+        (left.position.y - left.previousPosition.y) * latestInterpolationAlpha;
+      const rightY =
+        right.previousPosition.y +
+        (right.position.y - right.previousPosition.y) * latestInterpolationAlpha;
+      return leftY === rightY ? left.actorId - right.actorId : leftY - rightY;
+    });
+
+    for (const participant of orderedParticipants) {
       drawParticipant(
         participants,
         participant,
         latestHumanActorId,
-        transform,
+        projection,
         latestInterpolationAlpha,
         reducedMotion,
         mayhem,
@@ -545,7 +618,7 @@ export async function createArenaRenderer(
     );
 
     for (const effect of visualEffects) {
-      drawWorldEffect(effectLayer, effect, latestFrame.tick, transform, reducedMotion);
+      drawWorldEffect(effectLayer, effect, latestFrame.tick, projection, reducedMotion);
     }
   };
 

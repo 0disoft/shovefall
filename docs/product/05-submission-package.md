@@ -1,7 +1,7 @@
 # Contest Submission Package
 
 - Status: Public link and Chrome smoke verified; final captures and human playtest pending
-- Candidate version: `0.23.0`
+- Candidate version: `0.24.0`
 - Candidate SHA: replace with the final exact 40-character release SHA
 - Release gate: [../ops/release.md](../ops/release.md)
 - Asset ledger: [../assets/README.md](../assets/README.md)
@@ -12,7 +12,7 @@
 
 ## 2. 게임 설명
 
-해안선과 호수가 매번 달라지는 무인도에서 상대를 밀어내고 끝까지 살아남는 짧은 브라우저 파티 액션
+58도 사선 시점으로 보이는 해안선과 호수가 매번 달라지는 무인도에서 상대를 밀어내고 끝까지 살아남는 짧은 브라우저 파티 액션
 게임이다. 플레이어 한 명과 규칙 기반 컴퓨터들이 같은 물리 규칙으로 싸운다. WASD,
 방향키, 마우스 드래그, 터치 조이스틱, 게임패드로 이동하고 키보드·터치·게임패드로
 밀치기와 회피를 한다.

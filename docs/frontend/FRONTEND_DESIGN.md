@@ -22,7 +22,7 @@ The MVP is a single-page static application with one document route. URL paramet
 
 ## 4. Page and Layout Model
 
-The DOM shell owns the initial menu, settings, HUD overlays outside the game world, results, errors, and accessibility text. The PixiJS canvas is hidden before play and owns arena tiles, participants, items, world effects, and a human-follow camera after start. The camera renders a local viewport and clamps at the world edge with an ocean margin; it never shrinks the full island into one screen.
+The DOM shell owns the initial menu, settings, HUD overlays outside the game world, results, errors, and accessibility text. The PixiJS canvas is hidden before play and owns arena tiles, participants, items, world effects, and a human-follow camera after start. The camera renders a local viewport and clamps at the projected world edge with an ocean margin; it never shrinks the full island into one screen. Presentation uses a fixed 58-degree elevation: world depth is foreshortened by `sin(58°)`, while simulation and collision coordinates remain top-down.
 
 ## 5. State Ownership Model
 
@@ -49,6 +49,8 @@ Semantic tokens must distinguish canvas background, stable tile, warning tile, v
 
 Color is never the only signal for collapse warning, player identity, or action readiness. Collapse uses shape (diagonal cross, X-hatch), identity uses shape (diamond) plus a doubled ring, and action readiness uses direction-line width and color together.
 
+The 2.5D depth contract keeps tile tops rectangular and only exposes a dark 6–14 CSS-pixel cliff front where a supported tile has no southern neighbor. Characters and items remain upright instead of being vertically squashed, receive bounded elliptical ground shadows, and are drawn by interpolated world Y so nearer participants cover farther ones. Facing lines and world effects use the same projected vector plane. The projection is presentation-only and cannot change support, collision, AI, replay hashes, or deterministic outcomes.
+
 ## 9. Interaction and Accessibility Contract
 
 The input contract accepts `WASD` and arrow-key movement, mouse or touch drag anywhere in the arena, a mobile virtual joystick, a standard gamepad left stick or D-pad, `Space`/the first gamepad button/touch hand shove, `Shift`/the second gamepad button/touch dodge, and `1..4` stat spending. Every adapter writes the same bounded human command state sampled once per fixed tick; pointer input overrides gamepad input while actively dragged, gamepad input overrides held keyboard movement while displaced, and releasing or losing focus restores a neutral vector. Setup offers three starting-mass radios and exactly two distinct starting-item checkboxes; once two are selected, the unused option is disabled until one is removed. The in-round DOM panel exposes the same four stat choices as number keys and returns focus to the arena after a click. Gameplay keys are ignored when an input, link, or button owns focus. Window blur and document visibility loss clear held input and pause the scheduler.
@@ -73,7 +75,7 @@ Remote analytics, session replay, advertising, and automatic error upload are ex
 
 ## 14. Test Strategy
 
-Vitest covers pure state, keyboard and pointer vectors, gamepad dead zones, input edges, loadout normalization, starting effects, compact hand reach, credited elimination, bounded stat spending, settings tiers, collapse phases, result sealing, and presentation boundaries. Playwright covers setup, debug tuning copy/apply, countdown, keyboard, arrow-key, mouse-drag and narrow-viewport joystick movement, touch action bridging, deterministic human defeat and restart, audio fallback, reduced motion, fatal recovery, and WebGL restoration. Physical touch hardware and gamepad hardware remain manual device-matrix gates.
+Vitest covers pure state, keyboard and pointer vectors, gamepad dead zones, input edges, loadout normalization, starting effects, compact hand reach, credited elimination, bounded stat spending, settings tiers, collapse phases, result sealing, 58-degree projection math, projected camera bounds, and presentation boundaries. Playwright covers setup, debug tuning copy/apply, countdown, keyboard, arrow-key, mouse-drag and narrow-viewport joystick movement, touch action bridging, deterministic human defeat and restart, audio fallback, reduced motion, fatal recovery, and WebGL restoration. Physical touch hardware and gamepad hardware remain manual device-matrix gates.
 
 ## 15. Implementation Sequence
 

@@ -18,6 +18,10 @@ vi.mock("pixi.js", () => {
       return this;
     }
 
+    public ellipse(): this {
+      return this;
+    }
+
     public clear(): this {
       return this;
     }
@@ -139,7 +143,8 @@ describe("arena renderer presentation", () => {
   });
 
   it("presents every requested simulation frame without relying on a resize event", async () => {
-    const renderer = await createArenaRenderer(createHost());
+    const host = createHost();
+    const renderer = await createArenaRenderer(host);
     const frame = new SimulationWorld(
       normalizeGameConfig({ participantCount: 8 }),
       "explicit-present",
@@ -148,6 +153,9 @@ describe("arena renderer presentation", () => {
     renderer.render(frame, 0, 1);
 
     expect(applicationRender).toHaveBeenCalledTimes(1);
+    expect(host.dataset.projectionAngle).toBe("58");
+    expect(Number(host.dataset.projectionScaleY)).toBeCloseTo(Math.sin((58 * Math.PI) / 180), 4);
+    expect(Number(host.dataset.cliffDepth)).toBeGreaterThanOrEqual(6);
   });
 
   it("moves the world camera opposite the human instead of fitting the whole island", async () => {
@@ -193,5 +201,50 @@ describe("arena renderer presentation", () => {
     renderer.render(movedFrame, 1, 1);
 
     expect(Number(host.dataset.cameraX)).toBeLessThan(centerCameraX);
+  });
+
+  it("moves the projected camera opposite vertical human movement", async () => {
+    const host = createHost();
+    const renderer = await createArenaRenderer(host);
+    const frame = new SimulationWorld(
+      normalizeGameConfig({
+        participantCount: 32,
+        arenaColumns: 31,
+        arenaRows: 26,
+      }),
+      "camera-depth-follow",
+    ).createRenderFrame();
+    const centered = Object.freeze({ x: 15.5, y: 13 });
+    const centerFrame = Object.freeze({
+      ...frame,
+      participants: Object.freeze(
+        frame.participants.map((participant) =>
+          participant.actorId === 1
+            ? Object.freeze({
+                ...participant,
+                position: centered,
+                previousPosition: centered,
+              })
+            : participant,
+        ),
+      ),
+    });
+    renderer.render(centerFrame, 1, 1);
+    const centerCameraY = Number(host.dataset.cameraY);
+    const moved = Object.freeze({ x: 15.5, y: 16 });
+    const movedFrame = Object.freeze({
+      ...centerFrame,
+      participants: Object.freeze(
+        centerFrame.participants.map((participant) =>
+          participant.actorId === 1
+            ? Object.freeze({ ...participant, position: moved, previousPosition: moved })
+            : participant,
+        ),
+      ),
+    });
+
+    renderer.render(movedFrame, 1, 1);
+
+    expect(Number(host.dataset.cameraY)).toBeLessThan(centerCameraY);
   });
 });

@@ -60,6 +60,8 @@ Product `0.22.0` and simulation `7.0.0` replace the full rectangular land sheet 
 
 Product `0.23.0` and simulation `8.0.0` enlarge the browser tiers to `22×17`, `25×20`, `28×23`, and `31×26`. The coastline generator ranks seeded radial scores into a fixed 58% pre-lake land budget, preserving irregular shapes while guaranteeing that each larger preset has more playable land than the previous tier despite independent seeds. The browser presents that world through a human-follow camera rather than a fit-to-screen transform. Tick-zero tiles, spawns, AI choices, collapse schedules, and hashes change, so replay fixtures are regenerated; content remains `4.0.0`.
 
+Product `0.24.0` keeps simulation `8.0.0` and content `4.0.0`. A pure presentation projection maps the top-down world to a fixed 58-degree camera elevation, adds bounded cliff fronts and upright shadows, orders participants by interpolated depth, and computes camera clamps from projected bounds. The projection cannot enter simulation state or hashes; replay fixtures change only because the product version is recorded in their envelope.
+
 ## Version Ownership
 
 - Product version: `package.json` and `PRODUCT_VERSION`.
