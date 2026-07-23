@@ -317,7 +317,12 @@ test("offers a working touch joystick and action buttons on a narrow viewport", 
   await expect.poll(() => page.locator("#position-value").textContent()).not.toBe(positionBefore);
   await expect(joystick).not.toHaveAttribute("data-active", "true");
 
-  await page.locator("#touch-shove").click();
+  await page.locator("#touch-shove").dispatchEvent("pointerdown", {
+    button: 0,
+    isPrimary: true,
+    pointerId: 99,
+    pointerType: "touch",
+  });
   await expect(page.locator("#game-telemetry")).toHaveAttribute(
     "data-action",
     /ShoveWindup|ShoveActive|ShoveRecovery|Stumbling/u,
