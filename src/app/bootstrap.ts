@@ -149,7 +149,6 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   const startGameButton = requireElement(root, "#start-game", HTMLButtonElement);
   const openSettingsButton = requireElement(root, "#open-settings", HTMLButtonElement);
   const cancelSettingsButton = requireElement(root, "#cancel-settings", HTMLButtonElement);
-  const savedSettingsSummary = requireElement(root, "#saved-settings-summary", HTMLElement);
   const form = requireElement(root, "#game-settings", HTMLFormElement);
   const playerCount = requireElement(root, "#player-count", HTMLInputElement);
   const playerCountValue = requireElement(root, "#player-count-value", HTMLOutputElement);
@@ -206,6 +205,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   let pointerControls: PointerControls | undefined;
   let latestSettings = normalizeSettings({ playerCount: 16, preset: "default" });
   let latestGameplayTuning: GameplayTuningV1 = DEFAULT_GAMEPLAY_TUNING;
+  let latestDebugTuningEnabled = false;
   let latestMasterSeed: string | undefined;
   let latestRoundReport: string | undefined;
 
@@ -309,23 +309,35 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     root.dataset.scale = isMayhem ? "mayhem" : "normal";
   };
 
-  const renderSavedSettingsSummary = (): void => {
-    const difficulty =
-      latestSettings.botDifficulty === "easy"
-        ? "AI 쉬움"
-        : latestSettings.botDifficulty === "hard"
-          ? "AI 어려움"
-          : "AI 보통";
-    const collapse =
-      latestSettings.collapseSpeed === "slow"
-        ? "붕괴 느림"
-        : latestSettings.collapseSpeed === "fast"
-          ? "붕괴 빠름"
-          : "붕괴 보통";
-    savedSettingsSummary.textContent = `${latestSettings.playerCount}명 · ${difficulty} · ${collapse}`;
-  };
-
   debugTuning = createDebugTuningController(root, { onChange(): void {} });
+
+  const hydrateSettingsForm = (): void => {
+    for (const input of form.querySelectorAll<HTMLInputElement>('input[name="preset"]')) {
+      input.checked = input.value === latestSettings.preset;
+    }
+
+    for (const input of form.querySelectorAll<HTMLInputElement>('input[name="botDifficulty"]')) {
+      input.checked = input.value === latestSettings.botDifficulty;
+    }
+
+    for (const input of form.querySelectorAll<HTMLInputElement>('input[name="startingMass"]')) {
+      input.checked = input.value === latestSettings.startingMass;
+    }
+
+    setSelectedCollapseSpeed(form, latestSettings.collapseSpeed);
+    setPlayerCount(playerCount, playerCountValue, latestSettings.playerCount);
+    initialItemCount.max = String(Math.ceil(latestSettings.playerCount * 0.5));
+    initialItemCount.value = String(latestSettings.initialItemCount);
+    itemRespawn.value = String(latestSettings.itemRespawnSeconds);
+
+    for (const input of startingItemInputs) {
+      input.checked = latestSettings.startingItems.some((item) => item === input.value);
+    }
+
+    debugTuning?.load(latestGameplayTuning, latestDebugTuningEnabled);
+    renderStartingItemSelection();
+    renderSettingsSummary();
+  };
 
   const updateTelemetry = (current: SessionTelemetry): void => {
     const human = current.frame.participants.find((participant) => participant.actorId === 1);
@@ -506,7 +518,6 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     }
 
     latestSettings = settings;
-    latestGameplayTuning = debugTuning?.enabled ? debugTuning.read() : DEFAULT_GAMEPLAY_TUNING;
     latestMasterSeed = createRoundSeed();
     latestRoundReport = undefined;
     copyRoundReportButton.hidden = true;
@@ -518,7 +529,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     root.dataset.initialItems = String(settings.initialItemCount);
     root.dataset.botDifficulty = settings.botDifficulty;
     root.dataset.collapseSpeed = settings.collapseSpeed;
-    root.dataset.gameplayTuning = debugTuning?.enabled ? "debug" : "default";
+    root.dataset.gameplayTuning = latestDebugTuningEnabled ? "debug" : "default";
     arenaActions.hidden = false;
     telemetry.hidden = false;
     developerTelemetry.hidden = false;
@@ -568,7 +579,10 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   form.addEventListener("submit", (event) => {
     event.preventDefault();
     latestSettings = readSettings();
-    renderSavedSettingsSummary();
+    latestDebugTuningEnabled = debugTuning?.enabled ?? false;
+    latestGameplayTuning = latestDebugTuningEnabled
+      ? (debugTuning?.read() ?? DEFAULT_GAMEPLAY_TUNING)
+      : DEFAULT_GAMEPLAY_TUNING;
     setScreen("menu");
     startGameButton.focus();
   });
@@ -576,11 +590,13 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   startGameButton.addEventListener("click", () => startRound(latestSettings));
 
   openSettingsButton.addEventListener("click", () => {
+    hydrateSettingsForm();
     setScreen("settings");
     requireElement(root, "#setup-title", HTMLElement).focus({ preventScroll: true });
   });
 
   cancelSettingsButton.addEventListener("click", () => {
+    hydrateSettingsForm();
     setScreen("menu");
     startGameButton.focus();
   });
@@ -676,6 +692,5 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   );
 
   renderSettingsSummary();
-  renderSavedSettingsSummary();
   renderStartingItemSelection();
 }

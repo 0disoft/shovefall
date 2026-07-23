@@ -112,7 +112,7 @@ button:disabled {
 .masthead h1 {
   margin: 0;
   max-width: none;
-  font-size: clamp(2.15rem, 4vw, 4rem);
+  font-size: clamp(1.75rem, 2.4vw, 2.3rem);
   font-weight: 900;
   letter-spacing: -0.055em;
   line-height: 1.05;
@@ -127,7 +127,7 @@ button:disabled {
 
 .main-menu {
   width: min(480px, 100%);
-  min-height: 420px;
+  min-height: min(420px, 58dvh);
   margin: 0 auto;
   place-content: center;
   gap: 22px;
@@ -140,8 +140,7 @@ button:disabled {
   display: block;
 }
 
-.fullscreen-guide,
-.saved-settings-summary {
+.fullscreen-guide {
   margin: 0;
   color: var(--text-muted);
   line-height: 1.55;
@@ -150,11 +149,6 @@ button:disabled {
 .fullscreen-guide {
   font-size: 1.05rem;
   font-weight: 750;
-}
-
-.saved-settings-summary {
-  min-height: 1.55em;
-  font-size: 0.95rem;
 }
 
 .main-menu__actions,

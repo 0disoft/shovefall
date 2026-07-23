@@ -162,6 +162,10 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await expect(page.getByText("F11 키로 전체화면을 켠 뒤 시작해.")).toBeVisible();
   await expect(page.locator("#arena-host canvas")).toBeHidden();
   await openSettings(page);
+  await page.getByLabel("쉬움").check();
+  await page.getByRole("button", { name: "취소" }).click();
+  await openSettings(page);
+  await expect(page.locator('input[name="botDifficulty"][value="normal"]')).toBeChecked();
   await expect(page.locator("#setup-summary")).toHaveText(
     "16명 · AI 보통 · 붕괴 보통 · 내 체급 보통 · 철 장화 + 스프링 장갑 · 맵 아이템 6개 · 5초마다 1개",
   );
@@ -175,6 +179,10 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
 
   await saveSettings(page);
   const countdownPauseSnapshot = await page.locator("#start-game").evaluate((button) => {
+    if (!(button instanceof HTMLButtonElement)) {
+      throw new Error("Game start control is not a button.");
+    }
+
     button.click();
     const telemetry = document.querySelector("#game-telemetry");
     const arena = document.querySelector("#arena-host");

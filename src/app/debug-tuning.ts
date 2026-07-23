@@ -44,6 +44,7 @@ const TUNING_KEYS: readonly TuningKey[] = Object.freeze([
 
 export interface DebugTuningController {
   readonly enabled: boolean;
+  load(tuning: GameplayTuningV1, enabled: boolean): void;
   read(): GameplayTuningV1;
   reset(): void;
   destroy(): void;
@@ -227,6 +228,18 @@ export function createDebugTuningController(
   return Object.freeze({
     get enabled(): boolean {
       return enabledInput.checked;
+    },
+    load(tuning: GameplayTuningV1, enabled: boolean): void {
+      for (const key of TUNING_KEYS) {
+        const input = inputs.get(key);
+
+        if (input !== undefined) {
+          input.value = String(tuning[key]);
+        }
+      }
+
+      enabledInput.checked = enabled;
+      notifyChange();
     },
     read,
     reset,
