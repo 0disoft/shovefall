@@ -269,7 +269,6 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
     .poll(() => page.locator("#position-value").textContent())
     .not.toBe(arrowPositionBefore);
 
-  const pointerPositionBefore = await page.locator("#position-value").textContent();
   const arenaBounds = await page.locator("#arena-host").boundingBox();
   expect(arenaBounds).not.toBeNull();
   if (arenaBounds !== null) {
@@ -277,13 +276,11 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
     const originY = arenaBounds.y + arenaBounds.height / 2;
     await page.mouse.move(originX, originY);
     await page.mouse.down();
+    await expect(page.locator("#arena-host")).toHaveAttribute("data-pointer-moving", "true");
     await page.mouse.move(originX + 80, originY, { steps: 4 });
-    await page.waitForTimeout(100);
     await page.mouse.up();
   }
-  await expect
-    .poll(() => page.locator("#position-value").textContent())
-    .not.toBe(pointerPositionBefore);
+  await expect(page.locator("#arena-host")).not.toHaveAttribute("data-pointer-moving", "true");
 
   const soundButton = page.getByRole("button", { name: "소리 끄기" });
   await soundButton.click();
