@@ -7,16 +7,26 @@
     <title>바닥이 사라지는 술래잡기</title>
   </head>
   <body>
-    <a class="skip-link" href="#setup-title">게임 설정으로 이동</a>
-    <main id="app" class="app-shell" data-screen="setup">
+    <a class="skip-link" href="#main-menu-title">메뉴로 이동</a>
+    <main id="app" class="app-shell" data-screen="menu">
       <header class="masthead">
         <h1>바닥이 사라지는 술래잡기</h1>
       </header>
 
+      <section id="main-menu" class="main-menu" aria-labelledby="main-menu-title">
+        <h2 id="main-menu-title" class="visually-hidden">메인 메뉴</h2>
+        <p class="fullscreen-guide">F11 키로 전체화면을 켠 뒤 시작해.</p>
+        <div class="main-menu__actions">
+          <button id="start-game" class="primary-action" type="button">게임 시작</button>
+          <button id="open-settings" class="secondary-action" type="button">설정</button>
+        </div>
+        <p id="saved-settings-summary" class="saved-settings-summary" aria-live="polite"></p>
+      </section>
+
       <div class="play-layout">
         <section class="setup-panel" aria-labelledby="setup-title">
           <div class="section-heading">
-            <h2 id="setup-title">게임 설정</h2>
+            <h2 id="setup-title" tabindex="-1">게임 설정</h2>
           </div>
 
           <form id="game-settings" class="settings-form">
@@ -304,48 +314,11 @@
               </div>
             </details>
 
-            <button class="primary-action" type="submit">
-              <span>빠른 시작</span>
-              <span aria-hidden="true">→</span>
-            </button>
-          </form>
-
-          <div id="arena-actions" class="arena-actions" hidden>
-            <p id="round-message" class="ready-message" role="status">준비</p>
-            <section id="stat-upgrades" class="stat-upgrades" aria-labelledby="stat-upgrades-title">
-              <div class="stat-upgrades__heading">
-                <strong id="stat-upgrades-title">처치 성장</strong>
-                <span>남은 포인트 <output id="stat-points-value">0</output></span>
-              </div>
-              <div class="stat-upgrades__grid">
-                <button type="button" data-upgrade-stat="power" disabled>
-                  <span>1 · 힘</span><small>밀치기 +8%</small><output id="power-level">0</output>
-                </button>
-                <button type="button" data-upgrade-stat="stability" disabled>
-                  <span>2 · 중심</span><small>받는 밀침 -12%</small
-                  ><output id="stability-level">0</output>
-                </button>
-                <button type="button" data-upgrade-stat="mobility" disabled>
-                  <span>3 · 발놀림</span><small>이동 +5%</small
-                  ><output id="mobility-level">0</output>
-                </button>
-                <button type="button" data-upgrade-stat="reflex" disabled>
-                  <span>4 · 반사신경</span><small>재사용 대기 감소</small
-                  ><output id="reflex-level">0</output>
-                </button>
-              </div>
-            </section>
-            <div class="arena-actions__buttons">
-              <button id="restart-round" class="primary-action" type="button">다시 시작</button>
-              <button id="back-to-settings" class="secondary-action" type="button">설정으로</button>
-              <button id="copy-round-report" class="secondary-action" type="button" hidden>
-                기록 복사
-              </button>
-              <button id="toggle-sound" class="secondary-action" type="button" aria-pressed="false">
-                소리 끄기
-              </button>
+            <div class="settings-actions">
+              <button class="primary-action" type="submit">설정 저장</button>
+              <button id="cancel-settings" class="secondary-action" type="button">취소</button>
             </div>
-          </div>
+          </form>
         </section>
 
         <section class="arena-panel" aria-labelledby="arena-title">
@@ -443,6 +416,42 @@
               <dd>Shift</dd>
             </div>
           </dl>
+          <div id="arena-actions" class="arena-actions" hidden>
+            <p id="round-message" class="ready-message" role="status">준비</p>
+            <section id="stat-upgrades" class="stat-upgrades" aria-labelledby="stat-upgrades-title">
+              <div class="stat-upgrades__heading">
+                <strong id="stat-upgrades-title">처치 성장</strong>
+                <span>남은 포인트 <output id="stat-points-value">0</output></span>
+              </div>
+              <div class="stat-upgrades__grid">
+                <button type="button" data-upgrade-stat="power" disabled>
+                  <span>1 · 힘</span><small>밀치기 +8%</small><output id="power-level">0</output>
+                </button>
+                <button type="button" data-upgrade-stat="stability" disabled>
+                  <span>2 · 중심</span><small>받는 밀침 -12%</small
+                  ><output id="stability-level">0</output>
+                </button>
+                <button type="button" data-upgrade-stat="mobility" disabled>
+                  <span>3 · 발놀림</span><small>이동 +5%</small
+                  ><output id="mobility-level">0</output>
+                </button>
+                <button type="button" data-upgrade-stat="reflex" disabled>
+                  <span>4 · 반사신경</span><small>재사용 대기 감소</small
+                  ><output id="reflex-level">0</output>
+                </button>
+              </div>
+            </section>
+            <div class="arena-actions__buttons">
+              <button id="restart-round" class="primary-action" type="button">다시 시작</button>
+              <button id="back-to-settings" class="secondary-action" type="button">메뉴로</button>
+              <button id="copy-round-report" class="secondary-action" type="button" hidden>
+                기록 복사
+              </button>
+              <button id="toggle-sound" class="secondary-action" type="button" aria-pressed="false">
+                소리 끄기
+              </button>
+            </div>
+          </div>
         </section>
       </div>
     </main>

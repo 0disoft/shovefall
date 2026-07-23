@@ -2,7 +2,7 @@
 
 - Status: GitHub Pages deployment and public Chrome smoke verified
 - Primary owner: Repository owner
-- Current product version: `0.22.0`
+- Current product version: `0.23.0`
 - Validation source: [../../VALIDATION.md](../../VALIDATION.md)
 - Submission package: [../product/05-submission-package.md](../product/05-submission-package.md)
 - Asset ledger: [../assets/README.md](../assets/README.md)
@@ -12,6 +12,8 @@ Product `0.20.0`, simulation `6.0.0`, and content `4.0.0` introduce starting loa
 Product `0.21.0` renames the public game to `바닥이 사라지는 술래잡기`, removes decorative masthead and section copy, and adds arrow-key, mouse-drag, virtual-joystick, and standard-gamepad input adapters without changing simulation `6.0.0` or content `4.0.0`. The collapsed `data-development-only` telemetry panel is a release blocker: remove it or gate it behind `import.meta.env.DEV` before the contest candidate is captured.
 
 Product `0.22.0` and simulation `7.0.0` add seeded connected island coastlines, enclosed lakes, larger preset bounds, shoreline-aware bots and items, and a connected 20% collapse floor. Content remains `4.0.0`. Replay fixtures must be regenerated and the round, scale, browser, and hosted checks refreshed for the exact candidate SHA; evidence from the rectangular `0.21.0` map does not transfer.
+
+Product `0.23.0` and simulation `8.0.0` split the entry flow into menu, saved settings, and gameplay screens; remove the setup-map preview; add a player-follow camera; and expand the 8/16/24/32 bounds to `22×17`, `25×20`, `28×23`, and `31×26`. Coast seeds vary shape while preserving a fixed pre-lake land budget, so every larger preset has strictly more playable land even when its seed differs. Content remains `4.0.0`.
 
 The current local tree passes merge-blocking checks, the production Chrome smoke suite, the 7,200-tick headless scale profile, and the 16/24/32 production Chrome profile after shoreline geometry caching. The monolithic controlled round audit timed out at its configured 300-second boundary without a result, so current procedural-island balance remains pending a split bounded audit and human playtest. Hosted evidence starts only after the exact commit is pushed and the Pages workflow succeeds.
 
@@ -94,7 +96,7 @@ cross-browser evidence.
 Against the final HTTPS URL and candidate SHA:
 
 1. Hard refresh and verify the title, setup, and canvas render without console-fatal errors.
-2. Run Quick Start through countdown, movement, shove, dodge, collapse, result, and restart.
+2. Run `게임 시작` through countdown, movement, shove, dodge, collapse, result, and restart.
 3. Verify `기록 복사` succeeds in the secure context and denial still leaves visible manual data.
 4. Test one 16-participant normal round and one 32-participant Mayhem boot.
 5. Confirm optional audio can fail without blocking play.

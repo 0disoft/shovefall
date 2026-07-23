@@ -7,6 +7,9 @@ const applicationRender = vi.hoisted(() => vi.fn<() => void>());
 
 vi.mock("pixi.js", () => {
   class FakeGraphics {
+    public x = 0;
+    public y = 0;
+
     public bezierCurveTo(): this {
       return this;
     }
@@ -59,7 +62,10 @@ vi.mock("pixi.js", () => {
     public readonly renderer = {
       off(): void {},
       on(): void {},
-      resize(): void {},
+      resize(width: number, height: number): void {
+        this.screen.width = width;
+        this.screen.height = height;
+      },
       resolution: 1,
       screen: { height: 430, width: 640 },
     };
@@ -142,5 +148,50 @@ describe("arena renderer presentation", () => {
     renderer.render(frame, 0, 1);
 
     expect(applicationRender).toHaveBeenCalledTimes(1);
+  });
+
+  it("moves the world camera opposite the human instead of fitting the whole island", async () => {
+    const host = createHost();
+    const renderer = await createArenaRenderer(host);
+    const frame = new SimulationWorld(
+      normalizeGameConfig({
+        participantCount: 32,
+        arenaColumns: 31,
+        arenaRows: 26,
+      }),
+      "camera-follow",
+    ).createRenderFrame();
+    const centered = Object.freeze({ x: 15.5, y: 13 });
+    const centerFrame = Object.freeze({
+      ...frame,
+      participants: Object.freeze(
+        frame.participants.map((participant) =>
+          participant.actorId === 1
+            ? Object.freeze({
+                ...participant,
+                position: centered,
+                previousPosition: centered,
+              })
+            : participant,
+        ),
+      ),
+    });
+    renderer.render(centerFrame, 1, 1);
+    const centerCameraX = Number(host.dataset.cameraX);
+    const moved = Object.freeze({ x: 18.5, y: 13 });
+    const movedFrame = Object.freeze({
+      ...centerFrame,
+      participants: Object.freeze(
+        centerFrame.participants.map((participant) =>
+          participant.actorId === 1
+            ? Object.freeze({ ...participant, position: moved, previousPosition: moved })
+            : participant,
+        ),
+      ),
+    });
+
+    renderer.render(movedFrame, 1, 1);
+
+    expect(Number(host.dataset.cameraX)).toBeLessThan(centerCameraX);
   });
 });

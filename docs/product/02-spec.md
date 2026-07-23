@@ -13,7 +13,7 @@ The central promise is a readable comic reversal: a player can dodge an incoming
 
 ## Core Loop
 
-1. Quick Start begins with the recommended preset. Custom settings are secondary.
+1. `게임 시작` begins with the last saved settings; custom settings remain a secondary menu branch.
 2. The human selects a starting mass and two distinct starting items; moves with `WASD`, arrow keys, mouse drag, a touch joystick, a standard gamepad stick, or its D-pad; extends a hand shove with `Space`, the first gamepad button, or the touch action; dodges with `Shift`, the second gamepad button, or the touch action; and spends earned stat points with `1..4` or the DOM controls.
 3. Mass continuously changes acceleration, turning, top speed, and impulse response without changing outcomes by chance.
 4. Telegraphing tiles collapse and compress the arena.
@@ -36,7 +36,7 @@ Collapse, formal bots, 32-participant scale, items, audio, and final art cannot 
 
 ## MVP Scope
 
-- Quick Start plus bounded presets for participant count, item frequency, density, collapse speed, and bot difficulty.
+- A menu-first game start plus bounded settings for participant count, item frequency, density, collapse speed, and bot difficulty.
 - One human and up to 31 bots using the same `ActorCommandV1` contract.
 - A 60 Hz fixed-tick simulation independent of PixiJS and browser time.
 - Deterministic movement, hand-reach shove, dodge, stumble, mass, collision, support, falling, elimination credit, and stat progression.
@@ -83,3 +83,5 @@ Version `0.20.0` exposes four presets at 8, 16, 24, and 32 participants with enl
 Version `0.21.0` changes only the product and input/presentation layer. The public title is `바닥이 사라지는 술래잡기`; decorative English copy and numbered section ornaments are removed. Arrow-key, mouse-drag, virtual-joystick, and standard-gamepad adapters feed the same human command state as keyboard input. The normal HUD no longer exposes development identifiers; tick, rate, position, seed, and state hash sit in one collapsed `data-development-only` panel that must be removed or development-gated before the contest release. Simulation remains `6.0.0` and content remains `4.0.0`.
 
 Version `0.22.0` changes the arena into a deterministic procedural island. Each seed produces a connected landmass with a smoothed irregular coast and one or two enclosed lakes; failed lake cuts are rejected rather than creating disconnected spawn islands. The 8/16/24/32 participant tiers expand to `16×13`, `20×16`, `24×19`, and `28×22` bounds before ocean and lakes are removed. Participants start on distinct supported interior tiles. Items retain their 3/2/1 edge bias but now treat both coast and lake shore as risk edges. Bots use the same current stable-tile shore depth for danger and target opportunity. Collapse removes only 80% of the tick-zero playable land and leaves a connected 20% core; time-limit draws remain honest instead of deleting the protected core to force a winner. Simulation is `7.0.0`, product is `0.22.0`, and content remains `4.0.0`.
+
+Version `0.23.0` opens on a menu containing only `게임 시작` and `설정`; the start action always consumes the last saved settings, and the arena is not visible until the round begins. The camera follows the human through a local viewport instead of shrinking the whole island into one screen. The 8/16/24/32 bounds grow to `22×17`, `25×20`, `28×23`, and `31×26`; seeded coastlines keep their irregular outline while using a fixed tier land budget, so larger presets cannot accidentally contain less playable land. Simulation is `8.0.0`, product is `0.23.0`, and content remains `4.0.0`.

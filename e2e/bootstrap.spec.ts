@@ -133,6 +133,20 @@ async function finishInstalledClockCountdown(page: Page): Promise<void> {
   await expect(page.locator("#app")).toHaveAttribute("data-round", "active");
 }
 
+async function openSettings(page: Page): Promise<void> {
+  await page.getByRole("button", { name: "설정", exact: true }).click();
+  await expect(page.locator("#app")).toHaveAttribute("data-screen", "settings");
+}
+
+async function saveSettings(page: Page): Promise<void> {
+  await page.getByRole("button", { name: "설정 저장" }).click();
+  await expect(page.locator("#app")).toHaveAttribute("data-screen", "menu");
+}
+
+async function startGame(page: Page): Promise<void> {
+  await page.getByRole("button", { name: "게임 시작" }).click();
+}
+
 test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) => {
   await installFixedRoundSeed(page, 1, 0);
   await page.goto("/");
@@ -142,12 +156,12 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
     page.getByRole("heading", { level: 1, name: "바닥이 사라지는 술래잡기" }),
   ).toBeVisible();
   await expect(page.getByText("SHOVE · DODGE · SURVIVE")).toHaveCount(0);
-  await expect(page.getByText("WebGL 준비됨")).toBeVisible();
-  await expect(page.locator("#arena-host canvas")).toBeVisible();
-  const setupCanvas = await captureArenaCanvas(page);
-  expect(setupCanvas.summary.sampledPixels).toBeGreaterThan(1_000);
-  expect(setupCanvas.summary.uniqueColorBuckets).toBeGreaterThan(4);
-  expect(setupCanvas.summary.luminanceRange).toBeGreaterThan(20);
+  await expect(page.locator("#app")).toHaveAttribute("data-screen", "menu");
+  await expect(page.getByRole("button", { name: "게임 시작" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "설정", exact: true })).toBeVisible();
+  await expect(page.getByText("F11 키로 전체화면을 켠 뒤 시작해.")).toBeVisible();
+  await expect(page.locator("#arena-host canvas")).toBeHidden();
+  await openSettings(page);
   await expect(page.locator("#setup-summary")).toHaveText(
     "16명 · AI 보통 · 붕괴 보통 · 내 체급 보통 · 철 장화 + 스프링 장갑 · 맵 아이템 6개 · 5초마다 1개",
   );
@@ -159,7 +173,8 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await expect(page.locator("#setup-summary")).toContainText("AI 쉬움");
   await expect(page.locator("#setup-summary")).toContainText("붕괴 느림");
 
-  await page.getByRole("button", { name: "빠른 시작" }).click();
+  await saveSettings(page);
+  await startGame(page);
   await page.keyboard.press("Space");
   const countdownPauseSnapshot = await page.locator("#game-telemetry").evaluate((telemetry) => {
     const arena = document.querySelector("#arena-host");
@@ -201,7 +216,6 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   const activeCanvas = await captureArenaCanvas(page);
   expect(activeCanvas.summary.uniqueColorBuckets).toBeGreaterThan(4);
   expect(activeCanvas.summary.luminanceRange).toBeGreaterThan(20);
-  expect(activeCanvas.png.equals(setupCanvas.png)).toBe(false);
 
   await page.evaluate(() => window.dispatchEvent(new Event("blur")));
   await expect(page.getByText("일시 정지")).toBeVisible();
@@ -217,6 +231,8 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await page.waitForTimeout(100);
   await page.keyboard.up("d");
   await expect.poll(() => page.locator("#position-value").textContent()).not.toBe(positionBefore);
+  const movedCanvas = await captureArenaCanvas(page);
+  expect(movedCanvas.png.equals(activeCanvas.png)).toBe(false);
 
   const arrowPositionBefore = await page.locator("#position-value").textContent();
   await page.keyboard.down("ArrowUp");
@@ -260,10 +276,10 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
     "false",
   );
 
-  await page.getByRole("button", { name: "설정으로" }).click();
+  await page.getByRole("button", { name: "메뉴로" }).click();
 
-  await expect(page.locator("#app")).toHaveAttribute("data-screen", "setup");
-  await expect(page.getByRole("button", { name: "빠른 시작" })).toBeFocused();
+  await expect(page.locator("#app")).toHaveAttribute("data-screen", "menu");
+  await expect(page.getByRole("button", { name: "게임 시작" })).toBeFocused();
   await expect(page.locator("#game-telemetry")).toBeHidden();
 });
 
@@ -272,7 +288,7 @@ test("offers a working touch joystick and action buttons on a narrow viewport", 
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
-  await page.getByRole("button", { name: "빠른 시작" }).click();
+  await startGame(page);
   await expect(page.locator("#app")).toHaveAttribute("data-round", "active");
 
   const joystick = page.locator("#pointer-joystick");
@@ -303,6 +319,7 @@ test("offers a working touch joystick and action buttons on a narrow viewport", 
 test("applies and copies bounded debug tuning for the next round", async ({ page }) => {
   await installClipboardCapture(page);
   await page.goto("/");
+  await openSettings(page);
 
   const debugPanel = page.locator("#debug-tuning");
   const movementSpeed = page.locator("#debug-movement-speed");
@@ -345,7 +362,8 @@ test("applies and copies bounded debug tuning for the next round", async ({ page
     },
   });
 
-  await page.getByRole("button", { name: "빠른 시작" }).click();
+  await saveSettings(page);
+  await startGame(page);
   await expect(page.locator("#app")).toHaveAttribute("data-gameplay-tuning", "debug");
 });
 
@@ -353,6 +371,7 @@ test("completes a collapsing round and starts a fresh world", async ({ page }) =
   await page.clock.install();
   await installClipboardCapture(page);
   await page.goto("/");
+  await openSettings(page);
 
   await page.getByLabel("난장판").check();
   await expect(page.locator("#setup-summary")).toContainText("32명");
@@ -362,7 +381,8 @@ test("completes a collapsing round and starts a fresh world", async ({ page }) =
   await page.locator("#player-count").fill("8");
   await expect(page.locator("#player-count-value")).toHaveText("8명");
   await expect(page.locator("#initial-item-count-value")).toHaveText("3개");
-  await page.getByRole("button", { name: "빠른 시작" }).click();
+  await saveSettings(page);
+  await startGame(page);
 
   await finishInstalledClockCountdown(page);
   await fastForwardUntilRoundCompleted(page);
@@ -418,9 +438,11 @@ test("allows an immediate fresh restart after a deterministic human defeat", asy
   await page.clock.install();
   await installFixedRoundSeed(page, 8, 1);
   await page.goto("/");
+  await openSettings(page);
   await page.getByLabel("난장판").check();
   await page.locator("#player-count").fill("8");
-  await page.getByRole("button", { name: "빠른 시작" }).click();
+  await saveSettings(page);
+  await startGame(page);
 
   await finishInstalledClockCountdown(page);
 
@@ -442,7 +464,7 @@ test("keeps playing silently when Web Audio is unavailable", async ({ page }) =>
     Object.defineProperty(window, "webkitAudioContext", { configurable: true, value: undefined });
   });
   await page.goto("/");
-  await page.getByRole("button", { name: "빠른 시작" }).click();
+  await startGame(page);
 
   await expect(page.locator("#app")).toHaveAttribute("data-audio", "unavailable");
   await expect(page.getByRole("button", { name: "무음" })).toBeDisabled();
@@ -455,8 +477,8 @@ test("honors reduced motion without removing the playable arena", async ({ page 
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");
 
+  await startGame(page);
   await expect(page.locator("#arena-host")).toHaveAttribute("data-motion", "reduced");
-  await page.getByRole("button", { name: "빠른 시작" }).click();
   await expect(page.locator("#arena-host canvas")).toBeVisible();
   await expect
     .poll(async () => Number(await page.locator("#game-telemetry").getAttribute("data-tick")))
@@ -465,7 +487,7 @@ test("honors reduced motion without removing the playable arena", async ({ page 
 
 test("@dev-only recovers from an explicitly injected fatal round error", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "빠른 시작" }).click();
+  await startGame(page);
   await expect
     .poll(async () => Number(await page.locator("#game-telemetry").getAttribute("data-tick")))
     .toBeGreaterThan(0);
@@ -483,7 +505,7 @@ test("@dev-only recovers from an explicitly injected fatal round error", async (
 
 test("pauses on WebGL context loss and resumes after restoration", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "빠른 시작" }).click();
+  await startGame(page);
   await expect
     .poll(async () => Number(await page.locator("#game-telemetry").getAttribute("data-tick")))
     .toBeGreaterThan(0);

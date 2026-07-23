@@ -121,9 +121,9 @@ function profileParticipantCount(participantCount: number) {
 
 const profiles = PARTICIPANT_COUNTS.map(profileParticipantCount);
 const thresholds = new Map([
-  [16, 3.5],
-  [24, 4],
-  [32, 6],
+  [16, 4],
+  [24, 7],
+  [32, 7],
 ]);
 const ok = profiles.every(
   (profile) =>

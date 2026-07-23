@@ -124,11 +124,34 @@ describe("procedural island arena", () => {
     expect(spawnIds.every((tileId) => stableIds.has(tileId))).toBe(true);
   });
 
+  it("gives every larger preset strictly more playable land despite independent coast seeds", () => {
+    const tiers = [
+      { participantCount: 8, arenaColumns: 22, arenaRows: 17 },
+      { participantCount: 16, arenaColumns: 25, arenaRows: 20 },
+      { participantCount: 24, arenaColumns: 28, arenaRows: 23 },
+      { participantCount: 32, arenaColumns: 31, arenaRows: 26 },
+    ] as const;
+
+    for (let seed = 0; seed < 24; seed += 1) {
+      const landCounts = tiers.map((tier) => {
+        const tierConfig = normalizeGameConfig(tier);
+        return createArenaTiles(
+          tierConfig,
+          new RandomStreamSet(`tier-size-${tier.participantCount}-${seed}`).get("arena"),
+        ).filter(({ state }) => state === "Stable").length;
+      });
+
+      expect(landCounts[1]).toBeGreaterThan(landCounts[0] ?? 0);
+      expect(landCounts[2]).toBeGreaterThan(landCounts[1] ?? 0);
+      expect(landCounts[3]).toBeGreaterThan(landCounts[2] ?? 0);
+    }
+  });
+
   it.each([
-    { participantCount: 8, arenaColumns: 16, arenaRows: 13 },
-    { participantCount: 16, arenaColumns: 20, arenaRows: 16 },
-    { participantCount: 24, arenaColumns: 24, arenaRows: 19 },
-    { participantCount: 32, arenaColumns: 28, arenaRows: 22 },
+    { participantCount: 8, arenaColumns: 22, arenaRows: 17 },
+    { participantCount: 16, arenaColumns: 25, arenaRows: 20 },
+    { participantCount: 24, arenaColumns: 28, arenaRows: 23 },
+    { participantCount: 32, arenaColumns: 31, arenaRows: 26 },
   ])(
     "keeps the $participantCount-player island connected through its protected 20% core",
     ({ participantCount, arenaColumns, arenaRows }) => {

@@ -30,6 +30,23 @@ function fnv1aHex(value: string): string {
   return (hash >>> 0).toString(16).padStart(8, "0");
 }
 
+const TILE_CANONICAL_CACHE = new WeakMap<readonly TileState[], string>();
+
+function getCanonicalTiles(tiles: readonly TileState[]): string {
+  const cached = TILE_CANONICAL_CACHE.get(tiles);
+
+  if (cached !== undefined) {
+    return cached;
+  }
+
+  const canonical = tiles
+    .toSorted((left, right) => left.tileId.localeCompare(right.tileId))
+    .map((tile) => `${tile.tileId}:${tile.state}`)
+    .join("|");
+  TILE_CANONICAL_CACHE.set(tiles, canonical);
+  return canonical;
+}
+
 export function hashWorldState(state: HashableWorldState): string {
   const participantParts = state.participants
     .toSorted((left, right) => left.actorId - right.actorId)
@@ -80,16 +97,14 @@ export function hashWorldState(state: HashableWorldState): string {
     (item) =>
       `${item.itemId}:${item.definitionId}:${quantize(item.position.x)}:${quantize(item.position.y)}:${item.spawnedTick}`,
   );
-  const tileParts = state.tiles
-    .toSorted((left, right) => left.tileId.localeCompare(right.tileId))
-    .map((tile) => `${tile.tileId}:${tile.state}`);
+  const tileCanonical = getCanonicalTiles(state.tiles);
   const canonical = [
     `round:${state.roundId}`,
     `tick:${state.tick}`,
     `participants:${participantParts.join("|")}`,
     `items:${itemParts.join("|")}`,
     `item-cursor:${state.nextItemId}:${state.nextItemSpawnTick ?? "none"}`,
-    `tiles:${tileParts.join("|")}`,
+    `tiles:${tileCanonical}`,
     `result:${state.round.status}:${state.round.winnerActorId ?? "none"}:${state.round.reason ?? "none"}:${state.round.completedTick ?? -1}`,
   ].join(";");
 

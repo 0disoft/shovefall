@@ -98,12 +98,12 @@ describe("settings normalization", () => {
   });
 
   it("derives larger arenas at the participant tier boundaries", () => {
-    expect(getArenaSize(4)).toEqual({ columns: 16, rows: 13 });
-    expect(getArenaSize(8)).toEqual({ columns: 16, rows: 13 });
-    expect(getArenaSize(9)).toEqual({ columns: 20, rows: 16 });
-    expect(getArenaSize(24)).toEqual({ columns: 24, rows: 19 });
-    expect(getArenaSize(25)).toEqual({ columns: 28, rows: 22 });
-    expect(getArenaSize(32)).toEqual({ columns: 28, rows: 22 });
+    expect(getArenaSize(4)).toEqual({ columns: 22, rows: 17 });
+    expect(getArenaSize(8)).toEqual({ columns: 22, rows: 17 });
+    expect(getArenaSize(9)).toEqual({ columns: 25, rows: 20 });
+    expect(getArenaSize(24)).toEqual({ columns: 28, rows: 23 });
+    expect(getArenaSize(25)).toEqual({ columns: 31, rows: 26 });
+    expect(getArenaSize(32)).toEqual({ columns: 31, rows: 26 });
   });
 
   it("normalizes the human starting mass and exactly two unique items", () => {

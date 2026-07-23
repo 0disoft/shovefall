@@ -230,7 +230,11 @@ export function createArenaTiles(config: GameConfigV1, random: XorShift32): read
   const radiusX = Math.max(2.5, (config.arenaColumns - 2.2) / 2);
   const radiusY = Math.max(2.5, (config.arenaRows - 2.2) / 2);
   const coastSamples = createCoastSamples(random);
-  const tiles: TileState[] = [];
+  const candidates: Array<{
+    readonly column: number;
+    readonly row: number;
+    readonly score: number;
+  }> = [];
 
   for (let row = 0; row < config.arenaRows; row += 1) {
     for (let column = 0; column < config.arenaColumns; column += 1) {
@@ -238,17 +242,38 @@ export function createArenaTiles(config: GameConfigV1, random: XorShift32): read
       const offsetY = row + 0.5 - centerY;
       const angle = Math.atan2(offsetY / radiusY, offsetX / radiusX);
       const normalizedRadius = Math.hypot(offsetX / radiusX, offsetY / radiusY);
-      const state = normalizedRadius <= getCoastRadius(coastSamples, angle) ? "Stable" : "Void";
-      tiles.push(
+      candidates.push(
         Object.freeze({
-          tileId: createTileId(column, row),
           column,
           row,
-          state,
+          score: normalizedRadius / getCoastRadius(coastSamples, angle),
         }),
       );
     }
   }
+
+  const targetLandCount = Math.max(
+    config.participantCount * 6,
+    Math.round(config.arenaColumns * config.arenaRows * 0.58),
+  );
+  const landIds = new Set(
+    candidates
+      .toSorted(
+        (left, right) =>
+          left.score - right.score || left.row - right.row || left.column - right.column,
+      )
+      .slice(0, targetLandCount)
+      .map(({ column, row }) => createTileId(column, row)),
+  );
+  const tiles = candidates.map(({ column, row }) => {
+    const tileId = createTileId(column, row);
+    return Object.freeze({
+      tileId,
+      column,
+      row,
+      state: landIds.has(tileId) ? ("Stable" as const) : ("Void" as const),
+    });
+  });
 
   return carveLakes(Object.freeze(tiles), config, random);
 }

@@ -78,24 +78,49 @@ function getArenaDimensions(frame: RenderFrameV1): { columns: number; rows: numb
   );
 }
 
-function createTransform(frame: RenderFrameV1, width: number, height: number): ArenaTransform {
+function createTransform(width: number, height: number): ArenaTransform {
+  const compact = width <= 820;
+  const visibleColumns = compact ? 10 : 18;
+  const visibleRows = compact ? 12 : 11;
+  const pitch = clamp(Math.min(width / visibleColumns, height / visibleRows), 28, 68);
+  const tileSize = pitch - TILE_GAP;
+  return Object.freeze({ originX: 0, originY: 0, pitch, tileSize });
+}
+
+function createCameraOffset(
+  frame: RenderFrameV1,
+  width: number,
+  height: number,
+  transform: ArenaTransform,
+  humanActorId: number,
+  interpolationAlpha: number,
+): Vector2 {
   const { columns, rows } = getArenaDimensions(frame);
-  const tileSize = Math.max(
-    8,
-    Math.min(
-      (width * 0.88 - TILE_GAP * (columns - 1)) / columns,
-      (height * 0.88 - TILE_GAP * (rows - 1)) / rows,
-    ),
-  );
-  const pitch = tileSize + TILE_GAP;
-  const arenaWidth = tileSize * columns + TILE_GAP * (columns - 1);
-  const arenaHeight = tileSize * rows + TILE_GAP * (rows - 1);
-  return Object.freeze({
-    originX: (width - arenaWidth) / 2,
-    originY: (height - arenaHeight) / 2,
-    pitch,
-    tileSize,
-  });
+  const human = frame.participants.find(({ actorId }) => actorId === humanActorId);
+  const focusX =
+    human === undefined
+      ? columns / 2
+      : human.previousPosition.x +
+        (human.position.x - human.previousPosition.x) * interpolationAlpha;
+  const focusY =
+    human === undefined
+      ? rows / 2
+      : human.previousPosition.y +
+        (human.position.y - human.previousPosition.y) * interpolationAlpha;
+  const worldWidth = (columns - 1) * transform.pitch + transform.tileSize;
+  const worldHeight = (rows - 1) * transform.pitch + transform.tileSize;
+  const oceanMargin = transform.tileSize * 1.35;
+  const unclampedX = width / 2 - (focusX * transform.pitch - TILE_GAP / 2);
+  const unclampedY = height / 2 - (focusY * transform.pitch - TILE_GAP / 2);
+  const minimumX = width - worldWidth - oceanMargin;
+  const maximumX = oceanMargin;
+  const minimumY = height - worldHeight - oceanMargin;
+  const maximumY = oceanMargin;
+  const x = minimumX > maximumX ? (width - worldWidth) / 2 : clamp(unclampedX, minimumX, maximumX);
+  const y =
+    minimumY > maximumY ? (height - worldHeight) / 2 : clamp(unclampedY, minimumY, maximumY);
+
+  return Object.freeze({ x, y });
 }
 
 function getActionColor(action: ParticipantActionKind): number {
@@ -463,11 +488,25 @@ export async function createArenaRenderer(
       return;
     }
 
-    const transform = createTransform(
+    const transform = createTransform(application.screen.width, application.screen.height);
+    const camera = createCameraOffset(
       latestFrame,
       application.screen.width,
       application.screen.height,
+      transform,
+      latestHumanActorId,
+      latestInterpolationAlpha,
     );
+    tiles.x = camera.x;
+    tiles.y = camera.y;
+    items.x = camera.x;
+    items.y = camera.y;
+    participants.x = camera.x;
+    participants.y = camera.y;
+    effectLayer.x = camera.x;
+    effectLayer.y = camera.y;
+    host.dataset.cameraX = camera.x.toFixed(2);
+    host.dataset.cameraY = camera.y.toFixed(2);
     items.clear();
     participants.clear();
     effectLayer.clear();
@@ -586,9 +625,19 @@ export async function createArenaRenderer(
         frame.participants.length >= 25 ? MAYHEM_RESOLUTION_CAP : DEFAULT_RESOLUTION_CAP;
       const desiredResolution = Math.min(window.devicePixelRatio, resolutionCap);
 
-      if (application.renderer.resolution !== desiredResolution) {
+      const hostWidth = Math.max(1, host.clientWidth);
+      const hostHeight = Math.max(1, host.clientHeight);
+      const sizeChanged =
+        application.screen.width !== hostWidth || application.screen.height !== hostHeight;
+      const resolutionChanged = application.renderer.resolution !== desiredResolution;
+
+      if (resolutionChanged) {
         application.renderer.resolution = desiredResolution;
-        application.renderer.resize(host.clientWidth, host.clientHeight);
+      }
+
+      if (sizeChanged || resolutionChanged) {
+        application.renderer.resize(hostWidth, hostHeight);
+        tileLayerDirty = true;
       }
 
       tileLayerDirty ||= latestFrame?.roundId !== frame.roundId;

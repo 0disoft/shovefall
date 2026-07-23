@@ -12,13 +12,13 @@ There is no server state, durable URL state, cookie, local storage, IndexedDB, s
 
 ## Lifecycle
 
-1. Boot initializes the renderer and draws a deterministic setup preview.
-2. Quick Start normalizes settings, derives arena dimensions, creates a fresh seed and world, reveals telemetry, and focuses the labeled arena region.
+1. Boot initializes the renderer behind a menu-only first screen without drawing or exposing an arena preview.
+2. Settings edits remain draft values until `설정 저장`; `게임 시작` derives arena dimensions from the last saved values, creates a fresh seed and world, reveals the arena and telemetry, and focuses the labeled arena region.
 3. `requestAnimationFrame` supplies browser time to an accumulator. Whole 60 Hz steps consume one human command and one command per active bot. The bot director reads the last immutable frame, and the step result becomes the next AI and presentation frame without duplicate world hashing. Rendering interpolates that frame and never supplies delta time to rules.
 4. No more than eight simulation steps run in one render callback. Remaining elapsed work stays as visible backlog rather than being discarded.
 5. Window blur or hidden visibility clears held keys and pauses the accumulator. Visible focus resumes from a fresh timestamp so hidden time is not simulated as a burst.
 6. Irreversible human falling clears input and raises simulation rate to six while preserving the same fixed-tick rules. Completion publishes the final frame, stops scheduling, announces the result, and focuses Restart.
-7. Restart cancels the previous animation frame and creates a fresh seed and world. Settings return stops and releases the current world, restores the preview, and returns focus to Quick Start.
+7. Restart cancels the previous animation frame and creates a fresh seed and world. Menu return stops and releases the current world, hides the arena, and returns focus to `게임 시작`.
 8. Page hide destroys the session, input listeners, and PixiJS application.
 
 ## Input Contract

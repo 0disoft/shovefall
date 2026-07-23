@@ -14,7 +14,7 @@ The primary surface is a short desktop-or-mobile browser single-player game reac
 
 ## 2. User Flow Map
 
-The minimum user flow is load, setup, quick start, a pausable `3→2→1` countdown, play, elimination or victory, and immediate restart through a fresh countdown. Optional settings branch from setup and return to countdown. Required initialization failure enters a DOM fatal-error state with a retry path. There are no application permission or authentication flows.
+The minimum user flow is load, menu, game start, a pausable `3→2→1` countdown, play, elimination or victory, and immediate restart through a fresh countdown. Settings are a secondary menu branch: edits remain draft values until `설정 저장`, then return to the menu; `게임 시작` always consumes the last saved values. Required initialization failure disables start and enters a recoverable DOM error state. There are no application permission or authentication flows.
 
 ## 3. Routing Contract
 
@@ -22,11 +22,11 @@ The MVP is a single-page static application with one document route. URL paramet
 
 ## 4. Page and Layout Model
 
-The DOM shell owns setup, settings, HUD overlays outside the game world, results, errors, and accessibility text. The PixiJS canvas owns arena tiles, participants, items, world effects, and camera transforms. The game preserves a fixed logical world aspect and may letterbox rather than distort simulation coordinates.
+The DOM shell owns the initial menu, settings, HUD overlays outside the game world, results, errors, and accessibility text. The PixiJS canvas is hidden before play and owns arena tiles, participants, items, world effects, and a human-follow camera after start. The camera renders a local viewport and clamps at the world edge with an ocean margin; it never shrinks the full island into one screen.
 
 ## 5. State Ownership Model
 
-The pure simulation owns round state. The application layer owns the fixed-step accumulator, countdown elapsed time, screen and round lifecycle, generated local seed, pause/resume, and command delivery. The DOM shell owns draft settings, focus, textual telemetry, restart, and settings return. PixiJS owns presentation objects derived from read-only render state. There is no server state or durable URL state. Presentation layers cannot mutate simulation entities directly.
+The pure simulation owns round state. The application layer owns the fixed-step accumulator, countdown elapsed time, screen and round lifecycle, generated local seed, pause/resume, and command delivery. The DOM shell owns draft settings, last-saved in-memory settings, focus, textual telemetry, restart, and menu return. PixiJS owns presentation objects derived from read-only render state. There is no server state or durable URL state. Presentation layers cannot mutate simulation entities directly.
 
 ## 6. Data Fetching and Cache Policy
 

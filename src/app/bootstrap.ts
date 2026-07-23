@@ -18,7 +18,6 @@ import { createPointerControls, type PointerControls } from "./pointer-controls"
 import { createPlaytestRoundReport, serializePlaytestRoundReport } from "./round-report";
 import type { SimulationEventV1, UpgradeStatId } from "../simulation/contracts";
 import { normalizeGameConfig } from "../simulation/contracts";
-import { SimulationWorld } from "../simulation/world";
 import { DEFAULT_GAMEPLAY_TUNING, type GameplayTuningV1 } from "../simulation/tuning";
 import { isUpgradeStatId, UPGRADE_STAT_IDS } from "../simulation/progression";
 import { createArenaRenderer, type ArenaRenderer } from "../presentation/arena-renderer";
@@ -146,6 +145,11 @@ function getEventMessage(event: SimulationEventV1): string | undefined {
 }
 
 export async function bootstrapApplication(root: HTMLElement): Promise<void> {
+  const skipLink = requireElement(document, ".skip-link", HTMLAnchorElement);
+  const startGameButton = requireElement(root, "#start-game", HTMLButtonElement);
+  const openSettingsButton = requireElement(root, "#open-settings", HTMLButtonElement);
+  const cancelSettingsButton = requireElement(root, "#cancel-settings", HTMLButtonElement);
+  const savedSettingsSummary = requireElement(root, "#saved-settings-summary", HTMLElement);
   const form = requireElement(root, "#game-settings", HTMLFormElement);
   const playerCount = requireElement(root, "#player-count", HTMLInputElement);
   const playerCountValue = requireElement(root, "#player-count-value", HTMLOutputElement);
@@ -204,6 +208,23 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   let latestGameplayTuning: GameplayTuningV1 = DEFAULT_GAMEPLAY_TUNING;
   let latestMasterSeed: string | undefined;
   let latestRoundReport: string | undefined;
+
+  const setScreen = (screen: "menu" | "settings" | "arena"): void => {
+    root.dataset.screen = screen;
+    const target =
+      screen === "menu"
+        ? "#main-menu-title"
+        : screen === "settings"
+          ? "#setup-title"
+          : "#arena-host";
+    skipLink.href = target;
+    skipLink.textContent =
+      screen === "menu"
+        ? "메뉴로 이동"
+        : screen === "settings"
+          ? "게임 설정으로 이동"
+          : "아레나로 이동";
+  };
 
   const updateSoundControl = (state: AudioFeedbackState): void => {
     root.dataset.audio = state;
@@ -288,31 +309,23 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     root.dataset.scale = isMayhem ? "mayhem" : "normal";
   };
 
-  const renderSetupPreview = (): void => {
-    if (renderer === undefined) {
-      return;
-    }
-
-    const settings = readSettings();
-    const gameplayTuning = debugTuning?.enabled ? debugTuning.read() : DEFAULT_GAMEPLAY_TUNING;
-    const previewWorld = new SimulationWorld(
-      createConfig(settings),
-      `setup-${settings.playerCount}`,
-      {
-        gameplayTuning,
-        participantOverrides: [
-          {
-            actorId: 1,
-            massFactor: STARTING_MASS_FACTORS[settings.startingMass],
-            startingItems: settings.startingItems,
-          },
-        ],
-      },
-    );
-    renderer.render(previewWorld.createRenderFrame(), 0, 1);
+  const renderSavedSettingsSummary = (): void => {
+    const difficulty =
+      latestSettings.botDifficulty === "easy"
+        ? "AI 쉬움"
+        : latestSettings.botDifficulty === "hard"
+          ? "AI 어려움"
+          : "AI 보통";
+    const collapse =
+      latestSettings.collapseSpeed === "slow"
+        ? "붕괴 느림"
+        : latestSettings.collapseSpeed === "fast"
+          ? "붕괴 빠름"
+          : "붕괴 보통";
+    savedSettingsSummary.textContent = `${latestSettings.playerCount}명 · ${difficulty} · ${collapse}`;
   };
 
-  debugTuning = createDebugTuningController(root, { onChange: renderSetupPreview });
+  debugTuning = createDebugTuningController(root, { onChange(): void {} });
 
   const updateTelemetry = (current: SessionTelemetry): void => {
     const human = current.frame.participants.find((participant) => participant.actorId === 1);
@@ -480,9 +493,9 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     });
     rendererStatus.dataset.state = "ready";
     rendererStatus.textContent = "WebGL 준비됨";
-    renderSetupPreview();
   } catch (error: unknown) {
     reportRendererFailure(rendererStatus);
+    startGameButton.disabled = true;
     requireElement(form, "button[type='submit']", HTMLButtonElement).disabled = true;
     console.error("Unable to initialize the PixiJS renderer.", error);
   }
@@ -499,14 +512,13 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     copyRoundReportButton.hidden = true;
     copyRoundReportButton.textContent = "기록 복사";
     void audio?.unlock();
-    root.dataset.screen = "arena";
+    setScreen("arena");
     root.dataset.round = "countdown";
     delete root.dataset.humanEliminated;
     root.dataset.initialItems = String(settings.initialItemCount);
     root.dataset.botDifficulty = settings.botDifficulty;
     root.dataset.collapseSpeed = settings.collapseSpeed;
     root.dataset.gameplayTuning = debugTuning?.enabled ? "debug" : "default";
-    form.hidden = true;
     arenaActions.hidden = false;
     telemetry.hidden = false;
     developerTelemetry.hidden = false;
@@ -527,7 +539,6 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     setPlayerCount(playerCount, playerCountValue, Number(playerCount.value));
     setRecommendedInitialItems(Number(playerCount.value));
     renderSettingsSummary();
-    renderSetupPreview();
   });
 
   initialItemCount.addEventListener("input", renderSettingsSummary);
@@ -545,7 +556,6 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
       setRecommendedInitialItems(getPresetPlayerCount(target.value));
       itemRespawn.value = String(getPresetItemRespawnSeconds(target.value));
       setSelectedCollapseSpeed(form, getPresetCollapseSpeed(target.value));
-      renderSetupPreview();
     }
 
     if (target.name === "startingItem") {
@@ -557,7 +567,22 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
 
   form.addEventListener("submit", (event) => {
     event.preventDefault();
-    startRound(readSettings());
+    latestSettings = readSettings();
+    renderSavedSettingsSummary();
+    setScreen("menu");
+    startGameButton.focus();
+  });
+
+  startGameButton.addEventListener("click", () => startRound(latestSettings));
+
+  openSettingsButton.addEventListener("click", () => {
+    setScreen("settings");
+    requireElement(root, "#setup-title", HTMLElement).focus({ preventScroll: true });
+  });
+
+  cancelSettingsButton.addEventListener("click", () => {
+    setScreen("menu");
+    startGameButton.focus();
   });
 
   restartButton.addEventListener("click", () => startRound(latestSettings));
@@ -622,18 +647,16 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     session?.stop();
     latestRoundReport = undefined;
     copyRoundReportButton.hidden = true;
-    root.dataset.screen = "setup";
+    setScreen("menu");
     delete root.dataset.round;
     arenaActions.hidden = true;
     telemetry.hidden = true;
     developerTelemetry.hidden = true;
     developerTelemetry.open = false;
-    form.hidden = false;
     rendererStatus.dataset.state = "ready";
     rendererStatus.textContent = "WebGL 준비됨";
-    arenaHost.setAttribute("aria-label", "바닥이 사라지는 술래잡기 아레나 미리보기");
-    renderSetupPreview();
-    requireElement(form, "button[type='submit']", HTMLButtonElement).focus();
+    arenaHost.setAttribute("aria-label", "바닥이 사라지는 술래잡기 아레나");
+    startGameButton.focus();
   });
 
   window.addEventListener(
@@ -653,5 +676,6 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   );
 
   renderSettingsSummary();
+  renderSavedSettingsSummary();
   renderStartingItemSelection();
 }

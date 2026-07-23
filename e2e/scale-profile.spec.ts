@@ -141,6 +141,7 @@ async function profileCases(page: Page, index: number, profiles: FrameProfile[])
     return;
   }
 
+  await page.getByRole("button", { name: "설정", exact: true }).click();
   await page.locator(`input[name="preset"][value="${profileCase.preset}"]`).check();
   await page.getByLabel("어려움").check();
   await page.locator("#player-count").fill(String(profileCase.participantCount));
@@ -149,7 +150,8 @@ async function profileCases(page: Page, index: number, profiles: FrameProfile[])
       window as Window & { shovefallProfileSeedWords?: readonly number[] }
     ).shovefallProfileSeedWords = seedWords;
   }, profileCase.seedWords);
-  await page.getByRole("button", { name: "빠른 시작" }).click();
+  await page.getByRole("button", { name: "설정 저장" }).click();
+  await page.getByRole("button", { name: "게임 시작" }).click();
   await expect(page.locator("#app")).toHaveAttribute("data-round", "active");
   await expect(page.locator("#app")).toHaveAttribute("data-bot-difficulty", "hard");
   const profile = await collectFrameProfile(page, profileCase.participantCount, profileCase.seed);
@@ -164,7 +166,7 @@ async function profileCases(page: Page, index: number, profiles: FrameProfile[])
   expect(profile.maximumSimulationRate).toBe(1);
   expect(profile.effectiveDpr).toBeLessThanOrEqual(profileCase.participantCount >= 25 ? 1 : 1.5);
   await expect(page.locator("#app")).toHaveAttribute("data-round", "active");
-  await page.getByRole("button", { name: "설정으로" }).click();
+  await page.getByRole("button", { name: "메뉴로" }).click();
   return profileCases(page, index + 1, profiles);
 }
 
@@ -213,6 +215,7 @@ test("@profile measures production 16, 24, and 32 participant browser budgets", 
   const client = await context.newCDPSession(page);
   await client.send("HeapProfiler.enable");
   const heapBefore = await collectHeapUsage(client);
+  await page.getByRole("button", { name: "설정", exact: true }).click();
   await page.getByLabel("난장판").check();
   await page.locator("#player-count").fill("32");
   await page.evaluate(() => {
@@ -220,7 +223,8 @@ test("@profile measures production 16, 24, and 32 participant browser budgets", 
       window as Window & { shovefallProfileSeedWords?: readonly number[] }
     ).shovefallProfileSeedWords = [32, 0];
   });
-  await page.getByRole("button", { name: "빠른 시작" }).click();
+  await page.getByRole("button", { name: "설정 저장" }).click();
+  await page.getByRole("button", { name: "게임 시작" }).click();
   await restartRepeatedly(page, 20);
   const heapAfter = await collectHeapUsage(client);
   const restartHeapDeltaBytes = heapAfter.usedSize - heapBefore.usedSize;
