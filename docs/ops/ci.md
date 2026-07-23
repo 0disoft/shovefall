@@ -36,6 +36,11 @@ for exact SHA `7ded47cf72399bde49c9193ceaa9e6b76b4ebcf0`; it does not automatica
 The original failure is classified as an account-level runner-admission failure rather than a
 source, test, cache, artifact, or runner-image defect.
 
+The subsequent Coal-Twilight runtime candidate also completed
+[CI #10](https://github.com/0disoft/shovefall/actions/runs/29977438082) successfully in 53 seconds
+for exact SHA `7809502b8c33a12ad9cdd86d2dceb66424585579`. This is the current hosted runtime
+evidence; a later runtime or release-candidate change still requires its own exact-SHA run.
+
 ## Owners and Failure Handling
 
 - Primary owner: Repository owner
@@ -47,5 +52,5 @@ Dependency or action download failure is infrastructure evidence, not a source f
 ## Release Boundary
 
 - Required validation names: `check` and `smoke-dist`
-- Release blocker status: Hosted validation is green for `7ded47cf72399bde49c9193ceaa9e6b76b4ebcf0`; every later release candidate requires its own exact-SHA run.
+- Release blocker status: Hosted validation is green for Coal-Twilight runtime SHA `7809502b8c33a12ad9cdd86d2dceb66424585579`; every later runtime or release-candidate change requires its own exact-SHA run.
 - Remaining operational risk: Branch protection, runner-image Chrome drift, physical-device coverage, cross-browser coverage, static hosting, and deployment smoke remain unproven until separately observed.

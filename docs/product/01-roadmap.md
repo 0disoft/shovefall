@@ -87,9 +87,10 @@ Exit conditions:
   in [05-submission-package.md](05-submission-package.md) for the contest post.
 
 Current status: `IN_PROGRESS`. After the Actions spending limit was increased,
-[CI #9](https://github.com/0disoft/shovefall/actions/runs/29948626757) attempt 2 completed successfully
-for exact SHA `7ded47cf72399bde49c9193ceaa9e6b76b4ebcf0`. The later Coal-Twilight candidate still requires
-its own exact-SHA green run, provider selection, deployment smoke, captures, and human evidence.
+[CI #10](https://github.com/0disoft/shovefall/actions/runs/29977438082) completed successfully for
+the Coal-Twilight runtime candidate at exact SHA `7809502b8c33a12ad9cdd86d2dceb66424585579`.
+Provider selection, deployment smoke, final captures, physical-browser coverage, and human evidence
+remain open.
 
 ## Deferred Beyond the Submission
 
