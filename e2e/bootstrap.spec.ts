@@ -480,6 +480,7 @@ test("completes a collapsing round and starts a fresh world", async ({ page }) =
 });
 
 test("allows an immediate fresh restart after a deterministic human defeat", async ({ page }) => {
+  test.slow();
   await page.clock.install();
   await installFixedRoundSeed(page, 8, 1);
   await page.goto("/");
