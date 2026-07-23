@@ -92,10 +92,6 @@ export function createPointerControls(options: PointerControlsOptions): PointerC
   };
 
   const handleArenaPointerDown = (event: PointerEvent): void => {
-    if (event.pointerType === "touch") {
-      return;
-    }
-
     beginPointer(event, options.arena, event.clientX, event.clientY, DEFAULT_DRAG_RADIUS);
   };
 

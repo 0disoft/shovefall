@@ -891,7 +891,8 @@ button:disabled {
   }
 
   .arena-host {
-    min-height: 440px;
+    height: min(440px, 58dvh);
+    min-height: 300px;
   }
 }
 
