@@ -226,11 +226,18 @@ async function useActiveItemFromAvailableDirection(
   }
 
   await expect(slot).toBeEnabled();
-  await faceArenaDirection(page, direction);
+  await page.locator("#arena-host").focus();
   const tickBeforeUse = await readSimulationTick(page);
-  await slot.click();
-  await page.clock.fastForward(20);
-  await expect.poll(() => readSimulationTick(page)).toBeGreaterThan(tickBeforeUse);
+
+  await page.keyboard.down(direction);
+
+  try {
+    await page.keyboard.press(slotIndex === 0 ? "KeyQ" : "KeyE");
+    await page.clock.fastForward(20);
+    await expect.poll(() => readSimulationTick(page)).toBeGreaterThan(tickBeforeUse);
+  } finally {
+    await page.keyboard.up(direction);
+  }
 
   if ((await slot.textContent())?.includes(expectedChargeLabel) === true) {
     return;
@@ -252,8 +259,9 @@ async function useActiveItemAndWaitForCharge(
 ): Promise<void> {
   const slot = page.locator(`#use-item-slot-${slotIndex}`);
   await expect(slot).toBeEnabled();
+  await page.locator("#arena-host").focus();
   const tickBeforeUse = await readSimulationTick(page);
-  await slot.click();
+  await page.keyboard.press(slotIndex === 0 ? "KeyQ" : "KeyE");
   await page.clock.fastForward(20);
   await expect.poll(() => readSimulationTick(page)).toBeGreaterThan(tickBeforeUse);
   await expect(slot).toContainText(expectedChargeLabel);
