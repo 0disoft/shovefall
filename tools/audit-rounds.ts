@@ -30,6 +30,7 @@ import {
   SIMULATION_VERSION,
 } from "../src/simulation/versions";
 import { SimulationWorld, type ParticipantSpawnOverride } from "../src/simulation/world";
+import { getBalanceSignal, wilsonInterval } from "./item-balance-statistics";
 
 const PARTICIPANT_COUNTS = [8, 16, 24, 32] as const;
 const SAMPLE_COUNT = 16;
@@ -440,15 +441,21 @@ function aggregateBalance(results: readonly RoundAuditResult[]) {
         ITEM_DEFINITION_IDS.map((definitionId) => {
           const aggregate = itemPickups[definitionId];
           const winRate = roundRatio(aggregate.winnerActorRounds, aggregate.exposedActorRounds);
+          const relativeWinIndex =
+            winRate === null || unexposedWinRate === null || unexposedWinRate === 0
+              ? null
+              : roundRatio(winRate, unexposedWinRate);
           return [
             definitionId,
             Object.freeze({
               ...aggregate,
               winRate,
-              relativeToNoItemExposure:
-                winRate === null || unexposedWinRate === null || unexposedWinRate === 0
-                  ? null
-                  : roundRatio(winRate, unexposedWinRate),
+              winRate95PercentInterval: wilsonInterval(
+                aggregate.winnerActorRounds,
+                aggregate.exposedActorRounds,
+              ),
+              relativeToNoItemExposure: relativeWinIndex,
+              balanceSignal: getBalanceSignal(relativeWinIndex),
             }),
           ];
         }),
@@ -458,6 +465,7 @@ function aggregateBalance(results: readonly RoundAuditResult[]) {
       actorRounds: unexposedActorRounds,
       winnerActorRounds: unexposedWinnerActorRounds,
       winRate: unexposedWinRate,
+      winRate95PercentInterval: wilsonInterval(unexposedWinnerActorRounds, unexposedActorRounds),
     }),
     massExposure: Object.freeze(
       Object.fromEntries(
@@ -787,18 +795,49 @@ function auditControlledItems() {
       actorRoundSlots: slots[group],
       wins: wins[group],
       winRate,
+      winRate95PercentInterval: wilsonInterval(wins[group], slots[group]),
       relativeToEqualSlotExpectation:
         winRate === null || expectedSlotWinRate === null || expectedSlotWinRate === 0
           ? null
           : roundRatio(winRate, expectedSlotWinRate),
     });
   };
-  const groups = Object.freeze({
+  const baseGroups = Object.freeze({
     control: createGroupResult("control"),
     "iron-boots": createGroupResult("iron-boots"),
     feather: createGroupResult("feather"),
     "spring-glove": createGroupResult("spring-glove"),
-  });
+  } satisfies Record<ControlledItemGroup, ReturnType<typeof createGroupResult>>);
+  const controlWinRate = baseGroups.control.winRate;
+  const enrichGroup = (group: ControlledItemGroup) => {
+    const result = baseGroups[group];
+    const relativeToControl =
+      result.winRate === null || controlWinRate === null || controlWinRate === 0
+        ? null
+        : roundRatio(result.winRate, controlWinRate);
+    return Object.freeze({
+      ...result,
+      relativeToControl,
+      balanceSignal: group === "control" ? "baseline" : getBalanceSignal(relativeToControl),
+    });
+  };
+  const groups = Object.freeze({
+    control: enrichGroup("control"),
+    "iron-boots": enrichGroup("iron-boots"),
+    feather: enrichGroup("feather"),
+    "spring-glove": enrichGroup("spring-glove"),
+  } satisfies Record<ControlledItemGroup, ReturnType<typeof enrichGroup>>);
+  const itemRanking = Object.freeze(
+    ITEM_DEFINITION_IDS.map((definitionId) => ({
+      definitionId,
+      ...groups[definitionId],
+    })).toSorted(
+      (left, right) =>
+        (right.relativeToControl ?? Number.NEGATIVE_INFINITY) -
+          (left.relativeToControl ?? Number.NEGATIVE_INFINITY) ||
+        left.definitionId.localeCompare(right.definitionId),
+    ),
+  );
   const terminalOk = rounds.every(
     ({ completedTick, reason, winnerItemGroup }) =>
       completedTick > 0 &&
@@ -819,6 +858,7 @@ function auditControlledItems() {
     chiSquareScreenLimit: CONTROLLED_ITEM_CHI_SQUARE_LIMIT,
     terminalOk,
     groups,
+    itemRanking,
     rounds: Object.freeze(rounds),
   });
 }
@@ -943,7 +983,7 @@ process.stdout.write(
     {
       ok,
       kind: "deterministic-round-and-balance-audit",
-      auditVersion: 6,
+      auditVersion: 7,
       productVersion: PRODUCT_VERSION,
       simulationVersion: SIMULATION_VERSION,
       fixedTicksPerSecond: FIXED_TICKS_PER_SECOND,
@@ -961,6 +1001,7 @@ process.stdout.write(
         "Each controlled base-mass band must remain between 0.4x and 1.8x of equal-slot expected win rate.",
         "Each controlled tick-zero item grant group must remain between 0.4x and 1.8x of equal-slot expected win rate.",
         "The controlled item winner-distribution chi-square statistic must not exceed 7.815 for three degrees of freedom.",
+        "Controlled item rankings compare each grant against the no-item control and label ratios below 0.75 for buff investigation or above 1.25 for nerf investigation; these labels are review signals rather than failure gates.",
         "Controlled collapse mean duration must order slow >= normal >= fast; slow and normal p50 must each remain at least fast p50; at least 60% of paired slow rounds must last at least as long as fast; and no speed may rely on time-limit draws.",
       ],
       limitations: [
@@ -969,6 +1010,8 @@ process.stdout.write(
         "Mass exposure tick shares are descriptive because winners necessarily contribute more surviving ticks.",
         "The controlled mass audit isolates base mass with items disabled at 16 participants; it does not prove every item and participant-count interaction.",
         "The controlled item audit rotates synthetic tick-zero grants at 8 participants and bypasses the production simultaneous-item cap; it isolates grant effects but does not model edge pickup cost, spawn timing, or every participant-count interaction.",
+        "Reported 95% Wilson intervals describe uncertainty in each fixed-seed screen; they do not turn deterministic bot samples into population or human-play claims.",
+        "Single-item rankings do not measure two-item loadout synergy; pairwise treatment groups will be added with the expanded starting inventory.",
         "The chi-square threshold is a deterministic regression screen over fixed seeds, not a population-significance claim.",
         "The controlled collapse audit isolates one 16-participant Normal-difficulty bot workload; it does not predict human duration or every participant-count interaction.",
         "Adjacent collapse tiers need not order by p50 because bot combat can end before the first collapse transition; all descriptive percentiles remain visible even when they are not gates.",
