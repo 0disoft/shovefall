@@ -189,6 +189,25 @@ describe("optional Web Audio feedback", () => {
     expect(context.oscillators[1]?.frequency.values[0]).toBe(430);
   });
 
+  it("plays a brief metallic catch when Grappling Hook finds an anchor", async () => {
+    const context = new FakeAudioContext();
+    const audio = createAudioFeedback(() => context);
+    await audio.unlock();
+
+    audio.consumeEvents([
+      {
+        ...createEvent(1, 0, 0, "grappling-hook-hit"),
+        itemDefinitionId: "grappling-hook",
+        position: { x: 4.5, y: 5.5 },
+        vector: { x: 3, y: 0 },
+      },
+    ]);
+
+    expect(context.oscillators).toHaveLength(1);
+    expect(context.oscillators[0]?.type).toBe("square");
+    expect(context.oscillators[0]?.frequency.values).toEqual([1_080, 540]);
+  });
+
   it("caps concurrent voices and lets a higher-priority result replace a low voice", async () => {
     const context = new FakeAudioContext();
     const audio = createAudioFeedback(() => context);

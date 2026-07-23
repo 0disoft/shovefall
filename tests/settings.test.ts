@@ -90,11 +90,11 @@ describe("settings normalization", () => {
     expect(
       normalizeSettings({
         startingWeight: 58,
-        startingItems: ["wind-blast", "boat"],
+        startingItems: ["wind-blast", "grappling-hook"],
       }),
     ).toMatchObject({
       startingWeight: 58,
-      startingItems: ["wind-blast", "boat"],
+      startingItems: ["wind-blast", "grappling-hook"],
     });
     expect(normalizeSettings({ startingItems: ["feather", "feather", "unknown"] })).toMatchObject({
       startingItems: ["iron-boots", "spring-glove"],

@@ -27,9 +27,9 @@ people, then publishing the exact candidate without burying combat telegraphs.
 - [x] Hard utility-bot reaction profile fixed for public play without bot-only physics advantages.
 - [x] Slow, Normal, and Fast collapse controls with deterministic warning and collapse schedules.
 - [x] Iron Boots, Feather, and Spring Glove with a bounded 3/2/1 outer-ring placement preference.
-- [x] Human Wind Blast, Brick Bag, Boat, Bomb, and Soap activation through the shared two-slot input contract.
-- [x] Deterministic round, mass, item-grant, collapse-pacing, headless scale, and production-Chrome
-      regression evidence.
+- [x] Human Wind Blast, Brick Bag, Boat, Bomb, Soap, and static-anchor Grappling Hook activation through the shared two-slot input contract.
+- [x] Deterministic round, mass, item-grant, collapse-pacing, and fixed-50 headless scale evidence.
+- [ ] Uncontended `0.32.0` production-Chrome performance evidence; functional production-artifact smoke already passes.
 - [x] Local aggregate validation and production-artifact browser smoke.
 
 ## Gate 1: Human Gray-box Evidence
@@ -49,7 +49,7 @@ Exit conditions:
 - Human identity, shove windup, dodge window, collapse warning, item type, and result state remain
   distinguishable in the fixed 50-participant mode.
 
-Current status: `PENDING_EXTERNAL_PLAYTEST`. Automated audits are supporting evidence only.
+Current status: `PENDING_EXTERNAL_PLAYTEST`. Automated audits are supporting evidence only; bots do not use charged active items, so they cannot establish Grappling Hook or active-item pair balance.
 
 ## Gate 2: Visual Direction and Asset Inventory
 
@@ -86,11 +86,7 @@ Exit conditions:
 - Screenshot, short gameplay capture, tool list, asset provenance, and development notes are ready
   in [05-submission-package.md](05-submission-package.md) for the contest post.
 
-Current status: `IN_PROGRESS`. After the Actions spending limit was increased,
-[CI #10](https://github.com/0disoft/shovefall/actions/runs/29977438082) completed successfully for
-the Coal-Twilight runtime candidate at exact SHA `7809502b8c33a12ad9cdd86d2dceb66424585579`.
-Provider selection, deployment smoke, final captures, physical-browser coverage, and human evidence
-remain open.
+Current status: `IN_PROGRESS`. Product `0.32.0` is the current local candidate contract. Its 169 tests, thirteen production-artifact Chrome paths, and fixed-50 headless profile pass; the host-contended production-Chrome performance observation is explicitly rejected. Exact candidate SHA, uncontended browser profile, hosted CI, Pages deployment, and public-URL smoke remain pending. The exact `0.31.0` hosted evidence remains valid history but does not prove Grappling Hook. Final captures, physical-browser coverage, and human evidence remain open.
 
 ## Deferred Beyond the Submission
 

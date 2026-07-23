@@ -20,7 +20,7 @@ The browser's public arena policy derives a 44×36 bound for 50 participants and
 
 A participant contains stable identity, human or scripted control ownership, an active flag, a circular body, two-slot starting inventory, temporary effects, progression, offensive credit, and an action state. Inventory slots preserve their index, item definition, and nullable charge count; `null` means a permanent passive. The body owns position, velocity, facing, radius, base and effective continuous `massFactor`, and integer unsupported ticks. Effective mass is clamped to `0.8..1.4`. Progression owns unspent points, credited eliminations, and bounded Power, Stability, Mobility, and Reflex levels. The compatibility-named `shoveCredit` state records attacker, hit tick, and impulse strength. Newer hits replace older hits; same-tick Wind Blast and shove claims choose greater strength, then lower attacker ID. Falling grants one point only when that hit is at most 180 ticks old.
 
-Action kinds are `Ready`, `ShoveWindup`, `ShoveActive`, `ShoveRecovery`, `DodgeActive`, `Stumbling`, `Anchored`, `Falling`, and `Eliminated`. Action transitions are tick-bounded. Executable requests use `dodge > active item > shove`; an invalid, passive, or exhausted slot falls through to shove without consuming a charge. `Falling` is irreversible and later transitions to `Eliminated`.
+Action kinds are `Ready`, `ShoveWindup`, `ShoveActive`, `ShoveRecovery`, `DodgeActive`, `GrapplePull`, `Stumbling`, `Anchored`, `Falling`, and `Eliminated`. Action transitions are tick-bounded. Executable requests use `dodge > active item > shove`; an invalid, passive, exhausted, or anchorless slot falls through to shove without consuming a charge. `GrapplePull` is a 12-tick, input-locked self-pull with `0.965` drag; a same-tick Bomb or Wind Blast hit replaces it with the existing Stumbling result. `Falling` is irreversible and later transitions to `Eliminated`.
 
 The current tuning uses six shove-windup ticks, five hand-active ticks, fifteen recovery ticks, five dodge/evasion ticks, nine unsupported grace ticks, and twenty-four falling ticks. ShoveActive no longer forces forward body speed; it exposes a `0.28`-tile hand reach beyond the two body radii. The collapsed local debug lab may override bounded movement, mass-speed, hand-reach, and dodge values for the next round without changing production defaults.
 
@@ -31,6 +31,10 @@ A tile has an integer grid location, stable `column:row` ID, and a `Stable`, `Wa
 ## Brick Wall
 
 A brick wall owns its tile ID, integer location, placing actor, and placement tick. At most one wall can occupy a tile. Successful proposals are committed in actor-ID order before active-item rays, so command-array order and attacker IDs cannot change same-tick shielding. A wall occupies its entire tile as a static axis-aligned obstacle. Participant circles use swept point-versus-radius-expanded bounds before broad phase and an overlap-only projection after weak body contacts. Wind Blast and hand shove use unexpanded wall ray bounds, with exact corner contact and distance ties favoring the wall. A wall is removed only when its tile becomes `Void`; the `tile-void` event precedes `brick-wall-removed` in that tick.
+
+## Grappling Anchor
+
+A Grappling Hook anchor is resolved from current authoritative tile and Brick state, not presentation geometry. Its 4.5-tile facing ray ignores participant bodies and selects the farthest non-Void tile before the first Brick wall, or the wall itself, subject to a 1.25-tile minimum. Warning and Collapsing tiles are eligible; Void, water-only, and out-of-arena coordinates are not. The anchor is a same-tick value rather than a persistent world entity. An accepted pull changes only the user's velocity by `0.24 / massFactor` toward the anchor, capped at `0.30`; it neither teleports nor changes support or offensive credit. Subsequent normal wall and body collision remains authoritative and may transfer motion without creating Hook credit.
 
 ## Bomb
 
@@ -83,6 +87,8 @@ Product `0.29.0`, simulation `12.0.0`, and content `6.0.0` add Boat's 300-tick c
 Product `0.30.0`, simulation `13.0.0`, and content `7.0.0` add Bomb placement, independent hashed fuse entities, deterministic radial impulse falloff, owner vulnerability, same-tick Dodge, flooding persistence, and Bomb-plus-Wind impulse batching. Replay remains v2 because loadout IDs and slot commands already carry Bomb use; simulation-version rejection and regenerated checkpoints protect the new world state.
 
 Product `0.31.0`, simulation `14.0.0`, and content `8.0.0` add Soap placement, canonical one-use patch entities, actor-ID placement and trigger arbitration, post-contact slip state, external-credit preservation on self-trigger, Void removal, and symmetric Brick/Bomb/Soap occupancy. Replay remains v2 because the existing loadout IDs and slot commands already carry Soap use; regenerated simulation-version checkpoints protect the added hashed world state.
+
+Product `0.32.0`, simulation `15.0.0`, and content `9.0.0` add the human-only static-anchor Grappling Hook, deterministic tile-versus-Brick acquisition, mass-sensitive capped self-pull, and the 12-tick `GrapplePull` action. Replay remains v2 and local reports remain v4 because the existing loadout IDs, slot commands, action state, and version rejection carry the new use without a persistent tether entity; regenerated simulation-version checkpoints protect the changed action and velocity outcomes.
 
 ## Version Ownership
 

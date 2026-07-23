@@ -1,6 +1,7 @@
 import { expect, test, type CDPSession, type Page } from "@playwright/test";
 
 interface FrameProfile {
+  readonly workload: "brick-bomb" | "grappling-bomb";
   readonly participantCount: number;
   readonly botDifficulty: "hard";
   readonly seed: string;
@@ -21,12 +22,34 @@ interface BrowserHeapUsage {
 
 const PROFILE_CASES = Object.freeze([
   {
+    workload: "brick-bomb",
     participantCount: 50,
     seed: "0000003200000000",
     seedWords: [50, 0],
     p95Budget: 25,
     tickRateBudget: 45,
   },
+  {
+    workload: "grappling-bomb",
+    participantCount: 50,
+    seed: "0000003200000001",
+    seedWords: [50, 1],
+    p95Budget: 25,
+    tickRateBudget: 45,
+  },
+] as const);
+const PROFILE_STARTUP_WARMUP_MILLISECONDS = 2_000;
+const PROFILE_CASE_STABILIZATION_MILLISECONDS = 2_000;
+const STARTING_ITEM_IDS = Object.freeze([
+  "iron-boots",
+  "feather",
+  "spring-glove",
+  "wind-blast",
+  "brick-bag",
+  "boat",
+  "bomb",
+  "soap",
+  "grappling-hook",
 ] as const);
 
 function percentile(values: readonly number[], fraction: number): number {
@@ -37,6 +60,7 @@ function percentile(values: readonly number[], fraction: number): number {
 
 async function collectFrameProfile(
   page: Page,
+  workload: FrameProfile["workload"],
   participantCount: number,
   seed: string,
 ): Promise<FrameProfile> {
@@ -98,6 +122,7 @@ async function collectFrameProfile(
   });
 
   return Object.freeze({
+    workload,
     participantCount,
     botDifficulty: "hard",
     seed,
@@ -140,6 +165,33 @@ async function useProfileBrickBag(
   return useProfileBrickBag(page, directions, index + 1);
 }
 
+async function useProfileGrapplingHook(
+  page: Page,
+  remainingCharges: 0 | 1,
+  directions: readonly string[] = ["ArrowUp", "ArrowRight", "ArrowDown", "ArrowLeft"],
+  index = 0,
+): Promise<void> {
+  const direction = directions[index];
+
+  if (direction === undefined) {
+    return;
+  }
+
+  await page.keyboard.down(direction);
+  await page.waitForTimeout(80);
+  await page.keyboard.up(direction);
+  await page.keyboard.press("KeyE");
+
+  if (
+    (await page.locator("#use-item-slot-1").textContent())?.includes(`${remainingCharges}회`) ===
+    true
+  ) {
+    return;
+  }
+
+  return useProfileGrapplingHook(page, remainingCharges, directions, index + 1);
+}
+
 async function profileCases(page: Page, index: number, profiles: FrameProfile[]): Promise<void> {
   const profileCase = PROFILE_CASES[index];
 
@@ -153,32 +205,54 @@ async function profileCases(page: Page, index: number, profiles: FrameProfile[])
       window as Window & { shovefallProfileSeedWords?: readonly number[] }
     ).shovefallProfileSeedWords = seedWords;
   }, profileCase.seedWords);
-  await page.locator('input[name="startingItem"][value="spring-glove"]').uncheck();
-  await page.locator('input[name="startingItem"][value="iron-boots"]').uncheck();
-  await page.locator('input[name="startingItem"][value="brick-bag"]').check();
-  await page.locator('input[name="startingItem"][value="bomb"]').check();
+  await Promise.all(
+    STARTING_ITEM_IDS.map((itemId) =>
+      page.locator(`input[name="startingItem"][value="${itemId}"]`).setChecked(false),
+    ),
+  );
+
+  if (profileCase.workload === "brick-bomb") {
+    await page.locator('input[name="startingItem"][value="brick-bag"]').check();
+    await page.locator('input[name="startingItem"][value="bomb"]').check();
+  } else {
+    await page.locator('input[name="startingItem"][value="bomb"]').check();
+    await page.locator('input[name="startingItem"][value="grappling-hook"]').check();
+  }
   await page.getByRole("button", { name: "설정 저장" }).click();
   await page.getByRole("button", { name: "게임 시작" }).click();
   await expect(page.locator("#app")).toHaveAttribute("data-round", "active");
   await expect(page.locator("#app")).toHaveAttribute("data-bot-difficulty", "hard");
-  await expect(page.locator("#use-item-slot-0")).toContainText("벽돌 가방 · 4회");
-  await expect(page.locator("#use-item-slot-1")).toContainText("시한폭탄 · 2회");
-  await useProfileBrickBag(page);
-  await expect(page.locator("#use-item-slot-0")).toContainText("벽돌 가방 · 3회");
-  await page.keyboard.press("KeyE");
-  await expect(page.locator("#use-item-slot-1")).toContainText("시한폭탄 · 1회");
+  if (profileCase.workload === "brick-bomb") {
+    await expect(page.locator("#use-item-slot-0")).toContainText("벽돌 가방 · 4회");
+    await expect(page.locator("#use-item-slot-1")).toContainText("시한폭탄 · 2회");
+    await useProfileBrickBag(page);
+    await expect(page.locator("#use-item-slot-0")).toContainText("벽돌 가방 · 3회");
+    await page.keyboard.press("KeyE");
+    await expect(page.locator("#use-item-slot-1")).toContainText("시한폭탄 · 1회");
+  } else {
+    await expect(page.locator("#use-item-slot-0")).toContainText("시한폭탄 · 2회");
+    await expect(page.locator("#use-item-slot-1")).toContainText("구조 갈고리 · 2회");
+    await useProfileGrapplingHook(page, 1);
+    await expect(page.locator("#use-item-slot-1")).toContainText("구조 갈고리 · 1회");
+    await expect(page.locator("#game-telemetry")).toHaveAttribute("data-action", "Ready");
+    await page.keyboard.press("KeyQ");
+    await expect(page.locator("#use-item-slot-0")).toContainText("시한폭탄 · 1회");
+  }
   await expect(page.getByText("폭탄을 놨어. 5초 뒤 터져.")).toBeVisible();
-  const profile = await collectFrameProfile(page, profileCase.participantCount, profileCase.seed);
+  await page.waitForTimeout(PROFILE_CASE_STABILIZATION_MILLISECONDS);
+  if (profileCase.workload === "grappling-bomb") {
+    await expect(page.locator("#game-telemetry")).toHaveAttribute("data-action", "Ready");
+    await useProfileGrapplingHook(page, 0);
+    await expect(page.locator("#use-item-slot-1")).toContainText("구조 갈고리 · 0회");
+  }
+  const profile = await collectFrameProfile(
+    page,
+    profileCase.workload,
+    profileCase.participantCount,
+    profileCase.seed,
+  );
   profiles.push(profile);
   process.stdout.write(`${JSON.stringify({ kind: "browser-profile-case", profile })}\n`);
-  expect(profile.p95FrameMilliseconds).toBeLessThanOrEqual(profileCase.p95Budget);
-  expect(profile.deliveredTicksPerRequestedSimulationSecond).toBeGreaterThanOrEqual(
-    profileCase.tickRateBudget,
-  );
-  expect(profile.framesOver100Milliseconds).toBeLessThanOrEqual(1);
-  expect(profile.maximumBacklogTicks).toBeLessThanOrEqual(8);
-  expect(profile.maximumSimulationRate).toBe(1);
-  expect(profile.effectiveDpr).toBeLessThanOrEqual(profileCase.participantCount >= 25 ? 1 : 1.5);
   await expect(page.locator("#app")).toHaveAttribute("data-round", "active");
   await page.getByRole("button", { name: "메뉴로" }).click();
   return profileCases(page, index + 1, profiles);
@@ -223,8 +297,27 @@ test("@profile measures the production 50-participant browser budget", async ({
     });
   });
   await page.goto("/");
+  await page.getByRole("button", { name: "게임 시작" }).click();
+  await expect(page.locator("#app")).toHaveAttribute("data-round", "active");
+  await page.waitForTimeout(PROFILE_STARTUP_WARMUP_MILLISECONDS);
+  await page.getByRole("button", { name: "메뉴로" }).click();
+  await expect(page.locator("#app")).toHaveAttribute("data-screen", "menu");
   const profiles: FrameProfile[] = [];
   await profileCases(page, 0, profiles);
+
+  for (const profile of profiles) {
+    const profileCase = PROFILE_CASES.find(({ workload }) => workload === profile.workload);
+
+    expect(profileCase).toBeDefined();
+    expect(profile.p95FrameMilliseconds).toBeLessThanOrEqual(profileCase!.p95Budget);
+    expect(profile.deliveredTicksPerRequestedSimulationSecond).toBeGreaterThanOrEqual(
+      profileCase!.tickRateBudget,
+    );
+    expect(profile.framesOver100Milliseconds).toBeLessThanOrEqual(1);
+    expect(profile.maximumBacklogTicks).toBeLessThanOrEqual(8);
+    expect(profile.maximumSimulationRate).toBe(1);
+    expect(profile.effectiveDpr).toBeLessThanOrEqual(profileCase!.participantCount >= 25 ? 1 : 1.5);
+  }
 
   const client = await context.newCDPSession(page);
   await client.send("HeapProfiler.enable");
@@ -249,6 +342,8 @@ test("@profile measures the production 50-participant browser budget", async ({
         kind: "local-production-chrome-profile",
         browser: "Chrome",
         viewport: "1280x720",
+        startupWarmupMilliseconds: PROFILE_STARTUP_WARMUP_MILLISECONDS,
+        caseStabilizationMilliseconds: PROFILE_CASE_STABILIZATION_MILLISECONDS,
         sampleMillisecondsPerCase: 6_000,
         profiles,
         restartCount: 20,

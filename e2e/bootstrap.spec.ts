@@ -147,6 +147,20 @@ async function startGame(page: Page): Promise<void> {
   await page.getByRole("button", { name: "게임 시작" }).click();
 }
 
+async function faceArenaDirection(page: Page, direction: string): Promise<void> {
+  await page.locator("#arena-host").focus();
+  const positionBeforeFacing = await page.locator("#position-value").textContent();
+  await page.keyboard.down(direction);
+
+  try {
+    await expect
+      .poll(() => page.locator("#position-value").textContent())
+      .not.toBe(positionBeforeFacing);
+  } finally {
+    await page.keyboard.up(direction);
+  }
+}
+
 async function useBrickBagFromAvailableDirection(
   page: Page,
   slotIndex = 1,
@@ -233,9 +247,9 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await versionHistoryButton.click();
   await expect(page.locator("#app")).toHaveAttribute("data-screen", "history");
   await expect(page.getByRole("heading", { level: 2, name: "버전 기록" })).toBeFocused();
-  await expect(page.locator("#current-version")).toHaveText("v0.31.0");
-  await expect(page.locator("#version-history-list > li")).toHaveCount(12);
-  await expect(page.getByText("왜 바꿨냐면")).toHaveCount(12);
+  await expect(page.locator("#current-version")).toHaveText("v0.32.0");
+  await expect(page.locator("#version-history-list > li")).toHaveCount(13);
+  await expect(page.getByText("왜 바꿨냐면")).toHaveCount(13);
   await expect(page.locator("#arena-host canvas")).toBeHidden();
   await page.keyboard.press("Escape");
   await expect(page.locator("#app")).toHaveAttribute("data-screen", "menu");
@@ -461,6 +475,31 @@ test("selects Soap and places a slippery patch in a fresh production-safe round"
 
   await expect(page.locator("#use-item-slot-1")).toContainText("비누 · 2회");
   await expect(page.getByText("비누를 앞 칸에 놨어.")).toBeVisible();
+});
+
+test("selects Grappling Hook and catches a deterministic anchor in a fresh round", async ({
+  page,
+}) => {
+  await installFixedRoundSeed(page, 1, 0);
+  await page.goto("/");
+  await openSettings(page);
+  const grapplingHookCard = page.locator('input[name="startingItem"][value="grappling-hook"]');
+  await expect(grapplingHookCard).toHaveCount(1);
+  await expect(page.getByText("2회 · 땅이나 벽을 붙잡아", { exact: true })).toBeVisible();
+  await page.locator('input[name="startingItem"][value="spring-glove"]').uncheck();
+  await grapplingHookCard.check();
+  await expect(page.locator("#setup-summary")).toContainText("철 장화 + 구조 갈고리");
+  await saveSettings(page);
+  await startGame(page);
+  await expect(page.locator("#app")).toHaveAttribute("data-round", "active", { timeout: 5_000 });
+  const slot = page.locator("#use-item-slot-1");
+  await expect(slot).toContainText("구조 갈고리 · 2회");
+  await faceArenaDirection(page, "ArrowRight");
+  await expect(slot).toBeEnabled();
+  await slot.click();
+
+  await expect(slot).toContainText("구조 갈고리 · 1회");
+  await expect(page.getByText("갈고리가 걸렸어.", { exact: true })).toBeVisible();
 });
 
 test("offers a working touch joystick and action buttons on a narrow viewport", async ({

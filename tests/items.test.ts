@@ -714,6 +714,254 @@ describe("deterministic item effects", () => {
     expect(run([1, 2])).toEqual(run([2, 1]));
   });
 
+  it("pulls toward the farthest static tile anchor and ignores bodies on the ray", () => {
+    const world = new SimulationWorld(createItemConfig(), "grapple-static-anchor", {
+      arenaLayout: "rectangular-fixture",
+      participantOverrides: [
+        {
+          actorId: 1,
+          position: { x: 2, y: 4.5 },
+          facing: { x: 1, y: 0 },
+          startingItems: ["grappling-hook"],
+        },
+        { actorId: 2, position: { x: 3.2, y: 4.5 } },
+        { actorId: 3, position: { x: 7.5, y: 1.5 } },
+        { actorId: 4, position: { x: 1.5, y: 7.5 } },
+      ],
+    });
+    const result = world.step([{ ...createNeutralCommand(world.tick, 1), useItemSlot: 0 }]);
+    const hit = result.events.find(({ kind }) => kind === "grappling-hook-hit");
+
+    expect(hit).toMatchObject({
+      actorId: 1,
+      itemDefinitionId: "grappling-hook",
+      tileId: "6:4",
+      position: { x: 2, y: 4.5 },
+      vector: { x: 4.5, y: 0 },
+    });
+    expect(getActor(world, 1).inventory[0]?.charges).toBe(1);
+    expect(getActor(world, 1).action).toBe("GrapplePull");
+    expect(getActor(world, 1).velocity.x).toBeCloseTo(
+      SIMULATION_TUNING.grapplingHook.acceleration * SIMULATION_TUNING.movement.stumbleDrag,
+      10,
+    );
+    expect(getActor(world, 2).velocity).toEqual({ x: 0, y: 0 });
+    const blocked = world.step([
+      {
+        ...createNeutralCommand(world.tick, 1),
+        dodgePressed: true,
+        shovePressed: true,
+        useItemSlot: 0,
+      },
+    ]);
+    expect(
+      blocked.events.some(
+        ({ kind }) => kind === "dodge-started" || kind === "shove-started" || kind === "item-used",
+      ),
+    ).toBe(false);
+    expect(getActor(world, 1).inventory[0]?.charges).toBe(1);
+  });
+
+  it("uses a same-tick Brick as the nearer static anchor independent of command order", () => {
+    const run = (actorIds: readonly number[]) => {
+      const world = new SimulationWorld(createItemConfig(), "brick-before-grapple", {
+        arenaLayout: "rectangular-fixture",
+        participantOverrides: [
+          {
+            actorId: 1,
+            position: { x: 2.5, y: 4.5 },
+            facing: { x: 1, y: 0 },
+            startingItems: ["grappling-hook"],
+          },
+          { actorId: 2, position: { x: 7.5, y: 4.5 } },
+          {
+            actorId: 3,
+            position: { x: 4.5, y: 5.5 },
+            facing: { x: 0, y: -1 },
+            startingItems: ["brick-bag"],
+          },
+          { actorId: 4, position: { x: 1.5, y: 7.5 } },
+        ],
+      });
+      const result = world.step(
+        actorIds.map((actorId) => ({
+          ...createNeutralCommand(world.tick, actorId),
+          useItemSlot: 0 as const,
+        })),
+      );
+      return {
+        hash: result.frame.stateHash,
+        hit: result.events.find(({ kind }) => kind === "grappling-hook-hit"),
+      };
+    };
+    const forward = run([1, 3]);
+
+    expect(run([3, 1])).toEqual(forward);
+    expect(forward.hit).toMatchObject({
+      actorId: 1,
+      tileId: "4:4",
+      vector: { x: 1.5, y: 0 },
+    });
+  });
+
+  it("does not spend without a minimum-distance anchor and falls through to shove", () => {
+    const world = new SimulationWorld(createItemConfig(), "grapple-no-anchor", {
+      arenaLayout: "rectangular-fixture",
+      participantOverrides: [
+        {
+          actorId: 1,
+          position: { x: 7.9, y: 4.5 },
+          facing: { x: 1, y: 0 },
+          startingItems: ["grappling-hook"],
+        },
+        { actorId: 2, position: { x: 8.5, y: 4.5 } },
+        { actorId: 3, position: { x: 7.5, y: 1.5 } },
+        { actorId: 4, position: { x: 1.5, y: 7.5 } },
+      ],
+    });
+    const result = world.step([
+      {
+        ...createNeutralCommand(world.tick, 1),
+        useItemSlot: 0,
+        shovePressed: true,
+      },
+    ]);
+
+    expect(result.events.some(({ kind }) => kind === "item-used")).toBe(false);
+    expect(result.events.some(({ kind }) => kind === "grappling-hook-hit")).toBe(false);
+    expect(result.events.some(({ kind }) => kind === "shove-started")).toBe(true);
+    expect(getActor(world, 1).inventory[0]?.charges).toBe(2);
+  });
+
+  it("falls through to shove when a same-tick Brick blocks the anchor inside minimum range", () => {
+    const world = new SimulationWorld(createItemConfig(), "near-brick-blocks-grapple", {
+      arenaLayout: "rectangular-fixture",
+      participantOverrides: [
+        {
+          actorId: 1,
+          position: { x: 3.5, y: 4.5 },
+          facing: { x: 1, y: 0 },
+          startingItems: ["grappling-hook"],
+        },
+        { actorId: 2, position: { x: 7.5, y: 4.5 } },
+        {
+          actorId: 3,
+          position: { x: 4.5, y: 5.5 },
+          facing: { x: 0, y: -1 },
+          startingItems: ["brick-bag"],
+        },
+        { actorId: 4, position: { x: 1.5, y: 7.5 } },
+      ],
+    });
+    const result = world.step([
+      {
+        ...createNeutralCommand(world.tick, 1),
+        useItemSlot: 0,
+        shovePressed: true,
+      },
+      { ...createNeutralCommand(world.tick, 3), useItemSlot: 0 },
+    ]);
+
+    expect(result.frame.brickWalls).toEqual([
+      expect.objectContaining({ tileId: "4:4", ownerActorId: 3 }),
+    ]);
+    expect(result.events.some(({ kind }) => kind === "grappling-hook-hit")).toBe(false);
+    expect(result.events).toContainEqual(
+      expect.objectContaining({ kind: "shove-started", actorId: 1 }),
+    );
+    expect(getActor(world, 1).inventory[0]?.charges).toBe(2);
+  });
+
+  it("scales Grapple acceleration by self mass and expires after twelve ticks", () => {
+    const pullSpeed = (massFactor: number) => {
+      const world = new SimulationWorld(createItemConfig(), `grapple-mass-${massFactor}`, {
+        arenaLayout: "rectangular-fixture",
+        participantOverrides: [
+          {
+            actorId: 1,
+            position: { x: 2, y: 4.5 },
+            facing: { x: 1, y: 0 },
+            massFactor,
+            startingItems: ["grappling-hook"],
+          },
+          ...PARTICIPANT_OVERRIDES.slice(1),
+        ],
+      });
+      world.step([{ ...createNeutralCommand(world.tick, 1), useItemSlot: 0 }]);
+      const speed = getActor(world, 1).velocity.x;
+
+      while (world.tick <= SIMULATION_TUNING.grapplingHook.pullTicks) {
+        world.step();
+      }
+
+      expect(getActor(world, 1).action).toBe("Ready");
+      return speed;
+    };
+
+    expect(pullSpeed(0.8)).toBeGreaterThan(pullSpeed(1.4));
+  });
+
+  it("lets an incoming same-tick Wind Blast override GrapplePull without moving the Wind user", () => {
+    const world = new SimulationWorld(createItemConfig(), "wind-overrides-grapple", {
+      arenaLayout: "rectangular-fixture",
+      participantOverrides: [
+        {
+          actorId: 1,
+          position: { x: 2, y: 4.5 },
+          facing: { x: 1, y: 0 },
+          startingItems: ["grappling-hook"],
+        },
+        {
+          actorId: 2,
+          position: { x: 5, y: 4.5 },
+          facing: { x: -1, y: 0 },
+          startingItems: ["wind-blast"],
+        },
+        { actorId: 3, position: { x: 7.5, y: 1.5 } },
+        { actorId: 4, position: { x: 1.5, y: 7.5 } },
+      ],
+    });
+    const result = world.step([
+      { ...createNeutralCommand(world.tick, 1), useItemSlot: 0 },
+      { ...createNeutralCommand(world.tick, 2), useItemSlot: 0 },
+    ]);
+
+    expect(result.events.some(({ kind }) => kind === "grappling-hook-hit")).toBe(true);
+    expect(result.events).toContainEqual(
+      expect.objectContaining({ kind: "wind-blast-hit", actorId: 2, targetActorId: 1 }),
+    );
+    expect(getActor(world, 1).action).toBe("Stumbling");
+    expect(getActor(world, 1).velocity.x).toBeLessThan(0);
+    expect(getActor(world, 2).velocity).toEqual({ x: 0, y: 0 });
+  });
+
+  it("lets a due same-tick Bomb override GrapplePull", () => {
+    const world = new SimulationWorld(createItemConfig(), "bomb-overrides-grapple", {
+      arenaLayout: "rectangular-fixture",
+      participantOverrides: [
+        {
+          actorId: 1,
+          position: { x: 4, y: 4.5 },
+          facing: { x: 1, y: 0 },
+          startingItems: ["bomb", "grappling-hook"],
+        },
+        ...PARTICIPANT_OVERRIDES.slice(1),
+      ],
+    });
+    world.step([{ ...createNeutralCommand(world.tick, 1), useItemSlot: 0 }]);
+
+    while (world.tick < SIMULATION_TUNING.bomb.fuseTicks) {
+      world.step();
+    }
+
+    const result = world.step([{ ...createNeutralCommand(world.tick, 1), useItemSlot: 1 }]);
+
+    expect(result.events.some(({ kind }) => kind === "bomb-detonated")).toBe(true);
+    expect(result.events.some(({ kind }) => kind === "grappling-hook-hit")).toBe(true);
+    expect(getActor(world, 1).action).toBe("Stumbling");
+    expect(getActor(world, 1).inventory[1]?.charges).toBe(1);
+  });
+
   it("keeps stronger Wind Blast elimination credit over a weaker same-tick shove", () => {
     const world = new SimulationWorld(createItemConfig(), "wind-credit-arbitration", {
       arenaLayout: "rectangular-fixture",

@@ -117,6 +117,14 @@ const SOUND_DEFINITIONS: Partial<Record<SimulationEventKind, SoundDefinition>> =
     priority: 4,
     oscillatorType: "triangle",
   }),
+  "grappling-hook-hit": Object.freeze({
+    frequency: 1_080,
+    endFrequency: 540,
+    durationSeconds: 0.075,
+    gain: 0.055,
+    priority: 3,
+    oscillatorType: "square",
+  }),
   "dodge-succeeded": Object.freeze({
     frequency: 420,
     endFrequency: 690,

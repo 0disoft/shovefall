@@ -150,6 +150,17 @@ interface SweptWallContact {
   readonly wall: BrickWallState;
 }
 
+interface RayBoundsInterval {
+  readonly entryDistance: number;
+  readonly exitDistance: number;
+}
+
+interface GrapplingAnchor {
+  readonly tileId: TileId;
+  readonly position: Vector2;
+  readonly distance: number;
+}
+
 interface RequestedActionResult {
   readonly participants: readonly ParticipantState[];
   readonly activeItemSlots: ReadonlyMap<ActorId, InventorySlotIndex>;
@@ -393,6 +404,48 @@ function getRayTileEntryDistance(
     getTileBounds(wall.column, wall.row),
   );
   return contact === undefined ? undefined : contact.time * maximumDistance;
+}
+
+function getRayBoundsInterval(
+  origin: Vector2,
+  direction: Vector2,
+  maximumDistance: number,
+  bounds: AxisAlignedBounds,
+): RayBoundsInterval | undefined {
+  let entryDistance = 0;
+  let exitDistance = maximumDistance;
+
+  for (const axis of ["x", "y"] as const) {
+    const originValue = origin[axis];
+    const directionValue = direction[axis];
+    const minimum = axis === "x" ? bounds.minimumX : bounds.minimumY;
+    const maximum = axis === "x" ? bounds.maximumX : bounds.maximumY;
+
+    if (directionValue === 0) {
+      if (originValue < minimum || originValue > maximum) {
+        return undefined;
+      }
+      continue;
+    }
+
+    const first = (minimum - originValue) / directionValue;
+    const second = (maximum - originValue) / directionValue;
+    entryDistance = Math.max(entryDistance, Math.min(first, second));
+    exitDistance = Math.min(exitDistance, Math.max(first, second));
+
+    if (entryDistance > exitDistance + WALL_CONTACT_EPSILON) {
+      return undefined;
+    }
+  }
+
+  if (exitDistance < 0 || entryDistance > maximumDistance) {
+    return undefined;
+  }
+
+  return Object.freeze({
+    entryDistance: clamp(entryDistance, 0, maximumDistance),
+    exitDistance: clamp(exitDistance, 0, maximumDistance),
+  });
 }
 
 function validateOverride(override: ParticipantSpawnOverride, participantCount: number): void {
@@ -679,6 +732,7 @@ export class SimulationWorld {
     participants = this.#resolveActiveItems(
       requestedActions.participants,
       requestedActions.activeItemSlots,
+      commandsByActor,
       events,
     );
     participants = this.#applyMovementIntent(participants, commandsByActor);
@@ -930,6 +984,7 @@ export class SimulationWorld {
 
       if (
         action.kind === "DodgeActive" ||
+        action.kind === "GrapplePull" ||
         action.kind === "ShoveRecovery" ||
         action.kind === "Stumbling"
       ) {
@@ -1013,7 +1068,9 @@ export class SimulationWorld {
           (slot?.definitionId === "brick-bag" &&
             this.#getBrickPlacement(participant, participants, [], direction) !== undefined) ||
           (slot?.definitionId === "soap" &&
-            this.#getSoapPlacement(participant, participants, [], direction) !== undefined);
+            this.#getSoapPlacement(participant, participants, [], direction) !== undefined) ||
+          (slot?.definitionId === "grappling-hook" &&
+            this.#getGrapplingAnchor(participant, direction) !== undefined);
 
         if (canActivate && slot.charges !== null && slot.charges > 0) {
           activeItemSlots.set(participant.actorId, command.useItemSlot);
@@ -1072,6 +1129,7 @@ export class SimulationWorld {
   #resolveActiveItems(
     participants: readonly ParticipantState[],
     activeItemSlots: ReadonlyMap<ActorId, InventorySlotIndex>,
+    commandsByActor: ReadonlyMap<ActorId, ActorCommandV1>,
     events: SimulationEventV1[],
   ): readonly ParticipantState[] {
     if (
@@ -1358,6 +1416,116 @@ export class SimulationWorld {
       );
     }
 
+    for (const participant of ordered) {
+      const slotIndex = activeItemSlots.get(participant.actorId);
+      const slot =
+        slotIndex === undefined
+          ? undefined
+          : participant.inventory.find((candidate) => candidate.slotIndex === slotIndex);
+
+      if (
+        slotIndex === undefined ||
+        slot?.definitionId !== "grappling-hook" ||
+        !isCollidable(participant)
+      ) {
+        continue;
+      }
+
+      const anchor = this.#getGrapplingAnchor(participant);
+
+      if (anchor === undefined) {
+        const command = commandsByActor.get(participant.actorId);
+
+        if (command?.shovePressed && this.#tick >= participant.cooldowns.shoveReadyTick) {
+          const springBoosted = hasSpringGlove(participant);
+          const participantWithoutSpring = springBoosted
+            ? consumeSpringGlove(participant)
+            : participant;
+          events.push(
+            this.#createEvent("shove-started", {
+              actorId: participant.actorId,
+              vector: participant.body.facing,
+            }),
+          );
+          updatedById.set(
+            participant.actorId,
+            Object.freeze({
+              ...participantWithoutSpring,
+              action: createTimedAction(
+                "ShoveWindup",
+                this.#tick,
+                SIMULATION_TUNING.shove.windupTicks,
+                participant.body.facing,
+                [],
+                [],
+                springBoosted,
+              ),
+              cooldowns: Object.freeze({
+                ...participantWithoutSpring.cooldowns,
+                shoveReadyTick:
+                  this.#tick +
+                  Math.max(
+                    24,
+                    SIMULATION_TUNING.shove.cooldownTicks -
+                      getReflexCooldownReduction(participant.progression.stats),
+                  ),
+              }),
+            }),
+          );
+        }
+        continue;
+      }
+
+      const consumed = consumeInventoryCharge(participant, slotIndex);
+
+      if (consumed === undefined) {
+        continue;
+      }
+
+      const direction = scaleVector(
+        subtractVectors(anchor.position, participant.body.position),
+        1 / anchor.distance,
+      );
+      const targetVelocity = scaleVector(direction, SIMULATION_TUNING.grapplingHook.targetSpeed);
+      const velocity = clampVectorLength(
+        moveVectorToward(
+          participant.body.velocity,
+          targetVelocity,
+          SIMULATION_TUNING.grapplingHook.acceleration / participant.body.massFactor,
+        ),
+        SIMULATION_TUNING.grapplingHook.targetSpeed,
+      );
+      updatedById.set(
+        participant.actorId,
+        Object.freeze({
+          ...consumed,
+          body: Object.freeze({ ...consumed.body, velocity }),
+          action: createTimedAction(
+            "GrapplePull",
+            this.#tick,
+            SIMULATION_TUNING.grapplingHook.pullTicks,
+            direction,
+          ),
+        }),
+      );
+      events.push(
+        this.#createEvent("item-used", {
+          actorId: participant.actorId,
+          itemDefinitionId: "grappling-hook",
+          tileId: anchor.tileId,
+          position: participant.body.position,
+          vector: subtractVectors(anchor.position, participant.body.position),
+        }),
+        this.#createEvent("grappling-hook-hit", {
+          actorId: participant.actorId,
+          itemDefinitionId: "grappling-hook",
+          tileId: anchor.tileId,
+          position: participant.body.position,
+          vector: subtractVectors(anchor.position, participant.body.position),
+        }),
+      );
+    }
+
     for (const attacker of ordered) {
       const slotIndex = activeItemSlots.get(attacker.actorId);
 
@@ -1537,6 +1705,67 @@ export class SimulationWorld {
     });
   }
 
+  #getGrapplingAnchor(
+    participant: ParticipantState,
+    direction: Vector2 = participant.body.facing,
+  ): GrapplingAnchor | undefined {
+    const origin = participant.body.position;
+    const normalizedDirection = normalizeDirectionOrFallback(direction, participant.body.facing);
+    const range = SIMULATION_TUNING.grapplingHook.range;
+    const minimumDistance = SIMULATION_TUNING.grapplingHook.minimumAnchorDistance;
+    const currentTileId = createTileId(Math.floor(origin.x), Math.floor(origin.y));
+    const nearestWall = this.#brickWalls
+      .map((wall) => {
+        const distance = getRayTileEntryDistance(origin, normalizedDirection, range, wall);
+        return distance === undefined ? undefined : Object.freeze({ wall, distance });
+      })
+      .filter(
+        (candidate): candidate is { readonly wall: BrickWallState; readonly distance: number } =>
+          candidate !== undefined,
+      )
+      .toSorted(
+        (left, right) =>
+          left.distance - right.distance || left.wall.tileId.localeCompare(right.wall.tileId),
+      )[0];
+
+    if (nearestWall !== undefined) {
+      if (nearestWall.distance < minimumDistance) {
+        return undefined;
+      }
+
+      return Object.freeze({
+        tileId: nearestWall.wall.tileId,
+        position: addVectors(origin, scaleVector(normalizedDirection, nearestWall.distance)),
+        distance: nearestWall.distance,
+      });
+    }
+
+    return this.#tiles
+      .filter(({ tileId, state }) => tileId !== currentTileId && state !== "Void")
+      .map((tile) => {
+        const interval = getRayBoundsInterval(
+          origin,
+          normalizedDirection,
+          range,
+          getTileBounds(tile.column, tile.row),
+        );
+
+        if (interval === undefined || interval.exitDistance < minimumDistance) {
+          return undefined;
+        }
+
+        return Object.freeze({
+          tileId: tile.tileId,
+          position: addVectors(origin, scaleVector(normalizedDirection, interval.exitDistance)),
+          distance: interval.exitDistance,
+        });
+      })
+      .filter((anchor): anchor is GrapplingAnchor => anchor !== undefined)
+      .toSorted(
+        (left, right) => right.distance - left.distance || left.tileId.localeCompare(right.tileId),
+      )[0];
+  }
+
   #getBrickPlacement(
     participant: ParticipantState,
     participants: readonly ParticipantState[],
@@ -1701,6 +1930,11 @@ export class SimulationWorld {
             this.#gameplayTuning.dodgeSpeed * getDodgeSpeedMultiplier(participant),
           );
           facing = direction;
+          break;
+        }
+        case "GrapplePull": {
+          velocity = scaleVector(velocity, SIMULATION_TUNING.movement.stumbleDrag);
+          facing = participant.action.lockedDirection ?? facing;
           break;
         }
         case "Stumbling": {

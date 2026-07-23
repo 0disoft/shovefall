@@ -404,4 +404,38 @@ describe("arena renderer presentation", () => {
     expect(graphicsStroke).toHaveBeenCalledWith(expect.objectContaining({ color: 0xf2b8ff }));
     expect(frame.stateHash).toBe(stateHash);
   });
+
+  it("renders a Grappling Hook cable and anchor silhouette without changing simulation", async () => {
+    const host = createHost();
+    const renderer = await createArenaRenderer(host);
+    const frame = new SimulationWorld(
+      normalizeGameConfig({ participantCount: 4 }),
+      "grappling-hook-presentation",
+    ).createRenderFrame();
+    const stateHash = frame.stateHash;
+
+    renderer.consumeEvents(
+      [
+        {
+          eventVersion: 1,
+          roundId: frame.roundId,
+          tick: frame.tick,
+          sequence: 0,
+          kind: "grappling-hook-hit",
+          actorId: 1,
+          itemDefinitionId: "grappling-hook",
+          position: { x: 4.5, y: 5.5 },
+          vector: { x: 3, y: -1 },
+        },
+      ],
+      frame,
+    );
+    renderer.render(frame, 1, 1);
+
+    const grapplingStrokes = graphicsStroke.mock.calls.filter(
+      ([options]) => options?.color === 0xffc857 && options.alpha === 1,
+    );
+    expect(grapplingStrokes).toHaveLength(2);
+    expect(frame.stateHash).toBe(stateHash);
+  });
 });

@@ -1,7 +1,13 @@
 # Scale and Performance
 
-- Status: Accepted local automated baseline; physical and cross-browser evidence pending
+- Status: `0.32.0` headless baseline accepted; uncontended production Chrome, physical, and cross-browser evidence pending
 - Owner: Repository owner
+
+## 0.32.0 Grappling Hook Profile
+
+On 2026-07-24, the accepted 7,200-tick fixed-50 headless profile exercised both Grappling Hook charges while retaining one Brick wall, two same-tick Bombs, and Soap work. It completed in `32,540.702 ms`, or `3.69×` real time. AI p95 was `7.776 ms` with a `20.643 ms` maximum, simulation p95 was `5.123 ms` with a `43.905 ms` maximum, the spatial candidate/full-pair ratio was `0.1135`, and no combined step exceeded 100 ms. The run observed one wall with `0.298` mean walls per tick, a peak of two Bombs with `0.083` mean bombs per tick and two simultaneous detonations, a peak of two Soap patches with `0.071` mean patches per tick and two triggers, two Hook hits with at most one in a tick, and a `10,447,978`-byte observational heap delta.
+
+The production-Chrome harness now compares Brick-plus-Bomb and Grappling-Hook-plus-Bomb under the same fixed-50 Hard-AI contract. It starts a separate warmup round, uses each case's active items before a two-second same-arena stabilization, spends the second Hook charge immediately before its six-second sample, and retains the existing `25 ms` automated p95 ceiling. The latest run is rejected as host-contended: total workstation CPU remained `81.6–94.2%`, Brick/Bomb measured p95 `89.3 ms`, maximum `107.4 ms`, backlog `1698`, and `27.24` delivered ticks per requested simulation second; Hook/Bomb measured p95 `89.5 ms`, maximum `107.1 ms`, backlog `1362`, and `22.58` delivered ticks. Both entered the `6×` catch-up path and failed almost identically, so this is environment evidence, not an accepted Hook regression or an excuse to weaken the gate. The production-safe Hook smoke remains valid functional presentation proof; an uncontended browser profile is still required.
 
 ## 0.31.0 Brick Bag, Bomb, and Soap Profile
 
@@ -140,3 +146,4 @@ All samples stayed at 1× with zero backlog and effective device pixel ratio 1. 
 - The first uncontrolled browser attempt ended an older 12-participant round at tick 364 after human elimination and 6× resolution. That historical observation is a gameplay-duration risk, not a valid steady active-load performance sample.
 - Candidate ratios aggregate source counts across changing survivor counts. They describe comparison reduction for this workload, not a universal constant.
 - Worker, WASM, WebGPU-only behavior, 64 participants, and rule changes by quality tier remain prohibited.
+- Bot active-item use is not implemented, so the automated all-bot audits cannot establish Grappling Hook balance. The accepted headless Hook profile covers deterministic workload cost, while the production-safe smoke covers presentation behavior; neither proves human edge, water, Brick-combination, or two-slot balance.

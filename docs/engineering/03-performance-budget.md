@@ -1,8 +1,14 @@
 # Performance Budget
 
-- Status: Accepted local production-Chrome budgets; physical browser baseline pending
+- Status: Budgets accepted; `0.32.0` headless result accepted and uncontended browser baseline pending
 - Owner: Repository owner
 - Source of truth: `docs/product/02-spec.md` and this document
+
+## Product 0.32.0 Local Result
+
+The fixed-50 headless and production-Chrome budgets do not change for Grappling Hook: simulation p95 remains at most `10 ms`, the browser automated ceiling remains `25 ms`, maximum backlog remains eight ticks, and the simulation may not enter accelerated resolution during the measured active-round window. The accepted 7,200-tick headless fixture performed two valid static-anchor pulls while retaining Brick, two-Bomb, and Soap work. It measured simulation p95 `5.123 ms`, AI p95 `7.776 ms`, no combined step above 100 ms, `3.69×` real-time throughput, and a `10,447,978`-byte observational heap delta. It observed two Hook hits, two Soap triggers, two simultaneous Bomb detonations, and a spatial candidate/full-pair ratio of `0.1135`.
+
+Thirteen production-artifact Chrome paths pass, including live Hook selection, charge consumption, feedback, and WebGL presentation. The separate performance harness compares Brick/Bomb and Hook/Bomb after an independent startup warmup and same-arena stabilization. Its latest local observation is rejected: while workstation CPU stayed `81.6–94.2%`, both cases collapsed nearly equally to p95 `89.3 / 89.5 ms`, backlog `1698 / 1362`, and the `6×` catch-up rate. The gate remains unchanged and no `0.32.0` browser-performance pass is claimed. The `0.31.0` measurements below remain historical evidence and must not be relabeled as `0.32.0` proof.
 
 ## Product 0.31.0 Local Result
 

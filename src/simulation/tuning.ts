@@ -69,6 +69,13 @@ export const SIMULATION_TUNING = Object.freeze({
     maximumImpulse: 0.42,
     stumbleTicks: 24,
   }),
+  grapplingHook: Object.freeze({
+    range: 4.5,
+    minimumAnchorDistance: 1.25,
+    targetSpeed: 0.3,
+    acceleration: 0.24,
+    pullTicks: 12,
+  }),
   bomb: Object.freeze({
     fuseTicks: 300,
     blastRadius: 3,

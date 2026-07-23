@@ -34,6 +34,7 @@ const ACTION_LABELS = Object.freeze({
   ShoveActive: "밀치기",
   ShoveRecovery: "밀치기 회복",
   DodgeActive: "회피",
+  GrapplePull: "갈고리 이동",
   Stumbling: "휘청거림",
   Anchored: "고정",
   Falling: "낙하",
@@ -145,6 +146,8 @@ function getEventMessage(event: SimulationEventV1): string | undefined {
         : event.actorId === 1
           ? "비누 함정 발동!"
           : undefined;
+    case "grappling-hook-hit":
+      return event.actorId === 1 ? "갈고리가 걸렸어." : undefined;
     case "stat-point-earned":
       return event.actorId === 1 ? "처치 인정! 스탯 포인트를 얻었어." : undefined;
     case "stat-upgraded":
@@ -436,7 +439,8 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
           slot?.definitionId !== "brick-bag" &&
           slot?.definitionId !== "boat" &&
           slot?.definitionId !== "bomb" &&
-          slot?.definitionId !== "soap") ||
+          slot?.definitionId !== "soap" &&
+          slot?.definitionId !== "grappling-hook") ||
         slot.charges === null ||
         slot.charges < 1;
     }

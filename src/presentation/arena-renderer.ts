@@ -45,7 +45,8 @@ type VisualEffectKind =
   | "wind-blast-hit"
   | "bomb-detonated"
   | "soap-placed"
-  | "soap-triggered";
+  | "soap-triggered"
+  | "grappling-hook-hit";
 
 interface VisualEffect {
   readonly key: string;
@@ -69,6 +70,7 @@ const ACTION_COLORS: Readonly<Record<ParticipantActionKind, number>> = Object.fr
   ShoveActive: 0xff695c,
   ShoveRecovery: 0xc89f77,
   DodgeActive: 0x68d8d6,
+  GrapplePull: 0xffc857,
   Stumbling: 0xd58bea,
   Anchored: 0x9ca5a1,
   Falling: 0x727b78,
@@ -666,7 +668,8 @@ function isVisualEffectKind(kind: SimulationEventV1["kind"]): kind is VisualEffe
     kind === "wind-blast-hit" ||
     kind === "bomb-detonated" ||
     kind === "soap-placed" ||
-    kind === "soap-triggered"
+    kind === "soap-triggered" ||
+    kind === "grappling-hook-hit"
   );
 }
 
@@ -684,7 +687,32 @@ function drawWorldEffect(
   const expansion = reducedMotion ? 1 : 1 + progress * 1.8;
   const alpha = Math.max(0, 1 - progress);
 
-  if (effect.kind === "bomb-detonated") {
+  if (effect.kind === "grappling-hook-hit") {
+    const cableAlpha = alpha;
+    const anchorVector = effect.vector ?? { x: 0, y: 0 };
+    const anchor = projectArenaPoint(
+      { x: effect.position.x + anchorVector.x, y: effect.position.y + anchorVector.y },
+      projection,
+    );
+    const hookSize = Math.max(5, projection.tileWidth * 0.13);
+    graphics.moveTo(x, y).lineTo(anchor.x, anchor.y).stroke({
+      color: ITEM_COLORS["grappling-hook"],
+      width: 3,
+      alpha: cableAlpha,
+      cap: "round",
+    });
+    graphics
+      .circle(anchor.x, anchor.y, hookSize * 0.34)
+      .moveTo(anchor.x - hookSize, anchor.y - hookSize * 0.55)
+      .lineTo(anchor.x, anchor.y)
+      .lineTo(anchor.x + hookSize, anchor.y - hookSize * 0.55)
+      .stroke({
+        color: ITEM_COLORS["grappling-hook"],
+        width: 3,
+        alpha: cableAlpha,
+        cap: "round",
+      });
+  } else if (effect.kind === "bomb-detonated") {
     const explosionScale = reducedMotion ? 1 : 0.72 + progress * 0.28;
     const radiusX = projection.pitch * 3 * explosionScale;
     const radiusY = projection.depthPitch * 3 * explosionScale;
@@ -950,7 +978,8 @@ export async function createArenaRenderer(
       const appended = accepted.flatMap((event): readonly VisualEffect[] => {
         if (
           !isVisualEffectKind(event.kind) ||
-          (event.kind === "item-used" && event.itemDefinitionId === "soap")
+          (event.kind === "item-used" &&
+            (event.itemDefinitionId === "soap" || event.itemDefinitionId === "grappling-hook"))
         ) {
           return [];
         }
@@ -967,7 +996,7 @@ export async function createArenaRenderer(
             kind: event.kind,
             roundId: event.roundId,
             startTick: event.tick,
-            endTick: event.tick + durationTicks,
+            endTick: event.tick + (event.kind === "grappling-hook-hit" ? 10 : durationTicks),
             position,
             vector: event.vector,
             itemDefinitionId: event.itemDefinitionId,

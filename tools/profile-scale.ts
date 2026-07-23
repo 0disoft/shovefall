@@ -89,6 +89,8 @@ function profileParticipantCount(participantCount: number) {
   let totalSoapPatchSamples = 0;
   let soapTriggers = 0;
   let maximumSimultaneousSoapTriggers = 0;
+  let grapplingHookHits = 0;
+  let maximumSimultaneousGrapplingHookHits = 0;
   const heapBefore = process.memoryUsage().heapUsed;
   const profileStarted = performance.now();
 
@@ -108,6 +110,15 @@ function profileParticipantCount(participantCount: number) {
         },
         { actorId: 2, startingItems: ["bomb"] },
         { actorId: 3, startingItems: ["bomb"] },
+        {
+          actorId: 4,
+          position: {
+            x: Math.floor(arenaSize.columns / 2) + 0.5,
+            y: Math.floor(arenaSize.rows / 2) + 4.5,
+          },
+          facing: { x: 1, y: 0 },
+          startingItems: ["grappling-hook"],
+        },
       ],
     });
     const bots = new BotDirector(seed, 1, { difficulty: config.difficulty });
@@ -118,16 +129,28 @@ function profileParticipantCount(participantCount: number) {
       const botCommands = bots.createCommands(world.tick, frame);
       const simulationStarted = performance.now();
       const keepBombActorsNeutral = world.tick <= 12;
+      const keepGrapplingActorNeutral = world.tick <= 33;
       const result = world.step([
         createProfileHumanCommand(world.tick),
         ...botCommands.filter(
-          ({ actorId }) => !keepBombActorsNeutral || (actorId !== 2 && actorId !== 3),
+          ({ actorId }) =>
+            (!keepBombActorsNeutral || (actorId !== 2 && actorId !== 3)) &&
+            (!keepGrapplingActorNeutral || actorId !== 4),
         ),
         ...(keepBombActorsNeutral
           ? [2, 3].map((actorId) => ({
               ...createNeutralCommand(world.tick, actorId),
               useItemSlot: world.tick === 12 ? (0 as const) : null,
             }))
+          : []),
+        ...(keepGrapplingActorNeutral
+          ? [
+              {
+                ...createNeutralCommand(world.tick, 4),
+                move: { x: 1, y: 0 },
+                useItemSlot: world.tick === 20 || world.tick === 33 ? (0 as const) : null,
+              },
+            ]
           : []),
       ]);
       const stepFinished = performance.now();
@@ -156,6 +179,14 @@ function profileParticipantCount(participantCount: number) {
       maximumSimultaneousSoapTriggers = Math.max(
         maximumSimultaneousSoapTriggers,
         simultaneousSoapTriggers,
+      );
+      const simultaneousGrapplingHookHits = result.events.filter(
+        ({ kind }) => kind === "grappling-hook-hit",
+      ).length;
+      grapplingHookHits += simultaneousGrapplingHookHits;
+      maximumSimultaneousGrapplingHookHits = Math.max(
+        maximumSimultaneousGrapplingHookHits,
+        simultaneousGrapplingHookHits,
       );
       totalTicks += 1;
     }
@@ -192,6 +223,8 @@ function profileParticipantCount(participantCount: number) {
     meanSoapPatchesPerTick: Math.round((totalSoapPatchSamples / totalTicks) * 1_000) / 1_000,
     soapTriggers,
     maximumSimultaneousSoapTriggers,
+    grapplingHookHits,
+    maximumSimultaneousGrapplingHookHits,
     longStepsOver100Milliseconds: longSteps,
     heapDeltaBytes: heapAfter - heapBefore,
   });
@@ -206,7 +239,8 @@ const ok = profiles.every(
     profile.peakBrickWalls >= 1 &&
     profile.peakBombs >= 2 &&
     profile.maximumSimultaneousBombDetonations >= 2 &&
-    profile.peakSoapPatches >= 1,
+    profile.peakSoapPatches >= 1 &&
+    profile.grapplingHookHits >= 1,
 );
 
 process.stdout.write(
@@ -219,7 +253,7 @@ process.stdout.write(
       profiles,
       limitations: [
         "This measures hard-difficulty headless AI plus simulation on the current workstation, not browser rendering.",
-        "Each round gives actors 2 and 3 Bomb, keeps them neutral through tick 12, and forces both placements and detonations on the same ticks while actor 1 exercises Brick Bag and Soap.",
+        "Each round gives actors 2 and 3 Bomb, keeps them neutral through tick 12, and forces both placements and detonations on the same ticks while actor 1 exercises Brick Bag and Soap and actor 4 attempts both Grappling Hook charges.",
         "Heap deltas are observational because the harness does not force garbage collection.",
       ],
     },

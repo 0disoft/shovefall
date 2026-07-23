@@ -9,6 +9,12 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.32.0",
+    title: "날아가기 전에 붙잡기",
+    reason: "밀려나는 순간에도 지형을 읽고 버틸 마지막 선택지가 필요했어.",
+    change: "구조 갈고리를 두 번 쓸 수 있어. 바라본 땅이나 벽에 걸리면 잠깐 그 자리를 지켜.",
+  }),
+  Object.freeze({
     version: "0.31.0",
     title: "앞 칸에 미끄러운 한 수",
     reason: "쫓고 밀치는 길목에 짧고 분명한 함정을 놓을 선택지가 필요했어.",
