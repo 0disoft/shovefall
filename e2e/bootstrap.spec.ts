@@ -309,6 +309,21 @@ test("offers a working touch joystick and action buttons on a narrow viewport", 
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
+  const versionHistoryButton = page.getByRole("button", { name: "버전 기록", exact: true });
+  await versionHistoryButton.click();
+  const mobileHistoryLayout = await page.locator("#version-history").evaluate((panel) => {
+    const firstCard = panel.querySelector("#version-history-list > li");
+    return {
+      cardWidth: firstCard?.getBoundingClientRect().width ?? 0,
+      documentWidth: document.documentElement.scrollWidth,
+      viewportWidth: document.documentElement.clientWidth,
+    };
+  });
+  expect(mobileHistoryLayout.documentWidth).toBeLessThanOrEqual(mobileHistoryLayout.viewportWidth);
+  expect(mobileHistoryLayout.cardWidth).toBeLessThanOrEqual(mobileHistoryLayout.viewportWidth);
+  await page.getByRole("button", { name: "메뉴로", exact: true }).click();
+  await expect(page.locator("#app")).toHaveAttribute("data-screen", "menu");
+  await expect(versionHistoryButton).toBeFocused();
   await startGame(page);
   await expect(page.locator("#app")).toHaveAttribute("data-round", "active");
 
