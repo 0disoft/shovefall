@@ -31,7 +31,8 @@ people, then publishing the exact candidate without burying combat telegraphs.
 - [x] Sharded deterministic `0.34.0` round, mass, item-grant, and collapse-pacing evidence with no sampled time-limit draws.
 - [x] Widened-island fixed-50 headless scale evidence at simulation p95 `6.823 ms` with no 100 ms step.
 - [ ] Uncontended production-Chrome performance evidence; preflight host CPU was too contended to produce an admissible `0.33.0` sample.
-- [x] Local aggregate validation, fourteen DEV Chrome paths, and thirteen production-artifact Chrome paths on `0.33.0`.
+- [x] Local aggregate validation and thirteen production-artifact Chrome paths on `0.34.0`.
+- [x] Exact-SHA hosted validation, tested-artifact Pages deployment, and cache-busted public 50-participant WebGL smoke on `0.34.0`.
 
 ## Gate 1: Human Gray-box Evidence
 
@@ -87,7 +88,7 @@ Exit conditions:
 - Screenshot, short gameplay capture, tool list, asset provenance, and development notes are ready
   in [05-submission-package.md](05-submission-package.md) for the contest post.
 
-Current status: `IN_PROGRESS`. Product `0.34.0` is the local candidate with sharded deterministic balance evidence; hosted CI, Pages, public-URL, browser-performance, physical-browser, final-capture, and human evidence still belong to the exact commit produced after local aggregate validation. Product `0.33.0` SHA `732f95f3a777220d0410612a2fb95840a8e7e721` remains the newest accepted hosted and public proof until then.
+Current status: `IN_PROGRESS`. Product `0.34.0` SHA `bd34d78fe9f80dd091c1df1725cfa07d88ab4860` is the newest accepted hosted, Pages, and public functional candidate with sharded deterministic balance evidence. Uncontended browser performance, named physical-browser coverage, final captures, and human-play evidence remain open.
 
 ## Deferred Beyond the Submission
 

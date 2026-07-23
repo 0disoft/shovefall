@@ -1,8 +1,8 @@
 # Static Release Procedure
 
-- Status: `0.33.0` exact-SHA CI, Pages, and public functional proof accepted; round audit, browser performance, and human evidence pending
+- Status: `0.34.0` exact-SHA CI, Pages, public functional proof, and deterministic audits accepted; browser performance and human evidence pending
 - Primary owner: Repository owner
-- Current product version: `0.33.0`
+- Current product version: `0.34.0`
 - Validation source: [../../VALIDATION.md](../../VALIDATION.md)
 - Submission package: [../product/05-submission-package.md](../product/05-submission-package.md)
 - Asset ledger: [../assets/README.md](../assets/README.md)
@@ -37,7 +37,9 @@ Product `0.32.1` removes the developer telemetry markup from static public HTML 
 
 Product `0.33.0` and simulation `16.0.0` widen the public island to 48×40, require exactly eight separated 6–10-tile lakes under a 72-tile total budget, and preserve a connected 20% collapse floor. Item placement now selects edge, near-edge, or interior at a topology-independent 3:2:1 ratio before choosing a tile. Content remains `9.0.0`, replay remains v2, and reports remain v4. The local suite passes 170 tests, fourteen DEV Chrome paths, and thirteen production-artifact Chrome paths. The fixed-50 headless profile passes at simulation p95 `6.823 ms`, no 100 ms step, and `1.73×` real time. [CI run 30043768628](https://github.com/0disoft/shovefall/actions/runs/30043768628) validated, uploaded, and deployed exact implementation SHA `732f95f3a777220d0410612a2fb95840a8e7e721`; `Validate` completed in 3 minutes 49 seconds and the dependent Pages job in 10 seconds. A fresh cache-busted public session confirmed `v0.33.0`, the widened-island version record, a running 50-participant WebGL arena, zero developer-panel nodes, and no browser warnings or errors. The full round audit exceeded its configured 300-second limit without a result. A fresh CPU preflight observed `67.6%` average and `96.4%` maximum host CPU, so no `0.33.0` browser-performance claim was attempted.
 
-The deployed `0.33.0` implementation replaces `0.32.0` as the newest exact-SHA hosted, Pages, and public functional proof. Contest-release promotion still requires a completed round audit, an uncontended production-browser profile, and human playtest. Active-item bot balance remains pending; deterministic scenario tests prove rules, not human balance.
+Product `0.34.0`, simulation `17.0.0`, and content `10.0.0` add protected-core pressure and narrow mass/item extremes while retaining replay v2 and report v4. The local suite passes 173 tests, thirteen production-artifact Chrome paths, and the sharded production, mass, selectable-item, and collapse-speed audits. [CI run 30052278919](https://github.com/0disoft/shovefall/actions/runs/30052278919) validated, uploaded, and deployed exact SHA `bd34d78fe9f80dd091c1df1725cfa07d88ab4860`; all thirteen hosted production Chrome paths and the dependent Pages deployment succeeded. A fresh cache-busted public session confirmed `v0.34.0`, an active 50-participant Hard-AI WebGL arena, changing survivor state, and no browser warnings or errors.
+
+The deployed `0.34.0` implementation is the newest exact-SHA hosted, Pages, and public functional proof. Contest-release promotion still requires an uncontended production-browser profile and human playtest. Active-item bot use and human balance remain pending; deterministic scenario tests prove rules, not human balance.
 
 ## Release Types
 
