@@ -218,6 +218,11 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await expect(page.locator("#app")).toHaveAttribute("data-round", "active");
   await expect(page.getByText("시작!", { exact: true })).toBeVisible();
   await expect(page.locator("#game-telemetry")).toHaveAttribute("data-action", "Ready");
+  await page.keyboard.press("Space");
+  await expect(page.locator("#game-telemetry")).toHaveAttribute(
+    "data-action",
+    /ShoveWindup|ShoveActive|ShoveRecovery|Stumbling/u,
+  );
   await expect
     .poll(async () => Number(await page.locator("#game-telemetry").getAttribute("data-tick")))
     .toBeGreaterThan(0);
@@ -265,12 +270,6 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await expect
     .poll(() => page.locator("#position-value").textContent())
     .not.toBe(pointerPositionBefore);
-
-  await page.keyboard.press("Space");
-  await expect(page.locator("#game-telemetry")).toHaveAttribute(
-    "data-action",
-    /ShoveWindup|ShoveActive|ShoveRecovery|Stumbling/u,
-  );
 
   const soundButton = page.getByRole("button", { name: "소리 끄기" });
   await soundButton.click();
