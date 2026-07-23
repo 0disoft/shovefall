@@ -125,11 +125,13 @@ function getSpawnCandidates(
   tiles: readonly TileState[],
   participants: readonly ParticipantState[],
   items: readonly ItemState[],
+  blockedTileIds: ReadonlySet<string>,
 ): readonly ItemSpawnCandidate[] {
   const stableTiles = getStableTiles(tiles);
   const stableTileIds = new Set(stableTiles.map(({ tileId }) => tileId));
 
   return stableTiles
+    .filter(({ tileId }) => !blockedTileIds.has(tileId))
     .map(getTileCenter)
     .filter((position) =>
       participants.every((participant) =>
@@ -179,8 +181,12 @@ function spawnOne(
   participants: readonly ParticipantState[],
   tick: Tick,
   random: XorShift32,
+  blockedTileIds: ReadonlySet<string> = new Set(),
 ): { state: ItemSystemState; fact?: ItemEventFact } {
-  const position = chooseCandidate(getSpawnCandidates(tiles, participants, state.items), random);
+  const position = chooseCandidate(
+    getSpawnCandidates(tiles, participants, state.items, blockedTileIds),
+    random,
+  );
 
   if (position === undefined) {
     return { state };
@@ -557,6 +563,7 @@ export function advanceItemSpawns(
   tick: Tick,
   random: XorShift32,
   arenaChanged: boolean,
+  blockedTileIds: ReadonlySet<string> = new Set(),
 ): ItemSpawnResult {
   const spawnDue = state.nextSpawnTick !== null && tick >= state.nextSpawnTick;
 
@@ -604,7 +611,7 @@ export function advanceItemSpawns(
   });
 
   if (nextState.items.length < cap) {
-    const spawned = spawnOne(nextState, tiles, participants, tick, random);
+    const spawned = spawnOne(nextState, tiles, participants, tick, random, blockedTileIds);
     nextState = spawned.state;
 
     if (spawned.fact !== undefined) {

@@ -28,6 +28,10 @@ The current tuning uses six shove-windup ticks, five hand-active ticks, fifteen 
 
 A tile has an integer grid location, stable `column:row` ID, and a `Stable`, `Warning`, `Collapsing`, or `Void` lifecycle. The private collapse plan orders outer layers before inner layers and shuffles only within a layer through the named collapse stream. Future plan data is not exposed in `RenderFrameV1`. Stable, warning, and collapsing tiles support a participant; void tiles do not. Support is decided at the participant center after collision and impulse resolution, followed by an integer grace window.
 
+## Brick Wall
+
+A brick wall owns its tile ID, integer location, placing actor, and placement tick. At most one wall can occupy a tile. Successful proposals are committed in actor-ID order before active-item rays, so command-array order and attacker IDs cannot change same-tick shielding. A wall occupies its entire tile as a static axis-aligned obstacle. Participant circles use swept point-versus-radius-expanded bounds before broad phase and an overlap-only projection after weak body contacts. Wind Blast and hand shove use unexpanded wall ray bounds, with exact corner contact and distance ties favoring the wall. A wall is removed only when its tile becomes `Void`; the `tile-void` event precedes `brick-wall-removed` in that tick.
+
 ## Round Result
 
 `RoundStateV1` is `Active` or `Completed`. A completed result records exactly one of `last-standing`, `no-survivors`, or `time-limit`, an optional winner, and the completion tick. The world becomes sealed after completion and rejects additional steps. Falling is already irreversible, so one grounded participant may win while the others are still completing their fall animation. A hard time limit with multiple standing participants does not invent a winner.
@@ -67,6 +71,8 @@ Product `0.25.0` keeps simulation `8.0.0` and content `4.0.0`. `VERSION_HISTORY`
 Product `0.26.0`, simulation `9.0.0`, and content `5.0.0` raise authoritative participant and arena bounds to 50 and 48, add the 44×36 public-island policy with five bounded lake attempts, expand the registered starting-item catalog, force the browser to 50 Hard-AI participants, and replace categorical starting mass with the deterministic 50–100 weight input. Counts below 50 remain valid only for fixtures and focused diagnostics. Replay fixtures advance their version envelope; existing sub-40 deterministic hashes remain unchanged because the new lake branch begins at 40 participants.
 
 Product `0.27.0` and simulation `10.0.0` add the `active-items` system stage, two deterministic inventory-slot command edges, Wind Blast first-hit ray targeting, launch-speed weak-contact transfer, and strength-based offensive-credit arbitration. Replay format v2 makes human base mass and starting loadout required setup so charged item commands reproduce honestly. Content remains `5.0.0` because the registered item definition and charge count do not change.
+
+Product `0.28.0` and simulation `11.0.0` add deterministic Brick Bag proposals, hashed static-wall state, swept wall contacts, post-body overlap projection, attack line-of-sight blocking, Void-tile removal, and participant/wall depth sorting. Content remains `5.0.0` and replay remains v2 because Brick Bag's registered definition and the existing slot command wire format do not change.
 
 ## Version Ownership
 

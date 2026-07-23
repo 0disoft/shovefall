@@ -56,8 +56,8 @@ physical-device support, cross-browser behavior, hosted CI, or deployment. Human
 ## Current State
 
 The gray-box game, fixed 50-participant Hard-AI mode, selectable collapse speed, three map items,
-nine starting-item definitions, the first active item (Wind Blast), procedural feedback, local
-production smoke, balance screens, and 50-participant performance profiles are implemented. The
-other five active mechanics, bot active-item policy and balance evidence, human playtest evidence,
+nine starting-item definitions, Wind Blast, Brick Bag, procedural feedback, local production smoke,
+balance screens, and 50-participant performance profiles are implemented. The other four active
+mechanics, bot active-item policy and balance evidence, human playtest evidence,
 approved asset inventory, named device/browser coverage, refreshed exact-SHA hosted checks, and the
 final HTTPS candidate remain open release work.

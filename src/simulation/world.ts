@@ -1,9 +1,11 @@
 import {
+  createTileId,
   createNeutralCommand,
   normalizeActorCommand,
   type ActionState,
   type ActorCommandV1,
   type ActorId,
+  type BrickWallState,
   type GameConfigV1,
   type ItemDefinitionId,
   type ItemId,
@@ -24,6 +26,7 @@ import { hashWorldState } from "./hash";
 import {
   addVectors,
   assertFiniteNumber,
+  clamp,
   clampVectorLength,
   dotVectors,
   isZeroVector,
@@ -129,10 +132,26 @@ interface SweptCircleContact {
   readonly rightPosition: Vector2;
 }
 
+interface AxisAlignedBounds {
+  readonly minimumX: number;
+  readonly maximumX: number;
+  readonly minimumY: number;
+  readonly maximumY: number;
+}
+
+interface SweptWallContact {
+  readonly time: number;
+  readonly normal: Vector2;
+  readonly position: Vector2;
+  readonly wall: BrickWallState;
+}
+
 interface RequestedActionResult {
   readonly participants: readonly ParticipantState[];
   readonly activeItemSlots: ReadonlyMap<ActorId, InventorySlotIndex>;
 }
+
+const WALL_CONTACT_EPSILON = 1e-9;
 
 interface OffensiveCreditCandidate {
   readonly attackerActorId: ActorId;
@@ -223,6 +242,140 @@ function getRayCircleEntryDistance(
   const entryDistance = Math.max(0, projection - halfChord);
 
   return exitDistance >= 0 && entryDistance <= maximumDistance ? entryDistance : undefined;
+}
+
+function getDominantCardinalOffset(direction: Vector2): Vector2 {
+  if (Math.abs(direction.x) >= Math.abs(direction.y)) {
+    return Object.freeze({ x: direction.x < 0 ? -1 : 1, y: 0 });
+  }
+
+  return Object.freeze({ x: 0, y: direction.y < 0 ? -1 : 1 });
+}
+
+function getTileBounds(column: number, row: number, expansion = 0): AxisAlignedBounds {
+  return Object.freeze({
+    minimumX: column - expansion,
+    maximumX: column + 1 + expansion,
+    minimumY: row - expansion,
+    maximumY: row + 1 + expansion,
+  });
+}
+
+function circleIntersectsTile(
+  position: Vector2,
+  radius: number,
+  column: number,
+  row: number,
+): boolean {
+  const closestX = Math.max(column, Math.min(column + 1, position.x));
+  const closestY = Math.max(row, Math.min(row + 1, position.y));
+  const deltaX = position.x - closestX;
+  const deltaY = position.y - closestY;
+  return deltaX * deltaX + deltaY * deltaY < radius * radius;
+}
+
+function findSweptPointBoundsContact(
+  start: Vector2,
+  end: Vector2,
+  bounds: AxisAlignedBounds,
+): { readonly time: number; readonly normal: Vector2; readonly position: Vector2 } | undefined {
+  const motion = subtractVectors(end, start);
+  const inside =
+    start.x >= bounds.minimumX &&
+    start.x <= bounds.maximumX &&
+    start.y >= bounds.minimumY &&
+    start.y <= bounds.maximumY;
+
+  if (inside) {
+    const candidates = [
+      {
+        distance: start.x - bounds.minimumX,
+        normal: Object.freeze({ x: -1, y: 0 }),
+        position: Object.freeze({ x: bounds.minimumX, y: start.y }),
+      },
+      {
+        distance: bounds.maximumX - start.x,
+        normal: Object.freeze({ x: 1, y: 0 }),
+        position: Object.freeze({ x: bounds.maximumX, y: start.y }),
+      },
+      {
+        distance: start.y - bounds.minimumY,
+        normal: Object.freeze({ x: 0, y: -1 }),
+        position: Object.freeze({ x: start.x, y: bounds.minimumY }),
+      },
+      {
+        distance: bounds.maximumY - start.y,
+        normal: Object.freeze({ x: 0, y: 1 }),
+        position: Object.freeze({ x: start.x, y: bounds.maximumY }),
+      },
+    ].toSorted((left, right) => left.distance - right.distance);
+    const candidate = candidates[0] ?? {
+      normal: Object.freeze({ x: -1, y: 0 }),
+      position: Object.freeze({ x: bounds.minimumX, y: start.y }),
+    };
+    return Object.freeze({ time: 0, normal: candidate.normal, position: candidate.position });
+  }
+
+  let entryTime = 0;
+  let exitTime = 1;
+  let entryNormal: Vector2 = ZERO_VECTOR;
+
+  for (const axis of ["x", "y"] as const) {
+    const startValue = start[axis];
+    const motionValue = motion[axis];
+    const minimum = axis === "x" ? bounds.minimumX : bounds.minimumY;
+    const maximum = axis === "x" ? bounds.maximumX : bounds.maximumY;
+
+    if (motionValue === 0) {
+      if (startValue < minimum || startValue > maximum) {
+        return undefined;
+      }
+      continue;
+    }
+
+    const first = (minimum - startValue) / motionValue;
+    const second = (maximum - startValue) / motionValue;
+    const near = Math.min(first, second);
+    const far = Math.max(first, second);
+
+    if (near > entryTime) {
+      entryTime = near;
+      entryNormal =
+        axis === "x"
+          ? Object.freeze({ x: motionValue > 0 ? -1 : 1, y: 0 })
+          : Object.freeze({ x: 0, y: motionValue > 0 ? -1 : 1 });
+    }
+
+    exitTime = Math.min(exitTime, far);
+
+    if (entryTime > exitTime + WALL_CONTACT_EPSILON) {
+      return undefined;
+    }
+  }
+
+  return entryTime >= -WALL_CONTACT_EPSILON &&
+    entryTime <= 1 + WALL_CONTACT_EPSILON &&
+    !isZeroVector(entryNormal)
+    ? Object.freeze({
+        time: clamp(entryTime, 0, 1),
+        normal: entryNormal,
+        position: addVectors(start, scaleVector(motion, clamp(entryTime, 0, 1))),
+      })
+    : undefined;
+}
+
+function getRayTileEntryDistance(
+  origin: Vector2,
+  direction: Vector2,
+  maximumDistance: number,
+  wall: BrickWallState,
+): number | undefined {
+  const contact = findSweptPointBoundsContact(
+    origin,
+    addVectors(origin, scaleVector(direction, maximumDistance)),
+    getTileBounds(wall.column, wall.row),
+  );
+  return contact === undefined ? undefined : contact.time * maximumDistance;
 }
 
 function validateOverride(override: ParticipantSpawnOverride, participantCount: number): void {
@@ -396,6 +549,7 @@ export class SimulationWorld {
   readonly #tieBreakRandom;
   #tiles: readonly TileState[];
   #participants: readonly ParticipantState[];
+  #brickWalls: readonly BrickWallState[] = Object.freeze([]);
   #itemState: ItemSystemState;
   #round: RoundStateV1 = Object.freeze({
     status: "Active",
@@ -508,6 +662,7 @@ export class SimulationWorld {
     );
     participants = this.#applyMovementIntent(participants, commandsByActor);
     participants = this.#integratePositions(participants);
+    participants = this.#resolveBrickWallContacts(participants);
     const collidableParticipants = participants.filter(isCollidable).map((participant) =>
       Object.freeze({
         actorId: participant.actorId,
@@ -520,6 +675,7 @@ export class SimulationWorld {
     );
     const candidatePairs = spatialHash.getCandidatePairs();
     participants = this.#resolveWeakContacts(participants, candidatePairs);
+    participants = this.#resolveBrickWallContacts(participants, false);
     participants = this.#resolveShoves(participants, candidatePairs, events);
     participants = this.#resolveSupport(participants, events);
     const pickupResult = resolveItemPickups(
@@ -542,6 +698,7 @@ export class SimulationWorld {
       this.#tick,
       this.#itemRandom,
       arenaChanged,
+      new Set(this.#brickWalls.map(({ tileId }) => tileId)),
     );
     this.#itemState = spawnResult.state;
     this.#emitItemFacts(spawnResult.facts, events);
@@ -565,6 +722,7 @@ export class SimulationWorld {
       tick: this.#tick,
       participants: this.#participants,
       items: this.#itemState.items,
+      brickWalls: this.#brickWalls,
       nextItemId: this.#itemState.nextItemId,
       nextItemSpawnTick: this.#itemState.nextSpawnTick,
       tiles: this.#tiles,
@@ -601,6 +759,7 @@ export class SimulationWorld {
           ),
       ),
       items: this.#itemState.items,
+      brickWalls: this.#brickWalls,
       tiles: this.#tiles,
       round: this.#round,
     });
@@ -816,7 +975,12 @@ export class SimulationWorld {
           (candidate) => candidate.slotIndex === command.useItemSlot,
         );
 
-        if (slot?.definitionId === "wind-blast" && slot.charges !== null && slot.charges > 0) {
+        const canActivate =
+          slot?.definitionId === "wind-blast" ||
+          (slot?.definitionId === "brick-bag" &&
+            this.#getBrickPlacement(participant, participants, [], direction) !== undefined);
+
+        if (canActivate && slot.charges !== null && slot.charges > 0) {
           activeItemSlots.set(participant.actorId, command.useItemSlot);
           return Object.freeze({
             ...participant,
@@ -886,11 +1050,70 @@ export class SimulationWorld {
       ActorId,
       { readonly attackerActorId: ActorId; readonly strength: number }
     >();
+    const placedWalls: BrickWallState[] = [];
+
+    for (const attacker of ordered) {
+      const slotIndex = activeItemSlots.get(attacker.actorId);
+      const slot =
+        slotIndex === undefined
+          ? undefined
+          : attacker.inventory.find((candidate) => candidate.slotIndex === slotIndex);
+
+      if (
+        slotIndex === undefined ||
+        slot?.definitionId !== "brick-bag" ||
+        !isCollidable(attacker)
+      ) {
+        continue;
+      }
+
+      const wall = this.#getBrickPlacement(attacker, ordered, placedWalls);
+
+      if (wall === undefined) {
+        continue;
+      }
+
+      const consumed = consumeInventoryCharge(attacker, slotIndex);
+
+      if (consumed === undefined) {
+        continue;
+      }
+
+      updatedById.set(attacker.actorId, consumed);
+      placedWalls.push(wall);
+      events.push(
+        this.#createEvent("item-used", {
+          actorId: attacker.actorId,
+          itemDefinitionId: "brick-bag",
+          tileId: wall.tileId,
+          vector: attacker.body.facing,
+        }),
+        this.#createEvent("brick-wall-placed", {
+          actorId: attacker.actorId,
+          itemDefinitionId: "brick-bag",
+          tileId: wall.tileId,
+        }),
+      );
+    }
+
+    if (placedWalls.length > 0) {
+      this.#brickWalls = Object.freeze(
+        [...this.#brickWalls, ...placedWalls].toSorted((left, right) =>
+          left.tileId.localeCompare(right.tileId),
+        ),
+      );
+    }
 
     for (const attacker of ordered) {
       const slotIndex = activeItemSlots.get(attacker.actorId);
 
       if (slotIndex === undefined || !isCollidable(attacker)) {
+        continue;
+      }
+
+      const slot = attacker.inventory.find((candidate) => candidate.slotIndex === slotIndex);
+
+      if (slot?.definitionId !== "wind-blast") {
         continue;
       }
 
@@ -909,7 +1132,7 @@ export class SimulationWorld {
           vector: direction,
         }),
       );
-      const target = ordered
+      const targetHit = ordered
         .filter((candidate) => candidate.actorId !== attacker.actorId && isCollidable(candidate))
         .map((candidate) =>
           Object.freeze({
@@ -931,7 +1154,23 @@ export class SimulationWorld {
           (left, right) =>
             left.entryDistance - right.entryDistance ||
             left.candidate.actorId - right.candidate.actorId,
-        )[0]?.candidate;
+        )[0];
+      const nearestWallDistance = this.#brickWalls
+        .map((wall) =>
+          getRayTileEntryDistance(
+            attacker.body.position,
+            direction,
+            SIMULATION_TUNING.windBlast.range,
+            wall,
+          ),
+        )
+        .filter((distance): distance is number => distance !== undefined)
+        .toSorted((left, right) => left - right)[0];
+      const target =
+        targetHit !== undefined &&
+        (nearestWallDistance === undefined || targetHit.entryDistance < nearestWallDistance)
+          ? targetHit.candidate
+          : undefined;
 
       if (target === undefined) {
         continue;
@@ -1007,6 +1246,44 @@ export class SimulationWorld {
         ),
         shoveCredit: chooseOffensiveCredit(current.shoveCredit, credit, this.#tick),
       });
+    });
+  }
+
+  #getBrickPlacement(
+    participant: ParticipantState,
+    participants: readonly ParticipantState[],
+    pendingWalls: readonly BrickWallState[] = [],
+    direction: Vector2 = participant.body.facing,
+  ): BrickWallState | undefined {
+    const offset = getDominantCardinalOffset(direction);
+    const column = Math.floor(participant.body.position.x) + offset.x;
+    const row = Math.floor(participant.body.position.y) + offset.y;
+    const tileId = createTileId(column, row);
+    const tile = this.#tiles.find((candidate) => candidate.tileId === tileId);
+
+    if (
+      tile === undefined ||
+      tile.state === "Void" ||
+      [...this.#brickWalls, ...pendingWalls].some((wall) => wall.tileId === tileId) ||
+      this.#itemState.items.some(
+        (item) => Math.floor(item.position.x) === column && Math.floor(item.position.y) === row,
+      ) ||
+      participants.some(
+        (candidate) =>
+          isCollidable(candidate) &&
+          circleIntersectsTile(candidate.body.position, candidate.body.radius, column, row),
+      )
+    ) {
+      return undefined;
+    }
+
+    return Object.freeze({
+      definitionId: "brick-wall",
+      tileId,
+      column,
+      row,
+      ownerActorId: participant.actorId,
+      placedTick: this.#tick,
     });
   }
 
@@ -1140,6 +1417,68 @@ export class SimulationWorld {
       return Object.freeze({
         ...participant,
         body: Object.freeze({ ...participant.body, position }),
+      });
+    });
+  }
+
+  #resolveBrickWallContacts(
+    participants: readonly ParticipantState[],
+    sweepFromPreviousPosition = true,
+  ): readonly ParticipantState[] {
+    if (this.#brickWalls.length === 0) {
+      return participants;
+    }
+
+    return participants.map((participant) => {
+      if (!isCollidable(participant)) {
+        return participant;
+      }
+
+      let segmentStart = sweepFromPreviousPosition
+        ? participant.body.previousPosition
+        : participant.body.position;
+      let segmentEnd = participant.body.position;
+      let velocity = participant.body.velocity;
+      let remainingTime = sweepFromPreviousPosition ? 1 : 0;
+
+      for (let iteration = 0; iteration < this.#brickWalls.length; iteration += 1) {
+        const contact = this.#brickWalls
+          .map((wall): SweptWallContact | undefined => {
+            const candidate = findSweptPointBoundsContact(
+              segmentStart,
+              segmentEnd,
+              getTileBounds(wall.column, wall.row, participant.body.radius),
+            );
+            return candidate === undefined ? undefined : Object.freeze({ ...candidate, wall });
+          })
+          .filter((candidate): candidate is SweptWallContact => candidate !== undefined)
+          .toSorted(
+            (left, right) =>
+              left.time - right.time || left.wall.tileId.localeCompare(right.wall.tileId),
+          )[0];
+
+        if (contact === undefined) {
+          break;
+        }
+
+        const normalSpeed = dotVectors(velocity, contact.normal);
+
+        if (normalSpeed < 0) {
+          velocity = subtractVectors(velocity, scaleVector(contact.normal, normalSpeed));
+        }
+
+        remainingTime *= 1 - contact.time;
+        segmentStart = addVectors(contact.position, scaleVector(contact.normal, 0.000_1));
+        segmentEnd = addVectors(segmentStart, scaleVector(velocity, remainingTime));
+      }
+
+      return Object.freeze({
+        ...participant,
+        body: Object.freeze({
+          ...participant.body,
+          position: segmentEnd,
+          velocity,
+        }),
       });
     });
   }
@@ -1337,6 +1676,20 @@ export class SimulationWorld {
           distance > maximumContactDistance ||
           dotVectors(direction, normal) < SIMULATION_TUNING.shove.coneCosine
         ) {
+          continue;
+        }
+
+        const blockedByWall = this.#brickWalls.some((wall) => {
+          const wallDistance = getRayTileEntryDistance(
+            attacker.body.position,
+            normal,
+            distance,
+            wall,
+          );
+          return wallDistance !== undefined && wallDistance <= distance;
+        });
+
+        if (blockedByWall) {
           continue;
         }
 
@@ -1578,6 +1931,27 @@ export class SimulationWorld {
             ? "tile-collapsing"
             : "tile-void";
       events.push(this.#createEvent(kind, { tileId: transition.tileId }));
+    }
+
+    const voidTileIds = new Set(
+      result.transitions.filter(({ to }) => to === "Void").map(({ tileId }) => tileId),
+    );
+
+    if (voidTileIds.size > 0) {
+      const removedWalls = this.#brickWalls.filter(({ tileId }) => voidTileIds.has(tileId));
+      this.#brickWalls = Object.freeze(
+        this.#brickWalls.filter(({ tileId }) => !voidTileIds.has(tileId)),
+      );
+
+      for (const wall of removedWalls) {
+        events.push(
+          this.#createEvent("brick-wall-removed", {
+            actorId: wall.ownerActorId,
+            itemDefinitionId: "brick-bag",
+            tileId: wall.tileId,
+          }),
+        );
+      }
     }
 
     return result.transitions.length > 0;

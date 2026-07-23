@@ -9,6 +9,13 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.28.0",
+    title: "내 앞에 벽 하나",
+    reason: "장풍과 밀치기를 피하기만 하지 말고, 위험한 자리에서 잠깐 숨을 곳도 만들고 싶었어.",
+    change:
+      "벽돌 가방으로 앞 칸에 벽을 네 번 세울 수 있어. 벽은 공격과 충돌을 막지만 땅이 잠기면 같이 사라져.",
+  }),
+  Object.freeze({
     version: "0.27.0",
     title: "손이 안 닿아도 날려 보내기",
     reason: "커진 섬에서는 가까이 붙는 밀치기만으로 빈틈을 뒤집기 어려웠어.",

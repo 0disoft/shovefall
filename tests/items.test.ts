@@ -342,6 +342,292 @@ describe("deterministic item effects", () => {
     });
   });
 
+  it("places a Brick Bag wall on the faced cardinal tile and spends one charge", () => {
+    const world = new SimulationWorld(createItemConfig(), "brick-placement", {
+      arenaLayout: "rectangular-fixture",
+      participantOverrides: [
+        {
+          actorId: 1,
+          position: { x: 4.5, y: 4.5 },
+          facing: { x: 1, y: 0 },
+          startingItems: ["brick-bag"],
+        },
+        ...PARTICIPANT_OVERRIDES.slice(1),
+      ],
+    });
+    const result = world.step([{ ...createNeutralCommand(world.tick, 1), useItemSlot: 0 }]);
+
+    expect(result.frame.brickWalls).toEqual([
+      expect.objectContaining({ tileId: "5:4", ownerActorId: 1, placedTick: 0 }),
+    ]);
+    expect(getActor(world, 1).inventory[0]?.charges).toBe(3);
+    expect(result.events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: "item-used",
+          actorId: 1,
+          itemDefinitionId: "brick-bag",
+          tileId: "5:4",
+        }),
+        expect.objectContaining({ kind: "brick-wall-placed", actorId: 1, tileId: "5:4" }),
+      ]),
+    );
+  });
+
+  it("does not spend Brick Bag charges when the target tile is invalid or occupied", () => {
+    const outOfBounds = new SimulationWorld(createItemConfig(), "brick-out-of-bounds", {
+      arenaLayout: "rectangular-fixture",
+      participantOverrides: [
+        {
+          actorId: 1,
+          position: { x: 0.5, y: 4.5 },
+          facing: { x: -1, y: 0 },
+          startingItems: ["brick-bag"],
+        },
+        ...PARTICIPANT_OVERRIDES.slice(1),
+      ],
+    });
+    const invalidResult = outOfBounds.step([
+      {
+        ...createNeutralCommand(outOfBounds.tick, 1),
+        useItemSlot: 0,
+        shovePressed: true,
+      },
+    ]);
+
+    expect(invalidResult.frame.brickWalls).toHaveLength(0);
+    expect(getActor(outOfBounds, 1).inventory[0]?.charges).toBe(4);
+    expect(invalidResult.events).toContainEqual(
+      expect.objectContaining({ kind: "shove-started", actorId: 1 }),
+    );
+
+    const occupied = new SimulationWorld(createItemConfig(), "brick-occupied", {
+      arenaLayout: "rectangular-fixture",
+      participantOverrides: [
+        {
+          actorId: 1,
+          position: { x: 4.5, y: 4.5 },
+          facing: { x: 1, y: 0 },
+          startingItems: ["brick-bag"],
+        },
+        { actorId: 2, position: { x: 5.5, y: 4.5 } },
+        ...PARTICIPANT_OVERRIDES.slice(2),
+      ],
+    });
+    const occupiedResult = occupied.step([
+      { ...createNeutralCommand(occupied.tick, 1), useItemSlot: 0 },
+    ]);
+
+    expect(occupiedResult.frame.brickWalls).toHaveLength(0);
+    expect(getActor(occupied, 1).inventory[0]?.charges).toBe(4);
+    expect(occupiedResult.events.some(({ kind }) => kind === "item-used")).toBe(false);
+  });
+
+  it("resolves competing Brick Bag placements by actor id, not command order", () => {
+    const run = (actorIds: readonly number[]) => {
+      const world = new SimulationWorld(createItemConfig(), "brick-placement-order", {
+        arenaLayout: "rectangular-fixture",
+        participantOverrides: [
+          {
+            actorId: 1,
+            position: { x: 4.5, y: 4.5 },
+            facing: { x: 1, y: 0 },
+            startingItems: ["brick-bag"],
+          },
+          {
+            actorId: 2,
+            position: { x: 6.5, y: 4.5 },
+            facing: { x: -1, y: 0 },
+            startingItems: ["brick-bag"],
+          },
+          { actorId: 3, position: { x: 7.5, y: 1.5 } },
+          { actorId: 4, position: { x: 1.5, y: 7.5 } },
+        ],
+      });
+      return world.step(
+        actorIds.map((actorId) => ({
+          ...createNeutralCommand(world.tick, actorId),
+          useItemSlot: 0 as const,
+        })),
+      );
+    };
+    const forward = run([1, 2]);
+    const reverse = run([2, 1]);
+
+    expect(reverse.frame.stateHash).toBe(forward.frame.stateHash);
+    expect(forward.frame.brickWalls).toEqual([
+      expect.objectContaining({ tileId: "5:4", ownerActorId: 1 }),
+    ]);
+    expect(
+      forward.events
+        .filter(({ kind }) => kind === "brick-wall-placed")
+        .map(({ actorId }) => actorId),
+    ).toEqual([1]);
+  });
+
+  it("commits same-tick Brick Bag walls before every Wind Blast", () => {
+    const run = (actorIds: readonly number[]) => {
+      const world = new SimulationWorld(createItemConfig(), "brick-before-wind", {
+        arenaLayout: "rectangular-fixture",
+        participantOverrides: [
+          {
+            actorId: 1,
+            position: { x: 2.5, y: 4.5 },
+            facing: { x: 1, y: 0 },
+            startingItems: ["wind-blast"],
+          },
+          { actorId: 2, position: { x: 7.5, y: 4.5 } },
+          {
+            actorId: 3,
+            position: { x: 4.5, y: 5.5 },
+            facing: { x: 0, y: -1 },
+            startingItems: ["brick-bag"],
+          },
+          { actorId: 4, position: { x: 1.5, y: 7.5 } },
+        ],
+      });
+      const result = world.step(
+        actorIds.map((actorId) => ({
+          ...createNeutralCommand(world.tick, actorId),
+          useItemSlot: 0 as const,
+        })),
+      );
+      return { world, result };
+    };
+    const forward = run([1, 3]);
+    const reverse = run([3, 1]);
+
+    expect(reverse.result.frame.stateHash).toBe(forward.result.frame.stateHash);
+    expect(forward.result.events.some(({ kind }) => kind === "wind-blast-hit")).toBe(false);
+    expect(forward.result.frame.brickWalls).toEqual([
+      expect.objectContaining({ tileId: "4:4", ownerActorId: 3 }),
+    ]);
+    expect(getActor(forward.world, 1).inventory[0]?.charges).toBe(1);
+    expect(getActor(forward.world, 3).inventory[0]?.charges).toBe(3);
+  });
+
+  it("stops launched actors at a Brick Bag wall without reflecting them", () => {
+    const world = new SimulationWorld(createItemConfig(), "brick-launch-stop", {
+      arenaLayout: "rectangular-fixture",
+      participantOverrides: [
+        {
+          actorId: 1,
+          position: { x: 1.5, y: 4.5 },
+          facing: { x: 1, y: 0 },
+          startingItems: ["wind-blast"],
+        },
+        { actorId: 2, position: { x: 3.2, y: 4.5 } },
+        {
+          actorId: 3,
+          position: { x: 4.5, y: 5.5 },
+          facing: { x: 0, y: -1 },
+          startingItems: ["brick-bag"],
+        },
+        { actorId: 4, position: { x: 7.5, y: 7.5 } },
+      ],
+    });
+    world.step([{ ...createNeutralCommand(world.tick, 3), useItemSlot: 0 }]);
+    world.step([{ ...createNeutralCommand(world.tick, 1), useItemSlot: 0 }]);
+
+    for (let tick = 0; tick < 20; tick += 1) {
+      world.step();
+    }
+
+    const stopped = getActor(world, 2);
+    expect(stopped.position.x).toBeLessThanOrEqual(4 - stopped.radius + 0.001);
+    expect(stopped.velocity.x).toBeGreaterThanOrEqual(-0.000_1);
+  });
+
+  it("blocks a hand shove whose center line clips a Brick Bag wall corner", () => {
+    const world = new SimulationWorld(createItemConfig(), "brick-hand-shove", {
+      arenaLayout: "rectangular-fixture",
+      gameplayTuning: { shoveReach: 0.5 },
+      participantOverrides: [
+        {
+          actorId: 1,
+          position: { x: 3.65, y: 4.35 },
+          facing: { x: 1, y: -1 },
+        },
+        { actorId: 2, position: { x: 4.35, y: 3.65 } },
+        {
+          actorId: 3,
+          position: { x: 4.5, y: 5.5 },
+          facing: { x: 0, y: -1 },
+          startingItems: ["brick-bag"],
+        },
+        { actorId: 4, position: { x: 7.5, y: 7.5 } },
+      ],
+    });
+    world.step([{ ...createNeutralCommand(world.tick, 3), useItemSlot: 0 }]);
+    beginShove(world, 1);
+    let hit = false;
+
+    for (let tick = 0; tick < 20; tick += 1) {
+      const result = world.step();
+      hit ||= result.events.some(
+        (event) => event.kind === "shove-hit" && event.actorId === 1 && event.targetActorId === 2,
+      );
+    }
+
+    expect(hit).toBe(false);
+  });
+
+  it("removes a Brick Bag wall after its tile becomes Void", () => {
+    const world = new SimulationWorld(
+      normalizeGameConfig({
+        participantCount: 4,
+        arenaColumns: 9,
+        arenaRows: 9,
+        roundLimitSeconds: 30,
+        collapseSpeed: "fast",
+        itemsEnabled: true,
+        initialItemCount: 0,
+        itemRespawnSeconds: 0,
+      }),
+      "brick-flood-removal",
+      {
+        arenaLayout: "rectangular-fixture",
+        participantOverrides: [
+          {
+            actorId: 1,
+            position: { x: 1.5, y: 1.5 },
+            facing: { x: 0, y: -1 },
+            startingItems: ["brick-bag"],
+          },
+          { actorId: 2, position: { x: 4.5, y: 4.5 } },
+          { actorId: 3, position: { x: 5.5, y: 4.5 } },
+          { actorId: 4, position: { x: 4.5, y: 5.5 } },
+        ],
+      },
+    );
+    const placement = world.step([{ ...createNeutralCommand(world.tick, 1), useItemSlot: 0 }]);
+    expect(placement.frame.brickWalls).toEqual([
+      expect.objectContaining({ tileId: "1:0", ownerActorId: 1 }),
+    ]);
+    let removal: ReturnType<SimulationWorld["step"]> | undefined;
+
+    while (world.tick < 1_500 && removal === undefined) {
+      const result = world.step();
+
+      if (result.events.some(({ kind }) => kind === "brick-wall-removed")) {
+        removal = result;
+      } else if (result.frame.round.status === "Completed") {
+        break;
+      }
+    }
+
+    expect(removal).toBeDefined();
+    const voidIndex = removal?.events.findIndex(
+      (event) => event.kind === "tile-void" && event.tileId === "1:0",
+    );
+    const removalIndex = removal?.events.findIndex(
+      (event) => event.kind === "brick-wall-removed" && event.tileId === "1:0",
+    );
+    expect(voidIndex).toBeGreaterThanOrEqual(0);
+    expect(removalIndex).toBeGreaterThan(voidIndex ?? -1);
+    expect(removal?.frame.brickWalls).toHaveLength(0);
+  });
+
   it("applies and refreshes timed mass effects within the global mass bounds", () => {
     const world = new SimulationWorld(createItemConfig(), "stacked-mass", {
       arenaLayout: "rectangular-fixture",

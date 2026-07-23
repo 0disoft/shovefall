@@ -1,5 +1,5 @@
-export const PRODUCT_VERSION = "0.27.0";
-export const SIMULATION_VERSION = "10.0.0";
+export const PRODUCT_VERSION = "0.28.0";
+export const SIMULATION_VERSION = "11.0.0";
 export const CONTENT_VERSION = "5.0.0";
 export const REPLAY_FORMAT_VERSION = 2;
 export const FIXED_TICKS_PER_SECOND = 60;
@@ -13,6 +13,7 @@ export const SYSTEM_ORDER = Object.freeze([
   "movement-intent",
   "active-displacement",
   "position-integration",
+  "brick-wall-contacts",
   "spatial-index",
   "contact-resolution",
   "shove-contact-collection",

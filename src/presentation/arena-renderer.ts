@@ -1,5 +1,7 @@
 import { Application, Graphics } from "pixi.js";
 import type {
+  BrickWallState,
+  ItemDefinitionId,
   ParticipantActionKind,
   RenderFrameV1,
   RenderItemV1,
@@ -48,6 +50,7 @@ interface VisualEffect {
   readonly endTick: number;
   readonly position: Vector2;
   readonly vector: Vector2 | undefined;
+  readonly itemDefinitionId: ItemDefinitionId | undefined;
 }
 
 const DEFAULT_RESOLUTION_CAP = 1.5;
@@ -312,6 +315,66 @@ function drawItem(graphics: Graphics, item: RenderItemV1, projection: ArenaProje
   }
 }
 
+function drawBrickWall(
+  graphics: Graphics,
+  wall: BrickWallState,
+  projection: ArenaProjection,
+): void {
+  const tileX = projection.originX + wall.column * projection.pitch;
+  const tileY = projection.originY + wall.row * projection.depthPitch;
+  const insetX = projection.tileWidth * 0.08;
+  const width = projection.tileWidth - insetX * 2;
+  const height = Math.max(12, projection.tileWidth * 0.42);
+  const capDepth = Math.max(4, projection.tileDepth * 0.28);
+  const frontBottom = tileY + projection.tileDepth * 0.78;
+  const frontTop = frontBottom - height;
+  const x = tileX + insetX;
+  const mortar = Math.max(1, projection.tileWidth * 0.025);
+
+  graphics
+    .ellipse(
+      tileX + projection.tileWidth / 2,
+      tileY + projection.tileDepth * 0.82,
+      width * 0.54,
+      Math.max(2, projection.tileDepth * 0.22),
+    )
+    .fill({ color: 0x050706, alpha: 0.42 });
+  graphics
+    .roundRect(x, frontTop, width, height, Math.max(2, projection.tileWidth * 0.05))
+    .fill({ color: 0x8f4f32 })
+    .stroke({ color: 0x3d2119, width: mortar * 1.4 });
+  graphics
+    .poly([
+      x,
+      frontTop,
+      x + insetX,
+      frontTop - capDepth,
+      x + width + insetX,
+      frontTop - capDepth,
+      x + width,
+      frontTop,
+    ])
+    .fill({ color: 0xc0784d })
+    .stroke({ color: 0x4b2a1d, width: mortar });
+
+  for (const ratio of [0.33, 0.66]) {
+    const seamY = frontTop + height * ratio;
+    graphics
+      .moveTo(x, seamY)
+      .lineTo(x + width, seamY)
+      .stroke({ color: 0x5c3023, width: mortar });
+  }
+
+  graphics
+    .moveTo(x + width * 0.5, frontTop)
+    .lineTo(x + width * 0.5, frontTop + height * 0.33)
+    .moveTo(x + width * 0.25, frontTop + height * 0.33)
+    .lineTo(x + width * 0.25, frontTop + height * 0.66)
+    .moveTo(x + width * 0.72, frontTop + height * 0.66)
+    .lineTo(x + width * 0.72, frontBottom)
+    .stroke({ color: 0x5c3023, width: mortar });
+}
+
 function drawParticipant(
   graphics: Graphics,
   participant: RenderParticipantV1,
@@ -510,6 +573,11 @@ function drawWorldEffect(
     graphics
       .circle(x, y, baseRadius * expansion * 1.35)
       .stroke({ color: ITEM_COLORS["wind-blast"], width: 4, alpha });
+  } else if (effect.kind === "item-used" && effect.itemDefinitionId === "brick-bag") {
+    const size = baseRadius * (reducedMotion ? 1 : 1 + progress * 0.6);
+    graphics
+      .roundRect(x - size, y - size, size * 2, size * 2, 2)
+      .stroke({ color: ITEM_COLORS["brick-bag"], width: 3, alpha });
   } else if (effect.kind === "item-used") {
     const direction = projectArenaVector(effect.vector ?? { x: 1, y: 0 });
     const length = baseRadius * (reducedMotion ? 2.2 : 2.2 + progress * 3.2);
@@ -649,26 +717,39 @@ export async function createArenaRenderer(
       drawItem(items, item, projection);
     }
 
-    const orderedParticipants = latestFrame.participants.toSorted((left, right) => {
-      const leftY =
-        left.previousPosition.y +
-        (left.position.y - left.previousPosition.y) * latestInterpolationAlpha;
-      const rightY =
-        right.previousPosition.y +
-        (right.position.y - right.previousPosition.y) * latestInterpolationAlpha;
-      return leftY === rightY ? left.actorId - right.actorId : leftY - rightY;
-    });
-
-    for (const participant of orderedParticipants) {
-      drawParticipant(
-        participants,
+    const depthEntries = [
+      ...latestFrame.participants.map((participant) => ({
+        kind: "participant" as const,
+        depth:
+          participant.previousPosition.y +
+          (participant.position.y - participant.previousPosition.y) * latestInterpolationAlpha,
+        sortKey: `participant:${participant.actorId.toString().padStart(4, "0")}`,
         participant,
-        latestHumanActorId,
-        projection,
-        latestInterpolationAlpha,
-        reducedMotion,
-        mayhem,
-      );
+      })),
+      ...latestFrame.brickWalls.map((wall) => ({
+        kind: "brick-wall" as const,
+        depth: wall.row + 0.72,
+        sortKey: `wall:${wall.tileId}`,
+        wall,
+      })),
+    ].toSorted(
+      (left, right) => left.depth - right.depth || left.sortKey.localeCompare(right.sortKey),
+    );
+
+    for (const entry of depthEntries) {
+      if (entry.kind === "brick-wall") {
+        drawBrickWall(participants, entry.wall, projection);
+      } else {
+        drawParticipant(
+          participants,
+          entry.participant,
+          latestHumanActorId,
+          projection,
+          latestInterpolationAlpha,
+          reducedMotion,
+          mayhem,
+        );
+      }
     }
 
     visualEffects = Object.freeze(
@@ -741,6 +822,7 @@ export async function createArenaRenderer(
             endTick: event.tick + durationTicks,
             position,
             vector: event.vector,
+            itemDefinitionId: event.itemDefinitionId,
           }),
         ];
       });

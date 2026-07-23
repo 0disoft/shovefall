@@ -85,6 +85,14 @@ const SOUND_DEFINITIONS: Partial<Record<SimulationEventKind, SoundDefinition>> =
     priority: 4,
     oscillatorType: "sawtooth",
   }),
+  "brick-wall-placed": Object.freeze({
+    frequency: 118,
+    endFrequency: 72,
+    durationSeconds: 0.09,
+    gain: 0.075,
+    priority: 2,
+    oscillatorType: "square",
+  }),
   "dodge-succeeded": Object.freeze({
     frequency: 420,
     endFrequency: 690,

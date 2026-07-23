@@ -150,6 +150,15 @@ export interface ItemState {
   readonly spawnedTick: Tick;
 }
 
+export interface BrickWallState {
+  readonly definitionId: "brick-wall";
+  readonly tileId: TileId;
+  readonly column: number;
+  readonly row: number;
+  readonly ownerActorId: ActorId;
+  readonly placedTick: Tick;
+}
+
 export interface TileState {
   readonly tileId: TileId;
   readonly column: number;
@@ -197,6 +206,7 @@ export interface RenderFrameV1 {
   readonly stateHash: string;
   readonly participants: readonly RenderParticipantV1[];
   readonly items: readonly RenderItemV1[];
+  readonly brickWalls: readonly BrickWallState[];
   readonly tiles: readonly TileState[];
   readonly round: RoundStateV1;
 }
@@ -212,6 +222,8 @@ export type SimulationEventKind =
   | "item-picked-up"
   | "item-used"
   | "wind-blast-hit"
+  | "brick-wall-placed"
+  | "brick-wall-removed"
   | "item-spawned"
   | "item-removed"
   | "eliminated"

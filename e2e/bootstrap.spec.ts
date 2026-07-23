@@ -147,6 +147,29 @@ async function startGame(page: Page): Promise<void> {
   await page.getByRole("button", { name: "게임 시작" }).click();
 }
 
+async function useBrickBagFromAvailableDirection(
+  page: Page,
+  directions: readonly string[] = ["ArrowUp", "ArrowRight", "ArrowDown", "ArrowLeft"],
+  index = 0,
+): Promise<void> {
+  const direction = directions[index];
+
+  if (direction === undefined) {
+    return;
+  }
+
+  await page.keyboard.down(direction);
+  await page.waitForTimeout(80);
+  await page.keyboard.up(direction);
+  await page.keyboard.press("KeyE");
+
+  if ((await page.locator("#use-item-slot-1").textContent())?.includes("3회") === true) {
+    return;
+  }
+
+  return useBrickBagFromAvailableDirection(page, directions, index + 1);
+}
+
 test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) => {
   test.slow();
   await installFixedRoundSeed(page, 1, 0);
@@ -167,9 +190,9 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await versionHistoryButton.click();
   await expect(page.locator("#app")).toHaveAttribute("data-screen", "history");
   await expect(page.getByRole("heading", { level: 2, name: "버전 기록" })).toBeFocused();
-  await expect(page.locator("#current-version")).toHaveText("v0.27.0");
-  await expect(page.locator("#version-history-list > li")).toHaveCount(8);
-  await expect(page.getByText("왜 바꿨냐면")).toHaveCount(8);
+  await expect(page.locator("#current-version")).toHaveText("v0.28.0");
+  await expect(page.locator("#version-history-list > li")).toHaveCount(9);
+  await expect(page.getByText("왜 바꿨냐면")).toHaveCount(9);
   await expect(page.locator("#arena-host canvas")).toBeHidden();
   await page.keyboard.press("Escape");
   await expect(page.locator("#app")).toHaveAttribute("data-screen", "menu");
@@ -314,6 +337,20 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await expect(page.getByRole("button", { name: "게임 시작" })).toBeFocused();
   await expect(page.locator("#game-telemetry")).toBeHidden();
   await expect(page.locator("#inventory-actions")).toBeHidden();
+
+  await openSettings(page);
+  await page.locator('input[name="startingItem"][value="wind-blast"]').uncheck();
+  await page.locator('input[name="startingItem"][value="brick-bag"]').check();
+  await expect(page.locator("#setup-summary")).toContainText("철 장화 + 벽돌 가방");
+  await saveSettings(page);
+  await startGame(page);
+  await expect(page.locator("#app")).toHaveAttribute("data-round", "active", { timeout: 5_000 });
+  await expect(page.locator("#use-item-slot-1")).toContainText("벽돌 가방 · 4회");
+
+  await useBrickBagFromAvailableDirection(page);
+
+  await expect(page.locator("#use-item-slot-1")).toContainText("벽돌 가방 · 3회");
+  await expect(page.getByText("벽돌을 세웠어.")).toBeVisible();
 });
 
 test("offers a working touch joystick and action buttons on a narrow viewport", async ({

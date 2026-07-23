@@ -2,7 +2,7 @@
 
 - Status: GitHub Pages deployment and public Chrome smoke verified
 - Primary owner: Repository owner
-- Current product version: `0.27.0`
+- Current product version: `0.28.0`
 - Validation source: [../../VALIDATION.md](../../VALIDATION.md)
 - Submission package: [../product/05-submission-package.md](../product/05-submission-package.md)
 - Asset ledger: [../assets/README.md](../assets/README.md)
@@ -22,6 +22,8 @@ Product `0.25.0` adds a no-network version-history screen to the main menu. Six 
 Product `0.26.0` fixes public play at 50 participants and Hard AI, replaces categorical mass with a 50–100 starting-weight slider, expands the island to `44×36`, and attempts five bounded lakes. Simulation advances to `9.0.0`, content to `5.0.0`, and local playtest reports to v4. The local production artifact passes all eight Chrome smoke paths; the fixed-seed 50-participant browser profile reports p95 `16.8 ms`, zero backlog, and a `2,848,504`-byte forced-GC heap delta after 20 restarts. Hosted exact-SHA Pages and public-URL smoke remain pending for this candidate.
 
 Product `0.27.0` adds human Wind Blast activation, Q/E and gamepad/DOM slot bridges, launch-speed swept contact, strength-based elimination credit, and replay format v2 with required human mass/loadout setup. Simulation advances to `10.0.0`; content stays `5.0.0`; report schema stays v4. Local merge checks, eight production smoke paths, the fixed-50 headless profile, and the fixed-50 Chrome profile pass. Hosted CI, Pages, and public-URL evidence must still be refreshed at the final `0.27.0` SHA before promotion.
+
+Product `0.28.0` adds human Brick Bag activation, deterministic same-tick placement priority, static-wall body and attack blocking, collapse-driven wall removal, and depth-sorted procedural wall presentation. Simulation advances to `11.0.0`; content, replay, and report schemas stay unchanged. Local unit coverage is current; merge checks, production smoke, fixed-50 profiles, and exact-SHA hosted evidence must be refreshed before promotion.
 
 The current local tree passes merge-blocking checks, the production Chrome smoke suite, the 7,200-tick fixed-50 headless scale profile, and the fixed-50 production Chrome profile. Active-item bot balance and human playtest remain pending. Hosted evidence starts only after the exact commit is pushed and the Pages workflow succeeds.
 

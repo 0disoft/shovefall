@@ -122,9 +122,13 @@ function getEventMessage(event: SimulationEventV1): string | undefined {
         ? `${ITEM_LABELS[event.itemDefinitionId]} 획득!`
         : undefined;
     case "item-used":
-      return event.actorId === 1 && event.itemDefinitionId === "wind-blast"
-        ? "장풍을 쐈어."
-        : undefined;
+      return event.actorId !== 1
+        ? undefined
+        : event.itemDefinitionId === "wind-blast"
+          ? "장풍을 쐈어."
+          : event.itemDefinitionId === "brick-bag"
+            ? "벽돌을 세웠어."
+            : undefined;
     case "wind-blast-hit":
       return event.actorId === 1 ? "장풍 적중!" : undefined;
     case "stat-point-earned":
@@ -410,7 +414,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
         !human.active ||
         human.action === "Falling" ||
         human.action === "Eliminated" ||
-        slot?.definitionId !== "wind-blast" ||
+        (slot?.definitionId !== "wind-blast" && slot?.definitionId !== "brick-bag") ||
         slot.charges === null ||
         slot.charges < 1;
     }

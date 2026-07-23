@@ -1,5 +1,6 @@
 import { quantize } from "./math";
 import type {
+  BrickWallState,
   ItemState,
   ParticipantState,
   RoundId,
@@ -13,6 +14,7 @@ export interface HashableWorldState {
   readonly tick: Tick;
   readonly participants: readonly ParticipantState[];
   readonly items: readonly ItemState[];
+  readonly brickWalls: readonly BrickWallState[];
   readonly nextItemId: number;
   readonly nextItemSpawnTick: Tick | null;
   readonly tiles: readonly TileState[];
@@ -105,12 +107,16 @@ export function hashWorldState(state: HashableWorldState): string {
     (item) =>
       `${item.itemId}:${item.definitionId}:${quantize(item.position.x)}:${quantize(item.position.y)}:${item.spawnedTick}`,
   );
+  const brickWallParts = state.brickWalls
+    .toSorted((left, right) => left.tileId.localeCompare(right.tileId))
+    .map((wall) => `${wall.tileId}:${wall.ownerActorId}:${wall.placedTick}`);
   const tileCanonical = getCanonicalTiles(state.tiles);
   const canonical = [
     `round:${state.roundId}`,
     `tick:${state.tick}`,
     `participants:${participantParts.join("|")}`,
     `items:${itemParts.join("|")}`,
+    `brick-walls:${brickWallParts.join("|")}`,
     `item-cursor:${state.nextItemId}:${state.nextItemSpawnTick ?? "none"}`,
     `tiles:${tileCanonical}`,
     `result:${state.round.status}:${state.round.winnerActorId ?? "none"}:${state.round.reason ?? "none"}:${state.round.completedTick ?? -1}`,
