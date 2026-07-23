@@ -89,6 +89,8 @@ public URL critical path was then verified separately in Chrome.
 
 The Boat candidate completed [CI run 30025468513](https://github.com/0disoft/shovefall/actions/runs/30025468513) for exact implementation SHA `d32e66711d87db21fc0b2d4adf1261d2cd52d9e0`. `Validate` completed in 3 minutes 52 seconds, including the slower Ubuntu production Chrome smoke, and the dependent Pages deployment completed in 10 seconds from the tested artifact. A fresh public session then confirmed `v0.29.0` and the `배 1회 · 5초 동안 물 위 이동` setting at the Pages URL.
 
+The Bomb candidate completed [CI run 30030306125](https://github.com/0disoft/shovefall/actions/runs/30030306125) for exact SHA `9b82be027846192464aff861ec7e7dd86e86cd19`. Merge checks, eleven isolated production Chrome paths, artifact upload, and the dependent Pages deployment all passed. A fresh public session confirmed `v0.30.0`, the `시한폭탄 2개 · 5초 뒤 주변을 날려` setting, and no console warnings or errors.
+
 ## Owners and Failure Handling
 
 - Primary owner: Repository owner
@@ -101,7 +103,7 @@ Dependency or action download failure is infrastructure evidence, not a source f
 
 - Required validation names: `check` and `smoke-dist`
 - Public URL: `https://0disoft.github.io/shovefall/`
-- Release blocker status: Hosted validation, Pages deployment, and public version/Boat-setting smoke are green for implementation SHA `d32e66711d87db21fc0b2d4adf1261d2cd52d9e0`; every later runtime or release-candidate change requires its own exact-SHA run, successful deploy job, and URL smoke.
+- Release blocker status: Hosted validation, Pages deployment, and public version/Bomb-setting smoke are green for exact SHA `9b82be027846192464aff861ec7e7dd86e86cd19`; every later runtime or release-candidate change requires its own exact-SHA run, successful deploy job, and URL smoke.
 - Remaining operational risk: Branch protection, real merged-contributor Clarissimi staging and
   promotion, runner-image Chrome drift, broader physical-device coverage, cross-browser coverage,
   and human playtest remain unproven until separately observed.
