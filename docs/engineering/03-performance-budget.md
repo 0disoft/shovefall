@@ -4,6 +4,10 @@
 - Owner: Repository owner
 - Source of truth: `docs/product/02-spec.md` and this document
 
+## Product 0.27.0 Local Result
+
+The Wind Blast system and its DOM/PixiJS feedback preserve the fixed-50 budgets on the current workstation. The accepted 7,200-tick rerun measured simulation p95 `5.454 ms`, zero combined steps above 100 ms, and `2.74×` real-time throughput. Local production Chrome measured frame p95 `16.8 ms`, maximum `17.5 ms`, zero backlog, no frame above 100 ms, and a `2,984,412`-byte forced-GC heap delta after twenty restarts. One preceding headless run failed only the tail gate with two host-level spikes despite simulation p95 `5.749 ms`; the rerun and the failed tail are both recorded in the scale evidence rather than weakening the gate.
+
 ## Product 0.20.0 Local Result
 
 The enlarged arenas, starting loadout state, progression fields, and hand-contact presentation pass the existing bounded local profiles. Hard-difficulty headless p95 AI/simulation time is `0.440/1.704 ms` at 16, `0.794/3.133 ms` at 24, and `1.107/4.064 ms` at 32 participants, with no step above 100 ms. Production Chrome p95 frame time is `16.8/16.8/16.9 ms`, maximum backlog is zero, and no sampled frame exceeds 100 ms. Twenty fresh-round restarts add `2,340,924` Chromium heap bytes after collection. This is one local workstation and headless Chrome result, not field or cross-browser evidence.

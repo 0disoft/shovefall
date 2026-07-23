@@ -3,6 +3,12 @@
 - Status: Accepted local automated baseline; physical and cross-browser evidence pending
 - Owner: Repository owner
 
+## 0.27.0 Wind Blast Profile
+
+On 2026-07-24, the accepted 7,200-tick fixed-50 rerun completed in `43,839.502 ms`, or `2.74×` real time. AI p95 was `10.034 ms`, simulation p95 was `5.454 ms`, the spatial candidate/full-pair ratio remained `0.1679`, and no combined step exceeded 100 ms. The `49,304,313`-byte heap delta is observational because the harness does not force garbage collection. An immediately preceding run had similar p95 values but two host-level 100 ms spikes and failed the declared tail gate; the passing rerun is retained without hiding that first result.
+
+The production Chrome profile at 1280×720 and effective DPR 1 measured `16.8 ms` frame p95, `17.5 ms` maximum, `62.2` delivered ticks per requested simulation second, zero backlog, and no frame above 100 ms. Twenty immediate restarts followed by CDP garbage collection left a `2,984,412`-byte used-heap delta. This proves the current local 50-participant workload, not physical-device, cross-browser, or field performance.
+
 ## 0.26.0 Fixed-50 Profile
 
 On 2026-07-23, the 44×36 public island with five lake attempts and Hard AI completed a 7,200-tick headless run in `51,344.41 ms`, or `2.34×` real time. AI p95 was `11.538 ms`, simulation p95 was `6.702 ms`, the spatial candidate/full-pair ratio was `0.1679`, and one combined step exceeded 100 ms. The `51,408,098`-byte heap delta is observational because the harness does not force garbage collection.
