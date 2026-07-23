@@ -52,6 +52,12 @@ export function hashWorldState(state: HashableWorldState): string {
     .toSorted((left, right) => left.actorId - right.actorId)
     .map((participant) => {
       const { body } = participant;
+      const inventoryPart = participant.inventory
+        .map(
+          (slot) =>
+            `${slot.slotIndex},${slot.definitionId},${slot.charges === null ? "passive" : slot.charges}`,
+        )
+        .join("/");
       return [
         participant.actorId,
         participant.active ? 1 : 0,
@@ -78,6 +84,7 @@ export function hashWorldState(state: HashableWorldState): string {
         participant.cooldowns.shoveReadyTick,
         participant.cooldowns.dodgeReadyTick,
         participant.action.springBoosted ? 1 : 0,
+        ...(inventoryPart === "" ? [] : [`inventory=${inventoryPart}`]),
         participant.effects
           .map(
             (effect) => `${effect.definitionId},${effect.appliedTick},${effect.endsTick ?? "none"}`,

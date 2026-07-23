@@ -10,7 +10,17 @@ export type CollapseSpeed = "slow" | "normal" | "fast";
 export type BotDifficulty = "easy" | "normal" | "hard";
 export type TileStateKind = "Stable" | "Warning" | "Collapsing" | "Void";
 export type RoundEndReason = "last-standing" | "no-survivors" | "time-limit";
-export type ItemDefinitionId = "iron-boots" | "feather" | "spring-glove";
+export type ItemDefinitionId =
+  | "iron-boots"
+  | "feather"
+  | "spring-glove"
+  | "wind-blast"
+  | "brick-bag"
+  | "boat"
+  | "bomb"
+  | "soap"
+  | "grappling-hook";
+export type InventorySlotIndex = 0 | 1;
 export type UpgradeStatId = "power" | "stability" | "mobility" | "reflex";
 
 export type ParticipantActionKind =
@@ -107,6 +117,12 @@ export interface EffectInstance {
   readonly endsTick: Tick | null;
 }
 
+export interface InventorySlotState {
+  readonly slotIndex: InventorySlotIndex;
+  readonly definitionId: ItemDefinitionId;
+  readonly charges: number | null;
+}
+
 export interface CooldownState {
   readonly shoveReadyTick: Tick;
   readonly dodgeReadyTick: Tick;
@@ -118,6 +134,7 @@ export interface ParticipantState {
   readonly body: BodyState;
   readonly action: ActionState;
   readonly cooldowns: CooldownState;
+  readonly inventory: readonly InventorySlotState[];
   readonly effects: readonly EffectInstance[];
   readonly progression: ParticipantProgression;
   readonly shoveCredit: ShoveCreditState;
@@ -158,6 +175,7 @@ export interface RenderParticipantV1 {
   readonly unsupportedTicks: number;
   readonly shoveReadyTick: Tick;
   readonly dodgeReadyTick: Tick;
+  readonly inventory: readonly InventorySlotState[];
   readonly effects: readonly EffectInstance[];
   readonly springBoosted: boolean;
   readonly progression: ParticipantProgression;

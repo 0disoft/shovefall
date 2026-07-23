@@ -18,7 +18,7 @@ The browser's normal-density arena policy derives 10×8 tiles for 4–8 particip
 
 ## Participant
 
-A participant contains stable identity, human or scripted control ownership, an active flag, a circular body, effects, progression, shove credit, and an action state. The body owns position, velocity, facing, radius, base and effective continuous `massFactor`, and integer unsupported ticks. Effective mass is clamped to `0.8..1.4`. Progression owns unspent points, credited eliminations, and bounded Power, Stability, Mobility, and Reflex levels. Shove credit records the deterministic last attacker and hit tick; falling grants one point only when that hit is at most 180 ticks old.
+A participant contains stable identity, human or scripted control ownership, an active flag, a circular body, two-slot starting inventory, temporary effects, progression, shove credit, and an action state. Inventory slots preserve their index, item definition, and nullable charge count; `null` means a permanent passive. The body owns position, velocity, facing, radius, base and effective continuous `massFactor`, and integer unsupported ticks. Effective mass is clamped to `0.8..1.4`. Progression owns unspent points, credited eliminations, and bounded Power, Stability, Mobility, and Reflex levels. Shove credit records the deterministic last attacker and hit tick; falling grants one point only when that hit is at most 180 ticks old.
 
 Action kinds are `Ready`, `ShoveWindup`, `ShoveActive`, `ShoveRecovery`, `DodgeActive`, `Stumbling`, `Anchored`, `Falling`, and `Eliminated`. Action transitions are tick-bounded. If shove and dodge edges arrive together while both are ready, dodge has deterministic priority. `Falling` is irreversible and later transitions to `Eliminated`.
 
@@ -35,7 +35,7 @@ A tile has an integer grid location, stable `column:row` ID, and a `Stable`, `Wa
 ## Commands, Frames, and Events
 
 - `ActorCommandV1` contains tick, actor ID, normalized movement, shove/dodge edge flags, and an optional stat-spend request.
-- `RenderFrameV1` is an immutable presentation snapshot with current and previous positions, facing, mass, effects, Spring Glove telegraph, items, action, tiles, tick, and state hash.
+- `RenderFrameV1` is an immutable presentation snapshot with current and previous positions, facing, mass, inventory slots, effects, Spring Glove telegraph, map items, action, tiles, tick, and state hash.
 - `SimulationEventV1` is a versioned, ordered fact stream for one-time presentation and diagnostics. Events do not drive authoritative physics.
 
 Human input and bots must use the same command path. A bot cannot directly set position, velocity, cooldown, action state, or tile state.

@@ -68,6 +68,12 @@ const ITEM_COLORS = Object.freeze({
   "iron-boots": 0x56626f,
   feather: 0xe9f5ff,
   "spring-glove": 0xff8f5c,
+  "wind-blast": 0x68d8d6,
+  "brick-bag": 0xb56f3f,
+  boat: 0x4c9bd4,
+  bomb: 0xff5c4d,
+  soap: 0xd58bea,
+  "grappling-hook": 0xffc857,
 } as const);
 
 function getArenaDimensions(frame: RenderFrameV1): { columns: number; rows: number } {
@@ -332,11 +338,14 @@ function drawParticipant(
     ? 0xf6f5ef
     : (BOT_COLORS[(participant.actorId - 2) % BOT_COLORS.length] ?? 0xb8c1bd);
   const actionColor = getActionColor(participant.action);
-  const hasIronBoots = participant.effects.some(
+  const equippedAndActiveEffects = [...participant.inventory, ...participant.effects];
+  const hasIronBoots = equippedAndActiveEffects.some(
     ({ definitionId }) => definitionId === "iron-boots",
   );
-  const hasFeather = participant.effects.some(({ definitionId }) => definitionId === "feather");
-  const hasSpringGlove = participant.effects.some(
+  const hasFeather = equippedAndActiveEffects.some(
+    ({ definitionId }) => definitionId === "feather",
+  );
+  const hasSpringGlove = equippedAndActiveEffects.some(
     ({ definitionId }) => definitionId === "spring-glove",
   );
 

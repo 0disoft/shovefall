@@ -1,7 +1,7 @@
 import { BotDirector, type BotAssignment } from "../src/ai/bot-director";
 import { BOT_PERSONALITY_KINDS } from "../src/ai/personalities";
 import { getArenaSize } from "../src/app/settings";
-import { ITEM_DEFINITION_IDS } from "../src/content/items";
+import { getItemDefinition, ITEM_DEFINITION_IDS } from "../src/content/items";
 import {
   normalizeGameConfig,
   type ActorId,
@@ -20,6 +20,11 @@ const PARTICIPANT_COUNT = 8;
 const MINIMUM_TREATMENT_SLOTS = 16;
 const MINIMUM_SAMPLE_COUNT = 64;
 const ROUND_LIMIT_SECONDS = 45;
+const AUDIT_ITEM_DEFINITION_IDS: readonly ItemDefinitionId[] = Object.freeze(
+  ITEM_DEFINITION_IDS.filter(
+    (definitionId) => getItemDefinition(definitionId).loadoutKind === "passive",
+  ),
+);
 
 interface LoadoutTreatment {
   readonly id: string;
@@ -40,7 +45,7 @@ function createTreatments(): readonly LoadoutTreatment[] {
     Object.freeze({ id: "control", kind: "control", items: Object.freeze([]) }),
   ];
 
-  for (const definitionId of ITEM_DEFINITION_IDS) {
+  for (const definitionId of AUDIT_ITEM_DEFINITION_IDS) {
     treatments.push(
       Object.freeze({
         id: definitionId,
@@ -50,10 +55,14 @@ function createTreatments(): readonly LoadoutTreatment[] {
     );
   }
 
-  for (let leftIndex = 0; leftIndex < ITEM_DEFINITION_IDS.length; leftIndex += 1) {
-    for (let rightIndex = leftIndex + 1; rightIndex < ITEM_DEFINITION_IDS.length; rightIndex += 1) {
-      const left = ITEM_DEFINITION_IDS[leftIndex];
-      const right = ITEM_DEFINITION_IDS[rightIndex];
+  for (let leftIndex = 0; leftIndex < AUDIT_ITEM_DEFINITION_IDS.length; leftIndex += 1) {
+    for (
+      let rightIndex = leftIndex + 1;
+      rightIndex < AUDIT_ITEM_DEFINITION_IDS.length;
+      rightIndex += 1
+    ) {
+      const left = AUDIT_ITEM_DEFINITION_IDS[leftIndex];
+      const right = AUDIT_ITEM_DEFINITION_IDS[rightIndex];
 
       if (left === undefined || right === undefined) {
         throw new Error("item treatment generation produced an incomplete pair");
@@ -390,7 +399,8 @@ process.stdout.write(
       ],
       limitations: [
         "This is deterministic rule-based bot regression evidence, not human-play fairness evidence.",
-        "Starting Iron Boots and Feather currently expire after eight seconds, while Spring Glove is consumed by the next shove; the audit measures that current behavior rather than the planned permanent-versus-active inventory split.",
+        "The current ranking covers permanent starting passives; temporary map pickups use a different lifecycle and are excluded.",
+        "Active inventory items stay outside the ranking until the shared item-use command and bot activation policies are implemented.",
         "All treatments use normal starting mass, eight participants, Fast collapse, a 45-second audit limit, no production item spawns, and controlled personality rotation.",
         "Wilson intervals show finite-sample uncertainty but do not make fixed-seed bot outcomes a population estimate.",
       ],

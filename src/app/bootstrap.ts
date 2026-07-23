@@ -49,6 +49,12 @@ const ITEM_LABELS = Object.freeze({
   "iron-boots": "철 장화",
   feather: "깃털",
   "spring-glove": "스프링 장갑",
+  "wind-blast": "장풍",
+  "brick-bag": "벽돌 가방",
+  boat: "배",
+  bomb: "시한폭탄",
+  soap: "비누",
+  "grappling-hook": "구조 갈고리",
 } as const);
 
 function requireElement<T extends Element>(
@@ -413,12 +419,17 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     actionValue.value = ACTION_LABELS[human.action];
     massValue.value =
       human.massFactor < 0.9 ? "가벼움" : human.massFactor > 1.1 ? "무거움" : "보통";
+    const inventoryLabel = human.inventory
+      .map(({ definitionId, charges }) =>
+        charges === null ? ITEM_LABELS[definitionId] : `${ITEM_LABELS[definitionId]} ${charges}`,
+      )
+      .join(" · ");
+    const effectLabel = human.effects
+      .map(({ definitionId }) => ITEM_LABELS[definitionId])
+      .join(" · ");
     effectValue.value =
-      human.effects.length === 0
-        ? human.springBoosted
-          ? "스프링 발동"
-          : "없음"
-        : human.effects.map(({ definitionId }) => ITEM_LABELS[definitionId]).join(" · ");
+      [inventoryLabel, effectLabel].filter((label) => label.length > 0).join(" · ") ||
+      (human.springBoosted ? "스프링 발동" : "없음");
     itemValue.value = String(current.frame.items.length);
     survivorValue.value = String(
       current.frame.participants.filter(

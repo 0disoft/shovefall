@@ -81,6 +81,12 @@ const itemExposure: Record<ItemDefinitionId, { actorRounds: number; wins: number
   "iron-boots": { actorRounds: 0, wins: 0 },
   feather: { actorRounds: 0, wins: 0 },
   "spring-glove": { actorRounds: 0, wins: 0 },
+  "wind-blast": { actorRounds: 0, wins: 0 },
+  "brick-bag": { actorRounds: 0, wins: 0 },
+  boat: { actorRounds: 0, wins: 0 },
+  bomb: { actorRounds: 0, wins: 0 },
+  soap: { actorRounds: 0, wins: 0 },
+  "grappling-hook": { actorRounds: 0, wins: 0 },
 };
 const massExposure: Record<MassBand, { actorRounds: number; wins: number }> = {
   light: { actorRounds: 0, wins: 0 },

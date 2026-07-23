@@ -1,6 +1,6 @@
 import { BotDirector } from "../src/ai/bot-director";
 import { BOT_PERSONALITY_KINDS, type BotPersonalityKind } from "../src/ai/personalities";
-import { ITEM_DEFINITION_IDS } from "../src/content/items";
+import { ITEM_DEFINITION_IDS, MAP_ITEM_DEFINITION_IDS } from "../src/content/items";
 import {
   getArenaSize,
   getPresetCollapseSpeed,
@@ -45,7 +45,7 @@ const COLLAPSE_SPEEDS = ["slow", "normal", "fast"] as const satisfies readonly C
 const ROUND_LIMIT_SECONDS = 75;
 const MASS_BANDS = ["light", "normal", "heavy"] as const;
 const ITEM_SPAWN_BANDS = ["edge", "near-edge", "interior"] as const;
-const CONTROLLED_ITEM_GROUPS = ["control", ...ITEM_DEFINITION_IDS] as const;
+const CONTROLLED_ITEM_GROUPS = ["control", ...MAP_ITEM_DEFINITION_IDS] as const;
 
 type MassBand = (typeof MASS_BANDS)[number];
 type ControlledItemGroup = (typeof CONTROLLED_ITEM_GROUPS)[number];
@@ -90,7 +90,17 @@ interface RoundAuditResult {
 }
 
 function createItemCounts(): Record<ItemDefinitionId, number> {
-  return { "iron-boots": 0, feather: 0, "spring-glove": 0 };
+  return {
+    "iron-boots": 0,
+    feather: 0,
+    "spring-glove": 0,
+    "wind-blast": 0,
+    "brick-bag": 0,
+    boat: 0,
+    bomb: 0,
+    soap: 0,
+    "grappling-hook": 0,
+  };
 }
 
 function createMassCounts(): Record<MassBand, number> {
@@ -357,6 +367,12 @@ function aggregateBalance(results: readonly RoundAuditResult[]) {
     "iron-boots": { pickupCount: 0, exposedActorRounds: 0, winnerActorRounds: 0 },
     feather: { pickupCount: 0, exposedActorRounds: 0, winnerActorRounds: 0 },
     "spring-glove": { pickupCount: 0, exposedActorRounds: 0, winnerActorRounds: 0 },
+    "wind-blast": { pickupCount: 0, exposedActorRounds: 0, winnerActorRounds: 0 },
+    "brick-bag": { pickupCount: 0, exposedActorRounds: 0, winnerActorRounds: 0 },
+    boat: { pickupCount: 0, exposedActorRounds: 0, winnerActorRounds: 0 },
+    bomb: { pickupCount: 0, exposedActorRounds: 0, winnerActorRounds: 0 },
+    soap: { pickupCount: 0, exposedActorRounds: 0, winnerActorRounds: 0 },
+    "grappling-hook": { pickupCount: 0, exposedActorRounds: 0, winnerActorRounds: 0 },
   };
   const massExposure: Record<
     MassBand,
@@ -828,7 +844,7 @@ function auditControlledItems() {
     "spring-glove": enrichGroup("spring-glove"),
   } satisfies Record<ControlledItemGroup, ReturnType<typeof enrichGroup>>);
   const itemRanking = Object.freeze(
-    ITEM_DEFINITION_IDS.map((definitionId) => ({
+    MAP_ITEM_DEFINITION_IDS.map((definitionId) => ({
       definitionId,
       ...groups[definitionId],
     })).toSorted(

@@ -59,6 +59,43 @@ function stepUntilHit(world: SimulationWorld) {
 }
 
 describe("deterministic item effects", () => {
+  it("keeps starting passives permanent and assigns bounded active-item charges", () => {
+    const passiveWorld = new SimulationWorld(createItemConfig(), "permanent-loadout", {
+      arenaLayout: "rectangular-fixture",
+      participantOverrides: [
+        { ...PARTICIPANT_OVERRIDES[0]!, startingItems: ["iron-boots", "spring-glove"] },
+        ...PARTICIPANT_OVERRIDES.slice(1),
+      ],
+    });
+
+    for (let tick = 0; tick <= 480; tick += 1) {
+      passiveWorld.step();
+    }
+
+    expect(getActor(passiveWorld, 1).inventory).toEqual([
+      { slotIndex: 0, definitionId: "iron-boots", charges: null },
+      { slotIndex: 1, definitionId: "spring-glove", charges: null },
+    ]);
+    expect(getActor(passiveWorld, 1).massFactor).toBeCloseTo(1.4, 10);
+    beginShove(passiveWorld);
+    expect(getActor(passiveWorld, 1).inventory[1]?.definitionId).toBe("spring-glove");
+
+    const activeWorld = new SimulationWorld(createItemConfig(), "charged-loadout", {
+      arenaLayout: "rectangular-fixture",
+      participantOverrides: [
+        { ...PARTICIPANT_OVERRIDES[0]!, startingItems: ["wind-blast", "brick-bag"] },
+        ...PARTICIPANT_OVERRIDES.slice(1),
+      ],
+    });
+
+    expect(getActor(activeWorld, 1).inventory).toEqual([
+      { slotIndex: 0, definitionId: "wind-blast", charges: 2 },
+      { slotIndex: 1, definitionId: "brick-bag", charges: 4 },
+    ]);
+    expect(getActor(activeWorld, 1).effects).toEqual([]);
+    expect(getActor(activeWorld, 1).massFactor).toBe(1);
+  });
+
   it("applies and refreshes timed mass effects within the global mass bounds", () => {
     const world = new SimulationWorld(createItemConfig(), "stacked-mass", {
       arenaLayout: "rectangular-fixture",
@@ -269,5 +306,16 @@ describe("deterministic item placement", () => {
     }
 
     expect(spawnCount).toBeGreaterThan(0);
+  });
+
+  it("rejects active loadout items from the map-pickup override path", () => {
+    expect(
+      () =>
+        new SimulationWorld(createItemConfig(), "active-map-override", {
+          arenaLayout: "rectangular-fixture",
+          participantOverrides: PARTICIPANT_OVERRIDES,
+          itemOverrides: [{ itemId: 1, definitionId: "wind-blast", position: { x: 4, y: 4.5 } }],
+        }),
+    ).toThrow(/not map-spawn eligible/);
   });
 });

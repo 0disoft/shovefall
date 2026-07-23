@@ -1,4 +1,4 @@
-import { getItemDefinition, ITEM_DEFINITION_IDS } from "../content/items";
+import { getItemDefinition, ITEM_DEFINITION_IDS, MAP_ITEM_DEFINITION_IDS } from "../content/items";
 import type {
   ActorId,
   EffectInstance,
@@ -6,6 +6,7 @@ import type {
   ItemDefinitionId,
   ItemId,
   ItemState,
+  InventorySlotState,
   ParticipantState,
   Tick,
   TileState,
@@ -167,7 +168,7 @@ function chooseCandidate(
 
 function createItem(itemId: ItemId, position: Vector2, tick: Tick, random: XorShift32): ItemState {
   const definitionId =
-    ITEM_DEFINITION_IDS[random.nextUint32() % ITEM_DEFINITION_IDS.length] ?? "iron-boots";
+    MAP_ITEM_DEFINITION_IDS[random.nextUint32() % MAP_ITEM_DEFINITION_IDS.length] ?? "iron-boots";
   return Object.freeze({ itemId, definitionId, position, spawnedTick: tick });
 }
 
@@ -220,7 +221,14 @@ function validateOverrides(overrides: readonly ItemSpawnOverride[]): readonly It
 
         assertFiniteNumber(override.position.x, "item override position.x");
         assertFiniteNumber(override.position.y, "item override position.y");
-        getItemDefinition(override.definitionId);
+        const definition = getItemDefinition(override.definitionId);
+
+        if (!definition.mapSpawnEligible) {
+          throw new SimulationContractError(
+            `item override ${override.definitionId} is not map-spawn eligible`,
+          );
+        }
+
         return Object.freeze({
           itemId: override.itemId,
           definitionId: override.definitionId,
@@ -269,9 +277,15 @@ export function createItemSystem(
 }
 
 function withEffectiveMass(participant: ParticipantState): ParticipantState {
+  const modifierIds = new Set<ItemDefinitionId>([
+    ...participant.inventory
+      .filter(({ definitionId }) => getItemDefinition(definitionId).loadoutKind === "passive")
+      .map(({ definitionId }) => definitionId),
+    ...participant.effects.map(({ definitionId }) => definitionId),
+  ]);
   const massFactor = normalizeMassFactor(
-    participant.effects.reduce(
-      (mass, effect) => mass * getItemDefinition(effect.definitionId).massMultiplier,
+    [...modifierIds].reduce(
+      (mass, definitionId) => mass * getItemDefinition(definitionId).massMultiplier,
       participant.body.baseMassFactor,
     ),
   );
@@ -317,6 +331,11 @@ function applyItemEffect(
   tick: Tick,
 ): ParticipantState {
   const definition = getItemDefinition(definitionId);
+
+  if (!definition.mapSpawnEligible) {
+    throw new SimulationContractError(`item ${definitionId} cannot be applied as a map pickup`);
+  }
+
   const effect: EffectInstance = Object.freeze({
     definitionId,
     appliedTick: tick,
@@ -335,21 +354,36 @@ export function applyStartingItems(
   participant: ParticipantState,
   definitionIds: readonly ItemDefinitionId[],
 ): ParticipantState {
-  let result = participant;
-
-  for (const definitionId of definitionIds) {
+  const inventory: InventorySlotState[] = definitionIds.map((definitionId, slotIndex) => {
     if (!ITEM_DEFINITION_IDS.some((candidate) => candidate === definitionId)) {
       throw new SimulationContractError(`unsupported starting item: ${definitionId}`);
     }
 
-    result = applyItemEffect(result, definitionId, 0);
-  }
+    if (slotIndex !== 0 && slotIndex !== 1) {
+      throw new SimulationContractError("starting item slot is outside the two-slot inventory");
+    }
 
-  return result;
+    const definition = getItemDefinition(definitionId);
+    return Object.freeze({
+      slotIndex,
+      definitionId,
+      charges: definition.startingCharges,
+    });
+  });
+
+  return withEffectiveMass(
+    Object.freeze({
+      ...participant,
+      inventory: Object.freeze(inventory),
+    }),
+  );
 }
 
 export function consumeSpringGlove(participant: ParticipantState): ParticipantState {
-  if (!participant.effects.some(({ definitionId }) => definitionId === "spring-glove")) {
+  if (
+    participant.inventory.some(({ definitionId }) => definitionId === "spring-glove") ||
+    !participant.effects.some(({ definitionId }) => definitionId === "spring-glove")
+  ) {
     return participant;
   }
 
@@ -368,24 +402,24 @@ export function clearEffects(participant: ParticipantState): ParticipantState {
     return participant;
   }
 
-  return Object.freeze({
-    ...participant,
-    effects: Object.freeze([]),
-    body: Object.freeze({
-      ...participant.body,
-      massFactor: participant.body.baseMassFactor,
-    }),
-  });
+  return withEffectiveMass(Object.freeze({ ...participant, effects: Object.freeze([]) }));
 }
 
 export function hasSpringGlove(participant: ParticipantState): boolean {
-  return participant.effects.some(({ definitionId }) => definitionId === "spring-glove");
+  return [...participant.inventory, ...participant.effects].some(
+    ({ definitionId }) => definitionId === "spring-glove",
+  );
 }
 
 export function getDodgeSpeedMultiplier(participant: ParticipantState): number {
-  return participant.effects.reduce(
-    (multiplier, effect) =>
-      multiplier * getItemDefinition(effect.definitionId).dodgeSpeedMultiplier,
+  const modifierIds = new Set<ItemDefinitionId>([
+    ...participant.inventory
+      .filter(({ definitionId }) => getItemDefinition(definitionId).loadoutKind === "passive")
+      .map(({ definitionId }) => definitionId),
+    ...participant.effects.map(({ definitionId }) => definitionId),
+  ]);
+  return [...modifierIds].reduce(
+    (multiplier, definitionId) => multiplier * getItemDefinition(definitionId).dodgeSpeedMultiplier,
     1,
   );
 }
