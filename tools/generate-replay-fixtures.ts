@@ -14,6 +14,10 @@ interface FixtureDefinition {
   readonly endTick: number;
   readonly commands: readonly ActorCommandV1[];
   readonly checkpoints: readonly number[];
+  readonly humanSetup?: {
+    readonly baseMassFactor: number;
+    readonly startingItems: readonly ["wind-blast", "iron-boots"];
+  };
 }
 
 function movementCommand(tick: number, x: number, y: number): ActorCommandV1 {
@@ -38,12 +42,16 @@ const definitions: readonly FixtureDefinition[] = [
     seed: "cardinal-four-v1",
     endTick: 180,
     commands: [
-      movementCommand(0, 1, 0),
+      { ...movementCommand(0, 1, 0), useItemSlot: 0 },
       movementCommand(30, 0, 1),
       movementCommand(60, -1, 0),
       movementCommand(90, 0, -1),
     ],
     checkpoints: [30, 60, 90, 120, 180],
+    humanSetup: {
+      baseMassFactor: 1,
+      startingItems: ["wind-blast", "iron-boots"],
+    },
   },
   {
     name: "diagonal-twelve",
@@ -67,13 +75,14 @@ await mkdir(outputDirectory, { recursive: true });
 await Promise.all(
   definitions.map(async (definition) => {
     const fixture = createReplayFixture({
-      buildId: "fixture-v3",
+      buildId: "fixture-v4",
       config: normalizeGameConfig({
         participantCount: definition.participantCount,
         roundLimitSeconds: 10,
       }),
       masterSeed: definition.seed,
       humanActorId: 1,
+      ...(definition.humanSetup === undefined ? {} : { humanSetup: definition.humanSetup }),
       endTick: definition.endTick,
       commands: definition.commands,
       checkpointTicks: definition.checkpoints,

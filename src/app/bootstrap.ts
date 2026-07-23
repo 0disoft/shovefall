@@ -121,6 +121,12 @@ function getEventMessage(event: SimulationEventV1): string | undefined {
       return event.actorId === 1 && event.itemDefinitionId !== undefined
         ? `${ITEM_LABELS[event.itemDefinitionId]} 획득!`
         : undefined;
+    case "item-used":
+      return event.actorId === 1 && event.itemDefinitionId === "wind-blast"
+        ? "장풍을 쐈어."
+        : undefined;
+    case "wind-blast-hit":
+      return event.actorId === 1 ? "장풍 적중!" : undefined;
     case "stat-point-earned":
       return event.actorId === 1 ? "처치 인정! 스탯 포인트를 얻었어." : undefined;
     case "stat-upgraded":
@@ -171,6 +177,11 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   const pointerJoystickKnob = requireElement(root, "#pointer-joystick-knob", HTMLElement);
   const touchShoveButton = requireElement(root, "#touch-shove", HTMLButtonElement);
   const touchDodgeButton = requireElement(root, "#touch-dodge", HTMLButtonElement);
+  const inventoryActions = requireElement(root, "#inventory-actions", HTMLElement);
+  const itemSlotButtons = Object.freeze([
+    requireElement(root, "#use-item-slot-0", HTMLButtonElement),
+    requireElement(root, "#use-item-slot-1", HTMLButtonElement),
+  ] as const);
   const rendererStatus = requireElement(root, "#renderer-status", HTMLElement);
   const telemetry = requireElement(root, "#game-telemetry", HTMLElement);
   const developerTelemetry = requireElement(root, "#developer-telemetry", HTMLDetailsElement);
@@ -378,6 +389,31 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
       [inventoryLabel, effectLabel].filter((label) => label.length > 0).join(" · ") ||
       (human.springBoosted ? "스프링 발동" : "없음");
     itemValue.value = String(current.frame.items.length);
+    for (const [slotIndex, button] of itemSlotButtons.entries()) {
+      const slot = human.inventory.find((candidate) => candidate.slotIndex === slotIndex);
+      const label = slot === undefined ? `슬롯 ${slotIndex + 1}` : ITEM_LABELS[slot.definitionId];
+      const amount =
+        slot === undefined ? "비어 있음" : slot.charges === null ? "상시" : `${slot.charges}회`;
+      const key = slotIndex === 0 ? "Q" : "E";
+      button.textContent = `${key} · ${label} · ${amount}`;
+      button.setAttribute(
+        "aria-label",
+        slot === undefined
+          ? `${label}, 비어 있음`
+          : slot.charges === null
+            ? `${label}, 상시 효과`
+            : `${label} 사용, ${amount} 남음`,
+      );
+      button.disabled =
+        current.countdown !== null ||
+        current.frame.round.status !== "Active" ||
+        !human.active ||
+        human.action === "Falling" ||
+        human.action === "Eliminated" ||
+        slot?.definitionId !== "wind-blast" ||
+        slot.charges === null ||
+        slot.charges < 1;
+    }
     survivorValue.value = String(
       current.frame.participants.filter(
         (participant) =>
@@ -455,7 +491,10 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
       onTelemetry: updateTelemetry,
       onEvents(events): void {
         audio?.consumeEvents(events);
-        const message = events.map(getEventMessage).find((value) => value !== undefined);
+        const message = events
+          .toReversed()
+          .map(getEventMessage)
+          .find((value) => value !== undefined);
 
         if (message !== undefined) {
           readyMessage.textContent = message;
@@ -547,13 +586,14 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     root.dataset.collapseSpeed = settings.collapseSpeed;
     root.dataset.gameplayTuning = latestDebugTuningEnabled ? "debug" : "default";
     arenaActions.hidden = false;
+    inventoryActions.hidden = false;
     telemetry.hidden = false;
     developerTelemetry.hidden = false;
     developerTelemetry.open = false;
     readyMessage.textContent = "3";
     arenaHost.setAttribute(
       "aria-label",
-      `${settings.playerCount}명이 참가하는 바닥이 사라지는 술래잡기 아레나. WASD, 방향키, 마우스 드래그 또는 터치 조이스틱으로 이동해.`,
+      `${settings.playerCount}명이 참가하는 바닥이 사라지는 술래잡기 아레나. WASD, 방향키, 마우스 드래그 또는 터치 조이스틱으로 이동하고 Q와 E로 시작 아이템을 사용해.`,
     );
     session.start(createConfig(settings), latestMasterSeed, latestGameplayTuning, {
       massFactor: getStartingMassFactor(settings.startingWeight),
@@ -639,6 +679,13 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     });
   }
 
+  for (const [slotIndex, button] of itemSlotButtons.entries()) {
+    button.addEventListener("click", () => {
+      session?.queueItemSlot(slotIndex === 0 ? 0 : 1);
+      arenaHost.focus({ preventScroll: true });
+    });
+  }
+
   const copyRoundReport = async (): Promise<void> => {
     if (latestRoundReport === undefined) {
       return;
@@ -691,6 +738,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     setScreen("menu");
     delete root.dataset.round;
     arenaActions.hidden = true;
+    inventoryActions.hidden = true;
     telemetry.hidden = true;
     developerTelemetry.hidden = true;
     developerTelemetry.open = false;

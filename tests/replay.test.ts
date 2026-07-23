@@ -58,9 +58,53 @@ describe("replay fixture contract", () => {
   it("rejects unknown format majors", () => {
     const fixture = createFixture();
 
-    expect(() => parseReplayFixtureJson(JSON.stringify({ ...fixture, formatVersion: 2 }))).toThrow(
+    expect(() => parseReplayFixtureJson(JSON.stringify({ ...fixture, formatVersion: 3 }))).toThrow(
       /unsupported replay format major/u,
     );
+    expect(() => parseReplayFixtureJson(JSON.stringify({ ...fixture, formatVersion: 1 }))).toThrow(
+      /unsupported replay format major/u,
+    );
+  });
+
+  it("round-trips the human mass, loadout, and active-item command", () => {
+    const fixture = createReplayFixture({
+      buildId: "active-item-replay",
+      config: normalizeGameConfig({ participantCount: 4, roundLimitSeconds: 10 }),
+      masterSeed: "active-item-replay",
+      humanActorId: 1,
+      humanSetup: {
+        baseMassFactor: 1.4,
+        startingItems: ["wind-blast", "iron-boots"],
+      },
+      endTick: 30,
+      commands: [{ ...createNeutralCommand(0, 1), useItemSlot: 0 }],
+      checkpointTicks: [1, 30],
+    });
+    const parsed = parseReplayFixtureJson(JSON.stringify(fixture));
+
+    expect(parsed.humanSetup).toEqual({
+      baseMassFactor: 1.4,
+      startingItems: ["wind-blast", "iron-boots"],
+    });
+    expect(parsed.commands[0]?.useItemSlot).toBe(0);
+    expect(runReplayFixture(parsed).finalHash).toBe(fixture.finalHash);
+  });
+
+  it("rejects malformed active-item slots and human setup", () => {
+    const fixture = createFixture();
+    const commands = [{ ...createNeutralCommand(0, 1), useItemSlot: 2 }];
+
+    expect(() => parseReplayFixtureJson(JSON.stringify({ ...fixture, commands }))).toThrow(
+      /useItemSlot/u,
+    );
+    expect(() =>
+      parseReplayFixtureJson(
+        JSON.stringify({
+          ...fixture,
+          humanSetup: { baseMassFactor: 1, startingItems: ["wind-blast", "wind-blast"] },
+        }),
+      ),
+    ).toThrow(/unique items/u);
   });
 
   it("accepts bounded bot difficulty and rejects unknown values", () => {

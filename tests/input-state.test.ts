@@ -16,6 +16,7 @@ describe("human input state", () => {
       move: { x: 1, y: -1 },
       shovePressed: true,
       dodgePressed: true,
+      useItemSlot: null,
       upgradeStat: null,
     });
     expect(input.consumeCommand(5, 1)).toEqual({
@@ -25,6 +26,7 @@ describe("human input state", () => {
       move: { x: 1, y: -1 },
       shovePressed: false,
       dodgePressed: false,
+      useItemSlot: null,
       upgradeStat: null,
     });
   });
@@ -52,6 +54,8 @@ describe("human input state", () => {
     expect(isGameplayCode("KeyW")).toBe(true);
     expect(isGameplayCode("ArrowLeft")).toBe(true);
     expect(isGameplayCode("Space")).toBe(true);
+    expect(isGameplayCode("KeyQ")).toBe(true);
+    expect(isGameplayCode("KeyE")).toBe(true);
     expect(isGameplayCode("Digit1")).toBe(true);
     expect(isGameplayCode("Enter")).toBe(false);
   });
@@ -108,6 +112,30 @@ describe("human input state", () => {
       shovePressed: false,
       dodgePressed: false,
     });
+  });
+
+  it("queues either inventory slot as a one-shot edge", () => {
+    const input = new InputState();
+    input.press("KeyQ");
+    expect(input.consumeCommand(0, 1).useItemSlot).toBe(0);
+    expect(input.consumeCommand(1, 1).useItemSlot).toBeNull();
+    input.press("KeyE");
+    expect(input.consumeCommand(2, 1).useItemSlot).toBe(1);
+    input.queueItemSlot(0);
+    expect(input.consumeCommand(3, 1).useItemSlot).toBe(0);
+  });
+
+  it("gives Q a stable priority when both item slots arrive before a tick", () => {
+    const input = new InputState();
+    input.press("KeyE");
+    input.press("KeyQ");
+    input.press("KeyQ", true);
+
+    expect(input.consumeCommand(0, 1).useItemSlot).toBe(0);
+    expect(input.consumeCommand(1, 1).useItemSlot).toBeNull();
+    input.press("KeyE");
+    input.clear();
+    expect(input.consumeCommand(2, 1).useItemSlot).toBeNull();
   });
 
   it("queues one stat upgrade from number keys or the UI bridge", () => {

@@ -45,6 +45,7 @@ export interface GameSession {
   readonly active: boolean;
   chooseUpgrade(stat: UpgradeStatId): void;
   queueDodge(): void;
+  queueItemSlot(slotIndex: 0 | 1): void;
   queueShove(): void;
   failForDiagnostics(error: unknown): void;
   setPointerMovement(x: number, y: number): void;
@@ -301,6 +302,11 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
     queueDodge(): void {
       if (active && !paused && countdown === null && !humanEliminated) {
         keyboard.state.queueDodge();
+      }
+    },
+    queueItemSlot(slotIndex: 0 | 1): void {
+      if (active && !paused && countdown === null && !humanEliminated) {
+        keyboard.state.queueItemSlot(slotIndex);
       }
     },
     queueShove(): void {

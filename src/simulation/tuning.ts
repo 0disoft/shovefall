@@ -29,6 +29,7 @@ export const SIMULATION_TUNING = Object.freeze({
   body: Object.freeze({
     radius: 0.34,
     maximumSpeed: 0.26,
+    maximumLaunchSpeed: 0.42,
     weakContactIterations: 3,
     weakContactSlop: 0.000_1,
     weakContactVelocityDamping: 0.12,
@@ -61,6 +62,12 @@ export const SIMULATION_TUNING = Object.freeze({
     missedStumbleSpeedTicks: 38,
     hitStumbleTicks: 18,
     eliminationCreditTicks: 180,
+  }),
+  windBlast: Object.freeze({
+    range: 6.5,
+    baseImpulse: 0.315,
+    maximumImpulse: 0.42,
+    stumbleTicks: 24,
   }),
   dodge: Object.freeze({
     activeTicks: 5,

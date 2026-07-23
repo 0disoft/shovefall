@@ -10,6 +10,14 @@ export interface GamepadInput {
   sample(state: InputState): void;
 }
 
+export interface GamepadSnapshot {
+  readonly connected: boolean;
+  readonly axes: readonly number[];
+  readonly buttons: readonly GamepadButton[];
+}
+
+export type GamepadSource = () => readonly (GamepadSnapshot | null)[];
+
 const AXIS_DEAD_ZONE = 0.18;
 
 function readButton(buttons: readonly GamepadButton[], index: number): boolean {
@@ -37,20 +45,26 @@ export function getGamepadMovementVector(
   return Object.freeze({ x: safeX * scale, y: safeY * scale });
 }
 
-export function createGamepadInput(): GamepadInput {
+export function createGamepadInput(
+  source: GamepadSource = () => navigator.getGamepads(),
+): GamepadInput {
   let shoveHeld = false;
   let dodgeHeld = false;
+  let firstItemHeld = false;
+  let secondItemHeld = false;
 
   const clear = (state: InputState): void => {
     shoveHeld = false;
     dodgeHeld = false;
+    firstItemHeld = false;
+    secondItemHeld = false;
     state.setGamepadMovement(0, 0);
   };
 
   return Object.freeze({
     clear,
     sample(state: InputState): void {
-      const gamepads = navigator.getGamepads?.() ?? [];
+      const gamepads = source();
       const gamepad = [...gamepads].find((candidate) => candidate?.connected === true);
 
       if (gamepad === undefined || gamepad === null) {
@@ -61,6 +75,8 @@ export function createGamepadInput(): GamepadInput {
       const movement = getGamepadMovementVector(gamepad.axes, gamepad.buttons);
       const shovePressed = readButton(gamepad.buttons, 0);
       const dodgePressed = readButton(gamepad.buttons, 1);
+      const firstItemPressed = readButton(gamepad.buttons, 2);
+      const secondItemPressed = readButton(gamepad.buttons, 3);
       state.setGamepadMovement(movement.x, movement.y);
 
       if (shovePressed && !shoveHeld) {
@@ -69,9 +85,17 @@ export function createGamepadInput(): GamepadInput {
       if (dodgePressed && !dodgeHeld) {
         state.queueDodge();
       }
+      if (firstItemPressed && !firstItemHeld) {
+        state.queueItemSlot(0);
+      }
+      if (secondItemPressed && !secondItemHeld) {
+        state.queueItemSlot(1);
+      }
 
       shoveHeld = shovePressed;
       dodgeHeld = dodgePressed;
+      firstItemHeld = firstItemPressed;
+      secondItemHeld = secondItemPressed;
     },
   });
 }

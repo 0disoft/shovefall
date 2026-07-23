@@ -5,9 +5,22 @@ import {
   normalizeGameConfig,
 } from "../src/simulation/contracts";
 import { SimulationContractError } from "../src/simulation/math";
+import { SYSTEM_ORDER } from "../src/simulation/versions";
 import { SimulationWorld } from "../src/simulation/world";
 
 describe("simulation world contracts", () => {
+  it("publishes active items before movement and contact resolution", () => {
+    const world = new SimulationWorld(normalizeGameConfig({ participantCount: 4 }), 42);
+
+    expect(world.systemOrder).toBe(SYSTEM_ORDER);
+    expect(SYSTEM_ORDER.indexOf("active-items")).toBeGreaterThan(
+      SYSTEM_ORDER.indexOf("action-transitions"),
+    );
+    expect(SYSTEM_ORDER.indexOf("active-items")).toBeLessThan(
+      SYSTEM_ORDER.indexOf("movement-intent"),
+    );
+  });
+
   it("rejects invalid participant counts", () => {
     expect(() => normalizeGameConfig({ participantCount: 0 })).toThrow(SimulationContractError);
     expect(() => normalizeGameConfig({ participantCount: 51 })).toThrow(SimulationContractError);

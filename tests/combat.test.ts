@@ -254,6 +254,16 @@ describe("gray-box movement and action timing", () => {
 });
 
 describe("weak-contact containment", () => {
+  it("keeps the launch-speed swept-contact envelope inside adjacent spatial cells", () => {
+    const maximumPostIntersectionSeparation =
+      SIMULATION_TUNING.body.maximumLaunchSpeed * 2 + SIMULATION_TUNING.body.radius * 2;
+
+    expect(SIMULATION_TUNING.body.maximumLaunchSpeed).toBeGreaterThan(
+      SIMULATION_TUNING.body.maximumSpeed,
+    );
+    expect(maximumPostIntersectionSeparation).toBeLessThan(SIMULATION_TUNING.spatialHash.cellSize);
+  });
+
   it("separates three equal bodies spawned at the same coordinate without non-finite state", () => {
     const world = createWorld(
       [

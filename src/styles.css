@@ -804,6 +804,43 @@ button:disabled {
   pointer-events: none;
 }
 
+.inventory-actions {
+  position: absolute;
+  z-index: 3;
+  top: max(14px, env(safe-area-inset-top));
+  left: max(14px, env(safe-area-inset-left));
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-width: calc(100% - 28px);
+}
+
+.inventory-actions[hidden] {
+  display: none;
+}
+
+.inventory-actions button {
+  min-height: 44px;
+  padding: 8px 12px;
+  touch-action: manipulation;
+  color: var(--ink-strong);
+  border: 1px solid rgba(104, 216, 214, 0.58);
+  border-radius: 10px;
+  background: rgba(20, 24, 22, 0.9);
+  font-size: 0.88rem;
+  font-weight: 850;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(8px);
+}
+
+.inventory-actions button:not(:disabled):active {
+  transform: translateY(1px);
+}
+
+.inventory-actions button:disabled {
+  opacity: 0.5;
+}
+
 .pointer-joystick {
   position: relative;
   width: 112px;
@@ -891,7 +928,7 @@ button:disabled {
 
 .control-guide {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 1px;
   margin: 12px 0 0;
   overflow: hidden;

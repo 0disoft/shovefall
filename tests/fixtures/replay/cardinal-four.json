@@ -1,9 +1,9 @@
 {
-  "formatVersion": 1,
-  "productVersion": "0.26.0",
-  "simulationVersion": "9.0.0",
+  "formatVersion": 2,
+  "productVersion": "0.27.0",
+  "simulationVersion": "10.0.0",
   "contentVersion": "5.0.0",
-  "buildId": "fixture-v3",
+  "buildId": "fixture-v4",
   "config": {
     "configVersion": 1,
     "participantCount": 4,
@@ -21,6 +21,10 @@
   },
   "masterSeed": "cardinal-four-v1",
   "humanActorId": 1,
+  "humanSetup": {
+    "baseMassFactor": 1,
+    "startingItems": ["wind-blast", "iron-boots"]
+  },
   "endTick": 180,
   "commands": [
     {
@@ -33,6 +37,7 @@
       },
       "shovePressed": false,
       "dodgePressed": false,
+      "useItemSlot": 0,
       "upgradeStat": null
     },
     {
@@ -45,6 +50,7 @@
       },
       "shovePressed": false,
       "dodgePressed": false,
+      "useItemSlot": null,
       "upgradeStat": null
     },
     {
@@ -57,6 +63,7 @@
       },
       "shovePressed": false,
       "dodgePressed": false,
+      "useItemSlot": null,
       "upgradeStat": null
     },
     {
@@ -69,30 +76,31 @@
       },
       "shovePressed": false,
       "dodgePressed": false,
+      "useItemSlot": null,
       "upgradeStat": null
     }
   ],
   "checkpoints": [
     {
       "tick": 30,
-      "stateHash": "fnv1a32:58441cf1"
+      "stateHash": "fnv1a32:850f9c23"
     },
     {
       "tick": 60,
-      "stateHash": "fnv1a32:2a10e5f2"
+      "stateHash": "fnv1a32:6f014590"
     },
     {
       "tick": 90,
-      "stateHash": "fnv1a32:e5b948fc"
+      "stateHash": "fnv1a32:23f484ae"
     },
     {
       "tick": 120,
-      "stateHash": "fnv1a32:06696328"
+      "stateHash": "fnv1a32:693328ea"
     },
     {
       "tick": 180,
-      "stateHash": "fnv1a32:de5fa3da"
+      "stateHash": "fnv1a32:d7d5d448"
     }
   ],
-  "finalHash": "fnv1a32:de5fa3da"
+  "finalHash": "fnv1a32:d7d5d448"
 }

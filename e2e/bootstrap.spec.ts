@@ -60,7 +60,7 @@ async function captureArenaCanvas(page: Page): Promise<{
   return { png, summary };
 }
 
-async function fastForwardUntilRoundCompleted(page: Page, remainingFrames = 250): Promise<void> {
+async function fastForwardUntilRoundCompleted(page: Page, remainingFrames = 550): Promise<void> {
   if (
     remainingFrames === 0 ||
     (await page.locator("#app").getAttribute("data-round")) === "completed"
@@ -167,9 +167,9 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await versionHistoryButton.click();
   await expect(page.locator("#app")).toHaveAttribute("data-screen", "history");
   await expect(page.getByRole("heading", { level: 2, name: "버전 기록" })).toBeFocused();
-  await expect(page.locator("#current-version")).toHaveText("v0.26.0");
-  await expect(page.locator("#version-history-list > li")).toHaveCount(7);
-  await expect(page.getByText("왜 바꿨냐면")).toHaveCount(7);
+  await expect(page.locator("#current-version")).toHaveText("v0.27.0");
+  await expect(page.locator("#version-history-list > li")).toHaveCount(8);
+  await expect(page.getByText("왜 바꿨냐면")).toHaveCount(8);
   await expect(page.locator("#arena-host canvas")).toBeHidden();
   await page.keyboard.press("Escape");
   await expect(page.locator("#app")).toHaveAttribute("data-screen", "menu");
@@ -192,8 +192,11 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   );
   await page.locator("#starting-weight").fill("58");
   await page.locator('input[name="collapseSpeed"][value="slow"]').check();
+  await page.locator('input[name="startingItem"][value="spring-glove"]').uncheck();
+  await page.locator('input[name="startingItem"][value="wind-blast"]').check();
   await expect(page.locator("#setup-summary")).toContainText("몸무게 58");
   await expect(page.locator("#setup-summary")).toContainText("붕괴 느림");
+  await expect(page.locator("#setup-summary")).toContainText("철 장화 + 장풍");
 
   await saveSettings(page);
   const countdownPauseSnapshot = await page.locator("#start-game").evaluate((button) => {
@@ -236,6 +239,12 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await expect(page.locator("#app")).toHaveAttribute("data-round", "active");
   await expect(page.getByText("시작!", { exact: true })).toBeVisible();
   await expect(page.locator("#game-telemetry")).toHaveAttribute("data-action", "Ready");
+  await expect(page.locator("#inventory-actions")).toBeVisible();
+  await expect(page.locator("#use-item-slot-0")).toContainText("철 장화 · 상시");
+  await expect(page.locator("#use-item-slot-0")).toBeDisabled();
+  await expect(page.locator("#use-item-slot-1")).toContainText("장풍 · 2회");
+  await page.keyboard.press("KeyE");
+  await expect(page.locator("#use-item-slot-1")).toContainText("장풍 · 1회");
   await page.keyboard.down("Space");
   await expect(page.locator("#game-telemetry")).toHaveAttribute(
     "data-action",
@@ -304,6 +313,7 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await expect(page.locator("#app")).toHaveAttribute("data-screen", "menu");
   await expect(page.getByRole("button", { name: "게임 시작" })).toBeFocused();
   await expect(page.locator("#game-telemetry")).toBeHidden();
+  await expect(page.locator("#inventory-actions")).toBeHidden();
 });
 
 test("offers a working touch joystick and action buttons on a narrow viewport", async ({

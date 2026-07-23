@@ -77,6 +77,14 @@ const SOUND_DEFINITIONS: Partial<Record<SimulationEventKind, SoundDefinition>> =
     priority: 1,
     oscillatorType: "sawtooth",
   }),
+  "wind-blast-hit": Object.freeze({
+    frequency: 110,
+    endFrequency: 54,
+    durationSeconds: 0.2,
+    gain: 0.105,
+    priority: 4,
+    oscillatorType: "sawtooth",
+  }),
   "dodge-succeeded": Object.freeze({
     frequency: 420,
     endFrequency: 690,

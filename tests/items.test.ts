@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { createNeutralCommand, normalizeGameConfig } from "../src/simulation/contracts";
+import {
+  createNeutralCommand,
+  normalizeGameConfig,
+  type SimulationEventV1,
+} from "../src/simulation/contracts";
 import { getItemSpawnBand } from "../src/simulation/items";
 import { vectorLength, subtractVectors } from "../src/simulation/math";
 import { SIMULATION_TUNING } from "../src/simulation/tuning";
@@ -94,6 +98,248 @@ describe("deterministic item effects", () => {
     ]);
     expect(getActor(activeWorld, 1).effects).toEqual([]);
     expect(getActor(activeWorld, 1).massFactor).toBe(1);
+  });
+
+  it("fires Wind Blast from an inventory slot, spends a charge, and transfers motion", () => {
+    const world = new SimulationWorld(createItemConfig(), "wind-blast-chain", {
+      arenaLayout: "rectangular-fixture",
+      participantOverrides: [
+        {
+          actorId: 1,
+          position: { x: 2, y: 4.5 },
+          facing: { x: 1, y: 0 },
+          startingItems: ["wind-blast"],
+        },
+        { actorId: 2, position: { x: 4, y: 4.5 }, facing: { x: -1, y: 0 } },
+        { actorId: 3, position: { x: 4.8, y: 4.5 }, facing: { x: -1, y: 0 } },
+        { actorId: 4, position: { x: 1.5, y: 7.5 } },
+      ],
+    });
+    const beforeTarget = getActor(world, 2).position.x;
+    const beforeBystander = getActor(world, 3).position.x;
+    const result = world.step([{ ...createNeutralCommand(world.tick, 1), useItemSlot: 0 }]);
+    const blast = result.events.find(({ kind }) => kind === "wind-blast-hit");
+
+    expect(result.events).toContainEqual(
+      expect.objectContaining({
+        kind: "item-used",
+        actorId: 1,
+        itemDefinitionId: "wind-blast",
+      }),
+    );
+    expect(blast).toMatchObject({ actorId: 1, targetActorId: 2 });
+    expect(vectorLength(blast?.vector ?? { x: 0, y: 0 })).toBeGreaterThanOrEqual(
+      SIMULATION_TUNING.shove.baseImpulse * 3,
+    );
+    expect(getActor(world, 1).inventory[0]?.charges).toBe(1);
+    expect(getActor(world, 2).position.x).toBeGreaterThan(beforeTarget);
+    expect(getActor(world, 3).position.x).toBeGreaterThan(beforeBystander);
+  });
+
+  it("makes heavy targets resist Wind Blast deterministically", () => {
+    const blastStrength = (massFactor: number): number => {
+      const world = new SimulationWorld(createItemConfig(), `wind-mass-${massFactor}`, {
+        arenaLayout: "rectangular-fixture",
+        participantOverrides: [
+          {
+            actorId: 1,
+            position: { x: 2, y: 4.5 },
+            facing: { x: 1, y: 0 },
+            startingItems: ["wind-blast"],
+          },
+          { actorId: 2, position: { x: 5, y: 4.5 }, massFactor },
+          { actorId: 3, position: { x: 7.5, y: 1.5 } },
+          { actorId: 4, position: { x: 1.5, y: 7.5 } },
+        ],
+      });
+      const result = world.step([{ ...createNeutralCommand(world.tick, 1), useItemSlot: 0 }]);
+      return vectorLength(
+        result.events.find(({ kind }) => kind === "wind-blast-hit")?.vector ?? { x: 0, y: 0 },
+      );
+    };
+
+    expect(blastStrength(0.8)).toBeGreaterThan(blastStrength(1.4));
+  });
+
+  it("lets a same-tick dodge evade Wind Blast while still spending its charge", () => {
+    const world = new SimulationWorld(createItemConfig(), "wind-dodge", {
+      arenaLayout: "rectangular-fixture",
+      participantOverrides: [
+        {
+          actorId: 1,
+          position: { x: 2, y: 4.5 },
+          facing: { x: 1, y: 0 },
+          startingItems: ["wind-blast"],
+        },
+        { actorId: 2, position: { x: 5, y: 4.5 }, facing: { x: 0, y: -1 } },
+        { actorId: 3, position: { x: 7.5, y: 1.5 } },
+        { actorId: 4, position: { x: 1.5, y: 7.5 } },
+      ],
+    });
+    const result = world.step([
+      { ...createNeutralCommand(world.tick, 1), useItemSlot: 0, shovePressed: true },
+      { ...createNeutralCommand(world.tick, 2), dodgePressed: true },
+    ]);
+
+    expect(result.events.some(({ kind }) => kind === "wind-blast-hit")).toBe(false);
+    expect(result.events.some(({ kind }) => kind === "shove-started")).toBe(false);
+    expect(result.events).toContainEqual(
+      expect.objectContaining({ kind: "dodge-succeeded", actorId: 2, targetActorId: 1 }),
+    );
+    expect(getActor(world, 1).inventory[0]?.charges).toBe(1);
+  });
+
+  it("spends a Wind Blast charge on a miss without inventing a target", () => {
+    const world = new SimulationWorld(createItemConfig(), "wind-miss", {
+      arenaLayout: "rectangular-fixture",
+      participantOverrides: [
+        {
+          actorId: 1,
+          position: { x: 4, y: 4.5 },
+          facing: { x: 0, y: -1 },
+          startingItems: ["wind-blast"],
+        },
+        ...PARTICIPANT_OVERRIDES.slice(1),
+      ],
+    });
+    const result = world.step([{ ...createNeutralCommand(world.tick, 1), useItemSlot: 0 }]);
+
+    expect(result.events.some(({ kind }) => kind === "item-used")).toBe(true);
+    expect(result.events.some(({ kind }) => kind === "wind-blast-hit")).toBe(false);
+    expect(getActor(world, 1).inventory[0]?.charges).toBe(1);
+  });
+
+  it("allows exactly two Wind Blasts and falls through to shove after the charges are gone", () => {
+    const world = new SimulationWorld(createItemConfig(), "wind-two-charges", {
+      arenaLayout: "rectangular-fixture",
+      participantOverrides: [
+        {
+          actorId: 1,
+          position: { x: 4, y: 4.5 },
+          facing: { x: 0, y: -1 },
+          startingItems: ["wind-blast"],
+        },
+        ...PARTICIPANT_OVERRIDES.slice(1),
+      ],
+    });
+
+    for (let use = 0; use < 2; use += 1) {
+      const result = world.step([{ ...createNeutralCommand(world.tick, 1), useItemSlot: 0 }]);
+      expect(result.events.filter(({ kind }) => kind === "item-used")).toHaveLength(1);
+    }
+
+    expect(getActor(world, 1).inventory[0]?.charges).toBe(0);
+    const exhausted = world.step([
+      {
+        ...createNeutralCommand(world.tick, 1),
+        useItemSlot: 0,
+        shovePressed: true,
+      },
+    ]);
+    expect(exhausted.events.some(({ kind }) => kind === "item-used")).toBe(false);
+    expect(exhausted.events.some(({ kind }) => kind === "shove-started")).toBe(true);
+    expect(getActor(world, 1).inventory[0]?.charges).toBe(0);
+  });
+
+  it("gives an available dodge priority over active item and shove", () => {
+    const world = new SimulationWorld(createItemConfig(), "dodge-item-shove-priority", {
+      arenaLayout: "rectangular-fixture",
+      participantOverrides: [
+        {
+          ...PARTICIPANT_OVERRIDES[0]!,
+          startingItems: ["wind-blast"],
+        },
+        ...PARTICIPANT_OVERRIDES.slice(1),
+      ],
+    });
+    const result = world.step([
+      {
+        ...createNeutralCommand(world.tick, 1),
+        dodgePressed: true,
+        useItemSlot: 0,
+        shovePressed: true,
+      },
+    ]);
+
+    expect(result.events.some(({ kind }) => kind === "dodge-started")).toBe(true);
+    expect(result.events.some(({ kind }) => kind === "item-used")).toBe(false);
+    expect(result.events.some(({ kind }) => kind === "shove-started")).toBe(false);
+    expect(getActor(world, 1).inventory[0]?.charges).toBe(2);
+  });
+
+  it("resolves simultaneous Wind Blasts independently of command-array order", () => {
+    const run = (commandOrder: readonly number[]) => {
+      const world = new SimulationWorld(createItemConfig(), "simultaneous-wind", {
+        arenaLayout: "rectangular-fixture",
+        participantOverrides: [
+          {
+            actorId: 1,
+            position: { x: 2, y: 4.5 },
+            facing: { x: 1, y: 0 },
+            startingItems: ["wind-blast"],
+          },
+          {
+            actorId: 2,
+            position: { x: 7, y: 4.5 },
+            facing: { x: -1, y: 0 },
+            startingItems: ["wind-blast"],
+          },
+          { actorId: 3, position: { x: 4.5, y: 4.5 } },
+          { actorId: 4, position: { x: 4.5, y: 7.5 } },
+        ],
+      });
+      const result = world.step(
+        commandOrder.map((actorId) => ({
+          ...createNeutralCommand(world.tick, actorId),
+          useItemSlot: 0 as const,
+        })),
+      );
+      return {
+        stateHash: result.frame.stateHash,
+        hits: result.events.filter(({ kind }) => kind === "wind-blast-hit"),
+      };
+    };
+
+    expect(run([1, 2])).toEqual(run([2, 1]));
+  });
+
+  it("keeps stronger Wind Blast elimination credit over a weaker same-tick shove", () => {
+    const world = new SimulationWorld(createItemConfig(), "wind-credit-arbitration", {
+      arenaLayout: "rectangular-fixture",
+      participantOverrides: [
+        {
+          actorId: 1,
+          position: { x: 5, y: 4.5 },
+          facing: { x: 0, y: -1 },
+          startingItems: ["wind-blast"],
+        },
+        { actorId: 2, position: { x: 5, y: 2 } },
+        { actorId: 3, position: { x: 4.1, y: 2 }, facing: { x: 1, y: 0 } },
+        { actorId: 4, position: { x: 7.5, y: 7.5 } },
+      ],
+    });
+    world.step([{ ...createNeutralCommand(world.tick, 3), shovePressed: true }]);
+
+    while (world.tick < SIMULATION_TUNING.shove.windupTicks) {
+      world.step();
+    }
+
+    const impact = world.step([{ ...createNeutralCommand(world.tick, 1), useItemSlot: 0 }]);
+    expect(impact.events.some(({ kind }) => kind === "wind-blast-hit")).toBe(true);
+    expect(impact.events.some(({ kind }) => kind === "shove-hit")).toBe(true);
+
+    let creditEvent: SimulationEventV1 | undefined;
+
+    for (let tick = 0; tick < 120 && creditEvent === undefined; tick += 1) {
+      const result = world.step();
+      creditEvent = result.events.find(({ kind }) => kind === "stat-point-earned");
+    }
+
+    expect(creditEvent).toMatchObject({
+      kind: "stat-point-earned",
+      actorId: 1,
+      targetActorId: 2,
+    });
   });
 
   it("applies and refreshes timed mass effects within the global mass bounds", () => {

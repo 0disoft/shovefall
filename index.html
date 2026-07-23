@@ -82,6 +82,10 @@
                 <input type="checkbox" name="startingItem" value="spring-glove" checked />
                 <span><strong>스프링 장갑</strong><small>첫 밀치기를 더 멀리</small></span>
               </label>
+              <label class="preset-card">
+                <input type="checkbox" name="startingItem" value="wind-blast" />
+                <span><strong>장풍</strong><small>2회 · 멀리 날려</small></span>
+              </label>
               <p id="starting-items-help" class="fieldset-help" aria-live="polite">
                 라운드를 시작할 때 들고 갈 두 개를 골라.
               </p>
@@ -292,6 +296,15 @@
                 <button id="touch-shove" type="button">밀치기</button>
               </div>
             </div>
+            <div
+              id="inventory-actions"
+              class="inventory-actions"
+              aria-label="시작 아이템 사용"
+              hidden
+            >
+              <button id="use-item-slot-0" type="button" disabled>Q · 슬롯 1</button>
+              <button id="use-item-slot-1" type="button" disabled>E · 슬롯 2</button>
+            </div>
           </div>
           <dl id="game-telemetry" class="game-telemetry" aria-label="현재 라운드 상태" hidden>
             <div>
@@ -307,7 +320,7 @@
               <dd><output id="effect-value">없음</output></dd>
             </div>
             <div>
-              <dt>아이템</dt>
+              <dt>맵 아이템</dt>
               <dd><output id="item-value">0</output></dd>
             </div>
             <div>
@@ -357,6 +370,10 @@
             <div>
               <dt>회피</dt>
               <dd>Shift</dd>
+            </div>
+            <div>
+              <dt>아이템</dt>
+              <dd>Q · E</dd>
             </div>
           </dl>
           <div id="arena-actions" class="arena-actions" hidden>

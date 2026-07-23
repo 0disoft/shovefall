@@ -69,6 +69,7 @@ export interface ActorCommandV1 {
   readonly move: Vector2;
   readonly shovePressed: boolean;
   readonly dodgePressed: boolean;
+  readonly useItemSlot: InventorySlotIndex | null;
   readonly upgradeStat: UpgradeStatId | null;
 }
 
@@ -88,6 +89,7 @@ export interface ParticipantProgression {
 export interface ShoveCreditState {
   readonly attackerActorId: ActorId | null;
   readonly hitTick: Tick | null;
+  readonly strength: number;
 }
 
 export interface BodyState {
@@ -208,6 +210,8 @@ export type SimulationEventKind =
   | "dodge-succeeded"
   | "falling-started"
   | "item-picked-up"
+  | "item-used"
+  | "wind-blast-hit"
   | "item-spawned"
   | "item-removed"
   | "eliminated"
@@ -240,8 +244,13 @@ export interface ReplayCheckpointV1 {
   readonly stateHash: string;
 }
 
-export interface ReplayFixtureV1 {
-  readonly formatVersion: 1;
+export interface ReplayHumanSetupV2 {
+  readonly baseMassFactor: number;
+  readonly startingItems: readonly ItemDefinitionId[];
+}
+
+export interface ReplayFixtureV2 {
+  readonly formatVersion: 2;
   readonly productVersion: string;
   readonly simulationVersion: string;
   readonly contentVersion: string;
@@ -249,6 +258,7 @@ export interface ReplayFixtureV1 {
   readonly config: GameConfigV1;
   readonly masterSeed: string | number;
   readonly humanActorId: ActorId;
+  readonly humanSetup: ReplayHumanSetupV2;
   readonly endTick: Tick;
   readonly commands: readonly ActorCommandV1[];
   readonly checkpoints: readonly ReplayCheckpointV1[];
@@ -323,6 +333,7 @@ export function createNeutralCommand(tick: Tick, actorId: ActorId): ActorCommand
     move: ZERO_VECTOR,
     shovePressed: false,
     dodgePressed: false,
+    useItemSlot: null,
     upgradeStat: null,
   });
 }
@@ -341,6 +352,10 @@ export function normalizeActorCommand(command: ActorCommandV1): ActorCommandV1 {
     throw new SimulationContractError("command.upgradeStat is unsupported");
   }
 
+  if (command.useItemSlot !== null && command.useItemSlot !== 0 && command.useItemSlot !== 1) {
+    throw new SimulationContractError("command.useItemSlot is unsupported");
+  }
+
   return Object.freeze({
     commandVersion: 1,
     tick: command.tick,
@@ -348,6 +363,7 @@ export function normalizeActorCommand(command: ActorCommandV1): ActorCommandV1 {
     move: normalizeVector(command.move),
     shovePressed: command.shovePressed,
     dodgePressed: command.dodgePressed,
+    useItemSlot: command.useItemSlot,
     upgradeStat: command.upgradeStat,
   });
 }

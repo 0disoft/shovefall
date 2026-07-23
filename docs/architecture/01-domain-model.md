@@ -18,9 +18,9 @@ The browser's public arena policy derives a 44×36 bound for 50 participants and
 
 ## Participant
 
-A participant contains stable identity, human or scripted control ownership, an active flag, a circular body, two-slot starting inventory, temporary effects, progression, shove credit, and an action state. Inventory slots preserve their index, item definition, and nullable charge count; `null` means a permanent passive. The body owns position, velocity, facing, radius, base and effective continuous `massFactor`, and integer unsupported ticks. Effective mass is clamped to `0.8..1.4`. Progression owns unspent points, credited eliminations, and bounded Power, Stability, Mobility, and Reflex levels. Shove credit records the deterministic last attacker and hit tick; falling grants one point only when that hit is at most 180 ticks old.
+A participant contains stable identity, human or scripted control ownership, an active flag, a circular body, two-slot starting inventory, temporary effects, progression, offensive credit, and an action state. Inventory slots preserve their index, item definition, and nullable charge count; `null` means a permanent passive. The body owns position, velocity, facing, radius, base and effective continuous `massFactor`, and integer unsupported ticks. Effective mass is clamped to `0.8..1.4`. Progression owns unspent points, credited eliminations, and bounded Power, Stability, Mobility, and Reflex levels. The compatibility-named `shoveCredit` state records attacker, hit tick, and impulse strength. Newer hits replace older hits; same-tick Wind Blast and shove claims choose greater strength, then lower attacker ID. Falling grants one point only when that hit is at most 180 ticks old.
 
-Action kinds are `Ready`, `ShoveWindup`, `ShoveActive`, `ShoveRecovery`, `DodgeActive`, `Stumbling`, `Anchored`, `Falling`, and `Eliminated`. Action transitions are tick-bounded. If shove and dodge edges arrive together while both are ready, dodge has deterministic priority. `Falling` is irreversible and later transitions to `Eliminated`.
+Action kinds are `Ready`, `ShoveWindup`, `ShoveActive`, `ShoveRecovery`, `DodgeActive`, `Stumbling`, `Anchored`, `Falling`, and `Eliminated`. Action transitions are tick-bounded. Executable requests use `dodge > active item > shove`; an invalid, passive, or exhausted slot falls through to shove without consuming a charge. `Falling` is irreversible and later transitions to `Eliminated`.
 
 The current tuning uses six shove-windup ticks, five hand-active ticks, fifteen recovery ticks, five dodge/evasion ticks, nine unsupported grace ticks, and twenty-four falling ticks. ShoveActive no longer forces forward body speed; it exposes a `0.28`-tile hand reach beyond the two body radii. The collapsed local debug lab may override bounded movement, mass-speed, hand-reach, and dodge values for the next round without changing production defaults.
 
@@ -34,7 +34,7 @@ A tile has an integer grid location, stable `column:row` ID, and a `Stable`, `Wa
 
 ## Commands, Frames, and Events
 
-- `ActorCommandV1` contains tick, actor ID, normalized movement, shove/dodge edge flags, and an optional stat-spend request.
+- `ActorCommandV1` contains tick, actor ID, normalized movement, shove/dodge edge flags, an optional inventory slot `0|1`, and an optional stat-spend request.
 - `RenderFrameV1` is an immutable presentation snapshot with current and previous positions, facing, mass, inventory slots, effects, Spring Glove telegraph, map items, action, tiles, tick, and state hash.
 - `SimulationEventV1` is a versioned, ordered fact stream for one-time presentation and diagnostics. Events do not drive authoritative physics.
 
@@ -48,7 +48,7 @@ Randomness may select arena variants, content placement, bot personality data, a
 
 ## Replay
 
-`ReplayFixtureV1` stores format, product, simulation, and content versions; build ID; normalized config; master seed; human actor ID; end tick; strictly increasing human commands; ordered hash checkpoints; and a final hash.
+`ReplayFixtureV2` stores format, product, simulation, and content versions; build ID; normalized config; master seed; human actor ID; required base mass and starting loadout; end tick; strictly increasing human commands; ordered hash checkpoints; and a final hash.
 
 The current format accepts UTF-8 JSON up to 5 MiB and 7,200 ticks. Unknown replay majors, incompatible simulation versions, malformed booleans or numbers, commands for bots, duplicate or unordered ticks, range violations, and hash mismatches are errors. Compatibility is never guessed.
 
@@ -66,9 +66,11 @@ Product `0.25.0` keeps simulation `8.0.0` and content `4.0.0`. `VERSION_HISTORY`
 
 Product `0.26.0`, simulation `9.0.0`, and content `5.0.0` raise authoritative participant and arena bounds to 50 and 48, add the 44×36 public-island policy with five bounded lake attempts, expand the registered starting-item catalog, force the browser to 50 Hard-AI participants, and replace categorical starting mass with the deterministic 50–100 weight input. Counts below 50 remain valid only for fixtures and focused diagnostics. Replay fixtures advance their version envelope; existing sub-40 deterministic hashes remain unchanged because the new lake branch begins at 40 participants.
 
+Product `0.27.0` and simulation `10.0.0` add the `active-items` system stage, two deterministic inventory-slot command edges, Wind Blast first-hit ray targeting, launch-speed weak-contact transfer, and strength-based offensive-credit arbitration. Replay format v2 makes human base mass and starting loadout required setup so charged item commands reproduce honestly. Content remains `5.0.0` because the registered item definition and charge count do not change.
+
 ## Version Ownership
 
 - Product version: `package.json` and `PRODUCT_VERSION`.
 - Simulation and content versions: `src/simulation/versions.ts`.
-- Replay format major: `REPLAY_FORMAT_VERSION` and `ReplayFixtureV1`.
+- Replay format major: `REPLAY_FORMAT_VERSION` and `ReplayFixtureV2`.
 - System order: `SYSTEM_ORDER`; changing meaning or ordering requires a simulation version decision and regenerated replay fixtures.

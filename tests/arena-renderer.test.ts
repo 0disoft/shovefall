@@ -247,4 +247,45 @@ describe("arena renderer presentation", () => {
 
     expect(Number(host.dataset.cameraY)).toBeLessThan(centerCameraY);
   });
+
+  it("renders Wind Blast activation and impact feedback without changing simulation state", async () => {
+    const host = createHost();
+    const renderer = await createArenaRenderer(host);
+    const frame = new SimulationWorld(
+      normalizeGameConfig({ participantCount: 4 }),
+      "wind-presentation",
+    ).createRenderFrame();
+    const stateHash = frame.stateHash;
+
+    renderer.consumeEvents(
+      [
+        {
+          eventVersion: 1,
+          roundId: frame.roundId,
+          tick: frame.tick,
+          sequence: 0,
+          kind: "item-used",
+          actorId: 1,
+          itemDefinitionId: "wind-blast",
+          vector: { x: 1, y: 0 },
+        },
+        {
+          eventVersion: 1,
+          roundId: frame.roundId,
+          tick: frame.tick,
+          sequence: 1,
+          kind: "wind-blast-hit",
+          actorId: 1,
+          targetActorId: 2,
+          itemDefinitionId: "wind-blast",
+          vector: { x: 0.315, y: 0 },
+        },
+      ],
+      frame,
+    );
+    renderer.render(frame, 0, 1);
+
+    expect(applicationRender).toHaveBeenCalledTimes(1);
+    expect(frame.stateHash).toBe(stateHash);
+  });
 });

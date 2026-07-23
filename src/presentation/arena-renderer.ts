@@ -36,7 +36,9 @@ type VisualEffectKind =
   | "shove-missed"
   | "dodge-succeeded"
   | "falling-started"
-  | "item-picked-up";
+  | "item-picked-up"
+  | "item-used"
+  | "wind-blast-hit";
 
 interface VisualEffect {
   readonly key: string;
@@ -471,7 +473,10 @@ function drawParticipant(
 }
 
 function getEffectPosition(event: SimulationEventV1, frame: RenderFrameV1): Vector2 | undefined {
-  const actorId = event.kind === "shove-hit" ? event.targetActorId : event.actorId;
+  const actorId =
+    event.kind === "shove-hit" || event.kind === "wind-blast-hit"
+      ? event.targetActorId
+      : event.actorId;
   return frame.participants.find((participant) => participant.actorId === actorId)?.position;
 }
 
@@ -481,7 +486,9 @@ function isVisualEffectKind(kind: SimulationEventV1["kind"]): kind is VisualEffe
     kind === "shove-missed" ||
     kind === "dodge-succeeded" ||
     kind === "falling-started" ||
-    kind === "item-picked-up"
+    kind === "item-picked-up" ||
+    kind === "item-used" ||
+    kind === "wind-blast-hit"
   );
 }
 
@@ -499,7 +506,27 @@ function drawWorldEffect(
   const expansion = reducedMotion ? 1 : 1 + progress * 1.8;
   const alpha = Math.max(0, 1 - progress);
 
-  if (effect.kind === "shove-hit") {
+  if (effect.kind === "wind-blast-hit") {
+    graphics
+      .circle(x, y, baseRadius * expansion * 1.35)
+      .stroke({ color: ITEM_COLORS["wind-blast"], width: 4, alpha });
+  } else if (effect.kind === "item-used") {
+    const direction = projectArenaVector(effect.vector ?? { x: 1, y: 0 });
+    const length = baseRadius * (reducedMotion ? 2.2 : 2.2 + progress * 3.2);
+    const spread = baseRadius * 0.8;
+    graphics
+      .moveTo(x, y)
+      .lineTo(
+        x + direction.x * length - direction.y * spread,
+        y + direction.y * length + direction.x * spread,
+      )
+      .moveTo(x, y)
+      .lineTo(
+        x + direction.x * length + direction.y * spread,
+        y + direction.y * length - direction.x * spread,
+      )
+      .stroke({ color: ITEM_COLORS["wind-blast"], width: 3, alpha, cap: "round" });
+  } else if (effect.kind === "shove-hit") {
     graphics.circle(x, y, baseRadius * expansion).stroke({ color: 0xff695c, width: 3, alpha });
   } else if (effect.kind === "dodge-succeeded") {
     graphics

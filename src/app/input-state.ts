@@ -16,6 +16,8 @@ export const GAMEPLAY_CODES = Object.freeze([
   "Space",
   "ShiftLeft",
   "ShiftRight",
+  "KeyQ",
+  "KeyE",
   "Digit1",
   "Digit2",
   "Digit3",
@@ -38,6 +40,7 @@ export class InputState {
   #gamepadMoveY = 0;
   #shoveQueued = false;
   #dodgeQueued = false;
+  #itemSlotQueued: 0 | 1 | null = null;
   #upgradeQueued: UpgradeStatId | null = null;
 
   public press(code: GameplayCode, repeat = false): void {
@@ -53,6 +56,14 @@ export class InputState {
 
     if (code === "ShiftLeft" || code === "ShiftRight") {
       this.#dodgeQueued = true;
+    }
+
+    if (code === "KeyQ") {
+      this.queueItemSlot(0);
+    }
+
+    if (code === "KeyE") {
+      this.queueItemSlot(1);
     }
 
     const upgradeStat =
@@ -83,6 +94,7 @@ export class InputState {
     this.#gamepadMoveY = 0;
     this.#shoveQueued = false;
     this.#dodgeQueued = false;
+    this.#itemSlotQueued = null;
     this.#upgradeQueued = null;
   }
 
@@ -96,6 +108,12 @@ export class InputState {
 
   public queueDodge(): void {
     this.#dodgeQueued = true;
+  }
+
+  public queueItemSlot(slotIndex: 0 | 1): void {
+    if (this.#itemSlotQueued === null || slotIndex < this.#itemSlotQueued) {
+      this.#itemSlotQueued = slotIndex;
+    }
   }
 
   public setPointerMovement(x: number, y: number): void {
@@ -125,10 +143,12 @@ export class InputState {
       }),
       shovePressed: this.#shoveQueued,
       dodgePressed: this.#dodgeQueued,
+      useItemSlot: this.#itemSlotQueued,
       upgradeStat: this.#upgradeQueued,
     });
     this.#shoveQueued = false;
     this.#dodgeQueued = false;
+    this.#itemSlotQueued = null;
     this.#upgradeQueued = null;
     return command;
   }

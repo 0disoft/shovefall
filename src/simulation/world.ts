@@ -7,6 +7,7 @@ import {
   type GameConfigV1,
   type ItemDefinitionId,
   type ItemId,
+  type InventorySlotIndex,
   type ParticipantActionKind,
   type ParticipantState,
   type RenderFrameV1,
@@ -42,6 +43,7 @@ import {
   advanceItemSpawns,
   applyStartingItems,
   clearEffects,
+  consumeInventoryCharge,
   consumeSpringGlove,
   createItemSystem,
   expireEffects,
@@ -127,6 +129,16 @@ interface SweptCircleContact {
   readonly rightPosition: Vector2;
 }
 
+interface RequestedActionResult {
+  readonly participants: readonly ParticipantState[];
+  readonly activeItemSlots: ReadonlyMap<ActorId, InventorySlotIndex>;
+}
+
+interface OffensiveCreditCandidate {
+  readonly attackerActorId: ActorId;
+  readonly strength: number;
+}
+
 function createReadyAction(tick: number): ActionState {
   return Object.freeze({
     kind: "Ready",
@@ -162,6 +174,55 @@ function createTimedAction(
 function normalizeDirectionOrFallback(direction: Vector2, fallback: Vector2): Vector2 {
   const normalized = normalizeVector(direction);
   return isZeroVector(normalized) ? normalizeVector(fallback) : normalized;
+}
+
+function chooseOffensiveCredit(
+  current: ParticipantState["shoveCredit"],
+  candidate: OffensiveCreditCandidate | undefined,
+  tick: number,
+): ParticipantState["shoveCredit"] {
+  if (candidate === undefined) {
+    return current;
+  }
+
+  if (
+    current.hitTick === tick &&
+    (current.strength > candidate.strength ||
+      (current.strength === candidate.strength &&
+        current.attackerActorId !== null &&
+        current.attackerActorId < candidate.attackerActorId))
+  ) {
+    return current;
+  }
+
+  return Object.freeze({
+    attackerActorId: candidate.attackerActorId,
+    hitTick: tick,
+    strength: candidate.strength,
+  });
+}
+
+function getRayCircleEntryDistance(
+  origin: Vector2,
+  direction: Vector2,
+  center: Vector2,
+  radius: number,
+  maximumDistance: number,
+): number | undefined {
+  const delta = subtractVectors(center, origin);
+  const projection = dotVectors(delta, direction);
+  const perpendicularSquared = vectorLengthSquared(delta) - projection * projection;
+  const radiusSquared = radius * radius;
+
+  if (perpendicularSquared > radiusSquared) {
+    return undefined;
+  }
+
+  const halfChord = Math.sqrt(Math.max(0, radiusSquared - perpendicularSquared));
+  const exitDistance = projection + halfChord;
+  const entryDistance = Math.max(0, projection - halfChord);
+
+  return exitDistance >= 0 && entryDistance <= maximumDistance ? entryDistance : undefined;
 }
 
 function validateOverride(override: ParticipantSpawnOverride, participantCount: number): void {
@@ -256,7 +317,7 @@ function createParticipants(
       inventory: Object.freeze([]),
       effects: Object.freeze([]),
       progression: createParticipantProgression(),
-      shoveCredit: Object.freeze({ attackerActorId: null, hitTick: null }),
+      shoveCredit: Object.freeze({ attackerActorId: null, hitTick: null, strength: 0 }),
       active: true,
     });
     participants.push(applyStartingItems(participant, override?.startingItems ?? []));
@@ -439,7 +500,12 @@ export class SimulationWorld {
     participants = this.#advanceExpiredActions(participants, events);
     participants = expireEffects(participants, this.#tick);
     participants = this.#applyUpgrades(participants, commandsByActor, events);
-    participants = this.#startRequestedActions(participants, commandsByActor, events);
+    const requestedActions = this.#startRequestedActions(participants, commandsByActor, events);
+    participants = this.#resolveActiveItems(
+      requestedActions.participants,
+      requestedActions.activeItemSlots,
+      events,
+    );
     participants = this.#applyMovementIntent(participants, commandsByActor);
     participants = this.#integratePositions(participants);
     const collidableParticipants = participants.filter(isCollidable).map((participant) =>
@@ -690,8 +756,9 @@ export class SimulationWorld {
     participants: readonly ParticipantState[],
     commandsByActor: ReadonlyMap<ActorId, ActorCommandV1>,
     events: SimulationEventV1[],
-  ): readonly ParticipantState[] {
-    return participants.map((participant) => {
+  ): RequestedActionResult {
+    const activeItemSlots = new Map<ActorId, InventorySlotIndex>();
+    const nextParticipants = participants.map((participant) => {
       const command =
         commandsByActor.get(participant.actorId) ??
         createNeutralCommand(this.#tick, participant.actorId);
@@ -744,6 +811,20 @@ export class SimulationWorld {
         });
       }
 
+      if (command.useItemSlot !== null) {
+        const slot = participant.inventory.find(
+          (candidate) => candidate.slotIndex === command.useItemSlot,
+        );
+
+        if (slot?.definitionId === "wind-blast" && slot.charges !== null && slot.charges > 0) {
+          activeItemSlots.set(participant.actorId, command.useItemSlot);
+          return Object.freeze({
+            ...participant,
+            body: Object.freeze({ ...participant.body, facing: direction }),
+          });
+        }
+      }
+
       if (command.shovePressed && this.#tick >= participant.cooldowns.shoveReadyTick) {
         const springBoosted = hasSpringGlove(participant);
         const participantWithoutSpring = springBoosted
@@ -781,6 +862,151 @@ export class SimulationWorld {
       }
 
       return participant;
+    });
+
+    return Object.freeze({
+      participants: Object.freeze(nextParticipants),
+      activeItemSlots,
+    });
+  }
+
+  #resolveActiveItems(
+    participants: readonly ParticipantState[],
+    activeItemSlots: ReadonlyMap<ActorId, InventorySlotIndex>,
+    events: SimulationEventV1[],
+  ): readonly ParticipantState[] {
+    if (activeItemSlots.size === 0) {
+      return participants;
+    }
+
+    const ordered = participants.toSorted((left, right) => left.actorId - right.actorId);
+    const updatedById = new Map(ordered.map((participant) => [participant.actorId, participant]));
+    const impulses = new Map<ActorId, Vector2>();
+    const credits = new Map<
+      ActorId,
+      { readonly attackerActorId: ActorId; readonly strength: number }
+    >();
+
+    for (const attacker of ordered) {
+      const slotIndex = activeItemSlots.get(attacker.actorId);
+
+      if (slotIndex === undefined || !isCollidable(attacker)) {
+        continue;
+      }
+
+      const consumed = consumeInventoryCharge(attacker, slotIndex);
+
+      if (consumed === undefined) {
+        continue;
+      }
+
+      updatedById.set(attacker.actorId, consumed);
+      const direction = normalizeDirectionOrFallback(attacker.body.facing, { x: 1, y: 0 });
+      events.push(
+        this.#createEvent("item-used", {
+          actorId: attacker.actorId,
+          itemDefinitionId: "wind-blast",
+          vector: direction,
+        }),
+      );
+      const target = ordered
+        .filter((candidate) => candidate.actorId !== attacker.actorId && isCollidable(candidate))
+        .map((candidate) =>
+          Object.freeze({
+            candidate,
+            entryDistance: getRayCircleEntryDistance(
+              attacker.body.position,
+              direction,
+              candidate.body.position,
+              candidate.body.radius,
+              SIMULATION_TUNING.windBlast.range,
+            ),
+          }),
+        )
+        .filter(
+          (candidate): candidate is typeof candidate & { readonly entryDistance: number } =>
+            candidate.entryDistance !== undefined,
+        )
+        .toSorted(
+          (left, right) =>
+            left.entryDistance - right.entryDistance ||
+            left.candidate.actorId - right.candidate.actorId,
+        )[0]?.candidate;
+
+      if (target === undefined) {
+        continue;
+      }
+
+      const targetIsEvading =
+        target.action.kind === "DodgeActive" &&
+        this.#tick - target.action.startedTick < SIMULATION_TUNING.dodge.evasionTicks;
+
+      if (targetIsEvading) {
+        events.push(
+          this.#createEvent("dodge-succeeded", {
+            actorId: target.actorId,
+            targetActorId: attacker.actorId,
+            vector: target.action.lockedDirection ?? target.body.facing,
+          }),
+        );
+        continue;
+      }
+
+      const rawImpulse =
+        (SIMULATION_TUNING.windBlast.baseImpulse / target.body.massFactor) *
+        getPowerMultiplier(attacker.progression.stats) *
+        getStabilityMultiplier(target.progression.stats);
+      const impulse = scaleVector(
+        direction,
+        Math.min(rawImpulse, SIMULATION_TUNING.windBlast.maximumImpulse),
+      );
+      impulses.set(
+        target.actorId,
+        addVectors(impulses.get(target.actorId) ?? ZERO_VECTOR, impulse),
+      );
+      const strength = vectorLength(impulse);
+      const previousCredit = credits.get(target.actorId);
+
+      if (
+        previousCredit === undefined ||
+        strength > previousCredit.strength ||
+        (strength === previousCredit.strength && attacker.actorId < previousCredit.attackerActorId)
+      ) {
+        credits.set(target.actorId, Object.freeze({ attackerActorId: attacker.actorId, strength }));
+      }
+      events.push(
+        this.#createEvent("wind-blast-hit", {
+          actorId: attacker.actorId,
+          targetActorId: target.actorId,
+          itemDefinitionId: "wind-blast",
+          vector: impulse,
+        }),
+      );
+    }
+
+    return participants.map((participant) => {
+      const current = updatedById.get(participant.actorId) ?? participant;
+      const impulse = impulses.get(participant.actorId);
+
+      if (impulse === undefined) {
+        return current;
+      }
+
+      const credit = credits.get(participant.actorId);
+      return Object.freeze({
+        ...current,
+        body: Object.freeze({
+          ...current.body,
+          velocity: addVectors(current.body.velocity, impulse),
+        }),
+        action: createTimedAction(
+          "Stumbling",
+          this.#tick,
+          SIMULATION_TUNING.windBlast.stumbleTicks,
+          normalizeDirectionOrFallback(impulse, current.body.facing),
+        ),
+        shoveCredit: chooseOffensiveCredit(current.shoveCredit, credit, this.#tick),
+      });
     });
   }
 
@@ -885,7 +1111,12 @@ export class SimulationWorld {
         }
       }
 
-      velocity = clampVectorLength(velocity, SIMULATION_TUNING.body.maximumSpeed);
+      const maximumSpeed =
+        vectorLength(participant.body.velocity) > SIMULATION_TUNING.body.maximumSpeed ||
+        (participant.action.kind === "Stumbling" && participant.action.startedTick === this.#tick)
+          ? SIMULATION_TUNING.body.maximumLaunchSpeed
+          : SIMULATION_TUNING.body.maximumSpeed;
+      velocity = clampVectorLength(velocity, maximumSpeed);
       assertFiniteNumber(velocity.x, `actor ${participant.actorId} velocity.x`);
       assertFiniteNumber(velocity.y, `actor ${participant.actorId} velocity.y`);
 
@@ -1039,7 +1270,7 @@ export class SimulationWorld {
           position: positions[index] ?? participant.body.position,
           velocity: clampVectorLength(
             velocities[index] ?? participant.body.velocity,
-            SIMULATION_TUNING.body.maximumSpeed,
+            SIMULATION_TUNING.body.maximumLaunchSpeed,
           ),
         }),
       }),
@@ -1196,12 +1427,17 @@ export class SimulationWorld {
         addVectors(participant.body.velocity, impulse),
         SIMULATION_TUNING.body.maximumSpeed,
       );
-      const shoveCredit = shoveCredits.has(participant.actorId)
-        ? Object.freeze({
-            attackerActorId: shoveCredits.get(participant.actorId)?.actorId ?? null,
-            hitTick: this.#tick,
-          })
-        : participant.shoveCredit;
+      const strongestShove = shoveCredits.get(participant.actorId);
+      const shoveCredit = chooseOffensiveCredit(
+        participant.shoveCredit,
+        strongestShove === undefined
+          ? undefined
+          : Object.freeze({
+              attackerActorId: strongestShove.actorId,
+              strength: strongestShove.strength,
+            }),
+        this.#tick,
+      );
 
       if (
         vectorLength(impulse) >= SIMULATION_TUNING.shove.stumbleImpulseThreshold &&

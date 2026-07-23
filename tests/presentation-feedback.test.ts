@@ -126,6 +126,17 @@ describe("optional Web Audio feedback", () => {
     expect(context.oscillators).toHaveLength(2);
   });
 
+  it("plays a dedicated high-priority Wind Blast impact cue", async () => {
+    const context = new FakeAudioContext();
+    const audio = createAudioFeedback(() => context);
+    await audio.unlock();
+
+    audio.consumeEvents([createEvent(1, 0, 0, "wind-blast-hit")]);
+
+    expect(context.oscillators).toHaveLength(1);
+    expect(context.oscillators[0]?.type).toBe("sawtooth");
+  });
+
   it("caps concurrent voices and lets a higher-priority result replace a low voice", async () => {
     const context = new FakeAudioContext();
     const audio = createAudioFeedback(() => context);

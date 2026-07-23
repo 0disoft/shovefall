@@ -98,6 +98,7 @@ export function hashWorldState(state: HashableWorldState): string {
         participant.progression.stats.reflex,
         participant.shoveCredit.attackerActorId ?? "none",
         participant.shoveCredit.hitTick ?? "none",
+        quantize(participant.shoveCredit.strength),
       ].join(":");
     });
   const itemParts = state.items.map(

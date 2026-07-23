@@ -1,6 +1,6 @@
 # Swept Weak Contacts
 
-- Status: Implemented in simulation `5.0.0`
+- Status: Implemented in simulation `5.0.0`; launch envelope extended in `10.0.0`
 - Owner: Deterministic simulation
 - Source of truth: `src/simulation/world.ts`, `src/simulation/tuning.ts`, and `tests/combat.test.ts`
 
@@ -14,7 +14,7 @@ Each participant records `previousPosition` before action transitions and moveme
 
 At the first intersection, the solver computes a deterministic normal, applies a mass-weighted non-penetrating impulse with the existing weak-contact damping as restitution, and reintegrates the remaining fraction of the tick with the resulting velocities. Actor ID supplies the zero-distance fallback direction. Later bounded iterations retain the existing overlap correction for piles and same-position starts.
 
-The spatial hash still uses integrated positions. This is complete for the current speed cap because two circles capable of intersecting during one tick finish less than one hash-cell width apart and therefore remain in the same or an adjacent cell. Raising body speed or shrinking the cell requires re-proving this containment before changing tuning.
+The spatial hash still uses integrated positions. Simulation `10.0.0` separates the ordinary `0.26` body cap from the `0.42` launch cap. Two maximally launched bodies that intersect can finish at most `2 × 0.42 + 2 × 0.34 = 1.52` tiles apart, below the `1.7` hash-cell width, so they remain in the same or an adjacent cell. Weak-contact output uses the launch cap instead of silently truncating Wind Blast back to the ordinary cap. Raising launch speed, body radius, or shrinking the cell requires re-proving this containment before changing tuning.
 
 ## Compatibility
 
@@ -22,6 +22,6 @@ Previous position already entered authoritative participant state, but simulatio
 
 ## Evidence and Limits
 
-Vitest covers three equal bodies at one coordinate and 21 deterministic grazing geometries across three horizontal and seven vertical separations. The normal replay, determinism, shove, item, and spatial suites remain merge blocking. Headless and production Chrome profiles pass at 16, 24, and 32 participants.
+Vitest covers the containment inequality, three equal bodies at one coordinate, 21 deterministic grazing geometries across three horizontal and seven vertical separations, and Wind Blast transfer into a third body. Replay, determinism, shove, item, and spatial suites remain merge blocking. The `0.27.0` browser and headless profiles must be refreshed before repeating the earlier fixed-50 performance claim.
 
 The solver handles one analytic contact per candidate on the first iteration, followed by overlap correction. It is not a general rigid-body engine and does not promise exact multi-impact time ordering, angular momentum, friction, or rotating shapes.

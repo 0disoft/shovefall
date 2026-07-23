@@ -9,6 +9,12 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.27.0",
+    title: "손이 안 닿아도 날려 보내기",
+    reason: "커진 섬에서는 가까이 붙는 밀치기만으로 빈틈을 뒤집기 어려웠어.",
+    change: "Q와 E로 시작 아이템을 쓰고, 장풍은 앞에 선 한 명을 몸무게에 따라 크게 날려.",
+  }),
+  Object.freeze({
     version: "0.26.0",
     title: "50명이 뛰는 더 큰 섬",
     reason: "모드가 많아질수록 뭘 골라야 할지만 복잡해지고, 작은 섬은 금방 끝났어.",

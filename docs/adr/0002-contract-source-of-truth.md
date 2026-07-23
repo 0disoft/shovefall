@@ -12,7 +12,7 @@ Shove, dodge, support grace, and simultaneous impacts change at tick boundaries.
 
 Run authoritative rules at 60 integer ticks per second in a versioned system order. Use a versioned 32-bit PRNG with independently derived named streams. Store stable IDs and sort externally meaningful resolution where storage order could vary. Collect same-tick shove contacts before applying summed impulses.
 
-Use `ReplayFixtureV1` for development reproduction. It records normalized config, versions, build ID, seed, one human's strictly ordered commands, checkpoints, and final quantized state hash. The JSON parser is bounded and strict. Unsupported format majors and simulation versions are rejected rather than inferred or automatically migrated.
+Use `ReplayFixtureV2` for development reproduction. It records normalized config, versions, build ID, seed, the human's base mass and starting loadout, strictly ordered commands, checkpoints, and final quantized state hash. The JSON parser is bounded and strict. Unsupported format majors and simulation versions are rejected rather than inferred or automatically migrated.
 
 ## Consequences
 

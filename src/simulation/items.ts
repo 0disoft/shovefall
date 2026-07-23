@@ -6,6 +6,7 @@ import type {
   ItemDefinitionId,
   ItemId,
   ItemState,
+  InventorySlotIndex,
   InventorySlotState,
   ParticipantState,
   Tick,
@@ -395,6 +396,31 @@ export function consumeSpringGlove(participant: ParticipantState): ParticipantSt
       ),
     }),
   );
+}
+
+export function consumeInventoryCharge(
+  participant: ParticipantState,
+  slotIndex: InventorySlotIndex,
+): ParticipantState | undefined {
+  const slot = participant.inventory.find((candidate) => candidate.slotIndex === slotIndex);
+
+  if (slot?.charges === null || slot?.charges === undefined || slot.charges <= 0) {
+    return undefined;
+  }
+
+  return Object.freeze({
+    ...participant,
+    inventory: Object.freeze(
+      participant.inventory.map((candidate) =>
+        candidate.slotIndex === slotIndex
+          ? Object.freeze({
+              ...candidate,
+              charges: candidate.charges === null ? null : candidate.charges - 1,
+            })
+          : candidate,
+      ),
+    ),
+  });
 }
 
 export function clearEffects(participant: ParticipantState): ParticipantState {

@@ -3,8 +3,10 @@ import {
   normalizeActorCommand,
   type ActorCommandV1,
   type GameConfigV1,
+  type ItemDefinitionId,
   type ReplayCheckpointV1,
-  type ReplayFixtureV1,
+  type ReplayFixtureV2,
+  type ReplayHumanSetupV2,
 } from "./contracts";
 import { SimulationContractError } from "./math";
 import { SimulationWorld } from "./world";
@@ -16,6 +18,23 @@ import {
   REPLAY_FORMAT_VERSION,
   SIMULATION_VERSION,
 } from "./versions";
+import { SIMULATION_TUNING } from "./tuning";
+
+const ITEM_DEFINITION_IDS = Object.freeze([
+  "iron-boots",
+  "feather",
+  "spring-glove",
+  "wind-blast",
+  "brick-bag",
+  "boat",
+  "bomb",
+  "soap",
+  "grappling-hook",
+] as const satisfies readonly ItemDefinitionId[]);
+
+function isItemDefinitionId(value: string): value is ItemDefinitionId {
+  return ITEM_DEFINITION_IDS.some((definitionId) => definitionId === value);
+}
 
 export interface ReplayRunResult {
   readonly checkpoints: readonly ReplayCheckpointV1[];
@@ -109,8 +128,8 @@ function parseConfig(value: unknown): GameConfigV1 {
     throw new SimulationContractError("config participant count is outside 4..50");
   }
 
-  assertIntegerInRange(config.arenaColumns, "config.arenaColumns", 7, 31);
-  assertIntegerInRange(config.arenaRows, "config.arenaRows", 7, 31);
+  assertIntegerInRange(config.arenaColumns, "config.arenaColumns", 7, 48);
+  assertIntegerInRange(config.arenaRows, "config.arenaRows", 7, 48);
 
   if (config.roundLimitTicks < 1 || config.roundLimitTicks > MAX_REPLAY_TICKS) {
     throw new SimulationContractError("config round limit is outside replay bounds");
@@ -160,6 +179,12 @@ function parseCommand(value: unknown): ActorCommandV1 {
     },
     shovePressed: readBoolean(value, "shovePressed"),
     dodgePressed: readBoolean(value, "dodgePressed"),
+    useItemSlot:
+      value.useItemSlot === undefined || value.useItemSlot === null
+        ? null
+        : value.useItemSlot === 0 || value.useItemSlot === 1
+          ? value.useItemSlot
+          : fail("command.useItemSlot is unsupported"),
     upgradeStat:
       value.upgradeStat === undefined || value.upgradeStat === null
         ? null
@@ -183,7 +208,46 @@ function parseCheckpoint(value: unknown): ReplayCheckpointV1 {
   });
 }
 
-export function parseReplayFixtureJson(json: string): ReplayFixtureV1 {
+function parseHumanSetup(value: unknown): ReplayHumanSetupV2 {
+  if (!isRecord(value) || !Array.isArray(value.startingItems)) {
+    throw new SimulationContractError("humanSetup must contain a startingItems array");
+  }
+
+  const baseMassFactor = value.baseMassFactor;
+
+  if (
+    typeof baseMassFactor !== "number" ||
+    !Number.isFinite(baseMassFactor) ||
+    baseMassFactor < SIMULATION_TUNING.mass.minimum ||
+    baseMassFactor > SIMULATION_TUNING.mass.maximum
+  ) {
+    throw new SimulationContractError("humanSetup.baseMassFactor is outside supported bounds");
+  }
+
+  if (
+    value.startingItems.length > 2 ||
+    new Set(value.startingItems).size !== value.startingItems.length
+  ) {
+    throw new SimulationContractError(
+      "humanSetup startingItems must contain at most two unique items",
+    );
+  }
+
+  const startingItems = value.startingItems.map((item) => {
+    if (typeof item !== "string" || !isItemDefinitionId(item)) {
+      throw new SimulationContractError("humanSetup contains an unsupported starting item");
+    }
+
+    return item;
+  });
+
+  return Object.freeze({
+    baseMassFactor,
+    startingItems: Object.freeze(startingItems),
+  });
+}
+
+export function parseReplayFixtureJson(json: string): ReplayFixtureV2 {
   const byteLength = new TextEncoder().encode(json).byteLength;
 
   if (byteLength > MAX_REPLAY_BYTES) {
@@ -214,8 +278,8 @@ export function parseReplayFixtureJson(json: string): ReplayFixtureV1 {
 
   const commands = Object.freeze(parsed.commands.map(parseCommand));
   const checkpoints = Object.freeze(parsed.checkpoints.map(parseCheckpoint));
-  const fixture: ReplayFixtureV1 = Object.freeze({
-    formatVersion: 1,
+  const fixture: ReplayFixtureV2 = Object.freeze({
+    formatVersion: 2,
     productVersion: readString(parsed, "productVersion"),
     simulationVersion: readString(parsed, "simulationVersion"),
     contentVersion: readString(parsed, "contentVersion"),
@@ -223,6 +287,7 @@ export function parseReplayFixtureJson(json: string): ReplayFixtureV1 {
     config: parseConfig(parsed.config),
     masterSeed: readSeed(parsed, "masterSeed"),
     humanActorId: readInteger(parsed, "humanActorId"),
+    humanSetup: parseHumanSetup(parsed.humanSetup),
     endTick: readInteger(parsed, "endTick"),
     commands,
     checkpoints,
@@ -242,7 +307,7 @@ export function parseReplayFixtureJson(json: string): ReplayFixtureV1 {
   return fixture;
 }
 
-function validateReplayTimeline(fixture: ReplayFixtureV1): void {
+function validateReplayTimeline(fixture: ReplayFixtureV2): void {
   assertIntegerInRange(fixture.humanActorId, "humanActorId", 1, fixture.config.participantCount);
   assertIntegerInRange(
     fixture.endTick,
@@ -288,9 +353,16 @@ function validateReplayTimeline(fixture: ReplayFixtureV1): void {
   }
 }
 
-export function runReplayFixture(fixture: ReplayFixtureV1): ReplayRunResult {
+export function runReplayFixture(fixture: ReplayFixtureV2): ReplayRunResult {
   const world = new SimulationWorld(fixture.config, fixture.masterSeed, {
     humanActorId: fixture.humanActorId,
+    participantOverrides: [
+      {
+        actorId: fixture.humanActorId,
+        massFactor: fixture.humanSetup.baseMassFactor,
+        startingItems: fixture.humanSetup.startingItems,
+      },
+    ],
   });
   const commandsByTick = new Map(
     fixture.commands.map((command) => [command.tick, Object.freeze([command])] as const),
@@ -336,11 +408,18 @@ export function createReplayFixture(input: {
   readonly config: GameConfigV1;
   readonly masterSeed: string | number;
   readonly humanActorId: number;
+  readonly humanSetup?: ReplayHumanSetupV2;
   readonly endTick: number;
   readonly commands: readonly ActorCommandV1[];
   readonly checkpointTicks?: readonly number[];
-}): ReplayFixtureV1 {
+}): ReplayFixtureV2 {
   const normalizedCommands = Object.freeze(input.commands.map(normalizeActorCommand));
+  const humanSetup = parseHumanSetup(
+    input.humanSetup ?? {
+      baseMassFactor: SIMULATION_TUNING.mass.default,
+      startingItems: [],
+    },
+  );
   const requestedCheckpointTicks = input.checkpointTicks ?? [];
   const checkpointTicks = new Set(requestedCheckpointTicks);
 
@@ -350,14 +429,21 @@ export function createReplayFixture(input: {
 
   const world = new SimulationWorld(input.config, input.masterSeed, {
     humanActorId: input.humanActorId,
+    participantOverrides: [
+      {
+        actorId: input.humanActorId,
+        massFactor: humanSetup.baseMassFactor,
+        startingItems: humanSetup.startingItems,
+      },
+    ],
   });
   const commandsByTick = new Map(
     normalizedCommands.map((command) => [command.tick, Object.freeze([command])] as const),
   );
   const checkpoints: ReplayCheckpointV1[] = [];
 
-  const provisionalFixture: ReplayFixtureV1 = {
-    formatVersion: 1,
+  const provisionalFixture: ReplayFixtureV2 = {
+    formatVersion: 2,
     productVersion: PRODUCT_VERSION,
     simulationVersion: SIMULATION_VERSION,
     contentVersion: CONTENT_VERSION,
@@ -365,6 +451,7 @@ export function createReplayFixture(input: {
     config: input.config,
     masterSeed: input.masterSeed,
     humanActorId: input.humanActorId,
+    humanSetup,
     endTick: input.endTick,
     commands: normalizedCommands,
     checkpoints: requestedCheckpointTicks.map((tick) => ({
@@ -389,7 +476,7 @@ export function createReplayFixture(input: {
   }
 
   return Object.freeze({
-    formatVersion: 1,
+    formatVersion: 2,
     productVersion: PRODUCT_VERSION,
     simulationVersion: SIMULATION_VERSION,
     contentVersion: CONTENT_VERSION,
@@ -397,6 +484,7 @@ export function createReplayFixture(input: {
     config: input.config,
     masterSeed: input.masterSeed,
     humanActorId: input.humanActorId,
+    humanSetup,
     endTick: input.endTick,
     commands: normalizedCommands,
     checkpoints: Object.freeze(checkpoints),

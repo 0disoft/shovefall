@@ -17,20 +17,21 @@ Each 60 Hz tick uses this versioned order:
 
 1. Validate and collect commands; fill missing actor commands with neutral input.
 2. Advance action-state transitions.
-3. Convert movement commands into intent.
-4. Apply dodge, stumble, and other active displacement.
-5. Integrate positions and velocities.
-6. Rebuild the spatial index.
-7. Resolve overlapping and swept weak circular contacts.
-8. Collect all shove contacts from the same pre-impulse state.
-9. Sum and apply actor impulses as a batch.
-10. Evaluate tile support, grace ticks, falling, and elimination.
-11. Resolve items and timed effects.
-12. Advance collapse warnings, tile state, and item spawns.
-13. Decide round result.
-14. Emit ordered events, an immutable render frame, and a quantized state hash.
+3. Resolve accepted active-item activations and batch their impulses.
+4. Convert movement commands into intent.
+5. Apply dodge, stumble, and other active displacement.
+6. Integrate positions and velocities.
+7. Rebuild the spatial index.
+8. Resolve overlapping and swept weak circular contacts.
+9. Collect all shove contacts from the same pre-impulse state.
+10. Sum and apply actor impulses, then arbitrate same-tick offensive credit.
+11. Evaluate tile support, grace ticks, falling, and elimination.
+12. Resolve map items and timed effects.
+13. Advance collapse warnings, tile state, and item spawns.
+14. Decide round result.
+15. Emit ordered events, an immutable render frame, and a quantized state hash.
 
-All fourteen stages are implemented. Weak contact first resolves a swept circle intersection from `previousPosition` to the integrated position, then applies iterative overlap correction. Timed effects expire with action transitions before movement. Item pickup runs after support, so a valid pickup wins over a tile that begins collapsing later in the same tick. Collapse advances from the actual ocean and lake shoreline rather than the rectangular render bounds. A connected protected core equal to `ceil(initial playable land × 0.20)` is never scheduled, so pre-existing water never returns as land and collapse never crosses the 20% floor. Void-tile items are removed, the safe-area cap is enforced, and at most one due item is spawned on a stable clear tile using the 3/2/1 shoreline-ring weights. Collapse still cannot retroactively remove support earlier in the same tick. Later work cannot reorder the pipeline or change contact meaning without a simulation-version decision and regenerated replay evidence.
+All fifteen stages are implemented. Active-item eligibility is decided from one pre-item participant snapshot; actor ID orders activation, charge spending, first-hit ray selection, and batch impulses. Same-tick dodge can stop the first target without letting the ray pass through. Weak contact then resolves a swept circle intersection from `previousPosition` to the integrated position and applies iterative overlap correction, allowing a launched target to transfer motion. Timed effects expire with action transitions before movement. Item pickup runs after support, so a valid pickup wins over a tile that begins collapsing later in the same tick. Collapse advances from the actual ocean and lake shoreline rather than the rectangular render bounds. A connected protected core equal to `ceil(initial playable land × 0.20)` is never scheduled, so pre-existing water never returns as land and collapse never crosses the 20% floor. Later work cannot reorder the pipeline or change contact meaning without a simulation-version decision and regenerated replay evidence.
 
 ## Browser Scheduling
 
@@ -44,7 +45,7 @@ When the human enters irreversible falling, command input closes and accumulated
 
 ## Replay Flow
 
-Replay creation records only normalized human commands plus deterministic setup metadata and checkpoint hashes. Replay execution reconstructs the world, injects each command at its exact tick, supplies neutral input on absent ticks, verifies requested checkpoints, and rejects the run on the first mismatch.
+Replay creation records normalized human commands, base mass, starting loadout, deterministic setup metadata, and checkpoint hashes. Replay execution reconstructs the same inventory and mass before injecting each command at its exact tick, supplies neutral input on absent ticks, verifies requested checkpoints, and rejects the run on the first mismatch.
 
 Checked-in fixtures cover idle, cardinal, and diagonal inputs across 4- and 12-participant worlds. Regeneration is intentional and reviewable because a changed hash may represent either a planned simulation-version change or a regression.
 

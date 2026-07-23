@@ -1,9 +1,9 @@
 {
-  "formatVersion": 1,
-  "productVersion": "0.26.0",
-  "simulationVersion": "9.0.0",
+  "formatVersion": 2,
+  "productVersion": "0.27.0",
+  "simulationVersion": "10.0.0",
   "contentVersion": "5.0.0",
-  "buildId": "fixture-v3",
+  "buildId": "fixture-v4",
   "config": {
     "configVersion": 1,
     "participantCount": 12,
@@ -21,6 +21,10 @@
   },
   "masterSeed": "diagonal-twelve-v1",
   "humanActorId": 1,
+  "humanSetup": {
+    "baseMassFactor": 1,
+    "startingItems": []
+  },
   "endTick": 240,
   "commands": [
     {
@@ -33,6 +37,7 @@
       },
       "shovePressed": false,
       "dodgePressed": false,
+      "useItemSlot": null,
       "upgradeStat": null
     },
     {
@@ -45,6 +50,7 @@
       },
       "shovePressed": false,
       "dodgePressed": false,
+      "useItemSlot": null,
       "upgradeStat": null
     },
     {
@@ -57,6 +63,7 @@
       },
       "shovePressed": false,
       "dodgePressed": false,
+      "useItemSlot": null,
       "upgradeStat": null
     },
     {
@@ -69,6 +76,7 @@
       },
       "shovePressed": false,
       "dodgePressed": false,
+      "useItemSlot": null,
       "upgradeStat": null
     },
     {
@@ -81,26 +89,27 @@
       },
       "shovePressed": false,
       "dodgePressed": false,
+      "useItemSlot": null,
       "upgradeStat": null
     }
   ],
   "checkpoints": [
     {
       "tick": 60,
-      "stateHash": "fnv1a32:a85bb38a"
+      "stateHash": "fnv1a32:cb9b966a"
     },
     {
       "tick": 120,
-      "stateHash": "fnv1a32:fd00a648"
+      "stateHash": "fnv1a32:7511fb18"
     },
     {
       "tick": 180,
-      "stateHash": "fnv1a32:f29840af"
+      "stateHash": "fnv1a32:8e359067"
     },
     {
       "tick": 240,
-      "stateHash": "fnv1a32:0aef579e"
+      "stateHash": "fnv1a32:811f61be"
     }
   ],
-  "finalHash": "fnv1a32:0aef579e"
+  "finalHash": "fnv1a32:811f61be"
 }
