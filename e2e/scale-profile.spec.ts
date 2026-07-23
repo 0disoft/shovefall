@@ -86,7 +86,7 @@ async function collectFrameProfile(
 
         requestAnimationFrame(sample);
       }),
-    4_000,
+    6_000,
   );
   const endTick = Number(await page.locator("#game-telemetry").getAttribute("data-tick"));
   const canvasMetrics = await page.locator("#arena-host canvas").evaluate((canvas) => {
@@ -156,18 +156,18 @@ async function profileCases(page: Page, index: number, profiles: FrameProfile[])
   await page.locator('input[name="startingItem"][value="spring-glove"]').uncheck();
   await page.locator('input[name="startingItem"][value="iron-boots"]').uncheck();
   await page.locator('input[name="startingItem"][value="brick-bag"]').check();
-  await page.locator('input[name="startingItem"][value="boat"]').check();
+  await page.locator('input[name="startingItem"][value="bomb"]').check();
   await page.getByRole("button", { name: "설정 저장" }).click();
   await page.getByRole("button", { name: "게임 시작" }).click();
   await expect(page.locator("#app")).toHaveAttribute("data-round", "active");
   await expect(page.locator("#app")).toHaveAttribute("data-bot-difficulty", "hard");
   await expect(page.locator("#use-item-slot-0")).toContainText("벽돌 가방 · 4회");
-  await expect(page.locator("#use-item-slot-1")).toContainText("배 · 1회");
+  await expect(page.locator("#use-item-slot-1")).toContainText("시한폭탄 · 2회");
   await useProfileBrickBag(page);
   await expect(page.locator("#use-item-slot-0")).toContainText("벽돌 가방 · 3회");
   await page.keyboard.press("KeyE");
-  await expect(page.locator("#use-item-slot-1")).toContainText("배 · 0회");
-  await expect(page.locator("#effect-value")).toContainText(/배 [1-5]초/u);
+  await expect(page.locator("#use-item-slot-1")).toContainText("시한폭탄 · 1회");
+  await expect(page.getByText("폭탄을 놨어. 5초 뒤 터져.")).toBeVisible();
   const profile = await collectFrameProfile(page, profileCase.participantCount, profileCase.seed);
   profiles.push(profile);
   process.stdout.write(`${JSON.stringify({ kind: "browser-profile-case", profile })}\n`);
@@ -249,7 +249,7 @@ test("@profile measures the production 50-participant browser budget", async ({
         kind: "local-production-chrome-profile",
         browser: "Chrome",
         viewport: "1280x720",
-        sampleMillisecondsPerCase: 4_000,
+        sampleMillisecondsPerCase: 6_000,
         profiles,
         restartCount: 20,
         restartHeapDeltaBytes,

@@ -288,4 +288,47 @@ describe("arena renderer presentation", () => {
     expect(applicationRender).toHaveBeenCalledTimes(1);
     expect(frame.stateHash).toBe(stateHash);
   });
+
+  it("renders a stationary Bomb fuse and its position-bound detonation ring", async () => {
+    const host = createHost();
+    const renderer = await createArenaRenderer(host);
+    const baseFrame = new SimulationWorld(
+      normalizeGameConfig({ participantCount: 4 }),
+      "bomb-presentation",
+    ).createRenderFrame();
+    const stateHash = baseFrame.stateHash;
+    const position = Object.freeze({ x: 4.5, y: 5.5 });
+    const frame = Object.freeze({
+      ...baseFrame,
+      bombs: Object.freeze([
+        Object.freeze({
+          ownerActorId: 1,
+          position,
+          fallbackDirection: Object.freeze({ x: 1, y: 0 }),
+          placedTick: baseFrame.tick,
+          detonateTick: baseFrame.tick + 300,
+        }),
+      ]),
+    });
+
+    renderer.consumeEvents(
+      [
+        {
+          eventVersion: 1,
+          roundId: frame.roundId,
+          tick: frame.tick,
+          sequence: 0,
+          kind: "bomb-detonated",
+          actorId: 1,
+          itemDefinitionId: "bomb",
+          position,
+        },
+      ],
+      frame,
+    );
+    renderer.render(frame, 1, 1);
+
+    expect(applicationRender).toHaveBeenCalledTimes(1);
+    expect(frame.stateHash).toBe(stateHash);
+  });
 });

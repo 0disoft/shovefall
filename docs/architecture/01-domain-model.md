@@ -32,6 +32,10 @@ A tile has an integer grid location, stable `column:row` ID, and a `Stable`, `Wa
 
 A brick wall owns its tile ID, integer location, placing actor, and placement tick. At most one wall can occupy a tile. Successful proposals are committed in actor-ID order before active-item rays, so command-array order and attacker IDs cannot change same-tick shielding. A wall occupies its entire tile as a static axis-aligned obstacle. Participant circles use swept point-versus-radius-expanded bounds before broad phase and an overlap-only projection after weak body contacts. Wind Blast and hand shove use unexpanded wall ray bounds, with exact corner contact and distance ties favoring the wall. A wall is removed only when its tile becomes `Void`; the `tile-void` event precedes `brick-wall-removed` in that tick.
 
+## Bomb
+
+A bomb owns its placing actor, snapped tile-center position, exact-center fallback direction, placement tick, and detonation tick. It is non-solid and does not move. `(ownerActorId, placedTick)` is its stable identity because one actor can issue at most one command per tick. Bombs are hashed in detonation-tick then actor-ID order and remain after owner elimination or tile flooding. Due bombs leave the frame only when their 300-tick fuse resolves; another explosion cannot shorten that fuse.
+
 ## Round Result
 
 `RoundStateV1` is `Active` or `Completed`. A completed result records exactly one of `last-standing`, `no-survivors`, or `time-limit`, an optional winner, and the completion tick. The world becomes sealed after completion and rejects additional steps. Falling is already irreversible, so one grounded participant may win while the others are still completing their fall animation. A hard time limit with multiple standing participants does not invent a winner.
@@ -39,7 +43,7 @@ A brick wall owns its tile ID, integer location, placing actor, and placement ti
 ## Commands, Frames, and Events
 
 - `ActorCommandV1` contains tick, actor ID, normalized movement, shove/dodge edge flags, an optional inventory slot `0|1`, and an optional stat-spend request.
-- `RenderFrameV1` is an immutable presentation snapshot with current and previous positions, facing, mass, inventory slots, effects, Spring Glove telegraph, map items, action, tiles, tick, and state hash.
+- `RenderFrameV1` is an immutable presentation snapshot with current and previous positions, facing, mass, inventory slots, effects, Spring Glove telegraph, map items, brick walls, armed bombs, action, tiles, tick, and state hash.
 - `SimulationEventV1` is a versioned, ordered fact stream for one-time presentation and diagnostics. Events do not drive authoritative physics.
 
 Human input and bots must use the same command path. A bot cannot directly set position, velocity, cooldown, action state, or tile state.
@@ -75,6 +79,8 @@ Product `0.27.0` and simulation `10.0.0` add the `active-items` system stage, tw
 Product `0.28.0` and simulation `11.0.0` add deterministic Brick Bag proposals, hashed static-wall state, swept wall contacts, post-body overlap projection, attack line-of-sight blocking, Void-tile removal, and participant/wall depth sorting. Content remains `5.0.0` and replay remains v2 because Brick Bag's registered definition and the existing slot command wire format do not change.
 
 Product `0.29.0`, simulation `12.0.0`, and content `6.0.0` add Boat's 300-tick charged effect and bounded in-arena Void support. The stable arena-tile ID set is created once per world and never follows collapse state, while the current non-Void support set remains tick-local. Boat effect and charge state already enter the participant hash; replay remains v2 because the existing effect and slot command wire shapes are sufficient.
+
+Product `0.30.0`, simulation `13.0.0`, and content `7.0.0` add Bomb placement, independent hashed fuse entities, deterministic radial impulse falloff, owner vulnerability, same-tick Dodge, flooding persistence, and Bomb-plus-Wind impulse batching. Replay remains v2 because loadout IDs and slot commands already carry Bomb use; simulation-version rejection and regenerated checkpoints protect the new world state.
 
 ## Version Ownership
 

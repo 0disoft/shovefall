@@ -159,6 +159,14 @@ export interface BrickWallState {
   readonly placedTick: Tick;
 }
 
+export interface BombState {
+  readonly ownerActorId: ActorId;
+  readonly position: Vector2;
+  readonly fallbackDirection: Vector2;
+  readonly placedTick: Tick;
+  readonly detonateTick: Tick;
+}
+
 export interface TileState {
   readonly tileId: TileId;
   readonly column: number;
@@ -207,6 +215,7 @@ export interface RenderFrameV1 {
   readonly participants: readonly RenderParticipantV1[];
   readonly items: readonly RenderItemV1[];
   readonly brickWalls: readonly BrickWallState[];
+  readonly bombs: readonly BombState[];
   readonly tiles: readonly TileState[];
   readonly round: RoundStateV1;
 }
@@ -222,6 +231,7 @@ export type SimulationEventKind =
   | "item-picked-up"
   | "item-used"
   | "wind-blast-hit"
+  | "bomb-detonated"
   | "brick-wall-placed"
   | "brick-wall-removed"
   | "item-spawned"
@@ -248,6 +258,7 @@ export interface SimulationEventV1 {
   readonly upgradeStat?: UpgradeStatId;
   readonly winnerActorId?: ActorId;
   readonly vector?: Vector2;
+  readonly position?: Vector2;
   readonly reason?: "inactive-actor" | "unknown-actor" | RoundEndReason;
 }
 

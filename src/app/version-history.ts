@@ -9,6 +9,13 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.30.0",
+    title: "5초 뒤엔 다 같이 날아가",
+    reason: "도망치기만 하는 자리에도 미리 위험을 심고 싸움을 끌어낼 장치가 필요했어.",
+    change:
+      "시한폭탄을 현재 칸에 두면 5초 뒤 반경 3칸이 터져. 설치자도 맞고, 벽은 폭발을 막아주지 않아.",
+  }),
+  Object.freeze({
     version: "0.29.0",
     title: "물이 길이 되는 5초",
     reason: "호수와 잠긴 바닥을 피하기만 하지 말고, 위험할 때 가로지를 선택지도 필요했어.",

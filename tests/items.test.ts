@@ -250,6 +250,267 @@ describe("deterministic item effects", () => {
     expect(getActor(world, 1).massFactor).toBe(1);
   });
 
+  it("places a Bomb on the current tile and detonates after exactly five seconds", () => {
+    const world = new SimulationWorld(createItemConfig(), "bomb-exact-fuse", {
+      arenaLayout: "rectangular-fixture",
+      participantOverrides: [
+        {
+          actorId: 1,
+          position: { x: 4.5, y: 4.5 },
+          facing: { x: 1, y: 0 },
+          startingItems: ["bomb"],
+        },
+        { actorId: 2, position: { x: 8.5, y: 1.5 } },
+        { actorId: 3, position: { x: 8.5, y: 7.5 } },
+        { actorId: 4, position: { x: 1.5, y: 7.5 } },
+      ],
+    });
+    const placement = world.step([{ ...createNeutralCommand(world.tick, 1), useItemSlot: 0 }]);
+
+    expect(placement.frame.bombs).toEqual([
+      {
+        ownerActorId: 1,
+        position: { x: 4.5, y: 4.5 },
+        fallbackDirection: { x: 1, y: 0 },
+        placedTick: 0,
+        detonateTick: 300,
+      },
+    ]);
+    expect(getActor(world, 1).inventory[0]?.charges).toBe(1);
+    expect(placement.events).toContainEqual(
+      expect.objectContaining({ kind: "item-used", actorId: 1, itemDefinitionId: "bomb" }),
+    );
+
+    while (world.tick < SIMULATION_TUNING.bomb.fuseTicks) {
+      const result = world.step();
+      expect(result.events.some(({ kind }) => kind === "bomb-detonated")).toBe(false);
+    }
+
+    expect(world.createRenderFrame().bombs).toHaveLength(1);
+    const detonation = world.step([{ ...createNeutralCommand(world.tick, 1), useItemSlot: 0 }]);
+
+    expect(detonation.events).toContainEqual(
+      expect.objectContaining({
+        kind: "bomb-detonated",
+        actorId: 1,
+        itemDefinitionId: "bomb",
+        position: { x: 4.5, y: 4.5 },
+      }),
+    );
+    expect(
+      detonation.events
+        .filter(({ kind }) => kind === "bomb-detonated" || kind === "item-used")
+        .map(({ kind }) => kind),
+    ).toEqual(["bomb-detonated", "item-used"]);
+    expect(detonation.frame.bombs).toEqual([
+      expect.objectContaining({ ownerActorId: 1, placedTick: 300, detonateTick: 600 }),
+    ]);
+    expect(getActor(world, 1).inventory[0]?.charges).toBe(0);
+    expect(getActor(world, 1).action).toBe("Stumbling");
+    expect(getActor(world, 1).velocity.x).toBeGreaterThan(0);
+  });
+
+  it("resolves competing Bomb placements by actor id without spending the loser charge", () => {
+    const run = (actorIds: readonly number[]) => {
+      const world = new SimulationWorld(createItemConfig(), "bomb-placement-order", {
+        arenaLayout: "rectangular-fixture",
+        participantOverrides: [
+          {
+            actorId: 1,
+            position: { x: 4.25, y: 4.5 },
+            facing: { x: 1, y: 0 },
+            startingItems: ["bomb"],
+          },
+          {
+            actorId: 2,
+            position: { x: 4.75, y: 4.5 },
+            facing: { x: -1, y: 0 },
+            startingItems: ["bomb"],
+          },
+          { actorId: 3, position: { x: 7.5, y: 1.5 } },
+          { actorId: 4, position: { x: 1.5, y: 7.5 } },
+        ],
+      });
+      const result = world.step(
+        actorIds.map((actorId) => ({
+          ...createNeutralCommand(world.tick, actorId),
+          useItemSlot: 0 as const,
+        })),
+      );
+      return {
+        stateHash: result.frame.stateHash,
+        bombs: result.frame.bombs,
+        usedBy: result.events
+          .filter(
+            ({ kind, itemDefinitionId }) => kind === "item-used" && itemDefinitionId === "bomb",
+          )
+          .map(({ actorId }) => actorId),
+        charges: result.frame.participants
+          .slice(0, 2)
+          .map(({ inventory }) => inventory[0]?.charges),
+      };
+    };
+
+    const forward = run([1, 2]);
+    const reverse = run([2, 1]);
+
+    expect(reverse).toEqual(forward);
+    expect(forward.bombs).toEqual([expect.objectContaining({ ownerActorId: 1 })]);
+    expect(forward.usedBy).toEqual([1]);
+    expect(forward.charges).toEqual([1, 2]);
+  });
+
+  it("lets a same-tick dodge evade a Bomb while the owner remains vulnerable", () => {
+    const world = new SimulationWorld(createItemConfig(), "bomb-dodge", {
+      arenaLayout: "rectangular-fixture",
+      participantOverrides: [
+        {
+          actorId: 1,
+          position: { x: 4.5, y: 4.5 },
+          facing: { x: 1, y: 0 },
+          startingItems: ["bomb"],
+        },
+        { actorId: 2, position: { x: 6.5, y: 4.5 }, facing: { x: 0, y: -1 } },
+        { actorId: 3, position: { x: 8.5, y: 1.5 } },
+        { actorId: 4, position: { x: 1.5, y: 7.5 } },
+      ],
+    });
+    world.step([{ ...createNeutralCommand(world.tick, 1), useItemSlot: 0 }]);
+
+    while (world.tick < SIMULATION_TUNING.bomb.fuseTicks) {
+      world.step();
+    }
+
+    const result = world.step([{ ...createNeutralCommand(world.tick, 2), dodgePressed: true }]);
+
+    expect(result.events).toContainEqual(
+      expect.objectContaining({ kind: "dodge-succeeded", actorId: 2, targetActorId: 1 }),
+    );
+    expect(getActor(world, 2).action).toBe("DodgeActive");
+    expect(getActor(world, 1).action).toBe("Stumbling");
+  });
+
+  it("batches due Bomb, Boat, and Wind Blast independently of command order", () => {
+    const run = (actorIds: readonly number[]) => {
+      const world = new SimulationWorld(createItemConfig(), "bomb-boat-wind-order", {
+        arenaLayout: "rectangular-fixture",
+        participantOverrides: [
+          {
+            actorId: 1,
+            position: { x: 4.5, y: 4.5 },
+            facing: { x: 1, y: 0 },
+            startingItems: ["bomb"],
+          },
+          {
+            actorId: 2,
+            position: { x: 6.5, y: 4.5 },
+            facing: { x: 0, y: -1 },
+            startingItems: ["boat"],
+          },
+          {
+            actorId: 3,
+            position: { x: 8.5, y: 4.5 },
+            facing: { x: -1, y: 0 },
+            startingItems: ["wind-blast"],
+          },
+          { actorId: 4, position: { x: 1.5, y: 7.5 } },
+        ],
+      });
+      world.step([{ ...createNeutralCommand(world.tick, 1), useItemSlot: 0 }]);
+
+      while (world.tick < SIMULATION_TUNING.bomb.fuseTicks) {
+        world.step();
+      }
+
+      const result = world.step(
+        actorIds.map((actorId) => ({
+          ...createNeutralCommand(world.tick, actorId),
+          useItemSlot: 0 as const,
+        })),
+      );
+      return {
+        stateHash: result.frame.stateHash,
+        eventOrder: result.events
+          .filter(
+            ({ kind }) =>
+              kind === "bomb-detonated" || kind === "item-used" || kind === "wind-blast-hit",
+          )
+          .map(({ kind, itemDefinitionId }) => `${kind}:${itemDefinitionId ?? "none"}`),
+        target: getActor(world, 2),
+      };
+    };
+
+    const forward = run([2, 3]);
+    const reverse = run([3, 2]);
+
+    expect(reverse).toEqual(forward);
+    expect(forward.eventOrder).toEqual([
+      "bomb-detonated:bomb",
+      "item-used:boat",
+      "item-used:wind-blast",
+      "wind-blast-hit:wind-blast",
+    ]);
+    expect(forward.target.effects[0]?.definitionId).toBe("boat");
+    expect(forward.target.action).toBe("Stumbling");
+  });
+
+  it("keeps an armed Bomb through flooding and owner elimination", () => {
+    const world = new SimulationWorld(
+      normalizeGameConfig({
+        participantCount: 4,
+        arenaColumns: 9,
+        arenaRows: 9,
+        roundLimitSeconds: 30,
+        collapseSpeed: "fast",
+        itemsEnabled: true,
+        initialItemCount: 0,
+        itemRespawnSeconds: 0,
+      }),
+      "bomb-flood-persistence",
+      {
+        arenaLayout: "rectangular-fixture",
+        participantOverrides: [
+          {
+            actorId: 1,
+            position: { x: 0.5, y: 0.5 },
+            startingItems: ["bomb"],
+          },
+          { actorId: 2, position: { x: 4.5, y: 4.5 } },
+          { actorId: 3, position: { x: 5.5, y: 4.5 } },
+          { actorId: 4, position: { x: 4.5, y: 5.5 } },
+        ],
+      },
+    );
+    let bombTile = world.createRenderFrame().tiles.find(({ tileId }) => tileId === "0:0");
+
+    while (bombTile?.state === "Stable") {
+      world.step();
+      bombTile = world.createRenderFrame().tiles.find(({ tileId }) => tileId === "0:0");
+    }
+
+    expect(bombTile?.state).toBe("Warning");
+    const placement = world.step([{ ...createNeutralCommand(world.tick, 1), useItemSlot: 0 }]);
+    const detonateTick = placement.frame.bombs[0]?.detonateTick;
+    expect(detonateTick).toBeDefined();
+    let ownerEliminated = false;
+
+    while (world.tick < detonateTick!) {
+      const result = world.step();
+      ownerEliminated ||= result.events.some(
+        ({ kind, actorId }) => kind === "eliminated" && actorId === 1,
+      );
+    }
+
+    bombTile = world.createRenderFrame().tiles.find(({ tileId }) => tileId === "0:0");
+    expect(ownerEliminated).toBe(true);
+    expect(bombTile?.state).toBe("Void");
+    expect(world.createRenderFrame().bombs).toHaveLength(1);
+    const detonation = world.step();
+    expect(detonation.events).toContainEqual(
+      expect.objectContaining({ kind: "bomb-detonated", actorId: 1 }),
+    );
+  });
+
   it("fires Wind Blast from an inventory slot, spends a charge, and transfers motion", () => {
     const world = new SimulationWorld(createItemConfig(), "wind-blast-chain", {
       arenaLayout: "rectangular-fixture",

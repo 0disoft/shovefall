@@ -4,6 +4,10 @@
 - Owner: Repository owner
 - Source of truth: `docs/product/02-spec.md` and this document
 
+## Product 0.30.0 Local Result
+
+The fixed-50 harness exercises live Bomb work rather than an empty entity list. Actor 1 maintains up to three Brick Bag walls while actors 1 and 2 place two Bombs that complete their 300-tick fuses and detonate on the same tick. The 7,200-tick headless run reports simulation p95 `4.867 ms`, AI p95 `8.451 ms`, no combined step above 100 ms, and `4.10×` real-time throughput. Local production Chrome at 1280×720 and effective DPR 1 reports frame p95 `18.5 ms`, maximum `18.9 ms`, zero backlog, no frame above 100 ms, `61.63` delivered ticks per requested simulation second, and a `3,033,656`-byte forced-GC heap delta after twenty restarts. This passes the existing local budgets but does not replace physical-device, cross-browser, or field evidence.
+
 ## Product 0.29.0 Local Result
 
 The fixed-50 harness exercises both active mechanics: the scripted human keeps up to three Brick Bag walls and activates Boat for 300 ticks each round. The 7,200-tick headless run reports simulation p95 `4.351 ms`, AI p95 `7.967 ms`, no combined step above 100 ms, and `3.96×` real-time throughput. Local production Chrome at 1280×720 and effective DPR 1 reports frame p95 `18.5 ms`, maximum `38.6 ms`, zero backlog, no frame above 100 ms, `62.55` delivered ticks per requested simulation second, and a `2,755,504`-byte forced-GC heap delta after twenty restarts. This passes the existing local budgets but does not replace physical-device, cross-browser, or field evidence.

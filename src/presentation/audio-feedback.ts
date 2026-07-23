@@ -93,6 +93,14 @@ const SOUND_DEFINITIONS: Partial<Record<SimulationEventKind, SoundDefinition>> =
     priority: 2,
     oscillatorType: "square",
   }),
+  "bomb-detonated": Object.freeze({
+    frequency: 92,
+    endFrequency: 34,
+    durationSeconds: 0.34,
+    gain: 0.12,
+    priority: 5,
+    oscillatorType: "sawtooth",
+  }),
   "dodge-succeeded": Object.freeze({
     frequency: 420,
     endFrequency: 690,
@@ -133,6 +141,14 @@ const BOAT_ACTIVATION_SOUND: SoundDefinition = Object.freeze({
   gain: 0.055,
   priority: 2,
   oscillatorType: "triangle",
+});
+const BOMB_PLACEMENT_SOUND: SoundDefinition = Object.freeze({
+  frequency: 640,
+  endFrequency: 360,
+  durationSeconds: 0.08,
+  gain: 0.05,
+  priority: 2,
+  oscillatorType: "square",
 });
 
 function createBrowserAudioContext(): AudioContextPort | undefined {
@@ -227,7 +243,9 @@ export function createAudioFeedback(
         const definition =
           event.kind === "item-used" && event.itemDefinitionId === "boat"
             ? BOAT_ACTIVATION_SOUND
-            : SOUND_DEFINITIONS[event.kind];
+            : event.kind === "item-used" && event.itemDefinitionId === "bomb"
+              ? BOMB_PLACEMENT_SOUND
+              : SOUND_DEFINITIONS[event.kind];
 
         if (definition !== undefined) {
           play(definition);

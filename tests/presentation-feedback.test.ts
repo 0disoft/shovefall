@@ -21,11 +21,15 @@ function createEvent(
 }
 
 class FakeAudioParam {
-  public exponentialRampToValueAtTime(): this {
+  public readonly values: number[] = [];
+
+  public exponentialRampToValueAtTime(value: number): this {
+    this.values.push(value);
     return this;
   }
 
-  public setValueAtTime(): this {
+  public setValueAtTime(value: number): this {
+    this.values.push(value);
     return this;
   }
 }
@@ -135,6 +139,30 @@ describe("optional Web Audio feedback", () => {
 
     expect(context.oscillators).toHaveLength(1);
     expect(context.oscillators[0]?.type).toBe("sawtooth");
+  });
+
+  it("uses distinct procedural cues for Bomb placement and detonation", async () => {
+    const context = new FakeAudioContext();
+    const audio = createAudioFeedback(() => context);
+    await audio.unlock();
+
+    audio.consumeEvents([
+      {
+        ...createEvent(1, 0, 0, "item-used"),
+        itemDefinitionId: "bomb",
+        position: { x: 4, y: 5 },
+      },
+      {
+        ...createEvent(1, 300, 1, "bomb-detonated"),
+        itemDefinitionId: "bomb",
+        position: { x: 4, y: 5 },
+      },
+    ]);
+
+    expect(context.oscillators).toHaveLength(2);
+    expect(context.oscillators.map(({ type }) => type)).toEqual(["square", "sawtooth"]);
+    expect(context.oscillators[0]?.frequency.values[0]).toBe(640);
+    expect(context.oscillators[1]?.frequency.values[0]).toBe(92);
   });
 
   it("caps concurrent voices and lets a higher-priority result replace a low voice", async () => {

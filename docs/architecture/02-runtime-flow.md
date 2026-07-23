@@ -17,7 +17,7 @@ Each 60 Hz tick uses this versioned order:
 
 1. Validate and collect commands; fill missing actor commands with neutral input.
 2. Advance action-state transitions.
-3. Resolve accepted active-item activations and batch their impulses.
+3. Resolve Brick proposals, due Bomb explosions, new Bomb placements, Boat activations, and Wind targeting; batch Bomb and Wind impulses.
 4. Convert movement commands into intent.
 5. Apply dodge, stumble, and other active displacement.
 6. Integrate positions and velocities.
@@ -31,7 +31,7 @@ Each 60 Hz tick uses this versioned order:
 14. Decide round result.
 15. Emit ordered events, an immutable render frame, and a quantized state hash.
 
-All fifteen stages are implemented. Active-item eligibility is decided from one pre-item participant snapshot; actor ID orders activation, charge spending, first-hit ray selection, and batch impulses. Same-tick dodge can stop the first target without letting the ray pass through. Weak contact then resolves a swept circle intersection from `previousPosition` to the integrated position and applies iterative overlap correction, allowing a launched target to transfer motion. Timed effects expire with action transitions before movement. Item pickup runs after support, so a valid pickup wins over a tile that begins collapsing later in the same tick. Collapse advances from the actual ocean and lake shoreline rather than the rectangular render bounds. A connected protected core equal to `ceil(initial playable land × 0.20)` is never scheduled, so pre-existing water never returns as land and collapse never crosses the 20% floor. Later work cannot reorder the pipeline or change contact meaning without a simulation-version decision and regenerated replay evidence.
+All fifteen stages are implemented. Active-item eligibility is decided from one pre-item participant snapshot; actor ID orders activation, charge spending, first-hit ray selection, and batch impulses. Brick commits before Bomb placement. Due Bombs explode before new Bombs can occupy their tile, then Boat and Wind resolve. Same-tick Dodge can evade either Bomb or the first Wind target. Bomb and Wind vectors sum once before movement, wall contact, and swept body transfer; the strongest single same-tick offensive impulse owns credit. Timed effects expire with action transitions before movement. Item pickup runs after support, so a valid pickup wins over a tile that begins collapsing later in the same tick. Collapse advances from the actual ocean and lake shoreline rather than the rectangular render bounds. A connected protected core equal to `ceil(initial playable land × 0.20)` is never scheduled, so pre-existing water never returns as land and collapse never crosses the 20% floor. Later work cannot reorder the pipeline or change contact meaning without a simulation-version decision and regenerated replay evidence.
 
 ## Browser Scheduling
 

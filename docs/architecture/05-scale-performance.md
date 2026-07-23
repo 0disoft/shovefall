@@ -3,6 +3,12 @@
 - Status: Accepted local automated baseline; physical and cross-browser evidence pending
 - Owner: Repository owner
 
+## 0.30.0 Brick Bag and Bomb Profile
+
+On 2026-07-24, the 7,200-tick fixed-50 profile equipped actor 1 with Brick Bag and Bomb, equipped actor 2 with Bomb, kept actor 2 neutral through the shared placement tick, and forced two simultaneous five-second fuses and detonations. It kept a peak of three walls with `2.999` mean walls per tick and observed a peak of two Bombs with `0.083` mean bombs per tick. It completed in `29,249.091 ms`, or `4.10×` real time. AI p95 was `8.451 ms`, simulation p95 was `4.867 ms`, the spatial candidate/full-pair ratio was `0.1077`, and no combined step exceeded 100 ms. The `8,881,765`-byte heap delta remains observational because the harness does not force garbage collection.
+
+The production Chrome profile selected Brick Bag and Bomb, placed both, and sampled six seconds so the complete fuse and detonation occurred at 1280×720 and effective DPR 1. Frame p95 was `18.5 ms`, maximum was `18.9 ms`, delivered ticks were `61.63` per requested simulation second, backlog stayed zero, and no frame exceeded 100 ms. Twenty immediate restarts followed by CDP garbage collection left a `3,033,656`-byte used-heap delta. This is one local Chrome run, not physical-device, cross-browser, or field evidence.
+
 ## 0.29.0 Brick Bag and Boat Profile
 
 On 2026-07-24, the 7,200-tick fixed-50 profile equipped the scripted human with Brick Bag and Boat, kept a peak of three walls with `2.999` mean walls per tick, and observed one active Boat user with `0.042` mean users per tick. It completed in `30,314.626 ms`, or `3.96×` real time. AI p95 was `7.967 ms`, simulation p95 was `4.351 ms`, the spatial candidate/full-pair ratio was `0.096`, and no combined step exceeded 100 ms. The `15,197,027`-byte heap delta remains observational because the harness does not force garbage collection.

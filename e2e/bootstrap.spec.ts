@@ -222,9 +222,9 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await versionHistoryButton.click();
   await expect(page.locator("#app")).toHaveAttribute("data-screen", "history");
   await expect(page.getByRole("heading", { level: 2, name: "버전 기록" })).toBeFocused();
-  await expect(page.locator("#current-version")).toHaveText("v0.29.0");
-  await expect(page.locator("#version-history-list > li")).toHaveCount(10);
-  await expect(page.getByText("왜 바꿨냐면")).toHaveCount(10);
+  await expect(page.locator("#current-version")).toHaveText("v0.30.0");
+  await expect(page.locator("#version-history-list > li")).toHaveCount(11);
+  await expect(page.getByText("왜 바꿨냐면")).toHaveCount(11);
   await expect(page.locator("#arena-host canvas")).toBeHidden();
   await page.keyboard.press("Escape");
   await expect(page.locator("#app")).toHaveAttribute("data-screen", "menu");
@@ -389,6 +389,23 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await expect(page.locator("#use-item-slot-1")).toContainText("배 · 0회");
   await expect(page.locator("#effect-value")).toContainText(/배 [1-5]초/u);
   await expect(page.getByText("배를 띄웠어. 5초 동안 물을 건널 수 있어.")).toBeVisible();
+
+  await page.getByRole("button", { name: "메뉴로" }).click();
+  await openSettings(page);
+  await page.locator('input[name="startingItem"][value="brick-bag"]').uncheck();
+  await page.locator('input[name="startingItem"][value="boat"]').uncheck();
+  await page.locator('input[name="startingItem"][value="iron-boots"]').check();
+  await page.locator('input[name="startingItem"][value="bomb"]').check();
+  await expect(page.locator("#setup-summary")).toContainText("철 장화 + 시한폭탄");
+  await saveSettings(page);
+  await queueNextRoundSeed(page, 1, 0);
+  await startGame(page);
+  await expect(page.locator("#app")).toHaveAttribute("data-round", "active", { timeout: 5_000 });
+  await expect(page.locator("#use-item-slot-1")).toContainText("시한폭탄 · 2회");
+  await expect(page.locator("#use-item-slot-1")).toBeEnabled();
+  await page.locator("#use-item-slot-1").click();
+  await expect(page.locator("#use-item-slot-1")).toContainText("시한폭탄 · 1회");
+  await expect(page.getByText("폭탄을 놨어. 5초 뒤 터져.")).toBeVisible();
 });
 
 test("offers a working touch joystick and action buttons on a narrow viewport", async ({

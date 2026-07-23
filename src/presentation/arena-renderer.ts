@@ -1,5 +1,6 @@
 import { Application, Graphics } from "pixi.js";
 import type {
+  BombState,
   BrickWallState,
   ItemDefinitionId,
   ParticipantActionKind,
@@ -40,7 +41,8 @@ type VisualEffectKind =
   | "falling-started"
   | "item-picked-up"
   | "item-used"
-  | "wind-blast-hit";
+  | "wind-blast-hit"
+  | "bomb-detonated";
 
 interface VisualEffect {
   readonly key: string;
@@ -375,6 +377,52 @@ function drawBrickWall(
     .stroke({ color: 0x5c3023, width: mortar });
 }
 
+function drawBomb(
+  graphics: Graphics,
+  bomb: BombState,
+  frameTick: number,
+  projection: ArenaProjection,
+  reducedMotion: boolean,
+): void {
+  const { x, y } = projectArenaPoint(bomb.position, projection);
+  const discRadius = Math.max(6, projection.tileWidth * 0.18);
+  const warningRadiusX = projection.pitch * 3;
+  const warningRadiusY = projection.depthPitch * 3;
+  const remainingSeconds = Math.min(
+    5,
+    Math.max(0, Math.ceil((bomb.detonateTick - frameTick) / 60)),
+  );
+  const pulse = reducedMotion ? 1 : 0.72 + ((frameTick % 30) / 30) * 0.28;
+
+  graphics.ellipse(x, y, warningRadiusX, warningRadiusY).stroke({
+    color: ITEM_COLORS.bomb,
+    width: Math.max(2, projection.tileWidth * 0.055),
+    alpha: 0.58 * pulse,
+  });
+  graphics
+    .ellipse(x, y + discRadius * ARENA_SHADOW_OFFSET_SCALE, discRadius * 1.25, discRadius * 0.42)
+    .fill({ color: 0x050706, alpha: 0.5 });
+  graphics
+    .circle(x, y, discRadius)
+    .fill({ color: 0x202322 })
+    .stroke({ color: ITEM_COLORS.bomb, width: Math.max(2, discRadius * 0.24) });
+  graphics
+    .moveTo(x + discRadius * 0.38, y - discRadius * 0.72)
+    .lineTo(x + discRadius * 0.78, y - discRadius * 1.22)
+    .stroke({ color: 0xffc857, width: Math.max(2, discRadius * 0.2), cap: "round" });
+
+  const pipRadius = Math.max(2, discRadius * 0.2);
+  const pipSpacing = pipRadius * 2.65;
+  const pipStartX = x - (pipSpacing * (remainingSeconds - 1)) / 2;
+  const pipY = y - discRadius * 1.75;
+
+  for (let index = 0; index < remainingSeconds; index += 1) {
+    graphics
+      .circle(pipStartX + pipSpacing * index, pipY, pipRadius)
+      .fill({ color: 0xffc857, alpha: reducedMotion ? 0.9 : pulse });
+  }
+}
+
 function drawParticipant(
   graphics: Graphics,
   participant: RenderParticipantV1,
@@ -552,6 +600,10 @@ function drawParticipant(
 }
 
 function getEffectPosition(event: SimulationEventV1, frame: RenderFrameV1): Vector2 | undefined {
+  if (event.position !== undefined) {
+    return event.position;
+  }
+
   const actorId =
     event.kind === "shove-hit" || event.kind === "wind-blast-hit"
       ? event.targetActorId
@@ -567,7 +619,8 @@ function isVisualEffectKind(kind: SimulationEventV1["kind"]): kind is VisualEffe
     kind === "falling-started" ||
     kind === "item-picked-up" ||
     kind === "item-used" ||
-    kind === "wind-blast-hit"
+    kind === "wind-blast-hit" ||
+    kind === "bomb-detonated"
   );
 }
 
@@ -585,7 +638,12 @@ function drawWorldEffect(
   const expansion = reducedMotion ? 1 : 1 + progress * 1.8;
   const alpha = Math.max(0, 1 - progress);
 
-  if (effect.kind === "wind-blast-hit") {
+  if (effect.kind === "bomb-detonated") {
+    const explosionScale = reducedMotion ? 1 : 0.72 + progress * 0.28;
+    const radiusX = projection.pitch * 3 * explosionScale;
+    const radiusY = projection.depthPitch * 3 * explosionScale;
+    graphics.ellipse(x, y, radiusX, radiusY).stroke({ color: ITEM_COLORS.bomb, width: 5, alpha });
+  } else if (effect.kind === "wind-blast-hit") {
     graphics
       .circle(x, y, baseRadius * expansion * 1.35)
       .stroke({ color: ITEM_COLORS["wind-blast"], width: 4, alpha });
@@ -594,6 +652,10 @@ function drawWorldEffect(
     graphics
       .roundRect(x - size, y - size, size * 2, size * 2, 2)
       .stroke({ color: ITEM_COLORS["brick-bag"], width: 3, alpha });
+  } else if (effect.kind === "item-used" && effect.itemDefinitionId === "bomb") {
+    graphics
+      .circle(x, y, baseRadius * (reducedMotion ? 1 : 0.8 + progress * 0.2))
+      .stroke({ color: ITEM_COLORS.bomb, width: 3, alpha });
   } else if (effect.kind === "item-used") {
     const direction = projectArenaVector(effect.vector ?? { x: 1, y: 0 });
     const length = baseRadius * (reducedMotion ? 2.2 : 2.2 + progress * 3.2);
@@ -731,6 +793,10 @@ export async function createArenaRenderer(
 
     for (const item of latestFrame.items) {
       drawItem(items, item, projection);
+    }
+
+    for (const bomb of latestFrame.bombs) {
+      drawBomb(items, bomb, latestFrame.tick, projection, reducedMotion);
     }
 
     const depthEntries = [

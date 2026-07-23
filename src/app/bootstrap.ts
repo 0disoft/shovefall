@@ -130,9 +130,13 @@ function getEventMessage(event: SimulationEventV1): string | undefined {
             ? "벽돌을 세웠어."
             : event.itemDefinitionId === "boat"
               ? "배를 띄웠어. 5초 동안 물을 건널 수 있어."
-              : undefined;
+              : event.itemDefinitionId === "bomb"
+                ? "폭탄을 놨어. 5초 뒤 터져."
+                : undefined;
     case "wind-blast-hit":
       return event.actorId === 1 ? "장풍 적중!" : undefined;
+    case "bomb-detonated":
+      return event.actorId === 1 ? "폭탄 폭발!" : undefined;
     case "stat-point-earned":
       return event.actorId === 1 ? "처치 인정! 스탯 포인트를 얻었어." : undefined;
     case "stat-upgraded":
@@ -422,7 +426,8 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
         human.action === "Eliminated" ||
         (slot?.definitionId !== "wind-blast" &&
           slot?.definitionId !== "brick-bag" &&
-          slot?.definitionId !== "boat") ||
+          slot?.definitionId !== "boat" &&
+          slot?.definitionId !== "bomb") ||
         slot.charges === null ||
         slot.charges < 1;
     }

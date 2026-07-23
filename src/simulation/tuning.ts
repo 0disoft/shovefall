@@ -69,6 +69,14 @@ export const SIMULATION_TUNING = Object.freeze({
     maximumImpulse: 0.42,
     stumbleTicks: 24,
   }),
+  bomb: Object.freeze({
+    fuseTicks: 300,
+    blastRadius: 3,
+    edgeImpulse: 0.105,
+    centerImpulse: 0.42,
+    maximumImpulse: 0.42,
+    stumbleTicks: 24,
+  }),
   dodge: Object.freeze({
     activeTicks: 5,
     evasionTicks: 5,

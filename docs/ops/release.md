@@ -2,7 +2,7 @@
 
 - Status: GitHub Pages deployment and public Chrome smoke verified
 - Primary owner: Repository owner
-- Current product version: `0.29.0`
+- Current product version: `0.30.0`
 - Validation source: [../../VALIDATION.md](../../VALIDATION.md)
 - Submission package: [../product/05-submission-package.md](../product/05-submission-package.md)
 - Asset ledger: [../assets/README.md](../assets/README.md)
@@ -26,6 +26,8 @@ Product `0.27.0` adds human Wind Blast activation, Q/E and gamepad/DOM slot brid
 Product `0.28.0` adds human Brick Bag activation, deterministic same-tick placement priority, static-wall body and attack blocking, collapse-driven wall removal, and depth-sorted procedural wall presentation. Simulation advances to `11.0.0`; content, replay, and report schemas stay unchanged. Local merge checks and eight production smoke paths pass. Wall-active fixed-50 profiles pass at headless simulation p95 `2.525 ms` and local Chrome frame p95 `18.5 ms` with zero backlog. GitHub Actions run `30022962614` validated and deployed implementation SHA `19b35261e3516b5cec572952c5228ccf2a856e28`; a fresh public Chrome session confirmed `v0.28.0`, the Brick Bag setting, WebGL canvas initialization, and a running 50-participant arena without warning or error logs.
 
 Product `0.29.0` adds human Boat activation, an exact 300-tick effect, bounded support across in-arena Void tiles, procedural hull and activation feedback, remaining-duration HUD, and the sixth offered loadout card. Simulation advances to `12.0.0`, content to `6.0.0`; replay v2 and report v4 remain sufficient. Merge checks pass with 139 tests, and all eight production-artifact Chrome smoke paths pass. Brick-plus-Boat fixed-50 profiles pass at headless simulation p95 `4.351 ms` and local Chrome frame p95 `18.5 ms` with zero backlog. GitHub Actions run `30025468513` validated and deployed exact implementation SHA `d32e66711d87db21fc0b2d4adf1261d2cd52d9e0`; a fresh public session confirmed `v0.29.0` and the Boat setting at `https://0disoft.github.io/shovefall/`.
+
+Product `0.30.0` adds human Bomb placement, two charges, a visible exact 300-tick fuse, deterministic three-tile radial falloff, owner vulnerability, same-tick Dodge, flood and owner-death persistence, canonical hashed Bomb state, procedural warning/detonation feedback, and the seventh offered loadout card. Simulation advances to `13.0.0`, content to `7.0.0`; replay v2 and report v4 remain sufficient. The local suite passes 146 tests. Brick-plus-two-Bomb fixed-50 headless simulation passes at p95 `4.867 ms`; the local Chrome profile completes a visible fuse and detonation at frame p95 `18.5 ms` with zero backlog. Hosted CI and Pages evidence remain pending until the exact Bomb commit is pushed.
 
 The current local tree passes merge-blocking checks, the production Chrome smoke suite, the 7,200-tick fixed-50 headless scale profile, and the fixed-50 production Chrome profile. Active-item bot balance and human playtest remain pending. Hosted evidence starts only after the exact commit is pushed and the Pages workflow succeeds.
 

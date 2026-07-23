@@ -5,6 +5,7 @@ import {
   type ActionState,
   type ActorCommandV1,
   type ActorId,
+  type BombState,
   type BrickWallState,
   type GameConfigV1,
   type ItemDefinitionId,
@@ -122,6 +123,7 @@ interface EventDetails {
   readonly itemDefinitionId?: ItemDefinitionId;
   readonly winnerActorId?: ActorId;
   readonly vector?: Vector2;
+  readonly position?: Vector2;
   readonly reason?: SimulationEventV1["reason"];
   readonly upgradeStat?: UpgradeStatId;
 }
@@ -552,6 +554,7 @@ export class SimulationWorld {
   #tiles: readonly TileState[];
   #participants: readonly ParticipantState[];
   #brickWalls: readonly BrickWallState[] = Object.freeze([]);
+  #bombs: readonly BombState[] = Object.freeze([]);
   #itemState: ItemSystemState;
   #round: RoundStateV1 = Object.freeze({
     status: "Active",
@@ -726,6 +729,7 @@ export class SimulationWorld {
       participants: this.#participants,
       items: this.#itemState.items,
       brickWalls: this.#brickWalls,
+      bombs: this.#bombs,
       nextItemId: this.#itemState.nextItemId,
       nextItemSpawnTick: this.#itemState.nextSpawnTick,
       tiles: this.#tiles,
@@ -763,6 +767,7 @@ export class SimulationWorld {
       ),
       items: this.#itemState.items,
       brickWalls: this.#brickWalls,
+      bombs: this.#bombs,
       tiles: this.#tiles,
       round: this.#round,
     });
@@ -980,6 +985,8 @@ export class SimulationWorld {
 
         const canActivate =
           slot?.definitionId === "wind-blast" ||
+          (slot?.definitionId === "bomb" &&
+            this.#getBombPlacement(participant, [], direction) !== undefined) ||
           (slot?.definitionId === "boat" &&
             hasTileSupport(participant.body.position, this.#arenaTileIds)) ||
           (slot?.definitionId === "brick-bag" &&
@@ -1044,7 +1051,10 @@ export class SimulationWorld {
     activeItemSlots: ReadonlyMap<ActorId, InventorySlotIndex>,
     events: SimulationEventV1[],
   ): readonly ParticipantState[] {
-    if (activeItemSlots.size === 0) {
+    if (
+      activeItemSlots.size === 0 &&
+      !this.#bombs.some(({ detonateTick }) => detonateTick <= this.#tick)
+    ) {
       return participants;
     }
 
@@ -1056,6 +1066,99 @@ export class SimulationWorld {
       { readonly attackerActorId: ActorId; readonly strength: number }
     >();
     const placedWalls: BrickWallState[] = [];
+
+    const dueBombs = this.#bombs
+      .filter(({ detonateTick }) => detonateTick <= this.#tick)
+      .toSorted(
+        (left, right) =>
+          left.detonateTick - right.detonateTick || left.ownerActorId - right.ownerActorId,
+      );
+
+    if (dueBombs.length > 0) {
+      const dueBombKeys = new Set(
+        dueBombs.map(({ ownerActorId, placedTick }) => `${ownerActorId}:${placedTick}`),
+      );
+      this.#bombs = Object.freeze(
+        this.#bombs.filter(
+          ({ ownerActorId, placedTick }) => !dueBombKeys.has(`${ownerActorId}:${placedTick}`),
+        ),
+      );
+
+      for (const bomb of dueBombs) {
+        events.push(
+          this.#createEvent("bomb-detonated", {
+            actorId: bomb.ownerActorId,
+            itemDefinitionId: "bomb",
+            position: bomb.position,
+          }),
+        );
+
+        const owner = ordered.find(({ actorId }) => actorId === bomb.ownerActorId);
+        const ownerPower = owner?.progression.stats;
+
+        for (const target of ordered) {
+          if (!isCollidable(target)) {
+            continue;
+          }
+
+          const offset = subtractVectors(target.body.position, bomb.position);
+          const edgeDistance = Math.max(0, vectorLength(offset) - target.body.radius);
+
+          if (edgeDistance > SIMULATION_TUNING.bomb.blastRadius) {
+            continue;
+          }
+
+          const targetIsEvading =
+            target.action.kind === "DodgeActive" &&
+            this.#tick - target.action.startedTick < SIMULATION_TUNING.dodge.evasionTicks;
+
+          if (targetIsEvading) {
+            events.push(
+              this.#createEvent("dodge-succeeded", {
+                actorId: target.actorId,
+                targetActorId: bomb.ownerActorId,
+                vector: target.action.lockedDirection ?? target.body.facing,
+              }),
+            );
+            continue;
+          }
+
+          const distanceRatio = edgeDistance / SIMULATION_TUNING.bomb.blastRadius;
+          const baseImpulse =
+            SIMULATION_TUNING.bomb.centerImpulse -
+            (SIMULATION_TUNING.bomb.centerImpulse - SIMULATION_TUNING.bomb.edgeImpulse) *
+              distanceRatio;
+          const rawImpulse =
+            (baseImpulse / target.body.massFactor) *
+            (ownerPower === undefined ? 1 : getPowerMultiplier(ownerPower)) *
+            getStabilityMultiplier(target.progression.stats);
+          const direction = normalizeDirectionOrFallback(offset, bomb.fallbackDirection);
+          const impulse = scaleVector(
+            direction,
+            Math.min(rawImpulse, SIMULATION_TUNING.bomb.maximumImpulse),
+          );
+          impulses.set(
+            target.actorId,
+            addVectors(impulses.get(target.actorId) ?? ZERO_VECTOR, impulse),
+          );
+          const strength = vectorLength(impulse);
+          const previousCredit = credits.get(target.actorId);
+
+          if (
+            target.actorId !== bomb.ownerActorId &&
+            (previousCredit === undefined ||
+              strength > previousCredit.strength ||
+              (strength === previousCredit.strength &&
+                bomb.ownerActorId < previousCredit.attackerActorId))
+          ) {
+            credits.set(
+              target.actorId,
+              Object.freeze({ attackerActorId: bomb.ownerActorId, strength }),
+            );
+          }
+        }
+      }
+    }
 
     for (const attacker of ordered) {
       const slotIndex = activeItemSlots.get(attacker.actorId);
@@ -1105,6 +1208,52 @@ export class SimulationWorld {
       this.#brickWalls = Object.freeze(
         [...this.#brickWalls, ...placedWalls].toSorted((left, right) =>
           left.tileId.localeCompare(right.tileId),
+        ),
+      );
+    }
+
+    const placedBombs: BombState[] = [];
+
+    for (const participant of ordered) {
+      const slotIndex = activeItemSlots.get(participant.actorId);
+      const slot =
+        slotIndex === undefined
+          ? undefined
+          : participant.inventory.find((candidate) => candidate.slotIndex === slotIndex);
+
+      if (slotIndex === undefined || slot?.definitionId !== "bomb" || !isCollidable(participant)) {
+        continue;
+      }
+
+      const bomb = this.#getBombPlacement(participant, placedBombs);
+
+      if (bomb === undefined) {
+        continue;
+      }
+
+      const consumed = consumeInventoryCharge(participant, slotIndex);
+
+      if (consumed === undefined) {
+        continue;
+      }
+
+      updatedById.set(participant.actorId, consumed);
+      placedBombs.push(bomb);
+      events.push(
+        this.#createEvent("item-used", {
+          actorId: participant.actorId,
+          itemDefinitionId: "bomb",
+          position: bomb.position,
+          vector: bomb.fallbackDirection,
+        }),
+      );
+    }
+
+    if (placedBombs.length > 0) {
+      this.#bombs = Object.freeze(
+        [...this.#bombs, ...placedBombs].toSorted(
+          (left, right) =>
+            left.detonateTick - right.detonateTick || left.ownerActorId - right.ownerActorId,
         ),
       );
     }
@@ -1273,11 +1422,44 @@ export class SimulationWorld {
         action: createTimedAction(
           "Stumbling",
           this.#tick,
-          SIMULATION_TUNING.windBlast.stumbleTicks,
+          SIMULATION_TUNING.bomb.stumbleTicks,
           normalizeDirectionOrFallback(impulse, current.body.facing),
         ),
         shoveCredit: chooseOffensiveCredit(current.shoveCredit, credit, this.#tick),
       });
+    });
+  }
+
+  #getBombPlacement(
+    participant: ParticipantState,
+    pendingBombs: readonly BombState[] = [],
+    direction: Vector2 = participant.body.facing,
+  ): BombState | undefined {
+    const column = Math.floor(participant.body.position.x);
+    const row = Math.floor(participant.body.position.y);
+    const tileId = createTileId(column, row);
+    const tile = this.#tiles.find((candidate) => candidate.tileId === tileId);
+
+    if (
+      tile === undefined ||
+      tile.state === "Void" ||
+      this.#brickWalls.some((wall) => wall.tileId === tileId) ||
+      [...this.#bombs, ...pendingBombs].some(
+        (bomb) =>
+          bomb.detonateTick > this.#tick &&
+          Math.floor(bomb.position.x) === column &&
+          Math.floor(bomb.position.y) === row,
+      )
+    ) {
+      return undefined;
+    }
+
+    return Object.freeze({
+      ownerActorId: participant.actorId,
+      position: Object.freeze({ x: column + 0.5, y: row + 0.5 }),
+      fallbackDirection: normalizeDirectionOrFallback(direction, { x: 1, y: 0 }),
+      placedTick: this.#tick,
+      detonateTick: this.#tick + SIMULATION_TUNING.bomb.fuseTicks,
     });
   }
 
@@ -2062,6 +2244,7 @@ export class SimulationWorld {
         : { itemDefinitionId: details.itemDefinitionId }),
       ...(details.winnerActorId === undefined ? {} : { winnerActorId: details.winnerActorId }),
       ...(details.vector === undefined ? {} : { vector: details.vector }),
+      ...(details.position === undefined ? {} : { position: details.position }),
       ...(details.reason === undefined ? {} : { reason: details.reason }),
       ...(details.upgradeStat === undefined ? {} : { upgradeStat: details.upgradeStat }),
     });
