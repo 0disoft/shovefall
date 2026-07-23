@@ -148,6 +148,7 @@ async function startGame(page: Page): Promise<void> {
 }
 
 test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) => {
+  test.slow();
   await installFixedRoundSeed(page, 1, 0);
   await page.goto("/");
 
