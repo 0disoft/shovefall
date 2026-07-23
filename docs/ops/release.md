@@ -2,7 +2,7 @@
 
 - Status: GitHub Pages deployment and public Chrome smoke verified
 - Primary owner: Repository owner
-- Current product version: `0.28.0`
+- Current product version: `0.29.0`
 - Validation source: [../../VALIDATION.md](../../VALIDATION.md)
 - Submission package: [../product/05-submission-package.md](../product/05-submission-package.md)
 - Asset ledger: [../assets/README.md](../assets/README.md)
@@ -23,7 +23,9 @@ Product `0.26.0` fixes public play at 50 participants and Hard AI, replaces cate
 
 Product `0.27.0` adds human Wind Blast activation, Q/E and gamepad/DOM slot bridges, launch-speed swept contact, strength-based elimination credit, and replay format v2 with required human mass/loadout setup. Simulation advances to `10.0.0`; content stays `5.0.0`; report schema stays v4. Local merge checks, eight production smoke paths, the fixed-50 headless profile, and the fixed-50 Chrome profile pass. Hosted CI, Pages, and public-URL evidence must still be refreshed at the final `0.27.0` SHA before promotion.
 
-Product `0.28.0` adds human Brick Bag activation, deterministic same-tick placement priority, static-wall body and attack blocking, collapse-driven wall removal, and depth-sorted procedural wall presentation. Simulation advances to `11.0.0`; content, replay, and report schemas stay unchanged. Local merge checks and eight production smoke paths pass. Wall-active fixed-50 profiles pass at headless simulation p95 `2.525 ms` and local Chrome frame p95 `18.5 ms` with zero backlog. Exact-SHA hosted CI, Pages, and public-URL evidence must still be refreshed before promotion.
+Product `0.28.0` adds human Brick Bag activation, deterministic same-tick placement priority, static-wall body and attack blocking, collapse-driven wall removal, and depth-sorted procedural wall presentation. Simulation advances to `11.0.0`; content, replay, and report schemas stay unchanged. Local merge checks and eight production smoke paths pass. Wall-active fixed-50 profiles pass at headless simulation p95 `2.525 ms` and local Chrome frame p95 `18.5 ms` with zero backlog. GitHub Actions run `30022962614` validated and deployed implementation SHA `19b35261e3516b5cec572952c5228ccf2a856e28`; a fresh public Chrome session confirmed `v0.28.0`, the Brick Bag setting, WebGL canvas initialization, and a running 50-participant arena without warning or error logs.
+
+Product `0.29.0` adds human Boat activation, an exact 300-tick effect, bounded support across in-arena Void tiles, procedural hull and activation feedback, remaining-duration HUD, and the sixth offered loadout card. Simulation advances to `12.0.0`, content to `6.0.0`; replay v2 and report v4 remain sufficient. Merge checks pass with 139 tests, and all eight production-artifact Chrome smoke paths pass. Brick-plus-Boat fixed-50 profiles pass at headless simulation p95 `4.351 ms` and local Chrome frame p95 `18.5 ms` with zero backlog. Exact-SHA hosted Pages evidence remains required before promotion.
 
 The current local tree passes merge-blocking checks, the production Chrome smoke suite, the 7,200-tick fixed-50 headless scale profile, and the fixed-50 production Chrome profile. Active-item bot balance and human playtest remain pending. Hosted evidence starts only after the exact commit is pushed and the Pages workflow succeeds.
 

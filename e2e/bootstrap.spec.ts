@@ -176,6 +176,7 @@ async function startGame(page: Page): Promise<void> {
 
 async function useBrickBagFromAvailableDirection(
   page: Page,
+  slotIndex = 1,
   directions: readonly string[] = ["ArrowUp", "ArrowRight", "ArrowDown", "ArrowLeft"],
   index = 0,
 ): Promise<void> {
@@ -185,7 +186,7 @@ async function useBrickBagFromAvailableDirection(
     return;
   }
 
-  const slot = page.locator("#use-item-slot-1");
+  const slot = page.locator(`#use-item-slot-${slotIndex}`);
   await expect(slot).toBeEnabled();
   await page.keyboard.down(direction);
   await page.waitForTimeout(80);
@@ -198,7 +199,7 @@ async function useBrickBagFromAvailableDirection(
     return;
   }
 
-  return useBrickBagFromAvailableDirection(page, directions, index + 1);
+  return useBrickBagFromAvailableDirection(page, slotIndex, directions, index + 1);
 }
 
 test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) => {
@@ -221,9 +222,9 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await versionHistoryButton.click();
   await expect(page.locator("#app")).toHaveAttribute("data-screen", "history");
   await expect(page.getByRole("heading", { level: 2, name: "버전 기록" })).toBeFocused();
-  await expect(page.locator("#current-version")).toHaveText("v0.28.0");
-  await expect(page.locator("#version-history-list > li")).toHaveCount(9);
-  await expect(page.getByText("왜 바꿨냐면")).toHaveCount(9);
+  await expect(page.locator("#current-version")).toHaveText("v0.29.0");
+  await expect(page.locator("#version-history-list > li")).toHaveCount(10);
+  await expect(page.getByText("왜 바꿨냐면")).toHaveCount(10);
   await expect(page.locator("#arena-host canvas")).toBeHidden();
   await page.keyboard.press("Escape");
   await expect(page.locator("#app")).toHaveAttribute("data-screen", "menu");
@@ -369,18 +370,25 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
 
   await openSettings(page);
   await page.locator('input[name="startingItem"][value="wind-blast"]').uncheck();
+  await page.locator('input[name="startingItem"][value="iron-boots"]').uncheck();
   await page.locator('input[name="startingItem"][value="brick-bag"]').check();
-  await expect(page.locator("#setup-summary")).toContainText("철 장화 + 벽돌 가방");
+  await page.locator('input[name="startingItem"][value="boat"]').check();
+  await expect(page.locator("#setup-summary")).toContainText("벽돌 가방 + 배");
   await saveSettings(page);
   await queueNextRoundSeed(page, 1, 0);
   await startGame(page);
   await expect(page.locator("#app")).toHaveAttribute("data-round", "active", { timeout: 5_000 });
-  await expect(page.locator("#use-item-slot-1")).toContainText("벽돌 가방 · 4회");
+  await expect(page.locator("#use-item-slot-0")).toContainText("벽돌 가방 · 4회");
+  await expect(page.locator("#use-item-slot-1")).toContainText("배 · 1회");
 
-  await useBrickBagFromAvailableDirection(page);
+  await useBrickBagFromAvailableDirection(page, 0);
 
-  await expect(page.locator("#use-item-slot-1")).toContainText("벽돌 가방 · 3회");
+  await expect(page.locator("#use-item-slot-0")).toContainText("벽돌 가방 · 3회");
   await expect(page.getByText("벽돌을 세웠어.")).toBeVisible();
+  await page.locator("#use-item-slot-1").click();
+  await expect(page.locator("#use-item-slot-1")).toContainText("배 · 0회");
+  await expect(page.locator("#effect-value")).toContainText(/배 [1-5]초/u);
+  await expect(page.getByText("배를 띄웠어. 5초 동안 물을 건널 수 있어.")).toBeVisible();
 });
 
 test("offers a working touch joystick and action buttons on a narrow viewport", async ({

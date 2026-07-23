@@ -128,7 +128,9 @@ function getEventMessage(event: SimulationEventV1): string | undefined {
           ? "장풍을 쐈어."
           : event.itemDefinitionId === "brick-bag"
             ? "벽돌을 세웠어."
-            : undefined;
+            : event.itemDefinitionId === "boat"
+              ? "배를 띄웠어. 5초 동안 물을 건널 수 있어."
+              : undefined;
     case "wind-blast-hit":
       return event.actorId === 1 ? "장풍 적중!" : undefined;
     case "stat-point-earned":
@@ -387,7 +389,11 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
       )
       .join(" · ");
     const effectLabel = human.effects
-      .map(({ definitionId }) => ITEM_LABELS[definitionId])
+      .map(({ definitionId, endsTick }) =>
+        definitionId === "boat" && endsTick !== null
+          ? `배 ${Math.max(0, Math.ceil((endsTick - current.frame.tick) / 60))}초`
+          : ITEM_LABELS[definitionId],
+      )
       .join(" · ");
     effectValue.value =
       [inventoryLabel, effectLabel].filter((label) => label.length > 0).join(" · ") ||
@@ -414,7 +420,9 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
         !human.active ||
         human.action === "Falling" ||
         human.action === "Eliminated" ||
-        (slot?.definitionId !== "wind-blast" && slot?.definitionId !== "brick-bag") ||
+        (slot?.definitionId !== "wind-blast" &&
+          slot?.definitionId !== "brick-bag" &&
+          slot?.definitionId !== "boat") ||
         slot.charges === null ||
         slot.charges < 1;
     }

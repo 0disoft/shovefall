@@ -126,6 +126,14 @@ const SOUND_DEFINITIONS: Partial<Record<SimulationEventKind, SoundDefinition>> =
     oscillatorType: "triangle",
   }),
 });
+const BOAT_ACTIVATION_SOUND: SoundDefinition = Object.freeze({
+  frequency: 310,
+  endFrequency: 185,
+  durationSeconds: 0.16,
+  gain: 0.055,
+  priority: 2,
+  oscillatorType: "triangle",
+});
 
 function createBrowserAudioContext(): AudioContextPort | undefined {
   const audioWindow = window as Window & {
@@ -216,7 +224,10 @@ export function createAudioFeedback(
     },
     consumeEvents(events: readonly SimulationEventV1[]): void {
       for (const event of ledger.consume(events)) {
-        const definition = SOUND_DEFINITIONS[event.kind];
+        const definition =
+          event.kind === "item-used" && event.itemDefinitionId === "boat"
+            ? BOAT_ACTIVATION_SOUND
+            : SOUND_DEFINITIONS[event.kind];
 
         if (definition !== undefined) {
           play(definition);

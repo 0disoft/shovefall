@@ -429,6 +429,47 @@ export function consumeInventoryCharge(
   });
 }
 
+export function activateTimedInventoryEffect(
+  participant: ParticipantState,
+  slotIndex: InventorySlotIndex,
+  tick: Tick,
+): ParticipantState | undefined {
+  const slot = participant.inventory.find((candidate) => candidate.slotIndex === slotIndex);
+
+  if (slot === undefined) {
+    return undefined;
+  }
+
+  const definition = getItemDefinition(slot.definitionId);
+
+  if (
+    definition.loadoutKind !== "active" ||
+    definition.consumePolicy !== "inventory-charge" ||
+    definition.durationTicks === null
+  ) {
+    return undefined;
+  }
+
+  const consumed = consumeInventoryCharge(participant, slotIndex);
+
+  if (consumed === undefined) {
+    return undefined;
+  }
+
+  const effect: EffectInstance = Object.freeze({
+    definitionId: slot.definitionId,
+    appliedTick: tick,
+    endsTick: tick + definition.durationTicks,
+  });
+  const effects = Object.freeze(
+    [
+      ...consumed.effects.filter((existing) => existing.definitionId !== slot.definitionId),
+      effect,
+    ].toSorted((left, right) => left.definitionId.localeCompare(right.definitionId)),
+  );
+  return withEffectiveMass(Object.freeze({ ...consumed, effects }));
+}
+
 export function clearEffects(participant: ParticipantState): ParticipantState {
   if (participant.effects.length === 0) {
     return participant;

@@ -9,6 +9,13 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.29.0",
+    title: "물이 길이 되는 5초",
+    reason: "호수와 잠긴 바닥을 피하기만 하지 말고, 위험할 때 가로지를 선택지도 필요했어.",
+    change:
+      "배를 한 번 띄우면 5초 동안 섬 안의 물 위를 움직일 수 있어. 공격은 그대로 맞고 맵 밖에서는 가라앉아.",
+  }),
+  Object.freeze({
     version: "0.28.0",
     title: "내 앞에 벽 하나",
     reason: "장풍과 밀치기를 피하기만 하지 말고, 위험한 자리에서 잠깐 숨을 곳도 만들고 싶었어.",

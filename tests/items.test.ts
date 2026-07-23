@@ -100,6 +100,156 @@ describe("deterministic item effects", () => {
     expect(getActor(activeWorld, 1).massFactor).toBe(1);
   });
 
+  it("keeps a Boat user supported on an arena Void tile for exactly five seconds", () => {
+    const config = createItemConfig();
+    const seed = "boat-void-support";
+    const probe = new SimulationWorld(config, seed);
+    const waterTile = probe.createRenderFrame().tiles.find(({ state }) => state === "Void");
+
+    expect(waterTile).toBeDefined();
+
+    const world = new SimulationWorld(config, seed, {
+      participantOverrides: [
+        {
+          actorId: 1,
+          position: { x: waterTile!.column + 0.5, y: waterTile!.row + 0.5 },
+          startingItems: ["boat"],
+        },
+      ],
+    });
+
+    for (let index = 1; index < SIMULATION_TUNING.support.graceTicks; index += 1) {
+      world.step();
+    }
+
+    expect(getActor(world, 1).unsupportedTicks).toBe(SIMULATION_TUNING.support.graceTicks - 1);
+    const activation = world.step([{ ...createNeutralCommand(world.tick, 1), useItemSlot: 0 }]);
+
+    expect(activation.events).toContainEqual(
+      expect.objectContaining({ kind: "item-used", actorId: 1, itemDefinitionId: "boat" }),
+    );
+    expect(getActor(world, 1).inventory[0]?.charges).toBe(0);
+    expect(getActor(world, 1).effects).toEqual([
+      { definitionId: "boat", appliedTick: 8, endsTick: 308 },
+    ]);
+    expect(getActor(world, 1).unsupportedTicks).toBe(0);
+
+    while (world.tick < 308) {
+      world.step();
+    }
+
+    expect(getActor(world, 1).effects).toHaveLength(1);
+    expect(getActor(world, 1).unsupportedTicks).toBe(0);
+
+    let fallingStarted = false;
+
+    for (let index = 0; index < SIMULATION_TUNING.support.graceTicks; index += 1) {
+      const result = world.step();
+      fallingStarted ||= result.events.some(
+        ({ kind, actorId }) => kind === "falling-started" && actorId === 1,
+      );
+    }
+
+    expect(getActor(world, 1).effects).toEqual([]);
+    expect(fallingStarted).toBe(true);
+    expect(getActor(world, 1).action).toBe("Falling");
+  });
+
+  it("does not spend a Boat outside the generated arena and falls through to shove", () => {
+    const world = new SimulationWorld(createItemConfig(), "boat-outside-arena", {
+      arenaLayout: "rectangular-fixture",
+      participantOverrides: [
+        {
+          actorId: 1,
+          position: { x: -0.5, y: 4.5 },
+          facing: { x: 1, y: 0 },
+          startingItems: ["boat"],
+        },
+        ...PARTICIPANT_OVERRIDES.slice(1),
+      ],
+    });
+    const result = world.step([
+      {
+        ...createNeutralCommand(world.tick, 1),
+        useItemSlot: 0,
+        shovePressed: true,
+      },
+    ]);
+
+    expect(result.events.some(({ kind }) => kind === "item-used")).toBe(false);
+    expect(result.events).toContainEqual(
+      expect.objectContaining({ kind: "shove-started", actorId: 1 }),
+    );
+    expect(getActor(world, 1).inventory[0]?.charges).toBe(1);
+    expect(getActor(world, 1).effects).toEqual([]);
+  });
+
+  it("does not extend Boat support beyond the arena after same-tick movement", () => {
+    const config = createItemConfig();
+    const seed = "boat-crosses-arena-boundary";
+    const probe = new SimulationWorld(config, seed);
+    const boundaryWater = probe
+      .createRenderFrame()
+      .tiles.find(({ column, state }) => column === 0 && state === "Void");
+
+    expect(boundaryWater).toBeDefined();
+
+    const world = new SimulationWorld(config, seed, {
+      participantOverrides: [
+        {
+          actorId: 1,
+          position: { x: 0.01, y: boundaryWater!.row + 0.5 },
+          velocity: { x: -SIMULATION_TUNING.body.maximumSpeed, y: 0 },
+          startingItems: ["boat"],
+        },
+      ],
+    });
+    const result = world.step([{ ...createNeutralCommand(world.tick, 1), useItemSlot: 0 }]);
+
+    expect(result.events).toContainEqual(
+      expect.objectContaining({ kind: "item-used", actorId: 1, itemDefinitionId: "boat" }),
+    );
+    expect(getActor(world, 1).position.x).toBeLessThan(0);
+    expect(getActor(world, 1).effects[0]?.definitionId).toBe("boat");
+    expect(getActor(world, 1).unsupportedTicks).toBe(1);
+  });
+
+  it("activates Boat before same-tick Wind Blast without granting combat immunity", () => {
+    const world = new SimulationWorld(createItemConfig(), "boat-wind-order", {
+      arenaLayout: "rectangular-fixture",
+      participantOverrides: [
+        {
+          actorId: 1,
+          position: { x: 4.5, y: 4.5 },
+          facing: { x: -1, y: 0 },
+          startingItems: ["boat"],
+        },
+        {
+          actorId: 2,
+          position: { x: 2, y: 4.5 },
+          facing: { x: 1, y: 0 },
+          startingItems: ["wind-blast"],
+        },
+        { actorId: 3, position: { x: 7.5, y: 1.5 } },
+        { actorId: 4, position: { x: 1.5, y: 7.5 } },
+      ],
+    });
+    const result = world.step([
+      { ...createNeutralCommand(world.tick, 2), useItemSlot: 0 },
+      { ...createNeutralCommand(world.tick, 1), useItemSlot: 0 },
+    ]);
+
+    expect(result.events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ kind: "item-used", actorId: 1, itemDefinitionId: "boat" }),
+        expect.objectContaining({ kind: "wind-blast-hit", actorId: 2, targetActorId: 1 }),
+      ]),
+    );
+    expect(getActor(world, 1).effects[0]?.definitionId).toBe("boat");
+    expect(vectorLength(getActor(world, 1).velocity)).toBeGreaterThan(0);
+    expect(getActor(world, 1).massFactor).toBe(1);
+  });
+
   it("fires Wind Blast from an inventory slot, spends a charge, and transfers motion", () => {
     const world = new SimulationWorld(createItemConfig(), "wind-blast-chain", {
       arenaLayout: "rectangular-fixture",

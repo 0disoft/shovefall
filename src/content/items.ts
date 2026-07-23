@@ -136,7 +136,7 @@ export const ITEM_DEFINITIONS: Readonly<Record<ItemDefinitionId, ItemDefinition>
     loadoutKind: "active",
     startingCharges: 1,
     mapSpawnEligible: false,
-    durationTicks: null,
+    durationTicks: 300,
     consumePolicy: "inventory-charge",
     stackingPolicy: "refresh",
     massMultiplier: 1,

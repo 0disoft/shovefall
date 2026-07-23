@@ -131,9 +131,9 @@ async function useProfileBrickBag(
   await page.keyboard.down(direction);
   await page.waitForTimeout(80);
   await page.keyboard.up(direction);
-  await page.keyboard.press("KeyE");
+  await page.keyboard.press("KeyQ");
 
-  if ((await page.locator("#use-item-slot-1").textContent())?.includes("3회") === true) {
+  if ((await page.locator("#use-item-slot-0").textContent())?.includes("3회") === true) {
     return;
   }
 
@@ -154,14 +154,20 @@ async function profileCases(page: Page, index: number, profiles: FrameProfile[])
     ).shovefallProfileSeedWords = seedWords;
   }, profileCase.seedWords);
   await page.locator('input[name="startingItem"][value="spring-glove"]').uncheck();
+  await page.locator('input[name="startingItem"][value="iron-boots"]').uncheck();
   await page.locator('input[name="startingItem"][value="brick-bag"]').check();
+  await page.locator('input[name="startingItem"][value="boat"]').check();
   await page.getByRole("button", { name: "설정 저장" }).click();
   await page.getByRole("button", { name: "게임 시작" }).click();
   await expect(page.locator("#app")).toHaveAttribute("data-round", "active");
   await expect(page.locator("#app")).toHaveAttribute("data-bot-difficulty", "hard");
-  await expect(page.locator("#use-item-slot-1")).toContainText("벽돌 가방 · 4회");
+  await expect(page.locator("#use-item-slot-0")).toContainText("벽돌 가방 · 4회");
+  await expect(page.locator("#use-item-slot-1")).toContainText("배 · 1회");
   await useProfileBrickBag(page);
-  await expect(page.locator("#use-item-slot-1")).toContainText("벽돌 가방 · 3회");
+  await expect(page.locator("#use-item-slot-0")).toContainText("벽돌 가방 · 3회");
+  await page.keyboard.press("KeyE");
+  await expect(page.locator("#use-item-slot-1")).toContainText("배 · 0회");
+  await expect(page.locator("#effect-value")).toContainText(/배 [1-5]초/u);
   const profile = await collectFrameProfile(page, profileCase.participantCount, profileCase.seed);
   profiles.push(profile);
   process.stdout.write(`${JSON.stringify({ kind: "browser-profile-case", profile })}\n`);

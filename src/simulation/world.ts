@@ -44,6 +44,7 @@ import { RandomStreamSet, type SeedInput } from "./random";
 import { ParticipantSpatialHash, type ActorPair } from "./spatial-hash";
 import {
   advanceItemSpawns,
+  activateTimedInventoryEffect,
   applyStartingItems,
   clearEffects,
   consumeInventoryCharge,
@@ -547,6 +548,7 @@ export class SimulationWorld {
   readonly #gameplayTuning: GameplayTuningV1;
   readonly #itemRandom;
   readonly #tieBreakRandom;
+  readonly #arenaTileIds: ReadonlySet<TileId>;
   #tiles: readonly TileState[];
   #participants: readonly ParticipantState[];
   #brickWalls: readonly BrickWallState[] = Object.freeze([]);
@@ -590,6 +592,7 @@ export class SimulationWorld {
       options.arenaLayout === "rectangular-fixture"
         ? createRectangularArenaTiles(config)
         : createArenaTiles(config, streams.get("arena"));
+    this.#arenaTileIds = new Set(this.#tiles.map(({ tileId }) => tileId));
     this.#collapsePlan = createCollapsePlan(
       this.#tiles,
       config.arenaColumns,
@@ -977,6 +980,8 @@ export class SimulationWorld {
 
         const canActivate =
           slot?.definitionId === "wind-blast" ||
+          (slot?.definitionId === "boat" &&
+            hasTileSupport(participant.body.position, this.#arenaTileIds)) ||
           (slot?.definitionId === "brick-bag" &&
             this.#getBrickPlacement(participant, participants, [], direction) !== undefined);
 
@@ -1101,6 +1106,33 @@ export class SimulationWorld {
         [...this.#brickWalls, ...placedWalls].toSorted((left, right) =>
           left.tileId.localeCompare(right.tileId),
         ),
+      );
+    }
+
+    for (const participant of ordered) {
+      const slotIndex = activeItemSlots.get(participant.actorId);
+      const slot =
+        slotIndex === undefined
+          ? undefined
+          : participant.inventory.find((candidate) => candidate.slotIndex === slotIndex);
+
+      if (slotIndex === undefined || slot?.definitionId !== "boat" || !isCollidable(participant)) {
+        continue;
+      }
+
+      const activated = activateTimedInventoryEffect(participant, slotIndex, this.#tick);
+
+      if (activated === undefined) {
+        continue;
+      }
+
+      updatedById.set(participant.actorId, activated);
+      events.push(
+        this.#createEvent("item-used", {
+          actorId: participant.actorId,
+          itemDefinitionId: "boat",
+          vector: participant.body.facing,
+        }),
       );
     }
 
@@ -1830,7 +1862,12 @@ export class SimulationWorld {
         return participant;
       }
 
-      if (hasTileSupport(participant.body.position, supportedTileIds)) {
+      const hasBoat = participant.effects.some(({ definitionId }) => definitionId === "boat");
+      const hasArenaSupport = hasTileSupport(participant.body.position, supportedTileIds);
+      const hasBoatSupport =
+        hasBoat && hasTileSupport(participant.body.position, this.#arenaTileIds);
+
+      if (hasArenaSupport || hasBoatSupport) {
         if (participant.body.unsupportedTicks === 0) {
           return participant;
         }

@@ -3,6 +3,12 @@
 - Status: Accepted local automated baseline; physical and cross-browser evidence pending
 - Owner: Repository owner
 
+## 0.29.0 Brick Bag and Boat Profile
+
+On 2026-07-24, the 7,200-tick fixed-50 profile equipped the scripted human with Brick Bag and Boat, kept a peak of three walls with `2.999` mean walls per tick, and observed one active Boat user with `0.042` mean users per tick. It completed in `30,314.626 ms`, or `3.96×` real time. AI p95 was `7.967 ms`, simulation p95 was `4.351 ms`, the spatial candidate/full-pair ratio was `0.096`, and no combined step exceeded 100 ms. The `15,197,027`-byte heap delta remains observational because the harness does not force garbage collection.
+
+The production Chrome profile selected Brick Bag and Boat, placed a wall, activated Boat, and then sampled four seconds at 1280×720 and effective DPR 1. Frame p95 was `18.5 ms`, maximum was `38.6 ms`, delivered ticks were `62.55` per requested simulation second, backlog stayed zero, and no frame exceeded 100 ms. Twenty immediate restarts followed by CDP garbage collection left a `2,755,504`-byte used-heap delta. This is one local Chrome run, not physical-device, cross-browser, or field evidence.
+
 ## 0.28.0 Brick Bag Profile
 
 On 2026-07-24, the 7,200-tick fixed-50 profile equipped the scripted human with Brick Bag and kept a peak of three walls with `2.999` mean walls sampled per tick. It completed in `18,142.957 ms`, or `6.61×` real time. AI p95 was `4.875 ms`, simulation p95 was `2.525 ms`, the spatial candidate/full-pair ratio was `0.096`, and no combined step exceeded 100 ms. The `14,987,032`-byte heap delta remains observational because the harness does not force garbage collection.

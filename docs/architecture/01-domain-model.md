@@ -74,6 +74,8 @@ Product `0.27.0` and simulation `10.0.0` add the `active-items` system stage, tw
 
 Product `0.28.0` and simulation `11.0.0` add deterministic Brick Bag proposals, hashed static-wall state, swept wall contacts, post-body overlap projection, attack line-of-sight blocking, Void-tile removal, and participant/wall depth sorting. Content remains `5.0.0` and replay remains v2 because Brick Bag's registered definition and the existing slot command wire format do not change.
 
+Product `0.29.0`, simulation `12.0.0`, and content `6.0.0` add Boat's 300-tick charged effect and bounded in-arena Void support. The stable arena-tile ID set is created once per world and never follows collapse state, while the current non-Void support set remains tick-local. Boat effect and charge state already enter the participant hash; replay remains v2 because the existing effect and slot command wire shapes are sufficient.
+
 ## Version Ownership
 
 - Product version: `package.json` and `PRODUCT_VERSION`.

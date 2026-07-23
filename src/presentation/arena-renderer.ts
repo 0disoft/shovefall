@@ -403,6 +403,22 @@ function drawParticipant(
     ? 0xf6f5ef
     : (BOT_COLORS[(participant.actorId - 2) % BOT_COLORS.length] ?? 0xb8c1bd);
   const actionColor = getActionColor(participant.action);
+  const hasBoat = participant.effects.some(({ definitionId }) => definitionId === "boat");
+
+  if (hasBoat) {
+    const hullWidth = visualRadius * 2.6;
+    const hullHeight = Math.max(4, visualRadius * 0.72);
+    const hullY = y + visualRadius * 0.5;
+    graphics
+      .ellipse(x, hullY + hullHeight * 0.45, hullWidth * 0.58, hullHeight * 0.72)
+      .fill({ color: 0x173e59, alpha: participant.action === "Falling" ? 0.28 : 0.78 })
+      .stroke({ color: ITEM_COLORS.boat, width: Math.max(2, projection.tileWidth * 0.045) });
+    graphics
+      .moveTo(x - hullWidth * 0.42, hullY + hullHeight * 0.45)
+      .lineTo(x, hullY + hullHeight * 0.82)
+      .lineTo(x + hullWidth * 0.42, hullY + hullHeight * 0.45)
+      .stroke({ color: 0x9ad8f5, width: Math.max(1, projection.tileWidth * 0.025), alpha: 0.7 });
+  }
 
   if (mayhem && !isHuman) {
     graphics

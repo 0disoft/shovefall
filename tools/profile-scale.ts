@@ -56,7 +56,7 @@ function createProfileHumanCommand(tick: number) {
   return {
     ...createNeutralCommand(tick, 1),
     move: direction,
-    useItemSlot: tick < 12 ? (0 as const) : null,
+    useItemSlot: tick < 12 ? (0 as const) : tick === 12 ? (1 as const) : null,
   };
 }
 
@@ -82,6 +82,8 @@ function profileParticipantCount(participantCount: number) {
   let roundIndex = 0;
   let peakBrickWalls = 0;
   let totalBrickWallSamples = 0;
+  let peakBoatUsers = 0;
+  let totalBoatUserSamples = 0;
   const heapBefore = process.memoryUsage().heapUsed;
   const profileStarted = performance.now();
 
@@ -89,7 +91,7 @@ function profileParticipantCount(participantCount: number) {
     const seed = `scale-${participantCount}-${roundIndex}`;
     const world = new SimulationWorld(config, seed, {
       humanActorId: 1,
-      participantOverrides: [{ actorId: 1, startingItems: ["brick-bag"] }],
+      participantOverrides: [{ actorId: 1, startingItems: ["brick-bag", "boat"] }],
     });
     const bots = new BotDirector(seed, 1, { difficulty: config.difficulty });
     let frame = world.createRenderFrame();
@@ -110,6 +112,11 @@ function profileParticipantCount(participantCount: number) {
       frame = result.frame;
       peakBrickWalls = Math.max(peakBrickWalls, frame.brickWalls.length);
       totalBrickWallSamples += frame.brickWalls.length;
+      const activeBoatUsers = frame.participants.filter((participant) =>
+        participant.effects.some(({ definitionId }) => definitionId === "boat"),
+      ).length;
+      peakBoatUsers = Math.max(peakBoatUsers, activeBoatUsers);
+      totalBoatUserSamples += activeBoatUsers;
       totalTicks += 1;
     }
 
@@ -138,6 +145,8 @@ function profileParticipantCount(participantCount: number) {
         : Math.round((totalCandidatePairs / totalFullPairs) * 10_000) / 10_000,
     peakBrickWalls,
     meanBrickWallsPerTick: Math.round((totalBrickWallSamples / totalTicks) * 1_000) / 1_000,
+    peakBoatUsers,
+    meanBoatUsersPerTick: Math.round((totalBoatUserSamples / totalTicks) * 1_000) / 1_000,
     longStepsOver100Milliseconds: longSteps,
     heapDeltaBytes: heapAfter - heapBefore,
   });
@@ -149,7 +158,8 @@ const ok = profiles.every(
   (profile) =>
     profile.simulationMilliseconds.p95 <= (thresholds.get(profile.participantCount) ?? 0) &&
     profile.longStepsOver100Milliseconds <= 1 &&
-    profile.peakBrickWalls >= 1,
+    profile.peakBrickWalls >= 1 &&
+    profile.peakBoatUsers >= 1,
 );
 
 process.stdout.write(
@@ -162,7 +172,7 @@ process.stdout.write(
       profiles,
       limitations: [
         "This measures hard-difficulty headless AI plus simulation on the current workstation, not browser rendering.",
-        "Each round gives the scripted human a Brick Bag and requests cardinal placements so static-wall work is sampled.",
+        "Each round gives the scripted human Brick Bag and Boat, requests cardinal wall placements, and activates Boat for 300 ticks.",
         "Heap deltas are observational because the harness does not force garbage collection.",
       ],
     },

@@ -1,7 +1,7 @@
 # Contest Submission Package
 
 - Status: Public link and Chrome smoke verified; final captures and human playtest pending
-- Candidate version: `0.28.0`
+- Candidate version: `0.29.0`
 - Candidate SHA: replace with the final exact 40-character release SHA
 - Release gate: [../ops/release.md](../ops/release.md)
 - Asset ledger: [../assets/README.md](../assets/README.md)
@@ -17,7 +17,9 @@
 방향키, 마우스 드래그, 터치 조이스틱, 게임패드로 이동하고 키보드·터치·게임패드로
 밀치기와 회피를 한다. 시작 장비에 장풍을 고르면 Q/E 또는 화면 버튼으로 두 번 쏠 수
 있고, 앞에 선 한 명을 몸무게에 따라 크게 날린다. 벽돌 가방을 고르면 앞 칸에 벽을 네
-번 세워 공격과 충돌을 막을 수 있지만, 그 땅이 잠기면 벽도 함께 사라진다.
+번 세워 공격과 충돌을 막을 수 있지만, 그 땅이 잠기면 벽도 함께 사라진다. 배를
+고르면 한 번만 5초 동안 호수나 잠긴 바닥을 건널 수 있지만 공격은 그대로 맞고 섬
+바깥에서는 가라앉는다.
 
 가벼우면 빠르게 움직이고 잘 피하지만 멀리 날아가고, 무거우면 둔하지만 밀림에 강하다.
 상대의 밀치기를 옆으로 피하면 공격자가 남은 관성 때문에 휘청거리며 스스로 떨어질 수
@@ -45,7 +47,8 @@
 2. 가장자리 아이템을 향해 접근하는 장면.
 3. 밀치기를 회피해 공격자가 휘청거리거나 떨어지는 장면.
 4. 여러 타일이 경고 후 무너지는 50명 전투.
-5. 장풍에 맞은 캐릭터가 다른 캐릭터까지 밀어내거나 벽돌 벽에 막히는 장면과 결과 후 즉시 재시작.
+5. 장풍에 맞은 캐릭터가 다른 캐릭터까지 밀어내거나 벽돌 벽에 막히는 장면.
+6. 배를 띄워 호수나 방금 잠긴 바닥을 가로지르는 장면과 결과 후 즉시 재시작.
 
 모든 캡처는 최종 URL과 후보 SHA가 확정된 뒤 만든다. 개발용 회색 상자 화면을 최종
 비주얼인 것처럼 제출하지 않는다.
