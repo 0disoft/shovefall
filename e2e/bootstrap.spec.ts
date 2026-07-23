@@ -174,13 +174,13 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await expect(page.locator("#setup-summary")).toContainText("붕괴 느림");
 
   await saveSettings(page);
-  await startGame(page);
-  await page.keyboard.press("Space");
-  const countdownPauseSnapshot = await page.locator("#game-telemetry").evaluate((telemetry) => {
+  const countdownPauseSnapshot = await page.locator("#start-game").evaluate((button) => {
+    button.click();
+    const telemetry = document.querySelector("#game-telemetry");
     const arena = document.querySelector("#arena-host");
     const rendererStatus = document.querySelector("#renderer-status");
     const snapshot = {
-      countdown: telemetry.getAttribute("data-countdown"),
+      countdown: telemetry?.getAttribute("data-countdown") ?? null,
       arenaFocused: document.activeElement === arena,
       rendererStatus: rendererStatus?.textContent ?? "",
     };
