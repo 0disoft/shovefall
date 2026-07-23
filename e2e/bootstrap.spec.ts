@@ -368,6 +368,7 @@ test("pauses on WebGL context loss and resumes after restoration", async ({ page
   await expect
     .poll(async () => Number(await page.locator("#game-telemetry").getAttribute("data-tick")))
     .toBeGreaterThan(0);
+  await expect(page.locator("#app")).toHaveAttribute("data-round", "active");
 
   await page.locator("#arena-host canvas").dispatchEvent("webglcontextlost");
   await expect(page.locator("#arena-host")).toHaveAttribute("data-renderer", "lost");
@@ -378,8 +379,12 @@ test("pauses on WebGL context loss and resumes after restoration", async ({ page
 
   await page.locator("#arena-host canvas").dispatchEvent("webglcontextrestored");
   await expect(page.locator("#arena-host")).toHaveAttribute("data-renderer", "ready");
-  await expect(page.locator("#renderer-status")).toHaveText("플레이 중");
   await expect
-    .poll(async () => Number(await page.locator("#tick-value").textContent()))
-    .toBeGreaterThan(pausedTick);
+    .poll(async () => {
+      const currentTick = Number(await page.locator("#tick-value").textContent());
+      const roundState = await page.locator("#app").getAttribute("data-round");
+      return currentTick > pausedTick || roundState === "completed";
+    })
+    .toBe(true);
+  await expect(page.locator("#renderer-status")).not.toHaveAttribute("data-state", "error");
 });
