@@ -54,7 +54,7 @@ describe("playtest round reports", () => {
         durationSeconds: 22.5,
       },
     });
-    expect(report.versions.product).toBe("0.18.0");
+    expect(report.versions.product).toBe("0.18.1");
     expect(JSON.parse(serializePlaytestRoundReport(report))).toEqual(report);
   });
 

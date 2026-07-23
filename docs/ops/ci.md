@@ -27,14 +27,38 @@ credential exists. Checkout, Bun setup, Pages configuration, Pages artifact uplo
 actions are pinned to reviewed full commit SHAs with release comments. Updating any pin requires a
 fresh upstream release and provenance review.
 
+`.github/workflows/clarissimi.yml` separately owns contributor-recognition automation. Its
+`pull_request_target` gate is read-only and never checks out contributor code. A merged source pull
+request may start a scoped `stage-draft` job that writes only a Clarissimi review branch and opens a
+sanitized draft review pull request. An approved checked-in draft can be promoted only through a
+manual dispatch, which opens another review pull request rather than committing recognition
+directly to `main`. Repository Actions defaults remain read-only; only these two jobs request
+`contents: write` and `pull-requests: write`, with `issues: read`.
+
+The repository owner deliberately selected `0disoft/clarissimi@v0` so consumer workflows follow
+maintainer-approved `0.x` Action releases without following development branch `main`. On
+2026-07-23, the upstream `v0` ref resolved to Clarissimi v0.6.0 commit
+`97398d030aaddf9568210181dda93031fd800584`. This moving ref is the one exception to the default
+full-SHA Action policy. A regression rolls back by disabling the Clarissimi workflow or pinning the
+last reviewed immutable release or commit; it never justifies broadening permissions or bypassing
+the draft-review path.
+
+On 2026-07-23, the GitHub repository setting that allows Actions to create and approve pull requests
+was confirmed enabled while the default `GITHUB_TOKEN` permission remained `Read repository
+contents and packages permissions`. That setting enables `stage-draft` and `promote-draft`; it does
+not replace the workflow's explicit job permissions or make the advisory gate merge enforcement.
+The stable check name is `Clarissimi review decision`; switching repository variable
+`CLARISSIMI_GATE_MODE` from its default `advisory` to `required` is a later promotion decision after
+real contributor traffic has exercised the workflow.
+
 ## Evidence Boundary
 
 Local `check` and `smoke-dist` results do not prove GitHub accepted or executed the workflow. A
 hosted run must be inspected at the exact commit before calling CI green. A green `Validate` job
 does not prove Pages deployed, and a green Pages deployment does not prove the public URL's critical
 journey. Likewise, a green workflow is advisory until the repository's GitHub branch-protection
-settings require the `Validate` check. Dashboard-only branch protection cannot be encoded or proven
-by this repository.
+settings require the `Validate` or `Clarissimi review decision` check. Dashboard-only branch
+protection and the Actions pull-request permission cannot be encoded or proven by this repository.
 
 The deterministic 64-round audit and browser scale profile are intentionally excluded from routine pushes because they are broader evidence with materially higher runner cost. They remain explicit configured local commands and may be promoted to scheduled or manual hosted jobs only after a runner-minute budget is accepted.
 
@@ -76,4 +100,6 @@ Dependency or action download failure is infrastructure evidence, not a source f
 - Required validation names: `check` and `smoke-dist`
 - Public URL: `https://0disoft.github.io/shovefall/`
 - Release blocker status: Hosted validation, Pages deployment, and public-URL Chrome smoke are green for Pages candidate SHA `7794e9a47f89aefea1f39483680996a5236963ae`; every later runtime or release-candidate change requires its own exact-SHA run, successful deploy job, and URL smoke.
-- Remaining operational risk: Branch protection, runner-image Chrome drift, broader physical-device coverage, cross-browser coverage, and human playtest remain unproven until separately observed.
+- Remaining operational risk: Branch protection, real merged-contributor Clarissimi staging and
+  promotion, runner-image Chrome drift, broader physical-device coverage, cross-browser coverage,
+  and human playtest remain unproven until separately observed.

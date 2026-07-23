@@ -27,6 +27,31 @@ const FORBIDDEN_HEADLESS_GLOBALS = [
   "Math.random",
 ];
 
+const CLARISSIMI_REQUIRED_FRAGMENTS = [
+  "pull_request_target:",
+  "workflow_dispatch:",
+  "permissions: {}",
+  "name: Clarissimi review decision",
+  "mode: gate",
+  "gate-mode: ${{ vars.CLARISSIMI_GATE_MODE || 'advisory' }}",
+  "github.event.pull_request.merged == true",
+  "!startsWith(github.event.pull_request.head.ref, 'clarissimi/')",
+  "mode: stage-draft",
+  "comment-mode: upsert",
+  "mode: promote-draft",
+  "draft-path: ${{ inputs.draft-path }}",
+  "markdown-summary: gallery",
+  "include-automation-contributors: true",
+  "uses: 0disoft/clarissimi@v0 # moving-v0",
+] as const;
+
+const CLARISSIMI_FORBIDDEN_FRAGMENTS = [
+  "0disoft/clarissimi@main",
+  "permissions: write-all",
+  "write-all",
+  "CLARISSIMI_PROVIDER_TOKEN",
+] as const;
+
 async function listTypeScriptFiles(directory: string): Promise<readonly string[]> {
   const entries = await readdir(directory, { withFileTypes: true }).catch(
     (error: NodeJS.ErrnoException) => {
@@ -108,6 +133,56 @@ async function checkHeadlessFile(root: string, file: string): Promise<readonly s
   return violations;
 }
 
+async function checkClarissimiWorkflow(root: string): Promise<readonly string[]> {
+  const workflowPath = join(root, ".github", "workflows", "clarissimi.yml");
+  const source = await readFile(workflowPath, "utf8");
+  const violations: string[] = [];
+
+  for (const fragment of CLARISSIMI_REQUIRED_FRAGMENTS) {
+    if (!source.includes(fragment)) {
+      violations.push(`.github/workflows/clarissimi.yml is missing contract fragment: ${fragment}`);
+    }
+  }
+
+  for (const fragment of CLARISSIMI_FORBIDDEN_FRAGMENTS) {
+    if (source.includes(fragment)) {
+      violations.push(`.github/workflows/clarissimi.yml contains forbidden fragment: ${fragment}`);
+    }
+  }
+
+  const gateStart = source.indexOf("  review-decision:");
+  const stageStart = source.indexOf("  stage-draft:");
+  const promoteStart = source.indexOf("  promote-draft:");
+
+  if (gateStart < 0 || stageStart < 0 || promoteStart < 0) {
+    violations.push("Clarissimi workflow must keep gate, stage-draft, and promote-draft jobs");
+    return violations;
+  }
+
+  const gateJob = source.slice(gateStart, stageStart);
+  const stageJob = source.slice(stageStart, promoteStart);
+  const promoteJob = source.slice(promoteStart);
+
+  if (/actions\/checkout@|contents: write/u.test(gateJob)) {
+    violations.push("Clarissimi pull_request_target gate must not checkout code or write contents");
+  }
+
+  for (const [name, job] of [
+    ["stage-draft", stageJob],
+    ["promote-draft", promoteJob],
+  ] as const) {
+    if (!/contents: write/u.test(job) || !/pull-requests: write/u.test(job)) {
+      violations.push(`Clarissimi ${name} must declare its scoped branch and pull-request writes`);
+    }
+
+    if (!/issues: read/u.test(job) || /issues: write/u.test(job)) {
+      violations.push(`Clarissimi ${name} must keep issue access read-only`);
+    }
+  }
+
+  return violations;
+}
+
 async function main(): Promise<void> {
   const root = process.cwd();
   const packagePath = join(root, "package.json");
@@ -147,6 +222,7 @@ async function main(): Promise<void> {
     headlessFiles.map((file) => checkHeadlessFile(root, file)),
   );
   violations.push(...headlessViolations.flat());
+  violations.push(...(await checkClarissimiWorkflow(root)));
 
   if (violations.length > 0) {
     process.stderr.write(`${JSON.stringify({ ok: false, violations }, null, 2)}\n`);
@@ -159,6 +235,7 @@ async function main(): Promise<void> {
       {
         ok: true,
         checkedDependencies: [...dependencyNames].toSorted(),
+        clarissimiWorkflow: ".github/workflows/clarissimi.yml",
         headlessBoundaries: ["src/ai", "src/simulation"],
       },
       null,
