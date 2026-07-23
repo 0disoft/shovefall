@@ -110,33 +110,6 @@ async function installClipboardCapture(page: Page): Promise<void> {
   });
 }
 
-async function queueNextRoundSeed(
-  page: Page,
-  firstWord: number,
-  secondWord: number,
-): Promise<void> {
-  await page.evaluate(
-    ({ first, second }) => {
-      const previous = crypto.getRandomValues.bind(crypto);
-      let supplied = false;
-      Object.defineProperty(crypto, "getRandomValues", {
-        configurable: true,
-        value: <T extends ArrayBufferView<ArrayBuffer>>(array: T): T => {
-          if (!supplied && array instanceof Uint32Array && array.length === 2) {
-            array[0] = first;
-            array[1] = second;
-            supplied = true;
-            return array;
-          }
-
-          return previous(array);
-        },
-      });
-    },
-    { first: firstWord, second: secondWord },
-  );
-}
-
 async function fastForwardUntilAttribute(
   page: Page,
   selector: string,
@@ -179,11 +152,17 @@ async function useBrickBagFromAvailableDirection(
   slotIndex = 1,
   directions: readonly string[] = ["ArrowUp", "ArrowRight", "ArrowDown", "ArrowLeft"],
   index = 0,
+  completedPasses = 0,
 ): Promise<void> {
   const direction = directions[index];
 
   if (direction === undefined) {
-    return;
+    if (completedPasses >= 4) {
+      throw new Error("Unable to find a free adjacent tile for Brick Bag placement.");
+    }
+
+    await page.waitForTimeout(300);
+    return useBrickBagFromAvailableDirection(page, slotIndex, directions, 0, completedPasses + 1);
   }
 
   const slot = page.locator(`#use-item-slot-${slotIndex}`);
@@ -199,7 +178,7 @@ async function useBrickBagFromAvailableDirection(
     return;
   }
 
-  return useBrickBagFromAvailableDirection(page, slotIndex, directions, index + 1);
+  return useBrickBagFromAvailableDirection(page, slotIndex, directions, index + 1, completedPasses);
 }
 
 test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) => {
@@ -367,15 +346,18 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await expect(page.getByRole("button", { name: "게임 시작" })).toBeFocused();
   await expect(page.locator("#game-telemetry")).toBeHidden();
   await expect(page.locator("#inventory-actions")).toBeHidden();
+});
 
+test("equips Brick Bag and Boat and uses both in a fresh round", async ({ page }) => {
+  await installFixedRoundSeed(page, 1, 0);
+  await page.goto("/");
   await openSettings(page);
-  await page.locator('input[name="startingItem"][value="wind-blast"]').uncheck();
   await page.locator('input[name="startingItem"][value="iron-boots"]').uncheck();
+  await page.locator('input[name="startingItem"][value="spring-glove"]').uncheck();
   await page.locator('input[name="startingItem"][value="brick-bag"]').check();
   await page.locator('input[name="startingItem"][value="boat"]').check();
   await expect(page.locator("#setup-summary")).toContainText("벽돌 가방 + 배");
   await saveSettings(page);
-  await queueNextRoundSeed(page, 1, 0);
   await startGame(page);
   await expect(page.locator("#app")).toHaveAttribute("data-round", "active", { timeout: 5_000 });
   await expect(page.locator("#use-item-slot-0")).toContainText("벽돌 가방 · 4회");
@@ -389,16 +371,18 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await expect(page.locator("#use-item-slot-1")).toContainText("배 · 0회");
   await expect(page.locator("#effect-value")).toContainText(/배 [1-5]초/u);
   await expect(page.getByText("배를 띄웠어. 5초 동안 물을 건널 수 있어.")).toBeVisible();
+});
 
-  await page.getByRole("button", { name: "메뉴로" }).click();
+test("equips and places a timed bomb in a fresh round", async ({ page }) => {
+  await installFixedRoundSeed(page, 1, 0);
+  await page.goto("/");
   await openSettings(page);
-  await page.locator('input[name="startingItem"][value="brick-bag"]').uncheck();
-  await page.locator('input[name="startingItem"][value="boat"]').uncheck();
+  await page.locator('input[name="startingItem"][value="iron-boots"]').uncheck();
+  await page.locator('input[name="startingItem"][value="spring-glove"]').uncheck();
   await page.locator('input[name="startingItem"][value="iron-boots"]').check();
   await page.locator('input[name="startingItem"][value="bomb"]').check();
   await expect(page.locator("#setup-summary")).toContainText("철 장화 + 시한폭탄");
   await saveSettings(page);
-  await queueNextRoundSeed(page, 1, 0);
   await startGame(page);
   await expect(page.locator("#app")).toHaveAttribute("data-round", "active", { timeout: 5_000 });
   await expect(page.locator("#use-item-slot-1")).toContainText("시한폭탄 · 2회");
