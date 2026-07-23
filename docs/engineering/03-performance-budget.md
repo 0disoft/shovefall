@@ -1,8 +1,14 @@
 # Performance Budget
 
-- Status: Budgets accepted; `0.32.0` headless result accepted and uncontended browser baseline pending
+- Status: Budgets accepted; `0.33.0` widened-island headless result accepted and uncontended browser baseline pending
 - Owner: Repository owner
 - Source of truth: `docs/product/02-spec.md` and this document
+
+## Product 0.33.0 Local Result
+
+The 48×40 public island and eight-lake policy keep the existing simulation p95 budget at `10 ms`; the browser automated ceiling remains `25 ms` and maximum scheduler backlog remains eight ticks. The 7,200-tick fixed-50 headless fixture measured simulation p95 `6.823 ms`, AI p95 `15.425 ms`, zero combined steps above 100 ms, `1.73×` real-time throughput, and a spatial candidate/full-pair ratio of `0.1024`. It observed four Hook hits, six Soap triggers, and two simultaneous Bomb detonations. The `23,898,755`-byte heap delta is observational.
+
+No `0.33.0` browser-performance pass is claimed. The preflight host sample averaged `67.6%` total CPU and peaked at `96.4%`, so the configured browser profile was skipped. This preserves the `25 ms` gate instead of producing another knowingly contaminated sample.
 
 ## Product 0.32.0 Local Result
 

@@ -1,8 +1,8 @@
 # Static Release Procedure
 
-- Status: `0.32.1` local candidate accepted; hosted, Pages, uncontended browser performance, and human evidence pending
+- Status: `0.33.0` local functional candidate accepted; round audit, browser performance, hosted, Pages, and human evidence pending
 - Primary owner: Repository owner
-- Current product version: `0.32.1`
+- Current product version: `0.33.0`
 - Validation source: [../../VALIDATION.md](../../VALIDATION.md)
 - Submission package: [../product/05-submission-package.md](../product/05-submission-package.md)
 - Asset ledger: [../assets/README.md](../assets/README.md)
@@ -35,7 +35,9 @@ Product `0.32.0` adds the human-only static-anchor Grappling Hook as the ninth o
 
 Product `0.32.1` removes the developer telemetry markup from static public HTML and creates it only in DEV. Production no longer creates or updates tick, rate, position, seed, or state-hash outputs; bounded browser checks use existing scheduler and renderer observability instead. Clipboard failure copy no longer tells players to read removed values. Simulation remains `15.0.0`, content remains `9.0.0`, replay remains v2, and report v4 remains sufficient. Local aggregate validation passes 169 tests, DEV smoke passes fourteen paths, production smoke passes thirteen paths, and the public HTML contract rejects any reintroduced developer output ID. Exact-SHA hosted validation, Pages deployment, and public smoke remain pending for this patch candidate.
 
-The current `0.32.1` candidate must not replace the deployed `0.32.0` proof until the same exact SHA passes hosted validation, Pages deployment, and public browser smoke. Contest-release promotion still requires an uncontended production-browser profile and human playtest. Active-item bot balance remains pending; deterministic scenario tests prove rules, not human balance.
+Product `0.33.0` and simulation `16.0.0` widen the public island to 48×40, require exactly eight separated 6–10-tile lakes under a 72-tile total budget, and preserve a connected 20% collapse floor. Item placement now selects edge, near-edge, or interior at a topology-independent 3:2:1 ratio before choosing a tile. Content remains `9.0.0`, replay remains v2, and reports remain v4. The local suite passes 170 tests, fourteen DEV Chrome paths, and thirteen production-artifact Chrome paths. The fixed-50 headless profile passes at simulation p95 `6.823 ms`, no 100 ms step, and `1.73×` real time. The full round audit exceeded its configured 300-second limit without a result. A fresh CPU preflight observed `67.6%` average and `96.4%` maximum host CPU, so no `0.33.0` browser-performance claim was attempted.
+
+The current `0.33.0` candidate must not replace the deployed `0.32.0` proof until the same exact SHA's hosted validation, Pages deployment, and public browser smoke pass. Contest-release promotion still requires a completed round audit, an uncontended production-browser profile, and human playtest. Active-item bot balance remains pending; deterministic scenario tests prove rules, not human balance.
 
 ## Release Types
 

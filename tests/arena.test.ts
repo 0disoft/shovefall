@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { createArenaTiles, createParticipantSpawnPositions } from "../src/simulation/arena";
+import {
+  createArenaTiles,
+  createParticipantSpawnPositions,
+  getLandShoreDepths,
+} from "../src/simulation/arena";
 import {
   advanceCollapse,
   createCollapsePlan,
@@ -124,14 +128,14 @@ describe("procedural island arena", () => {
     expect(spawnIds.every((tileId) => stableIds.has(tileId))).toBe(true);
   });
 
-  it("carves several enclosed lakes into the expanded fifty-player island", () => {
+  it("carves eight separated lakes into the widened fifty-player island", () => {
     const massiveConfig = normalizeGameConfig({
       participantCount: 50,
-      arenaColumns: 44,
-      arenaRows: 36,
+      arenaColumns: 48,
+      arenaRows: 40,
     });
 
-    for (let seed = 0; seed < 12; seed += 1) {
+    for (let seed = 0; seed < 32; seed += 1) {
       const tiles = createArenaTiles(
         massiveConfig,
         new RandomStreamSet(`massive-lakes-${seed}`).get("arena"),
@@ -139,10 +143,53 @@ describe("procedural island arena", () => {
       const landIds = new Set(
         tiles.filter(({ state }) => state === "Stable").map(({ tileId }) => tileId),
       );
-      const lakes = getLakeComponents(tiles, 44, 36);
+      const lakes = getLakeComponents(tiles, 48, 40);
+      const totalLakeTiles = lakes.reduce((sum, lake) => sum + lake.size, 0);
 
       expect(getComponents(landIds)).toHaveLength(1);
-      expect(lakes.length).toBeGreaterThanOrEqual(3);
+      expect(lakes).toHaveLength(8);
+      expect(lakes.every((lake) => lake.size >= 6 && lake.size <= 10)).toBe(true);
+      expect(totalLakeTiles).toBeLessThanOrEqual(72);
+      expect(landIds.size).toBeGreaterThanOrEqual(1_080);
+      expect(landIds.size).toBeLessThanOrEqual(1_104);
+    }
+  });
+
+  it("keeps all fifty starting positions supported and away from every shore", () => {
+    const massiveConfig = normalizeGameConfig({
+      participantCount: 50,
+      arenaColumns: 48,
+      arenaRows: 40,
+    });
+
+    for (let seed = 0; seed < 16; seed += 1) {
+      const streams = new RandomStreamSet(`massive-spawns-${seed}`);
+      const tiles = createArenaTiles(massiveConfig, streams.get("arena"));
+      const stableIds = new Set(
+        tiles.filter(({ state }) => state === "Stable").map(({ tileId }) => tileId),
+      );
+      const shoreDepths = getLandShoreDepths(tiles);
+      const positions = createParticipantSpawnPositions(
+        tiles,
+        50,
+        streams.get("arena").nextFloat() * Math.PI * 2,
+      );
+      const spawnIds = positions.map(({ x, y }) => createTileId(Math.floor(x), Math.floor(y)));
+      const minimumSpawnDistance = positions.reduce(
+        (minimum, position, index) =>
+          Math.min(
+            minimum,
+            ...positions
+              .slice(index + 1)
+              .map((other) => Math.hypot(position.x - other.x, position.y - other.y)),
+          ),
+        Number.POSITIVE_INFINITY,
+      );
+
+      expect(new Set(spawnIds)).toHaveLength(50);
+      expect(spawnIds.every((tileId) => stableIds.has(tileId))).toBe(true);
+      expect(spawnIds.every((tileId) => (shoreDepths.get(tileId) ?? 0) >= 1)).toBe(true);
+      expect(minimumSpawnDistance).toBeGreaterThanOrEqual(1);
     }
   });
 
@@ -152,7 +199,7 @@ describe("procedural island arena", () => {
       { participantCount: 16, arenaColumns: 25, arenaRows: 20 },
       { participantCount: 24, arenaColumns: 28, arenaRows: 23 },
       { participantCount: 32, arenaColumns: 31, arenaRows: 26 },
-      { participantCount: 50, arenaColumns: 44, arenaRows: 36 },
+      { participantCount: 50, arenaColumns: 48, arenaRows: 40 },
     ] as const;
 
     for (let seed = 0; seed < 24; seed += 1) {
@@ -176,7 +223,7 @@ describe("procedural island arena", () => {
     { participantCount: 16, arenaColumns: 25, arenaRows: 20 },
     { participantCount: 24, arenaColumns: 28, arenaRows: 23 },
     { participantCount: 32, arenaColumns: 31, arenaRows: 26 },
-    { participantCount: 50, arenaColumns: 44, arenaRows: 36 },
+    { participantCount: 50, arenaColumns: 48, arenaRows: 40 },
   ])(
     "keeps the $participantCount-player island connected through its protected 20% core",
     ({ participantCount, arenaColumns, arenaRows }) => {

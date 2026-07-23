@@ -1,7 +1,13 @@
 # Scale and Performance
 
-- Status: `0.32.0` headless baseline accepted; uncontended production Chrome, physical, and cross-browser evidence pending
+- Status: `0.33.0` widened-island headless baseline accepted; uncontended production Chrome, physical, and cross-browser evidence pending
 - Owner: Repository owner
+
+## 0.33.0 Widened Island Profile
+
+On 2026-07-24, the 48×40 public island with exactly eight 6–10-tile lakes completed the 7,200-tick fixed-50 workload in `69,437.294 ms`, or `1.73×` real time. AI p95 was `15.425 ms` with a `35.067 ms` maximum, simulation p95 was `6.823 ms` with a `51.648 ms` maximum, the spatial candidate/full-pair ratio was `0.1024`, and no combined step exceeded 100 ms. The run observed one Brick wall, two simultaneous Bomb detonations, six Soap triggers, and four Grappling Hook hits. The `23,898,755`-byte heap delta remains observational because the harness does not force garbage collection.
+
+This accepts the unchanged `10 ms` simulation p95 gate but not browser performance. A five-sample preflight before the browser harness observed total host CPU between `27.1%` and `96.4%`, averaging `67.6%`; the run was skipped rather than laundering another host-contended sample into release evidence. The previous `0.32.0` Chrome rejection below remains historical and an uncontended `0.33.0` browser run is still required.
 
 ## 0.32.0 Grappling Hook Profile
 

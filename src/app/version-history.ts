@@ -9,6 +9,12 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.33.0",
+    title: "더 넓고 더 갈라진 무인도",
+    reason: "50명이 한 덩어리로 몰리지 않고 지형을 골라 움직일 여유가 더 필요했어.",
+    change: "섬이 더 넓어지고 호수가 여덟 곳으로 늘었어. 물길 사이에서 추격과 도주 경로를 골라.",
+  }),
+  Object.freeze({
     version: "0.32.1",
     title: "개발 정보는 개발할 때만",
     reason: "플레이에 필요 없는 숫자가 공개 화면에 남으면 시선만 빼앗아.",

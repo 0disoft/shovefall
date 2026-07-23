@@ -30,12 +30,13 @@ const ITEM_SPAWN_WEIGHTS = Object.freeze({
   "near-edge": 2,
   interior: 1,
 } as const);
+const ITEM_SPAWN_BANDS = Object.freeze(["edge", "near-edge", "interior"] as const);
 
 export type ItemSpawnBand = keyof typeof ITEM_SPAWN_WEIGHTS;
 
 interface ItemSpawnCandidate {
   readonly position: Vector2;
-  readonly weight: number;
+  readonly band: ItemSpawnBand;
 }
 
 export interface ItemSpawnOverride {
@@ -143,7 +144,7 @@ function getSpawnCandidates(
     )
     .map((position) => {
       const band = getItemSpawnBandFromStableTiles(position, stableTileIds);
-      return Object.freeze({ position, weight: ITEM_SPAWN_WEIGHTS[band] });
+      return Object.freeze({ position, band });
     });
 }
 
@@ -155,15 +156,23 @@ function chooseCandidate(
     return undefined;
   }
 
-  const totalWeight = candidates.reduce((sum, candidate) => sum + candidate.weight, 0);
+  const populatedBands = ITEM_SPAWN_BANDS.map((band) =>
+    Object.freeze({
+      band,
+      candidates: candidates.filter((candidate) => candidate.band === band),
+    }),
+  ).filter(({ candidates: bandCandidates }) => bandCandidates.length > 0);
+  const totalWeight = populatedBands.reduce((sum, { band }) => sum + ITEM_SPAWN_WEIGHTS[band], 0);
   let selection = random.nextUint32() % totalWeight;
 
-  for (const candidate of candidates) {
-    if (selection < candidate.weight) {
-      return candidate.position;
+  for (const { band, candidates: bandCandidates } of populatedBands) {
+    const weight = ITEM_SPAWN_WEIGHTS[band];
+
+    if (selection < weight) {
+      return bandCandidates[random.nextUint32() % bandCandidates.length]?.position;
     }
 
-    selection -= candidate.weight;
+    selection -= weight;
   }
 
   return candidates.at(-1)?.position;

@@ -1,5 +1,16 @@
 # Round and strategy audit
 
+## Widened-island `0.33.0` status
+
+- Product: `0.33.0`
+- Simulation: `16.0.0`
+- Content: `9.0.0`
+- Public bound: `48×40`, exactly eight separated 6–10-tile lakes under a 72-tile budget
+
+Thirty-two public seeds pass the topology gate with one connected 1,080–1,104-tile starting island after lakes, eight enclosed lake components, fifty distinct supported spawns at shore depth one or greater, and an exact connected `ceil(initial land × 0.20)` collapse core. The topology-independent item selector chooses edge, near-edge, or interior with fixed 3:2:1 band weights before choosing a tile within that band.
+
+The full `audit:rounds` workload exceeded its configured 300-second limit before emitting a result. This is neither a balance pass nor a balance failure. The 7,200-tick headless performance profile passes at simulation p95 `6.823 ms`, zero steps over 100 ms, and `1.73×` real time, but it does not prove round duration, human pacing, risky-pickup balance, or aggression-versus-survival outcomes on the widened map.
+
 ## Fixed-50 `0.26.0` status
 
 - Product: `0.26.0`

@@ -173,13 +173,13 @@ describe("arena renderer presentation", () => {
     const renderer = await createArenaRenderer(host);
     const frame = new SimulationWorld(
       normalizeGameConfig({
-        participantCount: 32,
-        arenaColumns: 31,
-        arenaRows: 26,
+        participantCount: 50,
+        arenaColumns: 48,
+        arenaRows: 40,
       }),
       "camera-follow",
     ).createRenderFrame();
-    const centered = Object.freeze({ x: 15.5, y: 13 });
+    const centered = Object.freeze({ x: 24, y: 20 });
     const centerFrame = Object.freeze({
       ...frame,
       participants: Object.freeze(
@@ -196,7 +196,7 @@ describe("arena renderer presentation", () => {
     });
     renderer.render(centerFrame, 1, 1);
     const centerCameraX = Number(host.dataset.cameraX);
-    const moved = Object.freeze({ x: 18.5, y: 13 });
+    const moved = Object.freeze({ x: 27, y: 20 });
     const movedFrame = Object.freeze({
       ...centerFrame,
       participants: Object.freeze(
@@ -218,13 +218,13 @@ describe("arena renderer presentation", () => {
     const renderer = await createArenaRenderer(host);
     const frame = new SimulationWorld(
       normalizeGameConfig({
-        participantCount: 32,
-        arenaColumns: 31,
-        arenaRows: 26,
+        participantCount: 50,
+        arenaColumns: 48,
+        arenaRows: 40,
       }),
       "camera-depth-follow",
     ).createRenderFrame();
-    const centered = Object.freeze({ x: 15.5, y: 13 });
+    const centered = Object.freeze({ x: 24, y: 20 });
     const centerFrame = Object.freeze({
       ...frame,
       participants: Object.freeze(
@@ -241,7 +241,7 @@ describe("arena renderer presentation", () => {
     });
     renderer.render(centerFrame, 1, 1);
     const centerCameraY = Number(host.dataset.cameraY);
-    const moved = Object.freeze({ x: 15.5, y: 16 });
+    const moved = Object.freeze({ x: 24, y: 23 });
     const movedFrame = Object.freeze({
       ...centerFrame,
       participants: Object.freeze(

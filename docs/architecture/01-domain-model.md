@@ -14,7 +14,7 @@
 
 `GameConfigV1` is normalized before world creation. It supports 4 through 50 participants, arenas from 7 through 48 columns and rows, a maximum 120-second replay horizon, slow, normal, or fast collapse, normal density, Easy/Normal/Hard bot difficulty, item policy version 2, a bounded initial item count, a participant-derived simultaneous cap, and a zero-to-thirty-second spawn interval. The same raw values normalize identically, and disabled items require zero initial and spawn values. Browser settings force 50 participants and Hard difficulty; smaller counts and other difficulty values remain simulation fixtures and diagnostic inputs.
 
-The browser's public arena policy derives a 44×36 bound for 50 participants and presents it through a player-follow camera rather than shrinking it to the viewport. Smaller internal tiers retain bounded arena derivation for tests and controlled audits. Five lake cuts are attempted at 50 participants; each accepts 3–10 interior tiles only when the remaining land stays connected and above its minimum budget.
+The browser's public arena policy derives a 48×40 bound for 50 participants and presents it through a player-follow camera rather than shrinking it to the viewport. Smaller internal tiers retain bounded arena derivation for tests and controlled audits. The public island starts from exactly 60% of its rectangular bound and requires eight separated 6–10-tile lake cuts whose combined budget cannot exceed 72 tiles. Every cut preserves one connected landmass and the minimum land budget.
 
 ## Participant
 
@@ -91,6 +91,8 @@ Product `0.31.0`, simulation `14.0.0`, and content `8.0.0` add Soap placement, c
 Product `0.32.0`, simulation `15.0.0`, and content `9.0.0` add the human-only static-anchor Grappling Hook, deterministic tile-versus-Brick acquisition, mass-sensitive capped self-pull, and the 12-tick `GrapplePull` action. Replay remains v2 and local reports remain v4 because the existing loadout IDs, slot commands, action state, and version rejection carry the new use without a persistent tether entity; regenerated simulation-version checkpoints protect the changed action and velocity outcomes.
 
 Product `0.32.1` removes release-only diagnostic markup without changing simulation or content. The developer telemetry controller is a DEV presentation object created after the match-readable HUD and is absent from production HTML and runtime state. Scheduler round ID and tick remain non-authoritative DOM observability attributes; neither enters the world hash nor exposes the master seed or state hash. Simulation remains `15.0.0`, content remains `9.0.0`, replay remains v2, and reports remain v4.
+
+Product `0.33.0` and simulation `16.0.0` widen the public island to 48×40, require eight separated lakes under a 72-tile budget, and select item risk bands at a fixed 3:2:1 ratio before choosing a tile within the selected band. The generated world, item placement, collapse order, and state hash change for the public 50-participant configuration. Content remains `9.0.0`, replay remains v2, and reports remain v4; checked-in fixtures advance their simulation envelope even where their small-tier hashes remain unchanged.
 
 ## Version Ownership
 

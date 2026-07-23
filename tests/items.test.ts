@@ -1999,8 +1999,16 @@ describe("deterministic item placement", () => {
     }
 
     const total = bandCounts.edge + bandCounts["near-edge"] + bandCounts.interior;
-    expect((bandCounts.edge + bandCounts["near-edge"]) / total).toBeGreaterThan(0.6);
-    expect(bandCounts.interior).toBeGreaterThan(0);
+    const edgeRatio = bandCounts.edge / total;
+    const nearEdgeRatio = bandCounts["near-edge"] / total;
+    const interiorRatio = bandCounts.interior / total;
+
+    expect(edgeRatio).toBeGreaterThan(0.4);
+    expect(edgeRatio).toBeLessThan(0.6);
+    expect(nearEdgeRatio).toBeGreaterThan(0.25);
+    expect(nearEdgeRatio).toBeLessThan(0.42);
+    expect(interiorRatio).toBeGreaterThan(0.1);
+    expect(interiorRatio).toBeLessThan(0.25);
   });
 
   it("never accumulates beyond the participant-derived cap", () => {

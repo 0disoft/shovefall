@@ -1,5 +1,5 @@
-export const PRODUCT_VERSION = "0.32.1";
-export const SIMULATION_VERSION = "15.0.0";
+export const PRODUCT_VERSION = "0.33.0";
+export const SIMULATION_VERSION = "16.0.0";
 export const CONTENT_VERSION = "9.0.0";
 export const REPLAY_FORMAT_VERSION = 2;
 export const FIXED_TICKS_PER_SECOND = 60;

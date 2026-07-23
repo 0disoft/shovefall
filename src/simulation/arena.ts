@@ -3,6 +3,13 @@ import type { Vector2 } from "./math";
 import type { XorShift32 } from "./random";
 
 const COAST_SAMPLE_COUNT = 24;
+const LARGE_ISLAND_PARTICIPANT_THRESHOLD = 40;
+const LARGE_ISLAND_MINIMUM_COLUMNS = 48;
+const LARGE_ISLAND_MINIMUM_ROWS = 40;
+const LARGE_ISLAND_LAKE_COUNT = 8;
+const LARGE_ISLAND_MINIMUM_LAKE_SIZE = 6;
+const LARGE_ISLAND_MAXIMUM_LAKE_SIZE = 10;
+const LARGE_ISLAND_TOTAL_LAKE_BUDGET = 72;
 const ORTHOGONAL_DIRECTIONS = Object.freeze([
   Object.freeze({ column: 1, row: 0 }),
   Object.freeze({ column: -1, row: 0 }),
@@ -145,16 +152,21 @@ function carveLakes(
     tiles.filter(({ state }) => state === "Stable").map(({ tileId }) => tileId),
   );
   const minimumLandCount = Math.max(config.participantCount * 5, Math.ceil(landIds.size * 0.72));
-  const lakeCount =
-    config.participantCount >= 40
-      ? 5
-      : Math.max(1, Math.min(3, Math.floor(Math.min(config.arenaColumns, config.arenaRows) / 8)));
+  const usesLargeIslandPolicy =
+    config.participantCount >= LARGE_ISLAND_PARTICIPANT_THRESHOLD &&
+    config.arenaColumns >= LARGE_ISLAND_MINIMUM_COLUMNS &&
+    config.arenaRows >= LARGE_ISLAND_MINIMUM_ROWS;
+  const lakeCount = usesLargeIslandPolicy
+    ? LARGE_ISLAND_LAKE_COUNT
+    : Math.max(1, Math.min(3, Math.floor(Math.min(config.arenaColumns, config.arenaRows) / 8)));
   const carvedIds = new Set<TileId>();
+  let remainingLargeIslandLakeBudget = LARGE_ISLAND_TOTAL_LAKE_BUDGET;
 
   for (let lakeIndex = 0; lakeIndex < lakeCount; lakeIndex += 1) {
     const currentTiles = tiles.map((tile) =>
       carvedIds.has(tile.tileId) ? Object.freeze({ ...tile, state: "Void" as const }) : tile,
     );
+    const currentTilesById = new Map(currentTiles.map((tile) => [tile.tileId, tile] as const));
     const depths = getLandShoreDepths(currentTiles);
     const seeds = shuffle(
       currentTiles.filter(
@@ -165,10 +177,15 @@ function carveLakes(
       ),
       random,
     );
-    const targetSize =
-      config.participantCount >= 40
-        ? 3 + (random.nextUint32() % 8)
-        : Math.min(7, 2 + (random.nextUint32() % 5));
+    const remainingLakeCount = lakeCount - lakeIndex - 1;
+    const maximumLargeIslandLakeSize = Math.min(
+      LARGE_ISLAND_MAXIMUM_LAKE_SIZE,
+      remainingLargeIslandLakeBudget - remainingLakeCount * LARGE_ISLAND_MINIMUM_LAKE_SIZE,
+    );
+    const targetSize = usesLargeIslandPolicy
+      ? LARGE_ISLAND_MINIMUM_LAKE_SIZE +
+        (random.nextUint32() % (maximumLargeIslandLakeSize - LARGE_ISLAND_MINIMUM_LAKE_SIZE + 1))
+      : Math.min(7, 2 + (random.nextUint32() % 5));
     let accepted: readonly TileId[] | undefined;
 
     for (const seed of seeds) {
@@ -187,7 +204,7 @@ function carveLakes(
         }
 
         lake.add(selected);
-        const selectedTile = currentTiles.find(({ tileId }) => tileId === selected);
+        const selectedTile = currentTilesById.get(selected);
 
         if (selectedTile !== undefined) {
           frontier.push(
@@ -212,7 +229,15 @@ function carveLakes(
     }
 
     if (accepted === undefined) {
+      if (usesLargeIslandPolicy) {
+        throw new Error(`large island could not carve required lake ${lakeIndex + 1}`);
+      }
+
       break;
+    }
+
+    if (usesLargeIslandPolicy) {
+      remainingLargeIslandLakeBudget -= accepted.length;
     }
 
     for (const tileId of accepted) {
@@ -255,9 +280,13 @@ export function createArenaTiles(config: GameConfigV1, random: XorShift32): read
     }
   }
 
+  const usesLargeIslandPolicy =
+    config.participantCount >= LARGE_ISLAND_PARTICIPANT_THRESHOLD &&
+    config.arenaColumns >= LARGE_ISLAND_MINIMUM_COLUMNS &&
+    config.arenaRows >= LARGE_ISLAND_MINIMUM_ROWS;
   const targetLandCount = Math.max(
     config.participantCount * 6,
-    Math.round(config.arenaColumns * config.arenaRows * 0.58),
+    Math.round(config.arenaColumns * config.arenaRows * (usesLargeIslandPolicy ? 0.6 : 0.58)),
   );
   const landIds = new Set(
     candidates

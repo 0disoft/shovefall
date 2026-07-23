@@ -78,12 +78,12 @@ describe("settings normalization", () => {
     expect(normalizeItemRespawnSeconds(Number.NaN, "massive")).toBe(5);
   });
 
-  it("keeps fixture tiers and expands the forced fifty-player island", () => {
+  it("keeps fixture tiers and widens the forced fifty-player island", () => {
     expect(getArenaSize(4)).toEqual({ columns: 22, rows: 17 });
     expect(getArenaSize(16)).toEqual({ columns: 25, rows: 20 });
     expect(getArenaSize(24)).toEqual({ columns: 28, rows: 23 });
     expect(getArenaSize(32)).toEqual({ columns: 31, rows: 26 });
-    expect(getArenaSize(50)).toEqual({ columns: 44, rows: 36 });
+    expect(getArenaSize(50)).toEqual({ columns: 48, rows: 40 });
   });
 
   it("keeps exactly two unique items from the nine-item catalog", () => {

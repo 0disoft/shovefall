@@ -23,14 +23,15 @@ people, then publishing the exact candidate without burying combat telegraphs.
 - [x] Provider-neutral Vite and PixiJS static application with a pure 60 Hz simulation.
 - [x] Movement, shove, dodge, missed-shove stumble, simultaneous impulses, support loss, falling,
       results, and fresh-world restart.
-- [x] One public 50-participant mode with a 44×36 procedural island and five bounded lake attempts.
+- [x] One public 50-participant mode with a 48×40 procedural island and exactly eight bounded separated lakes.
 - [x] Hard utility-bot reaction profile fixed for public play without bot-only physics advantages.
 - [x] Slow, Normal, and Fast collapse controls with deterministic warning and collapse schedules.
 - [x] Iron Boots, Feather, and Spring Glove with a bounded 3/2/1 outer-ring placement preference.
 - [x] Human Wind Blast, Brick Bag, Boat, Bomb, Soap, and static-anchor Grappling Hook activation through the shared two-slot input contract.
-- [x] Deterministic round, mass, item-grant, collapse-pacing, and fixed-50 headless scale evidence.
-- [ ] Uncontended production-Chrome performance evidence; `0.32.1` functional production-artifact smoke already passes.
-- [x] Local aggregate validation and production-artifact browser smoke.
+- [ ] Refreshed deterministic round, mass, item-grant, and collapse-pacing evidence; the `0.33.0` full audit exceeded its configured 300-second limit.
+- [x] Widened-island fixed-50 headless scale evidence at simulation p95 `6.823 ms` with no 100 ms step.
+- [ ] Uncontended production-Chrome performance evidence; preflight host CPU was too contended to produce an admissible `0.33.0` sample.
+- [x] Local aggregate validation, fourteen DEV Chrome paths, and thirteen production-artifact Chrome paths on `0.33.0`.
 
 ## Gate 1: Human Gray-box Evidence
 
@@ -86,7 +87,7 @@ Exit conditions:
 - Screenshot, short gameplay capture, tool list, asset provenance, and development notes are ready
   in [05-submission-package.md](05-submission-package.md) for the contest post.
 
-Current status: `IN_PROGRESS`. Product `0.32.0` exact SHA `4dc23456673d08ba15228776bdce15e2b768bcd5` retains hosted CI, Pages, and public-URL proof. The local `0.32.1` cleanup candidate passes 169 tests, fourteen DEV Chrome paths, thirteen production-artifact Chrome paths, and the public-HTML telemetry exclusion contract. Its exact-SHA hosted and public proof, an uncontended performance profile, final captures, physical-browser coverage, and human evidence remain open.
+Current status: `IN_PROGRESS`. Product `0.32.0` exact SHA `4dc23456673d08ba15228776bdce15e2b768bcd5` retains hosted CI, Pages, and public-URL proof. The local `0.33.0` widened-island candidate passes 170 tests, fourteen DEV Chrome paths, thirteen production-artifact Chrome paths, the public-HTML telemetry exclusion contract, and the headless scale budget. Its exact-SHA hosted and public proof, completed round audit, uncontended browser profile, final captures, physical-browser coverage, and human evidence remain open.
 
 ## Deferred Beyond the Submission
 
