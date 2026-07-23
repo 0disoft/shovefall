@@ -1,6 +1,6 @@
 # Contest Submission Package
 
-- Status: Prepared from repository evidence; public link and captures pending
+- Status: Public link selected; first Pages deployment, URL proof, and captures pending
 - Candidate version: `0.18.0`
 - Candidate SHA: replace with the final exact 40-character release SHA
 - Release gate: [../ops/release.md](../ops/release.md)
@@ -27,7 +27,7 @@
 
 ## 3. 플레이 링크
 
-`PENDING_FINAL_HTTPS_URL`
+`https://0disoft.github.io/shovefall/`
 
 제출 전에 링크가 최종 후보 SHA를 제공하는지, 새 브라우저에서 설치·로그인 없이
 열리는지, WebGL과 Quick Start가 정상인지 확인한다.

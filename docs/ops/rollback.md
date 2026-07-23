@@ -1,6 +1,6 @@
 # Static Release Rollback
 
-- Status: Provider-neutral procedure accepted; provider command pending selection
+- Status: GitHub Pages rollback procedure accepted; known-good candidate required
 - Primary owner: Repository owner
 - Release procedure: [release.md](release.md)
 - Operational boundary: [00-operational-contract.md](00-operational-contract.md)
@@ -17,8 +17,9 @@ readability tradeoff is not by itself a rollback trigger.
 
 ## Decision Tree
 
-1. If the public link is unreachable or serves broken/stale files, restore the previous immutable
-   artifact or provider release pointer.
+1. If the public link is unreachable or serves broken/stale files, unpublish the Pages site when
+   immediate containment matters, then restore the previous known-good source revision through a
+   new reviewed commit.
 2. If the artifact loads but the defect is browser-specific, restore the previous artifact unless
    the affected browser was explicitly outside the published support matrix.
 3. If the defect is asset-only and the procedural fallback is approved and tested, forward-fix the
@@ -32,10 +33,15 @@ readability tradeoff is not by itself a rollback trigger.
 
 - Record the bad URL, observed time, deployed identity if available, candidate SHA, browser/device,
   and the first failed critical journey.
-- Select the most recent known-good immutable artifact with exact-SHA local, hosted, and URL
-  evidence. Do not rebuild an old branch and call it the same artifact.
-- Use the chosen provider's documented rollback or atomic release-pointer operation. This repository
-  does not yet authorize or define that provider command.
+- Select the most recent known-good exact SHA with local, hosted, deployment, and URL evidence. Keep
+  the failed run's retained Pages artifact as incident evidence; do not reuse it as a rollback when
+  it is the faulty artifact.
+- GitHub Pages does not provide this repository with an atomic pointer to an arbitrary older Pages
+  artifact. Restore by reverting the bad source change in a new commit on `main`, allowing the same
+  pinned workflow and lockfile to rebuild, retest, and redeploy it. Record that the rollback is a
+  reproducible rebuild, not a byte-for-byte promotion of the old artifact.
+- If rebuilding cannot be trusted or the known-good dependency graph is unavailable, unpublish the
+  site in Settings → Pages instead of serving a knowingly broken candidate.
 - Repeat the post-deploy checks in [release.md](release.md) against the restored URL.
 - Preserve the bad SHA and reproduction seed. Do not rewrite or delete source history to hide the
   failed candidate.
@@ -52,3 +58,10 @@ A forward fix receives a new commit SHA and, when runtime behavior or public out
 appropriate product/content/simulation version review. Rerun the affected local, browser, audit,
 asset, human, hosted, and final-URL evidence rather than inheriting the rolled-back candidate's
 approval.
+
+## Provider Limit
+
+The retained Pages artifact is an evidence and diagnosis aid, not a guaranteed long-term rollback
+slot. It expires after 30 days, and the configured deploy action consumes the artifact from its own
+workflow run. This repository therefore does not claim instant immutable-artifact rollback. The
+bounded recovery paths are a validated revert-and-redeploy or immediate unpublish.

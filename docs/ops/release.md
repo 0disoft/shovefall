@@ -1,6 +1,6 @@
 # Static Release Procedure
 
-- Status: Ready for provider selection; deployment not authorized by this document
+- Status: GitHub Pages deployment configured; first public deployment pending hosted proof
 - Primary owner: Repository owner
 - Current product version: `0.18.0`
 - Validation source: [../../VALIDATION.md](../../VALIDATION.md)
@@ -16,6 +16,21 @@
 
 Calling a build a candidate does not publish it. Calling a URL deployed does not prove that it
 serves the intended SHA.
+
+## GitHub Pages Target
+
+- Repository: `https://github.com/0disoft/shovefall`
+- Public URL: `https://0disoft.github.io/shovefall/`
+- Publishing source: GitHub Actions from `.github/workflows/ci.yml`
+- Source branch: `main`
+- Build output: `dist`
+- Base-path contract: relative Vite asset URLs from `base: "./"`; the project site lives under
+  `/shovefall/` without a provider-specific rebuild.
+- Credential model: no repository secret or long-lived deploy token. The deploy job receives only
+  `contents: read`, `pages: write`, and short-lived OIDC `id-token: write` permissions.
+- Artifact identity: the `dist` directory tested by `smoke-dist` in the `Validate` job is uploaded
+  once and consumed by the dependent `Deploy GitHub Pages` job. The Pages artifact is retained for
+  30 days for incident evidence.
 
 ## Candidate Freeze
 
@@ -34,7 +49,7 @@ Before deployment or contest submission, record all of the following:
 
 - GitHub Actions workflow URL and conclusion for the exact candidate SHA.
 - Branch-protection or manual-promotion decision; a workflow file alone is not enforcement.
-- Hosting provider, project/site identifier, credential owner, base path, and rollback control.
+- GitHub Pages deployment URL and environment result for the exact candidate SHA.
 - Named device, OS, browser/version, viewport, and critical-journey result.
 - Human playtest batch and decision from
   [../product/04-playtest-protocol.md](../product/04-playtest-protocol.md).
@@ -42,10 +57,15 @@ Before deployment or contest submission, record all of the following:
 
 ## Deployment Boundary
 
-The repository currently has CI but no configured deployment intent or provider choice. Do not add
-a provider token, publish command, Pages workflow, or hosting-specific configuration by guessing.
-Once the owner selects a host, add one narrow provider-specific deployment contract with least
-privilege, an exact artifact source, an immutable release identity, and an explicit rollback path.
+Pushes to `main` and manual workflow dispatches run validation before deployment. Pull requests
+cannot upload or deploy the Pages artifact. GitHub Pages is the only selected production host; the
+workflow does not contain a provider token, package publication, release creation, database action,
+or runtime secret. A successful `Validate` job is necessary but insufficient: promotion is complete
+only when the dependent `Deploy GitHub Pages` job succeeds and the final HTTPS checks below pass.
+
+The first source push after enabling Pages is the initial deployment. Do not call the public link
+ready until its workflow run, `github-pages` environment deployment, URL content, and critical
+journey are observed at the same candidate SHA.
 
 ## Post-deploy Verification
 
@@ -63,6 +83,6 @@ Against the final HTTPS URL and candidate SHA:
 ## Stop Conditions
 
 Stop promotion when any required check is missing, stale, pending, or tied to another SHA; when the
-public artifact cannot be tied to the candidate; when a critical journey fails; when an asset has
-unknown provenance; or when the host cannot provide a known rollback action. Follow
+Pages deployment is cancelled or superseded; when the public artifact cannot be tied to the
+candidate; when a critical journey fails; or when an asset has unknown provenance. Follow
 [rollback.md](rollback.md) after a published regression.

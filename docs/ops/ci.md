@@ -1,10 +1,10 @@
-# CI
+# CI and GitHub Pages Deployment
 
-- Status: GitHub Actions workflow configured; exact-SHA hosted validation observed green
+- Status: GitHub Actions validation green for the prior runtime candidate; Pages deployment added and awaiting first hosted proof
 
 ## Operational Contract
 
-`.github/workflows/ci.yml` is the source-owned hosted validation workflow. It runs on pushes to `main`, pull requests targeting `main`, and manual dispatch. One `Validate` job uses `ubuntu-24.04`, Bun `1.3.14`, the committed lockfile, and a fifteen-minute timeout.
+`.github/workflows/ci.yml` is the source-owned hosted validation and GitHub Pages deployment workflow. It runs on pushes to `main`, pull requests targeting `main`, and manual dispatch. The `Validate` job uses `ubuntu-24.04`, Bun `1.3.14`, the committed lockfile, and a fifteen-minute timeout.
 
 The job performs these stages in order:
 
@@ -12,14 +12,29 @@ The job performs these stages in order:
 2. Install the exact Bun version and locked dependency graph without dependency lifecycle scripts.
 3. Run `check`, the same aggregate merge-blocking command defined in `package.json` and `VALIDATION.md`.
 4. Build and exercise the generated production artifact through `smoke-dist` in the runner's stable Chrome channel.
+5. On `main` pushes and manual runs only, configure Pages and upload that already-tested `dist`
+   directory as a 30-day artifact.
 
-A failed install, check, build, browser launch, or smoke assertion fails the job. No `continue-on-error`, retry loop, deployment, release, package publication, artifact upload, cache restore, or secret is present. Superseded runs on the same workflow and ref are cancelled to avoid charging runner time for stale commits.
+The dependent `Deploy GitHub Pages` job runs only after `Validate` succeeds and never runs for a
+pull request. It deploys the uploaded artifact to the `github-pages` environment and publishes the
+provider-returned URL as the environment URL.
 
-The workflow-level token grants only `contents: read`; every unspecified permission is `none`. Third-party actions are pinned to reviewed full commit SHAs with release comments. Updating either pin requires a fresh upstream release and provenance review.
+A failed install, check, build, browser launch, smoke assertion, artifact upload, or Pages deployment fails the workflow. No `continue-on-error`, retry loop, package publication, cache restore, or repository secret is present. Pull-request runs may be cancelled when superseded. Main-branch runs are not cancelled in progress so a deployment is not cut off halfway; GitHub concurrency retains at most the newest pending run for the same workflow and ref.
+
+The `Validate` job grants only `contents: read`. The deployment job grants `contents: read`,
+`pages: write`, and `id-token: write`; every unspecified permission is `none`. No long-lived hosting
+credential exists. Checkout, Bun setup, Pages configuration, Pages artifact upload, and Pages deploy
+actions are pinned to reviewed full commit SHAs with release comments. Updating any pin requires a
+fresh upstream release and provenance review.
 
 ## Evidence Boundary
 
-Local `check` and `smoke-dist` results do not prove GitHub accepted or executed the workflow. A hosted run must be inspected at the exact commit before calling CI green. Likewise, a green workflow is advisory until the repository's GitHub branch-protection settings require the `Validate` check. Dashboard-only branch protection cannot be encoded or proven by this repository.
+Local `check` and `smoke-dist` results do not prove GitHub accepted or executed the workflow. A
+hosted run must be inspected at the exact commit before calling CI green. A green `Validate` job
+does not prove Pages deployed, and a green Pages deployment does not prove the public URL's critical
+journey. Likewise, a green workflow is advisory until the repository's GitHub branch-protection
+settings require the `Validate` check. Dashboard-only branch protection cannot be encoded or proven
+by this repository.
 
 The deterministic 64-round audit and browser scale profile are intentionally excluded from routine pushes because they are broader evidence with materially higher runner cost. They remain explicit configured local commands and may be promoted to scheduled or manual hosted jobs only after a runner-minute budget is accepted.
 
@@ -49,8 +64,9 @@ evidence; a later runtime or release-candidate change still requires its own exa
 
 Dependency or action download failure is infrastructure evidence, not a source failure. Chrome image drift is isolated to `smoke-dist`; deterministic simulation truth remains owned by Vitest and replay hashes. A compromised or retagged action is contained by full-SHA pins, while runner-image and registry availability remain external risks.
 
-## Release Boundary
+## Deployment Boundary
 
 - Required validation names: `check` and `smoke-dist`
-- Release blocker status: Hosted validation is green for Coal-Twilight runtime SHA `7809502b8c33a12ad9cdd86d2dceb66424585579`; every later runtime or release-candidate change requires its own exact-SHA run.
-- Remaining operational risk: Branch protection, runner-image Chrome drift, physical-device coverage, cross-browser coverage, static hosting, and deployment smoke remain unproven until separately observed.
+- Public URL: `https://0disoft.github.io/shovefall/`
+- Release blocker status: Hosted validation is green for Coal-Twilight runtime SHA `7809502b8c33a12ad9cdd86d2dceb66424585579`; the Pages workflow change and every later candidate require their own exact-SHA run, successful deploy job, and URL smoke.
+- Remaining operational risk: Branch protection, runner-image Chrome drift, physical-device coverage, cross-browser coverage, first Pages deployment, URL smoke, and human playtest remain unproven until separately observed.

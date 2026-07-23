@@ -23,7 +23,7 @@ This document owns stable validation names for this scaffold.
 | `audit-rounds` | Bun deterministic round, balance, and pacing audit | Runs sixteen fixed-seed production-preset rounds each at 8, 16, 24, and 32 participants, twenty-four controlled 16-participant base-mass rounds, sixty-four controlled 8-participant item-grant rounds, and sixteen paired seeds at each collapse speed. It records duration, terminal results, item spawn bands, observational exposure, equal-slot win rates, controlled item winner distribution, and collapse-speed duration distributions. It fails on malformed results, time-limit draws, a missing outer-ring preference, extreme controlled mass/item skew, or loss of the declared collapse pacing relationship. It is not human-play or risky-pickup balance evidence. |
 | `profile-browser` | Production build plus local headless Chrome | Measures fixed hard-difficulty active-load seeds at 1280×720 for frame p95, long frames, requested-versus-delivered ticks, backlog, effective DPR, and forced-GC heap change after 20 restarts. It is not cross-browser or field evidence. |
 | `docs` | Repository and ssealed documentation checks | Validates source-of-truth links, critical-document scaffold removal, static release and rollback contracts, submission and asset-provenance surfaces, and Markdown hygiene. |
-| `build` | Vite 8 | Produces the provider-neutral static `dist` artifact. |
+| `build` | Vite 8 | Produces the provider-neutral static `dist` artifact with relative asset URLs that remain valid at the GitHub Pages `/shovefall/` project path. |
 | `check` | Aggregate command | Runs the configured merge-blocking validations without silently skipping a missing command. |
 
 ## Required Final Report
@@ -36,7 +36,7 @@ Ssealed runner remains `none`; package scripts are the application command surfa
 
 ## Hosted CI Boundary
 
-GitHub Actions runs `check` and `smoke-dist` on `ubuntu-24.04` with Bun `1.3.14` and the committed lockfile. The workflow is source-owned at `.github/workflows/ci.yml`, uses a read-only token, and performs no deployment, release, publication, cache restore, or artifact upload. Local success is not hosted evidence, and a hosted green check is not merge enforcement until branch protection requires it.
+GitHub Actions runs `check` and `smoke-dist` on `ubuntu-24.04` with Bun `1.3.14` and the committed lockfile. The workflow is source-owned at `.github/workflows/ci.yml`. Pull requests receive only `contents: read` and never upload or deploy an artifact. Successful `main` and manual runs upload the exact `dist` directory exercised by `smoke-dist`, retain it for 30 days, and pass it to a separate least-privilege GitHub Pages deployment job with only `contents: read`, `pages: write`, and `id-token: write`. Local success is not hosted evidence, a hosted green validation is not deployment evidence, and either result is not merge enforcement until branch protection requires it.
 
 ## Hygiene Validation
 
