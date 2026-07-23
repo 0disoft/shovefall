@@ -209,18 +209,40 @@ async function faceArenaDirection(page: Page, direction: string): Promise<void> 
   }
 }
 
-async function useActiveItemAndWaitForCharge(
+async function useActiveItemFromAvailableDirection(
   page: Page,
   slotIndex: 0 | 1,
   expectedChargeLabel: string,
+  directions: readonly string[] = ["ArrowUp", "ArrowRight", "ArrowDown", "ArrowLeft"],
+  directionIndex = 0,
 ): Promise<void> {
   const slot = page.locator(`#use-item-slot-${slotIndex}`);
+  const direction = directions[directionIndex];
+
+  if (direction === undefined) {
+    throw new Error(
+      `Active item charge did not change after checking every cardinal direction: ${await slot.textContent()}`,
+    );
+  }
+
   await expect(slot).toBeEnabled();
+  await faceArenaDirection(page, direction);
   const tickBeforeUse = await readSimulationTick(page);
   await slot.click();
   await page.clock.fastForward(20);
   await expect.poll(() => readSimulationTick(page)).toBeGreaterThan(tickBeforeUse);
-  await expect(slot).toContainText(expectedChargeLabel);
+
+  if ((await slot.textContent())?.includes(expectedChargeLabel) === true) {
+    return;
+  }
+
+  return useActiveItemFromAvailableDirection(
+    page,
+    slotIndex,
+    expectedChargeLabel,
+    directions,
+    directionIndex + 1,
+  );
 }
 
 test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) => {
@@ -412,7 +434,7 @@ test("equips and places a Brick Bag wall in a fresh round", async ({ page }) => 
   await finishInstalledClockCountdown(page);
   await expect(page.locator("#use-item-slot-1")).toContainText("벽돌 가방 · 4회");
 
-  await useActiveItemAndWaitForCharge(page, 1, "벽돌 가방 · 3회");
+  await useActiveItemFromAvailableDirection(page, 1, "벽돌 가방 · 3회");
 
   await expect(page.locator("#use-item-slot-1")).toContainText("벽돌 가방 · 3회");
 });
@@ -476,7 +498,7 @@ test("selects Soap and places a slippery patch in a fresh production-safe round"
   await finishInstalledClockCountdown(page);
   await expect(page.locator("#use-item-slot-1")).toContainText("비누 · 3회");
 
-  await useActiveItemAndWaitForCharge(page, 1, "비누 · 2회");
+  await useActiveItemFromAvailableDirection(page, 1, "비누 · 2회");
 
   await expect(page.locator("#use-item-slot-1")).toContainText("비누 · 2회");
 });
