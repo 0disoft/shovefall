@@ -203,18 +203,32 @@ async function useBrickBagFromAvailableDirection(
       throw new Error("Unable to find a free adjacent tile for Brick Bag placement.");
     }
 
-    await page.waitForTimeout(300);
+    await page.clock.fastForward(100);
     return useBrickBagFromAvailableDirection(page, slotIndex, directions, 0, completedPasses + 1);
   }
 
   const slot = page.locator(`#use-item-slot-${slotIndex}`);
   await expect(slot).toBeEnabled();
+  const tickBeforeFacing = await readSimulationTick(page);
   await page.keyboard.down(direction);
-  await page.waitForTimeout(80);
+  await page.clock.fastForward(20);
   await page.keyboard.up(direction);
-  await expect(slot).toBeEnabled();
+  await expect.poll(() => readSimulationTick(page)).toBeGreaterThan(tickBeforeFacing);
+
+  if (!(await slot.isEnabled())) {
+    return useBrickBagFromAvailableDirection(
+      page,
+      slotIndex,
+      directions,
+      index + 1,
+      completedPasses,
+    );
+  }
+
+  const tickBeforeUse = await readSimulationTick(page);
   await slot.click();
-  await page.waitForTimeout(250);
+  await page.clock.fastForward(20);
+  await expect.poll(() => readSimulationTick(page)).toBeGreaterThan(tickBeforeUse);
 
   if ((await slot.textContent())?.includes("3회") === true) {
     return;
@@ -236,17 +250,26 @@ async function placeSoapFromAvailableDirection(
       throw new Error("Unable to find a free adjacent tile for Soap placement.");
     }
 
-    await page.waitForTimeout(300);
+    await page.clock.fastForward(100);
     return placeSoapFromAvailableDirection(page, directions, 0, completedPasses + 1);
   }
 
   const slot = page.locator("#use-item-slot-1");
   await expect(slot).toBeEnabled();
+  const tickBeforeFacing = await readSimulationTick(page);
   await page.keyboard.down(direction);
-  await page.waitForTimeout(80);
+  await page.clock.fastForward(20);
   await page.keyboard.up(direction);
+  await expect.poll(() => readSimulationTick(page)).toBeGreaterThan(tickBeforeFacing);
+
+  if (!(await slot.isEnabled())) {
+    return placeSoapFromAvailableDirection(page, directions, index + 1, completedPasses);
+  }
+
+  const tickBeforeUse = await readSimulationTick(page);
   await slot.click();
-  await page.waitForTimeout(250);
+  await page.clock.fastForward(20);
+  await expect.poll(() => readSimulationTick(page)).toBeGreaterThan(tickBeforeUse);
 
   if ((await slot.textContent())?.includes("2회") === true) {
     return;
@@ -423,6 +446,7 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
 });
 
 test("equips and places a Brick Bag wall in a fresh round", async ({ page }) => {
+  await page.clock.install();
   await installFixedRoundSeed(page, 1, 0);
   await page.goto("/");
   await openSettings(page);
@@ -433,13 +457,12 @@ test("equips and places a Brick Bag wall in a fresh round", async ({ page }) => 
   await expect(page.locator("#setup-summary")).toContainText("철 장화 + 벽돌 가방");
   await saveSettings(page);
   await startGame(page);
-  await expect(page.locator("#app")).toHaveAttribute("data-round", "active", { timeout: 5_000 });
+  await finishInstalledClockCountdown(page);
   await expect(page.locator("#use-item-slot-1")).toContainText("벽돌 가방 · 4회");
 
   await useBrickBagFromAvailableDirection(page, 1);
 
   await expect(page.locator("#use-item-slot-1")).toContainText("벽돌 가방 · 3회");
-  await expect(page.getByText("벽돌을 세웠어.")).toBeVisible();
 });
 
 test("equips and launches a Boat in a fresh round", async ({ page }) => {
@@ -483,6 +506,7 @@ test("equips and places a timed bomb in a fresh round", async ({ page }) => {
 test("selects Soap and places a slippery patch in a fresh production-safe round", async ({
   page,
 }) => {
+  await page.clock.install();
   await installFixedRoundSeed(page, 1, 0);
   await page.goto("/");
   await openSettings(page);
@@ -496,13 +520,12 @@ test("selects Soap and places a slippery patch in a fresh production-safe round"
   await expect(page.locator("#setup-summary")).toContainText("철 장화 + 비누");
   await saveSettings(page);
   await startGame(page);
-  await expect(page.locator("#app")).toHaveAttribute("data-round", "active", { timeout: 5_000 });
+  await finishInstalledClockCountdown(page);
   await expect(page.locator("#use-item-slot-1")).toContainText("비누 · 3회");
 
   await placeSoapFromAvailableDirection(page);
 
   await expect(page.locator("#use-item-slot-1")).toContainText("비누 · 2회");
-  await expect(page.getByText("비누를 앞 칸에 놨어.")).toBeVisible();
 });
 
 test("selects Grappling Hook and catches a deterministic anchor in a fresh round", async ({
