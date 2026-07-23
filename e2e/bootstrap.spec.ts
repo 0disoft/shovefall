@@ -110,6 +110,33 @@ async function installClipboardCapture(page: Page): Promise<void> {
   });
 }
 
+async function queueNextRoundSeed(
+  page: Page,
+  firstWord: number,
+  secondWord: number,
+): Promise<void> {
+  await page.evaluate(
+    ({ first, second }) => {
+      const previous = crypto.getRandomValues.bind(crypto);
+      let supplied = false;
+      Object.defineProperty(crypto, "getRandomValues", {
+        configurable: true,
+        value: <T extends ArrayBufferView<ArrayBuffer>>(array: T): T => {
+          if (!supplied && array instanceof Uint32Array && array.length === 2) {
+            array[0] = first;
+            array[1] = second;
+            supplied = true;
+            return array;
+          }
+
+          return previous(array);
+        },
+      });
+    },
+    { first: firstWord, second: secondWord },
+  );
+}
+
 async function fastForwardUntilAttribute(
   page: Page,
   selector: string,
@@ -158,12 +185,16 @@ async function useBrickBagFromAvailableDirection(
     return;
   }
 
+  const slot = page.locator("#use-item-slot-1");
+  await expect(slot).toBeEnabled();
   await page.keyboard.down(direction);
   await page.waitForTimeout(80);
   await page.keyboard.up(direction);
-  await page.keyboard.press("KeyE");
+  await expect(slot).toBeEnabled();
+  await slot.click();
+  await page.waitForTimeout(250);
 
-  if ((await page.locator("#use-item-slot-1").textContent())?.includes("3회") === true) {
+  if ((await slot.textContent())?.includes("3회") === true) {
     return;
   }
 
@@ -269,11 +300,9 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await page.keyboard.press("KeyE");
   await expect(page.locator("#use-item-slot-1")).toContainText("장풍 · 1회");
   await page.keyboard.down("Space");
-  await expect(page.locator("#game-telemetry")).toHaveAttribute(
-    "data-action",
-    /ShoveWindup|ShoveActive|ShoveRecovery|Stumbling/u,
-  );
+  await page.waitForTimeout(80);
   await page.keyboard.up("Space");
+  await expect(page.locator("#round-message")).toHaveText(/밀치기 적중!|헛밀치기! 균형을 잡아\./u);
   await expect
     .poll(async () => Number(await page.locator("#game-telemetry").getAttribute("data-tick")))
     .toBeGreaterThan(0);
@@ -343,6 +372,7 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await page.locator('input[name="startingItem"][value="brick-bag"]').check();
   await expect(page.locator("#setup-summary")).toContainText("철 장화 + 벽돌 가방");
   await saveSettings(page);
+  await queueNextRoundSeed(page, 1, 0);
   await startGame(page);
   await expect(page.locator("#app")).toHaveAttribute("data-round", "active", { timeout: 5_000 });
   await expect(page.locator("#use-item-slot-1")).toContainText("벽돌 가방 · 4회");
