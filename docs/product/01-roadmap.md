@@ -14,9 +14,9 @@ must let a first-time player move, shove, dodge, understand most defeats, and re
 account, tutorial wall, backend, or hidden probability deciding combat.
 
 The implementation already proves deterministic rules, production presets, local browser boot,
-and bounded 32-participant workload. The critical path is no longer adding systems. It is proving
-the current systems with people, then applying a coherent visual direction without burying combat
-telegraphs.
+bounded 32-participant workload, and the Coal-Twilight procedural visual direction. The critical
+path is no longer adding systems. It is proving the current systems and final-art readability with
+people, then publishing the exact candidate without burying combat telegraphs.
 
 ## Completed Foundation
 
@@ -66,8 +66,9 @@ Exit conditions:
 - Optional image failure leaves the game playable; art never changes simulation timing or hit
   windows.
 
-Current status: `WAITING_FOR_VISUAL_DIRECTION`. Procedural gray-box presentation remains the
-accepted fallback.
+Current status: `IMPLEMENTED_PENDING_HUMAN_READABILITY`. Umans GLM 5.2 selected Coal-Twilight,
+the repository implements it with procedural CSS and PixiJS geometry, and no external raster asset
+is required. Automated browser smoke passed; the human readability conditions above remain open.
 
 ## Gate 3: Submission Hardening
 
@@ -85,11 +86,10 @@ Exit conditions:
 - Screenshot, short gameplay capture, tool list, asset provenance, and development notes are ready
   in [05-submission-package.md](05-submission-package.md) for the contest post.
 
-Current status: `BLOCKED_HOSTED_CI`. The authenticated GitHub Actions dashboard showed
-[CI #8](https://github.com/0disoft/shovefall/actions/runs/29948023175) for exact SHA
-`307c371fb43486af36f42e0bc7c9a0b031893c79`, but GitHub rejected the job before checkout because
-recent account payments failed or the Actions spending limit must be increased. Resolving that
-account-level gate and obtaining an exact-SHA green run is required before this gate can advance.
+Current status: `IN_PROGRESS`. After the Actions spending limit was increased,
+[CI #9](https://github.com/0disoft/shovefall/actions/runs/29948626757) attempt 2 completed successfully
+for exact SHA `7ded47cf72399bde49c9193ceaa9e6b76b4ebcf0`. The later Coal-Twilight candidate still requires
+its own exact-SHA green run, provider selection, deployment smoke, captures, and human evidence.
 
 ## Deferred Beyond the Submission
 

@@ -2,7 +2,7 @@
 
 - Status: Ready for provider selection; deployment not authorized by this document
 - Primary owner: Repository owner
-- Current product version: `0.17.0`
+- Current product version: `0.18.0`
 - Validation source: [../../VALIDATION.md](../../VALIDATION.md)
 - Submission package: [../product/05-submission-package.md](../product/05-submission-package.md)
 - Asset ledger: [../assets/README.md](../assets/README.md)

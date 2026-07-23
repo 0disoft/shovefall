@@ -1,12 +1,12 @@
 # Frontend Design
 
-- Status: Playable gray-box boundary implemented; visual direction pending
+- Status: Playable gray-box boundary implemented; Coal-Twilight visual direction adopted
 
 ## 0. Decision Summary
 
 Shovefall uses one static browser application. PixiJS 8 with WebGL owns the game world. Semantic HTML, DOM, and CSS own setup, settings, results, fatal errors, focus, and accessibility text. TypeScript 7, Vite 8, Bun, Oxlint, and Oxfmt form the accepted toolchain baseline.
 
-React, Vue, Svelte, Phaser, Tailwind CSS, a general state manager, and a general-purpose physics engine are not part of the initial baseline. The visual style, final palette, typography, generated image inventory, and animation polish remain undecided and must not be invented by implementation code.
+React, Vue, Svelte, Phaser, Tailwind CSS, a general state manager, and a general-purpose physics engine are not part of the initial baseline. The contest-submission visual direction is Coal-Twilight: a single dark palette shared by the DOM shell and the PixiJS canvas, built only from procedural shapes, text, and CSS. No external raster image assets are required. Generated image inventory remains empty by design; animation polish is limited to reduced-motion-respecting telegraphs already in the simulation contract.
 
 ## 1. Product Surface and Scope
 
@@ -38,7 +38,16 @@ The application composes simulation, AI, presentation, platform adapters, and co
 
 ## 8. Design Token Contract
 
-Semantic tokens must distinguish canvas background, stable tile, warning tile, void, human participant, bot participants, focus, cooldown readiness, mass state, success, danger, and disabled controls. The bootstrap uses a neutral gray-box palette with a blue focus and human marker only to make the shell testable. These values are not the final visual direction. Color cannot be the only signal for collapse warning, player identity, or action readiness.
+Semantic tokens must distinguish canvas background, stable tile, warning tile, void, human participant, bot participants, focus, cooldown readiness, mass state, success, danger, and disabled controls. The Coal-Twilight palette is the adopted contest-submission direction and is shared between the DOM shell (`src/styles.css`) and the PixiJS canvas (`src/presentation/arena-renderer.ts`):
+
+- Void surface: `#0c0f0e` (page), `#141816` (canvas and arena host)
+- Tile stable: `#2c3431`; tile warning: `#8a5a1e` stroke `#ffc857`; tile collapsing: `#6b2a24` stroke `#ff5c4d`
+- Human identity: `#3b8cff` focus accent, doubled as a guard ring plus diamond body stroke so the human is identifiable at 32 participants
+- Action telegraph: ShoveWindup amber `#ffc857`, ShoveActive red `#ff695c`, DodgeActive cyan `#68d8d6`, Stumbling magenta `#d58bea`
+- Mass ring scales stroke width with `massFactor`; iron-boots badge and feather chevron provide non-color mass signals
+- Success `#5fd6a6`, danger `#ff5c4d`, warning `#ffc857`, warm accent `#ff8f5c` for Mayhem mode
+
+Color is never the only signal for collapse warning, player identity, or action readiness. Collapse uses shape (diagonal cross, X-hatch), identity uses shape (diamond) plus a doubled ring, and action readiness uses direction-line width and color together.
 
 ## 9. Interaction and Accessibility Contract
 
@@ -70,7 +79,7 @@ The toolchain, deterministic simulation, gray-box movement and combat, browser s
 
 ## 16. Open Questions and Decisions Log
 
-Open decisions include the final visual direction, palette, typography, image asset inventory, hosting provider, exact supported viewport and browser matrix, and whether generated images are required. Procedural oscillator cues are the current optional audio baseline; recorded audio assets are not required. When visual assets become necessary, the implementation owner must give the repository owner a complete generation prompt instead of invoking a metered image-generation tool. Aesthetic frontend work should use the user-designated Umans GLM 5.2 path when available; if unavailable, prepare a self-contained handoff prompt for the user.
+Open decisions include typography, hosting provider, exact supported viewport and browser matrix, and whether post-submission generated images are required. The contest-submission visual direction (Coal-Twilight) and palette are adopted and do not require external raster assets. Procedural oscillator cues are the current optional audio baseline; recorded audio assets are not required. When visual assets become necessary beyond the procedural baseline, the implementation owner must give the repository owner a complete generation prompt instead of invoking a metered image-generation tool. Aesthetic frontend work should use the user-designated Umans GLM 5.2 path when available; if unavailable, prepare a self-contained handoff prompt for the user.
 
 ## Technology Reference
 

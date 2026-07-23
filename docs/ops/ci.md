@@ -1,6 +1,6 @@
 # CI
 
-- Status: GitHub Actions workflow configured; hosted jobs blocked by account billing or spending limit
+- Status: GitHub Actions workflow configured; exact-SHA hosted validation observed green
 
 ## Operational Contract
 
@@ -25,30 +25,27 @@ The deterministic 64-round audit and browser scale profile are intentionally exc
 
 ## Current Hosted Evidence
 
-On 2026-07-23, the authenticated GitHub Actions dashboard showed eight consecutive failed `CI`
-runs. The latest run was [CI #8](https://github.com/0disoft/shovefall/actions/runs/29948023175)
-for exact commit `307c371fb43486af36f42e0bc7c9a0b031893c79`. Its `Validate` job stopped after
-one second, before checkout or any repository validation ran, with GitHub's annotation:
+On 2026-07-23, [CI #9](https://github.com/0disoft/shovefall/actions/runs/29948626757)
+attempt 1 for exact commit `7ded47cf72399bde49c9193ceaa9e6b76b4ebcf0` was rejected before
+checkout because the account's Actions spending limit was exhausted. After the repository owner
+increased that limit, attempt 2 ran the same commit and completed `Validate` successfully.
 
-> The job was not started because recent account payments have failed or your spending limit needs
-> to be increased. Please check the 'Billing & plans' section in your settings.
-
-This is an account-level runner-admission failure, not evidence that `check` or `smoke-dist` failed.
-It still blocks hosted-candidate and contest-release promotion because no exact-SHA hosted
-validation completed. The repository owner must resolve GitHub Billing & plans or the Actions
-spending limit, then re-run the current exact SHA. A green rerun URL and conclusion must replace
-this blocker record before release.
+Provider job evidence reported successful setup, checkout, Bun setup, locked dependency install,
+merge-blocking checks, production-artifact Chrome exercise, and cleanup. This proves the workflow
+for exact SHA `7ded47cf72399bde49c9193ceaa9e6b76b4ebcf0`; it does not automatically cover later commits.
+The original failure is classified as an account-level runner-admission failure rather than a
+source, test, cache, artifact, or runner-image defect.
 
 ## Owners and Failure Handling
 
 - Primary owner: Repository owner
 - Backup owner: None assigned
-- Escalation path: Inspect the first failing stage and reproduce through the matching local validation name. For the current pre-job billing block, fix the account-level GitHub Billing & plans or Actions spending limit first; rerunning unchanged cannot exercise repository code.
+- Escalation path: Inspect the first failing stage and reproduce through the matching local validation name. A pre-job billing or spending-limit annotation must be resolved at the account boundary before rerunning unchanged code.
 
 Dependency or action download failure is infrastructure evidence, not a source failure. Chrome image drift is isolated to `smoke-dist`; deterministic simulation truth remains owned by Vitest and replay hashes. A compromised or retagged action is contained by full-SHA pins, while runner-image and registry availability remain external risks.
 
 ## Release Boundary
 
 - Required validation names: `check` and `smoke-dist`
-- Release blocker status: Exact SHA `307c371fb43486af36f42e0bc7c9a0b031893c79` is blocked before job start by GitHub account billing or the Actions spending limit; no release is currently authorized.
-- Remaining operational risk: A completed hosted run, branch protection, runner-image Chrome drift, physical-device coverage, cross-browser coverage, static hosting, and deployment smoke remain unproven until separately observed.
+- Release blocker status: Hosted validation is green for `7ded47cf72399bde49c9193ceaa9e6b76b4ebcf0`; every later release candidate requires its own exact-SHA run.
+- Remaining operational risk: Branch protection, runner-image Chrome drift, physical-device coverage, cross-browser coverage, static hosting, and deployment smoke remain unproven until separately observed.

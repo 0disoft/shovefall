@@ -111,9 +111,9 @@ function drawTile(graphics: Graphics, tile: TileState, transform: ArenaTransform
   const y = transform.originY + tile.row * transform.pitch;
   const radius = Math.max(2, transform.tileSize * 0.08);
   const fillColor =
-    tile.state === "Stable" ? 0x46524e : tile.state === "Warning" ? 0xb9852c : 0x8f3f38;
+    tile.state === "Stable" ? 0x2c3431 : tile.state === "Warning" ? 0x8a5a1e : 0x6b2a24;
   const strokeColor =
-    tile.state === "Stable" ? 0x5b6863 : tile.state === "Warning" ? 0xffd278 : 0xff796e;
+    tile.state === "Stable" ? 0x3d4743 : tile.state === "Warning" ? 0xffc857 : 0xff5c4d;
 
   graphics
     .roundRect(x, y, transform.tileSize, transform.tileSize, radius)
@@ -155,7 +155,7 @@ function drawDirection(
     .lineTo(x + participant.facing.x * length, y + participant.facing.y * length)
     .stroke({
       color: getActionColor(participant.action),
-      width: participant.action === "ShoveActive" ? 4 : 2,
+      width: participant.action === "ShoveActive" ? Math.max(4, radius * 0.35) : 2,
       cap: "round",
     });
 }
@@ -282,10 +282,16 @@ function drawParticipant(
   });
 
   if (isHuman) {
+    const guardRadius = visualRadius + Math.max(5, transform.tileSize * 0.14);
+    graphics.circle(x, y, guardRadius).stroke({
+      color: 0x3b8cff,
+      width: Math.max(2, transform.tileSize * 0.05),
+      alpha: reducedMotion ? 0.4 : 0.55,
+    });
     graphics
       .poly([x, y - visualRadius, x + visualRadius, y, x, y + visualRadius, x - visualRadius, y])
       .fill({ color: fillColor, alpha: participant.action === "Falling" ? 0.35 : 1 })
-      .stroke({ color: 0x3b8cff, width: 3 });
+      .stroke({ color: 0x3b8cff, width: Math.max(3, transform.tileSize * 0.07) });
   } else {
     graphics
       .circle(x, y, visualRadius)
@@ -415,7 +421,7 @@ export async function createArenaRenderer(
     antialias: true,
     autoDensity: true,
     autoStart: false,
-    background: "#101514",
+    background: "#141816",
     preference: "webgl",
     resolution: Math.min(window.devicePixelRatio, DEFAULT_RESOLUTION_CAP),
     resizeTo: host,
