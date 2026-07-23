@@ -245,6 +245,20 @@ async function useActiveItemFromAvailableDirection(
   );
 }
 
+async function useActiveItemAndWaitForCharge(
+  page: Page,
+  slotIndex: 0 | 1,
+  expectedChargeLabel: string,
+): Promise<void> {
+  const slot = page.locator(`#use-item-slot-${slotIndex}`);
+  await expect(slot).toBeEnabled();
+  const tickBeforeUse = await readSimulationTick(page);
+  await slot.click();
+  await page.clock.fastForward(20);
+  await expect.poll(() => readSimulationTick(page)).toBeGreaterThan(tickBeforeUse);
+  await expect(slot).toContainText(expectedChargeLabel);
+}
+
 test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) => {
   test.slow();
   await page.clock.install();
@@ -426,17 +440,19 @@ test("equips and places a Brick Bag wall in a fresh round", async ({ page }) => 
   await page.locator('input[name="startingItem"][value="iron-boots"]').uncheck();
   await page.locator('input[name="startingItem"][value="spring-glove"]').uncheck();
   await page.locator('input[name="startingItem"][value="brick-bag"]').check();
-  await page.locator('input[name="startingItem"][value="iron-boots"]').check();
+  await page.locator('input[name="startingItem"][value="boat"]').check();
   await page.locator("#initial-item-count").fill("0");
-  await expect(page.locator("#setup-summary")).toContainText("철 장화 + 벽돌 가방");
+  await expect(page.locator("#setup-summary")).toContainText("벽돌 가방 + 배");
   await saveSettings(page);
   await startGame(page);
   await finishInstalledClockCountdown(page);
-  await expect(page.locator("#use-item-slot-1")).toContainText("벽돌 가방 · 4회");
+  await expect(page.locator("#use-item-slot-0")).toContainText("벽돌 가방 · 4회");
+  await expect(page.locator("#use-item-slot-1")).toContainText("배 · 1회");
+  await useActiveItemAndWaitForCharge(page, 1, "배 · 0회");
 
-  await useActiveItemFromAvailableDirection(page, 1, "벽돌 가방 · 3회");
+  await useActiveItemFromAvailableDirection(page, 0, "벽돌 가방 · 3회");
 
-  await expect(page.locator("#use-item-slot-1")).toContainText("벽돌 가방 · 3회");
+  await expect(page.locator("#use-item-slot-0")).toContainText("벽돌 가방 · 3회");
 });
 
 test("equips and launches a Boat in a fresh round", async ({ page }) => {
@@ -489,14 +505,16 @@ test("selects Soap and places a slippery patch in a fresh production-safe round"
   await expect(page.getByText("3개 · 앞 칸에 미끄럼 함정", { exact: true })).toBeVisible();
   await page.locator('input[name="startingItem"][value="iron-boots"]').uncheck();
   await page.locator('input[name="startingItem"][value="spring-glove"]').uncheck();
-  await page.locator('input[name="startingItem"][value="iron-boots"]').check();
+  await page.locator('input[name="startingItem"][value="boat"]').check();
   await soapCard.check();
   await page.locator("#initial-item-count").fill("0");
-  await expect(page.locator("#setup-summary")).toContainText("철 장화 + 비누");
+  await expect(page.locator("#setup-summary")).toContainText("배 + 비누");
   await saveSettings(page);
   await startGame(page);
   await finishInstalledClockCountdown(page);
+  await expect(page.locator("#use-item-slot-0")).toContainText("배 · 1회");
   await expect(page.locator("#use-item-slot-1")).toContainText("비누 · 3회");
+  await useActiveItemAndWaitForCharge(page, 0, "배 · 0회");
 
   await useActiveItemFromAvailableDirection(page, 1, "비누 · 2회");
 
