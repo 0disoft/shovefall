@@ -10,7 +10,7 @@ import { SimulationWorld } from "../src/simulation/world";
 describe("simulation world contracts", () => {
   it("rejects invalid participant counts", () => {
     expect(() => normalizeGameConfig({ participantCount: 0 })).toThrow(SimulationContractError);
-    expect(() => normalizeGameConfig({ participantCount: 33 })).toThrow(SimulationContractError);
+    expect(() => normalizeGameConfig({ participantCount: 51 })).toThrow(SimulationContractError);
   });
 
   it("normalizes movement without changing valid directions", () => {

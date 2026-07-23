@@ -32,7 +32,7 @@ import {
 import { SimulationWorld, type ParticipantSpawnOverride } from "../src/simulation/world";
 import { getBalanceSignal, wilsonInterval } from "./item-balance-statistics";
 
-const PARTICIPANT_COUNTS = [8, 16, 24, 32] as const;
+const PARTICIPANT_COUNTS = [50] as const;
 const SAMPLE_COUNT = 16;
 const CONTROLLED_MASS_SAMPLE_COUNT = 24;
 const CONTROLLED_MASS_PARTICIPANT_COUNT = 16;
@@ -53,10 +53,7 @@ type ControlledItemGroup = (typeof CONTROLLED_ITEM_GROUPS)[number];
 const PRESET_BY_PARTICIPANT_COUNT: Readonly<
   Record<(typeof PARTICIPANT_COUNTS)[number], PresetName>
 > = Object.freeze({
-  8: "relaxed",
-  16: "default",
-  24: "crowded",
-  32: "chaos",
+  50: "massive",
 });
 
 const CONTROLLED_MASS_FACTORS: Readonly<Record<MassBand, number>> = Object.freeze({
@@ -891,7 +888,7 @@ function auditControlledCollapse() {
       difficulty: "normal",
       itemsEnabled: true,
       initialItemCount: getRecommendedInitialItemCount(CONTROLLED_COLLAPSE_PARTICIPANT_COUNT),
-      itemRespawnSeconds: getPresetItemRespawnSeconds("default"),
+      itemRespawnSeconds: getPresetItemRespawnSeconds("massive"),
     });
     const rounds = Array.from({ length: CONTROLLED_COLLAPSE_SAMPLE_COUNT }, (_, sampleIndex) =>
       auditRound(config, `collapse-audit-v1-${sampleIndex}`),

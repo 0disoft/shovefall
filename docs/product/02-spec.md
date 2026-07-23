@@ -21,11 +21,10 @@ The central promise is a readable comic reversal: a player can dodge an incoming
 
 ## Player and Mode Contract
 
-- Simulation and replay support: 4 through 32 participants, including the human.
-- Browser presets: 8, 16, 24, and 32 participants.
-- Recommended default: 16.
-- Normal competitive-quality range: 8 through 24.
-- Participants 25 through 32 are explicitly labeled `Mayhem`; input stability and deterministic rules still apply, but normal balance and readability are not promised.
+- Simulation and replay support: 4 through 50 participants, including the human; counts below 50 remain internal fixtures and focused diagnostic scenarios.
+- Browser mode: exactly 50 participants with Hard AI.
+- Starting weight: one integer slider from 50 through 100, mapped deterministically to the simulation's `0.8..1.4` mass factor with 75 as neutral.
+- Arena policy: a 44×36 procedural-island bound with five bounded lake attempts for the public mode.
 - Arena area, spawn spacing, item caps, and bot search bounds are derived from participant count and density rather than exposed as unrelated raw numbers.
 
 ## Gray-box Gate
@@ -36,9 +35,9 @@ Collapse, formal bots, 32-participant scale, items, audio, and final art cannot 
 
 ## MVP Scope
 
-- A menu-first game start plus bounded settings for participant count, item frequency, density, collapse speed, and bot difficulty.
+- A menu-first game start plus bounded settings for starting weight, two starting items, item frequency, and collapse speed; participant count and bot difficulty are fixed rather than exposed.
 - A concise in-game version history that records why each important product change was made and what players can notice.
-- One human and up to 31 bots using the same `ActorCommandV1` contract.
+- One human and 49 bots using the same `ActorCommandV1` contract.
 - A 60 Hz fixed-tick simulation independent of PixiJS and browser time.
 - Deterministic movement, hand-reach shove, dodge, stumble, mass, collision, support, falling, elimination credit, and stat progression.
 - Stable, warning, collapsing, and void tile states.
@@ -61,7 +60,7 @@ Collapse, formal bots, 32-participant scale, items, audio, and final art cannot 
 - At least 60% use or correctly explain dodge by the end of their second round.
 - At least 90% of observed deaths can be explained by the player immediately afterward.
 - At least 60% restart within five seconds of their first defeat, and at least half play three rounds.
-- The normal 16- and 24-participant builds target 60 fps on the named baseline device. The 32-participant Mayhem build must remain responsive at 45 fps or better.
+- The fixed 50-participant build targets 60 rendered frames per second on the named desktop baseline and must preserve 60 authoritative simulation ticks per requested second without backlog.
 
 These are pre-submission quality gates, not population-level market claims.
 
@@ -90,3 +89,5 @@ Version `0.23.0` opens on a menu containing only `게임 시작` and `설정`; t
 Version `0.24.0` changes presentation only. The arena is projected at a fixed 58-degree camera elevation while simulation, collision, support, AI, and replay coordinates remain top-down. Ground depth uses `sin(58°)` foreshortening; unsupported southern tile edges expose a bounded procedural cliff front, participants remain upright, and projected shadows, facing vectors, effects, depth ordering, and camera bounds share the same screen plane. Simulation remains `8.0.0` and content remains `4.0.0`.
 
 Version `0.25.0` adds a static `버전 기록` branch to the main menu. It lists the six meaningful product milestones from `0.20.0` through the current version in newest-first order, with one short reason and one player-visible change for each. The screen restores focus to its launcher through either `메뉴로` or `Escape`, updates the skip link target, never initializes the arena, and fails startup if the newest history record drifts from the product version. Simulation remains `8.0.0` and content remains `4.0.0`.
+
+Version `0.26.0` removes the public participant presets and bot-difficulty choice. Browser play is fixed at 50 participants with Hard AI; the human selects an integer starting weight from 50 through 100, with 75 mapping to neutral mass. The public arena expands to `44×36`, attempts five enclosed lakes of 3–10 tiles while preserving connected land, and still protects a connected 20% collapse core. At 25 or more participants, bot visuals keep body size, action color, facing, and stumble marks while omitting redundant per-frame decoration. The local 50-participant Chrome profile reports p95 `16.8 ms`, zero backlog, and 63.13 delivered ticks per requested simulation second. Product is `0.26.0`, simulation is `9.0.0`, content is `5.0.0`, and local playtest reports use schema v4.

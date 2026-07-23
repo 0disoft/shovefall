@@ -1,16 +1,11 @@
 import {
+  FORCED_BOT_DIFFICULTY,
+  FORCED_PLAYER_COUNT,
   getArenaSize,
-  getPresetCollapseSpeed,
-  getPresetItemRespawnSeconds,
-  getPresetPlayerCount,
-  getRecommendedInitialItemCount,
-  isBotDifficulty,
+  getStartingMassFactor,
   isCollapseSpeed,
-  isPresetName,
   normalizeSettings,
-  STARTING_MASS_FACTORS,
   type GameSettings,
-  type PresetName,
 } from "./settings";
 import { createGameSession, type GameSession, type SessionTelemetry } from "./game-session";
 import { createDebugTuningController, type DebugTuningController } from "./debug-tuning";
@@ -71,18 +66,6 @@ function requireElement<T extends Element>(
   return element;
 }
 
-function readSelectedPreset(form: HTMLFormElement): PresetName {
-  const data = new FormData(form);
-  const value = data.get("preset");
-  return typeof value === "string" && isPresetName(value) ? value : "default";
-}
-
-function readSelectedBotDifficulty(form: HTMLFormElement): GameSettings["botDifficulty"] {
-  const data = new FormData(form);
-  const value = data.get("botDifficulty");
-  return typeof value === "string" && isBotDifficulty(value) ? value : "normal";
-}
-
 function readSelectedCollapseSpeed(form: HTMLFormElement): GameSettings["collapseSpeed"] {
   const data = new FormData(form);
   const value = data.get("collapseSpeed");
@@ -96,11 +79,6 @@ function setSelectedCollapseSpeed(
   for (const input of form.querySelectorAll<HTMLInputElement>('input[name="collapseSpeed"]')) {
     input.checked = input.value === speed;
   }
-}
-
-function setPlayerCount(input: HTMLInputElement, output: HTMLOutputElement, value: number): void {
-  input.value = String(value);
-  output.value = `${value}명`;
 }
 
 function createRoundSeed(): string {
@@ -167,8 +145,8 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   const currentVersion = requireElement(root, "#current-version", HTMLOutputElement);
   const cancelSettingsButton = requireElement(root, "#cancel-settings", HTMLButtonElement);
   const form = requireElement(root, "#game-settings", HTMLFormElement);
-  const playerCount = requireElement(root, "#player-count", HTMLInputElement);
-  const playerCountValue = requireElement(root, "#player-count-value", HTMLOutputElement);
+  const startingWeight = requireElement(root, "#starting-weight", HTMLInputElement);
+  const startingWeightValue = requireElement(root, "#starting-weight-value", HTMLOutputElement);
   const initialItemCount = requireElement(root, "#initial-item-count", HTMLInputElement);
   const initialItemCountValue = requireElement(
     root,
@@ -220,7 +198,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   let audio: AudioFeedback | undefined;
   let debugTuning: DebugTuningController | undefined;
   let pointerControls: PointerControls | undefined;
-  let latestSettings = normalizeSettings({ playerCount: 16, preset: "default" });
+  let latestSettings = normalizeSettings();
   let latestGameplayTuning: GameplayTuningV1 = DEFAULT_GAMEPLAY_TUNING;
   let latestDebugTuningEnabled = false;
   let latestMasterSeed: string | undefined;
@@ -306,15 +284,11 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
 
   const readSettings = (): GameSettings => {
     const data = new FormData(form);
-    const startingMass = data.get("startingMass");
     return normalizeSettings({
-      playerCount: Number(playerCount.value),
-      preset: readSelectedPreset(form),
       initialItemCount: Number(initialItemCount.value),
       itemRespawnSeconds: Number(itemRespawn.value),
-      botDifficulty: readSelectedBotDifficulty(form),
       collapseSpeed: readSelectedCollapseSpeed(form),
-      startingMass: typeof startingMass === "string" ? startingMass : "normal",
+      startingWeight: Number(startingWeight.value),
       startingItems: data
         .getAll("startingItem")
         .filter((value): value is string => typeof value === "string"),
@@ -332,64 +306,37 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
       selectedCount === 2 ? "선택 완료. 다른 걸 고르려면 하나를 먼저 빼." : "하나를 더 골라.";
   };
 
-  const setRecommendedInitialItems = (participantCount: number): void => {
-    initialItemCount.max = String(Math.ceil(participantCount * 0.5));
-    initialItemCount.value = String(getRecommendedInitialItemCount(participantCount));
-  };
-
   const renderSettingsSummary = (): void => {
     const settings = readSettings();
-    const isMayhem = settings.playerCount >= 25;
     initialItemCount.max = String(Math.ceil(settings.playerCount * 0.5));
     initialItemCount.value = String(settings.initialItemCount);
     initialItemCountValue.value = `${settings.initialItemCount}개`;
     itemRespawn.value = String(settings.itemRespawnSeconds);
     itemRespawnValue.value =
       settings.itemRespawnSeconds === 0 ? "추가 없음" : `${settings.itemRespawnSeconds}초`;
-    const difficultyLabel =
-      settings.botDifficulty === "easy"
-        ? "AI 쉬움"
-        : settings.botDifficulty === "hard"
-          ? "AI 어려움"
-          : "AI 보통";
     const collapseLabel =
       settings.collapseSpeed === "slow"
         ? "붕괴 느림"
         : settings.collapseSpeed === "fast"
           ? "붕괴 빠름"
           : "붕괴 보통";
-    const startingMassLabel =
-      settings.startingMass === "light"
-        ? "가벼움"
-        : settings.startingMass === "heavy"
-          ? "무거움"
-          : "보통";
+    startingWeight.value = String(settings.startingWeight);
+    startingWeightValue.value = String(settings.startingWeight);
     const loadoutLabel = settings.startingItems.map((item) => ITEM_LABELS[item]).join(" + ");
-    setupSummary.textContent = `${settings.playerCount}명 · ${difficultyLabel} · ${collapseLabel} · 내 체급 ${startingMassLabel} · ${loadoutLabel} · 맵 아이템 ${settings.initialItemCount}개 · ${
+    setupSummary.textContent = `${FORCED_PLAYER_COUNT}명 · AI 어려움 · ${collapseLabel} · 몸무게 ${settings.startingWeight} · ${loadoutLabel} · 맵 아이템 ${settings.initialItemCount}개 · ${
       settings.itemRespawnSeconds === 0
         ? "추가 생성 없음"
         : `${settings.itemRespawnSeconds}초마다 1개`
-    }${isMayhem ? " · 난장판" : ""}`;
-    root.dataset.scale = isMayhem ? "mayhem" : "normal";
+    }`;
+    root.dataset.scale = "mayhem";
   };
 
   debugTuning = createDebugTuningController(root, { onChange(): void {} });
 
   const hydrateSettingsForm = (): void => {
-    for (const input of form.querySelectorAll<HTMLInputElement>('input[name="preset"]')) {
-      input.checked = input.value === latestSettings.preset;
-    }
-
-    for (const input of form.querySelectorAll<HTMLInputElement>('input[name="botDifficulty"]')) {
-      input.checked = input.value === latestSettings.botDifficulty;
-    }
-
-    for (const input of form.querySelectorAll<HTMLInputElement>('input[name="startingMass"]')) {
-      input.checked = input.value === latestSettings.startingMass;
-    }
-
     setSelectedCollapseSpeed(form, latestSettings.collapseSpeed);
-    setPlayerCount(playerCount, playerCountValue, latestSettings.playerCount);
+    startingWeight.value = String(latestSettings.startingWeight);
+    startingWeightValue.value = String(latestSettings.startingWeight);
     initialItemCount.max = String(Math.ceil(latestSettings.playerCount * 0.5));
     initialItemCount.value = String(latestSettings.initialItemCount);
     itemRespawn.value = String(latestSettings.itemRespawnSeconds);
@@ -596,7 +543,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     root.dataset.round = "countdown";
     delete root.dataset.humanEliminated;
     root.dataset.initialItems = String(settings.initialItemCount);
-    root.dataset.botDifficulty = settings.botDifficulty;
+    root.dataset.botDifficulty = FORCED_BOT_DIFFICULTY;
     root.dataset.collapseSpeed = settings.collapseSpeed;
     root.dataset.gameplayTuning = latestDebugTuningEnabled ? "debug" : "default";
     arenaActions.hidden = false;
@@ -609,18 +556,13 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
       `${settings.playerCount}명이 참가하는 바닥이 사라지는 술래잡기 아레나. WASD, 방향키, 마우스 드래그 또는 터치 조이스틱으로 이동해.`,
     );
     session.start(createConfig(settings), latestMasterSeed, latestGameplayTuning, {
-      massFactor: STARTING_MASS_FACTORS[settings.startingMass],
+      massFactor: getStartingMassFactor(settings.startingWeight),
       startingItems: settings.startingItems,
     });
     arenaHost.focus();
   };
 
-  playerCount.addEventListener("input", () => {
-    setPlayerCount(playerCount, playerCountValue, Number(playerCount.value));
-    setRecommendedInitialItems(Number(playerCount.value));
-    renderSettingsSummary();
-  });
-
+  startingWeight.addEventListener("input", renderSettingsSummary);
   initialItemCount.addEventListener("input", renderSettingsSummary);
   itemRespawn.addEventListener("input", renderSettingsSummary);
 
@@ -629,13 +571,6 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
 
     if (!(target instanceof HTMLInputElement)) {
       return;
-    }
-
-    if (target.name === "preset" && isPresetName(target.value)) {
-      setPlayerCount(playerCount, playerCountValue, getPresetPlayerCount(target.value));
-      setRecommendedInitialItems(getPresetPlayerCount(target.value));
-      itemRespawn.value = String(getPresetItemRespawnSeconds(target.value));
-      setSelectedCollapseSpeed(form, getPresetCollapseSpeed(target.value));
     }
 
     if (target.name === "startingItem") {

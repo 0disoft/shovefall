@@ -283,9 +283,9 @@ export function normalizeGameConfig(input: GameConfigInput): GameConfigV1 {
     : 0;
   const itemRespawnSeconds = itemsEnabled ? Math.round(input.itemRespawnSeconds ?? 5) : 0;
 
-  assertIntegerInRange(participantCount, "participantCount", 4, 32);
-  assertIntegerInRange(arenaColumns, "arenaColumns", 7, 31);
-  assertIntegerInRange(arenaRows, "arenaRows", 7, 31);
+  assertIntegerInRange(participantCount, "participantCount", 4, 50);
+  assertIntegerInRange(arenaColumns, "arenaColumns", 7, 48);
+  assertIntegerInRange(arenaRows, "arenaRows", 7, 48);
   assertIntegerInRange(roundLimitSeconds, "roundLimitSeconds", 1, 120);
   assertIntegerInRange(initialItemCount, "initialItemCount", 0, maximumItemCount);
   assertIntegerInRange(itemRespawnSeconds, "itemRespawnSeconds", 0, 30);
@@ -329,7 +329,7 @@ export function createNeutralCommand(tick: Tick, actorId: ActorId): ActorCommand
 
 export function normalizeActorCommand(command: ActorCommandV1): ActorCommandV1 {
   assertIntegerInRange(command.tick, "command.tick", 0, Number.MAX_SAFE_INTEGER);
-  assertIntegerInRange(command.actorId, "command.actorId", 1, 32);
+  assertIntegerInRange(command.actorId, "command.actorId", 1, 50);
 
   if (
     command.upgradeStat !== null &&

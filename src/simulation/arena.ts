@@ -145,10 +145,10 @@ function carveLakes(
     tiles.filter(({ state }) => state === "Stable").map(({ tileId }) => tileId),
   );
   const minimumLandCount = Math.max(config.participantCount * 5, Math.ceil(landIds.size * 0.72));
-  const lakeCount = Math.max(
-    1,
-    Math.min(3, Math.floor(Math.min(config.arenaColumns, config.arenaRows) / 8)),
-  );
+  const lakeCount =
+    config.participantCount >= 40
+      ? 5
+      : Math.max(1, Math.min(3, Math.floor(Math.min(config.arenaColumns, config.arenaRows) / 8)));
   const carvedIds = new Set<TileId>();
 
   for (let lakeIndex = 0; lakeIndex < lakeCount; lakeIndex += 1) {
@@ -165,7 +165,10 @@ function carveLakes(
       ),
       random,
     );
-    const targetSize = Math.min(7, 2 + (random.nextUint32() % 5));
+    const targetSize =
+      config.participantCount >= 40
+        ? 3 + (random.nextUint32() % 8)
+        : Math.min(7, 2 + (random.nextUint32() % 5));
     let accepted: readonly TileId[] | undefined;
 
     for (const seed of seeds) {

@@ -1,29 +1,31 @@
+import { ITEM_DEFINITION_IDS } from "../content/items";
 import type { BotDifficulty, ItemDefinitionId } from "../simulation/contracts";
 
-export const PRESET_NAMES = ["relaxed", "default", "crowded", "chaos"] as const;
-export const BOT_DIFFICULTIES = ["easy", "normal", "hard"] as const;
+export const FORCED_PLAYER_COUNT = 50;
+export const FORCED_BOT_DIFFICULTY = "hard" as const satisfies BotDifficulty;
+export const PRESET_NAMES = ["massive"] as const;
+export const BOT_DIFFICULTIES = [FORCED_BOT_DIFFICULTY] as const;
+export const DEFAULT_STARTING_WEIGHT = 75;
 
 export type PresetName = (typeof PRESET_NAMES)[number];
-export type StartingMass = "light" | "normal" | "heavy";
+export type CollapseSpeed = "slow" | "normal" | "fast";
 
-export const STARTING_MASS_FACTORS: Readonly<Record<StartingMass, number>> = Object.freeze({
-  light: 0.85,
-  normal: 1,
-  heavy: 1.25,
-});
+export const STARTING_WEIGHT_LIMITS = Object.freeze({ minimum: 50, maximum: 100 });
 export const DEFAULT_STARTING_ITEMS = Object.freeze([
   "iron-boots",
   "spring-glove",
 ] as const satisfies readonly ItemDefinitionId[]);
+export const PLAYER_COUNT_LIMITS = Object.freeze({ minimum: 4, maximum: FORCED_PLAYER_COUNT });
+export const ITEM_RESPAWN_LIMITS = Object.freeze({ minimum: 0, maximum: 30 });
 
 export interface GameSettings {
-  readonly playerCount: number;
+  readonly playerCount: typeof FORCED_PLAYER_COUNT;
   readonly preset: PresetName;
   readonly collapseSpeed: CollapseSpeed;
   readonly initialItemCount: number;
   readonly itemRespawnSeconds: number;
-  readonly botDifficulty: BotDifficulty;
-  readonly startingMass: StartingMass;
+  readonly botDifficulty: typeof FORCED_BOT_DIFFICULTY;
+  readonly startingWeight: number;
   readonly startingItems: readonly ItemDefinitionId[];
 }
 
@@ -32,68 +34,33 @@ export interface ArenaSize {
   readonly rows: number;
 }
 
-export type CollapseSpeed = "slow" | "normal" | "fast";
-
-export const PLAYER_COUNT_LIMITS = Object.freeze({
-  minimum: 4,
-  maximum: 32,
-});
-
-export const ITEM_RESPAWN_LIMITS = Object.freeze({ minimum: 0, maximum: 30 });
-
-const PRESET_PLAYER_COUNTS: Readonly<Record<PresetName, number>> = Object.freeze({
-  relaxed: 8,
-  default: 16,
-  crowded: 24,
-  chaos: 32,
-});
-
-const PRESET_COLLAPSE_SPEEDS: Readonly<Record<PresetName, CollapseSpeed>> = Object.freeze({
-  relaxed: "slow",
-  default: "normal",
-  crowded: "normal",
-  chaos: "fast",
-});
-
-const PRESET_ITEM_RESPAWN_SECONDS: Readonly<Record<PresetName, number>> = Object.freeze({
-  relaxed: 7,
-  default: 5,
-  crowded: 4,
-  chaos: 3,
-});
-
 export function isPresetName(value: string): value is PresetName {
-  return PRESET_NAMES.some((preset) => preset === value);
+  return value === "massive";
 }
 
-export function isBotDifficulty(value: string): value is BotDifficulty {
-  return BOT_DIFFICULTIES.some((difficulty) => difficulty === value);
+export function isBotDifficulty(value: string): value is typeof FORCED_BOT_DIFFICULTY {
+  return value === FORCED_BOT_DIFFICULTY;
 }
 
 export function isCollapseSpeed(value: string): value is CollapseSpeed {
   return value === "slow" || value === "normal" || value === "fast";
 }
 
-export function isStartingMass(value: string): value is StartingMass {
-  return value === "light" || value === "normal" || value === "heavy";
-}
-
 function normalizeStartingItems(
   values: readonly string[] | undefined,
 ): readonly ItemDefinitionId[] {
-  const selected = [...new Set(values ?? [])].filter(
-    (value): value is ItemDefinitionId =>
-      value === "iron-boots" || value === "feather" || value === "spring-glove",
+  const selected = [...new Set(values ?? [])].filter((value): value is ItemDefinitionId =>
+    ITEM_DEFINITION_IDS.some((definitionId) => definitionId === value),
   );
   return Object.freeze(selected.length === 2 ? selected : [...DEFAULT_STARTING_ITEMS]);
 }
 
-export function getPresetPlayerCount(preset: PresetName): number {
-  return PRESET_PLAYER_COUNTS[preset];
+export function getPresetPlayerCount(_preset: PresetName): typeof FORCED_PLAYER_COUNT {
+  return FORCED_PLAYER_COUNT;
 }
 
-export function getPresetCollapseSpeed(preset: PresetName): CollapseSpeed {
-  return PRESET_COLLAPSE_SPEEDS[preset];
+export function getPresetCollapseSpeed(_preset: PresetName): CollapseSpeed {
+  return "normal";
 }
 
 export function getRecommendedInitialItemCount(playerCount: number): number {
@@ -104,8 +71,8 @@ export function getMaximumItemCount(playerCount: number): number {
   return Math.ceil(normalizePlayerCount(playerCount) * 0.5);
 }
 
-export function getPresetItemRespawnSeconds(preset: PresetName): number {
-  return PRESET_ITEM_RESPAWN_SECONDS[preset];
+export function getPresetItemRespawnSeconds(_preset: PresetName): number {
+  return 5;
 }
 
 export function normalizeInitialItemCount(value: number, playerCount: number): number {
@@ -116,9 +83,9 @@ export function normalizeInitialItemCount(value: number, playerCount: number): n
   return Math.min(getMaximumItemCount(playerCount), Math.max(0, Math.round(value)));
 }
 
-export function normalizeItemRespawnSeconds(value: number, preset: PresetName): number {
+export function normalizeItemRespawnSeconds(value: number, _preset: PresetName): number {
   if (!Number.isFinite(value)) {
-    return getPresetItemRespawnSeconds(preset);
+    return getPresetItemRespawnSeconds("massive");
   }
 
   return Math.min(
@@ -129,43 +96,66 @@ export function normalizeItemRespawnSeconds(value: number, preset: PresetName): 
 
 export function normalizePlayerCount(value: number): number {
   if (!Number.isFinite(value)) {
-    return PRESET_PLAYER_COUNTS.default;
+    return FORCED_PLAYER_COUNT;
   }
 
-  const rounded = Math.round(value);
-  return Math.min(PLAYER_COUNT_LIMITS.maximum, Math.max(PLAYER_COUNT_LIMITS.minimum, rounded));
+  return Math.min(
+    PLAYER_COUNT_LIMITS.maximum,
+    Math.max(PLAYER_COUNT_LIMITS.minimum, Math.round(value)),
+  );
 }
 
-export function normalizeSettings(input: {
-  readonly playerCount: number;
-  readonly preset: string;
-  readonly initialItemCount?: number;
-  readonly itemRespawnSeconds?: number;
-  readonly botDifficulty?: string;
-  readonly collapseSpeed?: string;
-  readonly startingMass?: string;
-  readonly startingItems?: readonly string[];
-}): GameSettings {
-  const preset = isPresetName(input.preset) ? input.preset : "default";
-  const playerCount = normalizePlayerCount(input.playerCount);
+export function normalizeStartingWeight(value: number): number {
+  if (!Number.isFinite(value)) {
+    return DEFAULT_STARTING_WEIGHT;
+  }
 
+  return Math.min(
+    STARTING_WEIGHT_LIMITS.maximum,
+    Math.max(STARTING_WEIGHT_LIMITS.minimum, Math.round(value)),
+  );
+}
+
+export function getStartingMassFactor(weight: number): number {
+  const normalized = normalizeStartingWeight(weight);
+
+  if (normalized <= DEFAULT_STARTING_WEIGHT) {
+    return 0.8 + ((normalized - STARTING_WEIGHT_LIMITS.minimum) / 25) * 0.2;
+  }
+
+  return 1 + ((normalized - DEFAULT_STARTING_WEIGHT) / 25) * 0.4;
+}
+
+export function normalizeSettings(
+  input: {
+    readonly initialItemCount?: number;
+    readonly itemRespawnSeconds?: number;
+    readonly collapseSpeed?: string;
+    readonly startingWeight?: number;
+    readonly startingItems?: readonly string[];
+    readonly playerCount?: number;
+    readonly preset?: string;
+    readonly botDifficulty?: string;
+    readonly startingMass?: string;
+  } = {},
+): GameSettings {
   return Object.freeze({
-    playerCount,
-    preset,
+    playerCount: FORCED_PLAYER_COUNT,
+    preset: "massive",
     collapseSpeed:
       input.collapseSpeed !== undefined && isCollapseSpeed(input.collapseSpeed)
         ? input.collapseSpeed
-        : getPresetCollapseSpeed(preset),
-    initialItemCount: normalizeInitialItemCount(input.initialItemCount ?? Number.NaN, playerCount),
-    itemRespawnSeconds: normalizeItemRespawnSeconds(input.itemRespawnSeconds ?? Number.NaN, preset),
-    botDifficulty:
-      input.botDifficulty !== undefined && isBotDifficulty(input.botDifficulty)
-        ? input.botDifficulty
-        : "normal",
-    startingMass:
-      input.startingMass !== undefined && isStartingMass(input.startingMass)
-        ? input.startingMass
-        : "normal",
+        : getPresetCollapseSpeed("massive"),
+    initialItemCount: normalizeInitialItemCount(
+      input.initialItemCount ?? Number.NaN,
+      FORCED_PLAYER_COUNT,
+    ),
+    itemRespawnSeconds: normalizeItemRespawnSeconds(
+      input.itemRespawnSeconds ?? Number.NaN,
+      "massive",
+    ),
+    botDifficulty: FORCED_BOT_DIFFICULTY,
+    startingWeight: normalizeStartingWeight(input.startingWeight ?? Number.NaN),
     startingItems: normalizeStartingItems(input.startingItems),
   });
 }
@@ -185,5 +175,9 @@ export function getArenaSize(playerCount: number): ArenaSize {
     return Object.freeze({ columns: 28, rows: 23 });
   }
 
-  return Object.freeze({ columns: 31, rows: 26 });
+  if (normalizedCount <= 32) {
+    return Object.freeze({ columns: 31, rows: 26 });
+  }
+
+  return Object.freeze({ columns: 44, rows: 36 });
 }

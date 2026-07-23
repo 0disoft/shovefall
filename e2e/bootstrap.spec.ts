@@ -167,27 +167,32 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await versionHistoryButton.click();
   await expect(page.locator("#app")).toHaveAttribute("data-screen", "history");
   await expect(page.getByRole("heading", { level: 2, name: "버전 기록" })).toBeFocused();
-  await expect(page.locator("#current-version")).toHaveText("v0.25.0");
-  await expect(page.locator("#version-history-list > li")).toHaveCount(6);
-  await expect(page.getByText("왜 바꿨냐면")).toHaveCount(6);
+  await expect(page.locator("#current-version")).toHaveText("v0.26.0");
+  await expect(page.locator("#version-history-list > li")).toHaveCount(7);
+  await expect(page.getByText("왜 바꿨냐면")).toHaveCount(7);
   await expect(page.locator("#arena-host canvas")).toBeHidden();
   await page.keyboard.press("Escape");
   await expect(page.locator("#app")).toHaveAttribute("data-screen", "menu");
   await expect(versionHistoryButton).toBeFocused();
   await openSettings(page);
-  await page.getByLabel("쉬움").check();
+  await expect(page.locator('input[name="preset"]')).toHaveCount(0);
+  await expect(page.locator('input[name="botDifficulty"]')).toHaveCount(0);
+  await expect(page.locator("#player-count")).toHaveCount(0);
+  await expect(page.locator("#starting-weight-value")).toHaveText("75");
+  await expect(page.locator("#setup-summary")).toHaveText(
+    "50명 · AI 어려움 · 붕괴 보통 · 몸무게 75 · 철 장화 + 스프링 장갑 · 맵 아이템 17개 · 5초마다 1개",
+  );
+  await page.locator("#starting-weight").fill("58");
+  await page.locator('input[name="collapseSpeed"][value="slow"]').check();
   await page.getByRole("button", { name: "취소" }).click();
   await openSettings(page);
-  await expect(page.locator('input[name="botDifficulty"][value="normal"]')).toBeChecked();
+  await expect(page.locator("#starting-weight-value")).toHaveText("75");
   await expect(page.locator("#setup-summary")).toHaveText(
-    "16명 · AI 보통 · 붕괴 보통 · 내 체급 보통 · 철 장화 + 스프링 장갑 · 맵 아이템 6개 · 5초마다 1개",
+    "50명 · AI 어려움 · 붕괴 보통 · 몸무게 75 · 철 장화 + 스프링 장갑 · 맵 아이템 17개 · 5초마다 1개",
   );
-  await page.getByLabel("어려움").check();
+  await page.locator("#starting-weight").fill("58");
   await page.locator('input[name="collapseSpeed"][value="slow"]').check();
-  await page.locator("#player-count").fill("8");
-  await expect(page.locator("#setup-summary")).toContainText("AI 어려움");
-  await page.getByLabel("쉬움").check();
-  await expect(page.locator("#setup-summary")).toContainText("AI 쉬움");
+  await expect(page.locator("#setup-summary")).toContainText("몸무게 58");
   await expect(page.locator("#setup-summary")).toContainText("붕괴 느림");
 
   await saveSettings(page);
@@ -217,8 +222,8 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await expect(page.locator("#tick-value")).toHaveText("0");
   await expect(page.locator("#game-telemetry")).toBeVisible();
   await expect(page.locator("#developer-telemetry")).not.toHaveAttribute("open", "");
-  await expect(page.locator("#app")).toHaveAttribute("data-initial-items", "3");
-  await expect(page.locator("#app")).toHaveAttribute("data-bot-difficulty", "easy");
+  await expect(page.locator("#app")).toHaveAttribute("data-initial-items", "17");
+  await expect(page.locator("#app")).toHaveAttribute("data-bot-difficulty", "hard");
   await expect(page.locator("#app")).toHaveAttribute("data-collapse-speed", "slow");
   await expect(page.locator("#renderer-status")).toHaveText("일시 정지");
   await page.waitForTimeout(600);
@@ -305,6 +310,7 @@ test("offers a working touch joystick and action buttons on a narrow viewport", 
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
+  await installFixedRoundSeed(page, 1, 0);
   await page.goto("/");
   const versionHistoryButton = page.getByRole("button", { name: "버전 기록", exact: true });
   await versionHistoryButton.click();
@@ -321,6 +327,10 @@ test("offers a working touch joystick and action buttons on a narrow viewport", 
   await page.getByRole("button", { name: "메뉴로", exact: true }).click();
   await expect(page.locator("#app")).toHaveAttribute("data-screen", "menu");
   await expect(versionHistoryButton).toBeFocused();
+  await openSettings(page);
+  await page.locator("#starting-weight").fill("100");
+  await page.locator('input[name="collapseSpeed"][value="slow"]').check();
+  await saveSettings(page);
   await startGame(page);
   await expect(page.locator("#app")).toHaveAttribute("data-round", "active");
 
@@ -406,19 +416,16 @@ test("applies and copies bounded debug tuning for the next round", async ({ page
 });
 
 test("completes a collapsing round and starts a fresh world", async ({ page }) => {
+  test.slow();
   await page.clock.install();
   await installClipboardCapture(page);
   await page.goto("/");
   await openSettings(page);
 
-  await page.getByLabel("난장판").check();
-  await expect(page.locator("#setup-summary")).toContainText("32명");
-  await expect(page.locator("#setup-summary")).toContainText("난장판");
-  await expect(page.locator("#initial-item-count-value")).toHaveText("11개");
-  await expect(page.locator("#item-respawn-value")).toHaveText("3초");
-  await page.locator("#player-count").fill("8");
-  await expect(page.locator("#player-count-value")).toHaveText("8명");
-  await expect(page.locator("#initial-item-count-value")).toHaveText("3개");
+  await expect(page.locator("#setup-summary")).toContainText("50명 · AI 어려움");
+  await expect(page.locator("#initial-item-count-value")).toHaveText("17개");
+  await expect(page.locator("#item-respawn-value")).toHaveText("5초");
+  await page.locator('input[name="collapseSpeed"][value="fast"]').check();
   await saveSettings(page);
   await startGame(page);
 
@@ -437,10 +444,10 @@ test("completes a collapsing round and starts a fresh world", async ({ page }) =
   );
   const parsedReport: unknown = JSON.parse(copiedReport ?? "null");
   expect(parsedReport).toMatchObject({
-    schemaVersion: "shovefall-playtest-round/v3",
+    schemaVersion: "shovefall-playtest-round/v4",
     seed: await page.locator("#seed-value").textContent(),
     stateHash: await page.locator("#hash-value").textContent(),
-    settings: { participantCount: 8 },
+    settings: { participantCount: 50, startingWeight: 75 },
     result: { completedTick: Number(await page.locator("#tick-value").textContent()) },
   });
 
@@ -477,8 +484,7 @@ test("allows an immediate fresh restart after a deterministic human defeat", asy
   await installFixedRoundSeed(page, 8, 1);
   await page.goto("/");
   await openSettings(page);
-  await page.getByLabel("난장판").check();
-  await page.locator("#player-count").fill("8");
+  await page.locator('input[name="collapseSpeed"][value="fast"]').check();
   await saveSettings(page);
   await startGame(page);
 

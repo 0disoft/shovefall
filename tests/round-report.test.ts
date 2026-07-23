@@ -6,12 +6,10 @@ import { DEFAULT_GAMEPLAY_TUNING } from "../src/simulation/tuning";
 import { SimulationWorld } from "../src/simulation/world";
 
 const SETTINGS = normalizeSettings({
-  playerCount: 16,
-  preset: "default",
   initialItemCount: 6,
   itemRespawnSeconds: 5,
-  botDifficulty: "hard",
   collapseSpeed: "slow",
+  startingWeight: 75,
 });
 
 function createFrame(round: RenderFrameV1["round"]): RenderFrameV1 {
@@ -38,16 +36,16 @@ describe("playtest round reports", () => {
     );
 
     expect(report).toMatchObject({
-      schemaVersion: "shovefall-playtest-round/v3",
+      schemaVersion: "shovefall-playtest-round/v4",
       seed: "0000000800000000",
       settings: {
-        preset: "default",
-        participantCount: 16,
+        preset: "massive",
+        participantCount: 50,
         botDifficulty: "hard",
         collapseSpeed: "slow",
         initialItemCount: 6,
         itemRespawnSeconds: 5,
-        startingMass: "normal",
+        startingWeight: 75,
         startingItems: ["iron-boots", "spring-glove"],
       },
       gameplayTuning: DEFAULT_GAMEPLAY_TUNING,
@@ -64,7 +62,7 @@ describe("playtest round reports", () => {
         },
       },
     });
-    expect(report.versions.product).toBe("0.25.0");
+    expect(report.versions.product).toBe("0.26.0");
     expect(JSON.parse(serializePlaytestRoundReport(report))).toEqual(report);
   });
 

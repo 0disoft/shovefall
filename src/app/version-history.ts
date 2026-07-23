@@ -9,6 +9,12 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.26.0",
+    title: "50명이 뛰는 더 큰 섬",
+    reason: "모드가 많아질수록 뭘 골라야 할지만 복잡해지고, 작은 섬은 금방 끝났어.",
+    change: "50인전 하나로 모으고 섬과 호수를 키웠어. 몸무게는 50부터 100까지 직접 고를 수 있어.",
+  }),
+  Object.freeze({
     version: "0.25.0",
     title: "바뀐 이유도 남기기",
     reason: "게임은 계속 달라졌는데, 플레이하는 사람은 그 과정을 볼 곳이 없었어.",

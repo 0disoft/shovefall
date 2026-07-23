@@ -21,28 +21,11 @@ interface BrowserHeapUsage {
 
 const PROFILE_CASES = Object.freeze([
   {
-    participantCount: 16,
-    preset: "default",
-    seed: "0000001000000000",
-    seedWords: [16, 0],
-    p95Budget: 20,
-    tickRateBudget: 55,
-  },
-  {
-    participantCount: 24,
-    preset: "crowded",
-    seed: "0000001800000000",
-    seedWords: [24, 0],
-    p95Budget: 20,
-    tickRateBudget: 55,
-  },
-  {
-    participantCount: 32,
-    preset: "chaos",
-    seed: "0000002000000001",
-    seedWords: [32, 1],
-    p95Budget: 22,
-    tickRateBudget: 42,
+    participantCount: 50,
+    seed: "0000003200000000",
+    seedWords: [50, 0],
+    p95Budget: 25,
+    tickRateBudget: 45,
   },
 ] as const);
 
@@ -142,9 +125,6 @@ async function profileCases(page: Page, index: number, profiles: FrameProfile[])
   }
 
   await page.getByRole("button", { name: "설정", exact: true }).click();
-  await page.locator(`input[name="preset"][value="${profileCase.preset}"]`).check();
-  await page.getByLabel("어려움").check();
-  await page.locator("#player-count").fill(String(profileCase.participantCount));
   await page.evaluate((seedWords) => {
     (
       window as Window & { shovefallProfileSeedWords?: readonly number[] }
@@ -184,7 +164,7 @@ async function collectHeapUsage(client: CDPSession): Promise<BrowserHeapUsage> {
   return client.send("Runtime.getHeapUsage");
 }
 
-test("@profile measures production 16, 24, and 32 participant browser budgets", async ({
+test("@profile measures the production 50-participant browser budget", async ({
   page,
   context,
 }) => {
@@ -216,12 +196,10 @@ test("@profile measures production 16, 24, and 32 participant browser budgets", 
   await client.send("HeapProfiler.enable");
   const heapBefore = await collectHeapUsage(client);
   await page.getByRole("button", { name: "설정", exact: true }).click();
-  await page.getByLabel("난장판").check();
-  await page.locator("#player-count").fill("32");
   await page.evaluate(() => {
     (
       window as Window & { shovefallProfileSeedWords?: readonly number[] }
-    ).shovefallProfileSeedWords = [32, 0];
+    ).shovefallProfileSeedWords = [50, 0];
   });
   await page.getByRole("button", { name: "설정 저장" }).click();
   await page.getByRole("button", { name: "게임 시작" }).click();

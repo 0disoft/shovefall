@@ -338,6 +338,30 @@ function drawParticipant(
     ? 0xf6f5ef
     : (BOT_COLORS[(participant.actorId - 2) % BOT_COLORS.length] ?? 0xb8c1bd);
   const actionColor = getActionColor(participant.action);
+
+  if (mayhem && !isHuman) {
+    graphics
+      .circle(x, y, visualRadius)
+      .fill({ color: fillColor, alpha: participant.action === "Falling" ? 0.35 : 1 })
+      .stroke({
+        color: actionColor,
+        width: Math.max(1.5, participant.massFactor * 1.4),
+      });
+    drawDirection(graphics, participant, x, y, visualRadius);
+
+    if (participant.action === "Stumbling" || participant.action === "Falling") {
+      const markerSize = visualRadius * 0.48;
+      graphics
+        .moveTo(x - markerSize, y - markerSize)
+        .lineTo(x + markerSize, y + markerSize)
+        .moveTo(x + markerSize, y - markerSize)
+        .lineTo(x - markerSize, y + markerSize)
+        .stroke({ color: actionColor, width: 2, cap: "round" });
+    }
+
+    return;
+  }
+
   const equippedAndActiveEffects = [...participant.inventory, ...participant.effects];
   const hasIronBoots = equippedAndActiveEffects.some(
     ({ definitionId }) => definitionId === "iron-boots",

@@ -74,9 +74,9 @@ affected field into `Assisted`, which does not count as a pass.
 
 ## Session B: Paired Pacing
 
-Use returning players or run this only after Session A is complete. Hold participant count at 16,
-bot difficulty at Normal, recommended items at 6, and item respawn at 5 seconds. Compare Normal and
-Slow collapse on the same build. Alternate order by player code so the first condition does not
+Use returning players or run this only after Session A is complete. Keep the public 50-participant
+Hard-AI rule and the same starting weight and items in both rounds. Compare Normal and Slow collapse
+on the same build. Alternate order by player code so the first condition does not
 always receive the learning disadvantage:
 
 - Odd player codes: Normal, then Slow.
@@ -107,8 +107,8 @@ not by low collection alone.
 
 ## Session D: Readability Stress
 
-After the first-time batch, use experienced testers for one 24-participant round and optionally one
-32-participant Mayhem round. Ask them to identify their character before moving, then record:
+After the first-time batch, use experienced testers for the fixed 50-participant round. Ask them to
+identify their character before moving, then record:
 
 - whether human identity was lost during combat;
 - whether shove windup and dodge were distinguishable;
@@ -116,8 +116,9 @@ After the first-time batch, use experienced testers for one 24-participant round
 - whether each item type could be distinguished;
 - whether the final cause of death was explainable.
 
-Quality promotion applies to 16 and 24 participants. The 32-participant result is a stress report,
-not a requirement that Mayhem look as clean as the normal modes.
+The 50-participant result is the quality gate because no smaller public fallback exists. A failure
+cannot be waived as a stress-only Mayhem result; preserve the seed and classify identity, telegraph,
+camera, crowding, or performance as the owning cause.
 
 ## Batch Summary
 

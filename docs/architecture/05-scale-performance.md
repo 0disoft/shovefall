@@ -3,6 +3,18 @@
 - Status: Accepted local automated baseline; physical and cross-browser evidence pending
 - Owner: Repository owner
 
+## 0.26.0 Fixed-50 Profile
+
+On 2026-07-23, the 44×36 public island with five lake attempts and Hard AI completed a 7,200-tick headless run in `51,344.41 ms`, or `2.34×` real time. AI p95 was `11.538 ms`, simulation p95 was `6.702 ms`, the spatial candidate/full-pair ratio was `0.1679`, and one combined step exceeded 100 ms. The `51,408,098`-byte heap delta is observational because the harness does not force garbage collection.
+
+The first production-Chrome attempt rebuilt the full decorative bot treatment every frame and measured a `33.4 ms` p95 despite delivering `63.99` ticks per requested simulation second with zero backlog. That failed profile is retained as the optimization trigger, not accepted by weakening the budget. After 25+ participant bots kept mass-scaled size, action color, facing, and stumble/fall marks while dropping redundant shadows, collision rings, mass glyphs, and item badges, the same seed measured:
+
+| Participants | Seed | Frame p95 | Maximum frame | Delivered ticks / requested simulation second | Backlog | Long frames over 100 ms |
+|---:|---|---:|---:|---:|---:|---:|
+| 50 | `0000003200000000` | 16.8 ms | 33.4 ms | 63.13 | 0 | 0 |
+
+Twenty immediate 50-participant restarts followed by CDP garbage collection increased used heap by `2,848,504` bytes and left one canvas. This is one local headless Chrome run at 1280×720 and effective DPR 1, not physical-device, cross-browser, or field evidence.
+
 ## 0.20.0 Expanded-arena Profile
 
 On 2026-07-23, Hard-difficulty 7,200-tick headless runs passed at 16/24/32 participants with simulation p95 `1.704 / 3.133 / 4.064 ms`, AI p95 `0.440 / 0.794 / 1.107 ms`, and zero steps over 100 ms. Production Chrome p95 frames were `16.8 / 16.8 / 16.9 ms`, maximum backlog was zero, and twenty restarts produced a `2,340,924`-byte collected heap delta. The larger `15×12`, `18×14`, and `20×15` grids therefore remain inside the existing local frame and tick budgets.

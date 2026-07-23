@@ -2,7 +2,7 @@
 
 - Status: GitHub Pages deployment and public Chrome smoke verified
 - Primary owner: Repository owner
-- Current product version: `0.25.0`
+- Current product version: `0.26.0`
 - Validation source: [../../VALIDATION.md](../../VALIDATION.md)
 - Submission package: [../product/05-submission-package.md](../product/05-submission-package.md)
 - Asset ledger: [../assets/README.md](../assets/README.md)
@@ -18,6 +18,8 @@ Product `0.23.0` and simulation `8.0.0` split the entry flow into menu, saved se
 Product `0.24.0` changes only PixiJS presentation: the local camera now renders a fixed 58-degree elevation with projected tile depth, bounded southern cliff fronts, upright participant shadows, projected action vectors, and Y-depth ordering. Simulation stays `8.0.0`, content stays `4.0.0`, and replay hashes are unchanged apart from the recorded product envelope. Exact-SHA Chrome smoke and hosted Pages evidence must be refreshed before this visual candidate replaces `0.23.0`.
 
 Product `0.25.0` adds a no-network version-history screen to the main menu. Six concise records explain why the `0.20.0`–`0.25.0` milestones happened and what changed, while `Escape`, `메뉴로`, skip-link routing, and launcher-focus restoration preserve the existing keyboard contract. Simulation stays `8.0.0`, content stays `4.0.0`, and replay hashes remain unchanged apart from the product-version envelope. Exact-SHA Chrome smoke and hosted Pages evidence must be refreshed before this candidate replaces `0.24.0`.
+
+Product `0.26.0` fixes public play at 50 participants and Hard AI, replaces categorical mass with a 50–100 starting-weight slider, expands the island to `44×36`, and attempts five bounded lakes. Simulation advances to `9.0.0`, content to `5.0.0`, and local playtest reports to v4. The local production artifact passes all eight Chrome smoke paths; the fixed-seed 50-participant browser profile reports p95 `16.8 ms`, zero backlog, and a `2,848,504`-byte forced-GC heap delta after 20 restarts. Hosted exact-SHA Pages and public-URL smoke remain pending for this candidate.
 
 The current local tree passes merge-blocking checks, the production Chrome smoke suite, the 7,200-tick headless scale profile, and the 16/24/32 production Chrome profile after shoreline geometry caching. The monolithic controlled round audit timed out at its configured 300-second boundary without a result, so current procedural-island balance remains pending a split bounded audit and human playtest. Hosted evidence starts only after the exact commit is pushed and the Pages workflow succeeds.
 

@@ -12,9 +12,9 @@
 
 ## Round Configuration
 
-`GameConfigV1` is normalized before world creation. It supports 4 through 32 participants, arenas from 7 through 31 columns and rows, a maximum 120-second replay horizon, slow, normal, or fast collapse, normal density, Easy/Normal/Hard bot difficulty, item policy version 2, a bounded initial item count, a participant-derived simultaneous cap, and a zero-to-thirty-second spawn interval. The same raw values normalize identically, and disabled items require zero initial and spawn values. The raw contract defaults to the browser's 16-participant 12×10 normal configuration and Normal bot difficulty.
+`GameConfigV1` is normalized before world creation. It supports 4 through 50 participants, arenas from 7 through 48 columns and rows, a maximum 120-second replay horizon, slow, normal, or fast collapse, normal density, Easy/Normal/Hard bot difficulty, item policy version 2, a bounded initial item count, a participant-derived simultaneous cap, and a zero-to-thirty-second spawn interval. The same raw values normalize identically, and disabled items require zero initial and spawn values. Browser settings force 50 participants and Hard difficulty; smaller counts and other difficulty values remain simulation fixtures and diagnostic inputs.
 
-The browser's normal-density arena policy derives 10×8 tiles for 4–8 participants, 12×10 for 9–16, 16×12 for 17–24, and 17×13 for 25–32. The final Mayhem tier grows only one row and column because adding more world area there would shrink actors and telegraphs further on the fixed canvas. This policy increases first-contact distance for smaller tiers without modifying combat strength.
+The browser's public arena policy derives a 44×36 bound for 50 participants and presents it through a player-follow camera rather than shrinking it to the viewport. Smaller internal tiers retain bounded arena derivation for tests and controlled audits. Five lake cuts are attempted at 50 participants; each accepts 3–10 interior tiles only when the remaining land stays connected and above its minimum budget.
 
 ## Participant
 
@@ -63,6 +63,8 @@ Product `0.23.0` and simulation `8.0.0` enlarge the browser tiers to `22×17`, `
 Product `0.24.0` keeps simulation `8.0.0` and content `4.0.0`. A pure presentation projection maps the top-down world to a fixed 58-degree camera elevation, adds bounded cliff fronts and upright shadows, orders participants by interpolated depth, and computes camera clamps from projected bounds. The projection cannot enter simulation state or hashes; replay fixtures change only because the product version is recorded in their envelope.
 
 Product `0.25.0` keeps simulation `8.0.0` and content `4.0.0`. `VERSION_HISTORY` is immutable product metadata owned by the application layer; its newest record must equal `PRODUCT_VERSION`. The DOM shell derives a static history screen from it without adding simulation state, persistence, URL state, network calls, or replay behavior. Replay fixtures change only because their product-version envelope advances.
+
+Product `0.26.0`, simulation `9.0.0`, and content `5.0.0` raise authoritative participant and arena bounds to 50 and 48, add the 44×36 public-island policy with five bounded lake attempts, expand the registered starting-item catalog, force the browser to 50 Hard-AI participants, and replace categorical starting mass with the deterministic 50–100 weight input. Counts below 50 remain valid only for fixtures and focused diagnostics. Replay fixtures advance their version envelope; existing sub-40 deterministic hashes remain unchanged because the new lake branch begins at 40 participants.
 
 ## Version Ownership
 

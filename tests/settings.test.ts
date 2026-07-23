@@ -1,132 +1,102 @@
 import { describe, expect, it } from "vitest";
 import {
+  FORCED_BOT_DIFFICULTY,
+  FORCED_PLAYER_COUNT,
   getArenaSize,
   getMaximumItemCount,
   getPresetCollapseSpeed,
   getPresetItemRespawnSeconds,
   getPresetPlayerCount,
   getRecommendedInitialItemCount,
+  getStartingMassFactor,
   isBotDifficulty,
   isCollapseSpeed,
   normalizeInitialItemCount,
   normalizeItemRespawnSeconds,
   normalizePlayerCount,
   normalizeSettings,
+  normalizeStartingWeight,
 } from "../src/app/settings";
 
 describe("settings normalization", () => {
-  it("clamps participant counts to the supported range", () => {
+  it("keeps internal participant fixtures bounded through the forced browser count", () => {
     expect(normalizePlayerCount(-10)).toBe(4);
     expect(normalizePlayerCount(12.4)).toBe(12);
-    expect(normalizePlayerCount(100)).toBe(32);
+    expect(normalizePlayerCount(100)).toBe(50);
+    expect(normalizePlayerCount(Number.NaN)).toBe(50);
   });
 
-  it("replaces non-finite participant counts with the default", () => {
-    expect(normalizePlayerCount(Number.NaN)).toBe(16);
-    expect(normalizePlayerCount(Number.POSITIVE_INFINITY)).toBe(16);
-  });
-
-  it("falls back from unknown presets without discarding a valid count", () => {
-    expect(normalizeSettings({ playerCount: 20, preset: "unknown" })).toEqual({
-      playerCount: 20,
-      preset: "default",
+  it("forces every browser setting input to the single 50-player hard-AI mode", () => {
+    expect(
+      normalizeSettings({ playerCount: 8, preset: "relaxed", botDifficulty: "easy" }),
+    ).toMatchObject({
+      playerCount: FORCED_PLAYER_COUNT,
+      preset: "massive",
+      botDifficulty: FORCED_BOT_DIFFICULTY,
       collapseSpeed: "normal",
-      initialItemCount: 7,
+      startingWeight: 75,
+      initialItemCount: 17,
       itemRespawnSeconds: 5,
-      botDifficulty: "normal",
-      startingMass: "normal",
-      startingItems: ["iron-boots", "spring-glove"],
     });
+    expect(getPresetPlayerCount("massive")).toBe(50);
+    expect(getPresetCollapseSpeed("massive")).toBe("normal");
+    expect(getPresetItemRespawnSeconds("massive")).toBe(5);
+    expect(isBotDifficulty("hard")).toBe(true);
+    expect(isBotDifficulty("normal")).toBe(false);
   });
 
-  it("uses preset collapse defaults and accepts an explicit bounded override", () => {
+  it("accepts only bounded collapse-speed overrides", () => {
     expect(isCollapseSpeed("slow")).toBe(true);
     expect(isCollapseSpeed("normal")).toBe(true);
     expect(isCollapseSpeed("fast")).toBe(true);
     expect(isCollapseSpeed("instant")).toBe(false);
-    expect(normalizeSettings({ playerCount: 8, preset: "relaxed" })).toMatchObject({
+    expect(normalizeSettings({ collapseSpeed: "slow" })).toMatchObject({
       collapseSpeed: "slow",
     });
-    expect(
-      normalizeSettings({ playerCount: 16, preset: "default", collapseSpeed: "slow" }),
-    ).toMatchObject({ collapseSpeed: "slow" });
-    expect(
-      normalizeSettings({ playerCount: 16, preset: "default", collapseSpeed: "instant" }),
-    ).toMatchObject({ collapseSpeed: "normal" });
-  });
-
-  it("accepts only the bounded bot difficulty values", () => {
-    expect(isBotDifficulty("easy")).toBe(true);
-    expect(isBotDifficulty("normal")).toBe(true);
-    expect(isBotDifficulty("hard")).toBe(true);
-    expect(isBotDifficulty("impossible")).toBe(false);
-    expect(
-      normalizeSettings({ playerCount: 16, preset: "default", botDifficulty: "hard" }),
-    ).toMatchObject({ botDifficulty: "hard" });
-    expect(
-      normalizeSettings({ playerCount: 16, preset: "default", botDifficulty: "cheat" }),
-    ).toMatchObject({ botDifficulty: "normal" });
-  });
-
-  it("keeps preset defaults explicit", () => {
-    expect(getPresetPlayerCount("default")).toBe(16);
-    expect(getPresetPlayerCount("relaxed")).toBe(8);
-    expect(getPresetPlayerCount("crowded")).toBe(24);
-    expect(getPresetPlayerCount("chaos")).toBe(32);
-    expect(getPresetCollapseSpeed("default")).toBe("normal");
-    expect(getPresetCollapseSpeed("relaxed")).toBe("slow");
-    expect(getPresetCollapseSpeed("crowded")).toBe("normal");
-    expect(getPresetCollapseSpeed("chaos")).toBe("fast");
-    expect(getPresetItemRespawnSeconds("default")).toBe(5);
-    expect(getPresetItemRespawnSeconds("relaxed")).toBe(7);
-    expect(getPresetItemRespawnSeconds("crowded")).toBe(4);
-    expect(getPresetItemRespawnSeconds("chaos")).toBe(3);
-  });
-
-  it("derives and bounds the item policy at scale tiers", () => {
-    expect(getRecommendedInitialItemCount(4)).toBe(2);
-    expect(getRecommendedInitialItemCount(24)).toBe(8);
-    expect(getRecommendedInitialItemCount(25)).toBe(9);
-    expect(getRecommendedInitialItemCount(32)).toBe(11);
-    expect(getMaximumItemCount(4)).toBe(2);
-    expect(getMaximumItemCount(32)).toBe(16);
-    expect(normalizeInitialItemCount(99, 12)).toBe(6);
-    expect(normalizeInitialItemCount(Number.NaN, 12)).toBe(4);
-    expect(normalizeItemRespawnSeconds(-1, "default")).toBe(0);
-    expect(normalizeItemRespawnSeconds(99, "default")).toBe(30);
-    expect(normalizeItemRespawnSeconds(Number.NaN, "chaos")).toBe(3);
-  });
-
-  it("derives larger arenas at the participant tier boundaries", () => {
-    expect(getArenaSize(4)).toEqual({ columns: 22, rows: 17 });
-    expect(getArenaSize(8)).toEqual({ columns: 22, rows: 17 });
-    expect(getArenaSize(9)).toEqual({ columns: 25, rows: 20 });
-    expect(getArenaSize(24)).toEqual({ columns: 28, rows: 23 });
-    expect(getArenaSize(25)).toEqual({ columns: 31, rows: 26 });
-    expect(getArenaSize(32)).toEqual({ columns: 31, rows: 26 });
-  });
-
-  it("normalizes the human starting mass and exactly two unique items", () => {
-    expect(
-      normalizeSettings({
-        playerCount: 16,
-        preset: "default",
-        startingMass: "light",
-        startingItems: ["feather", "spring-glove"],
-      }),
-    ).toMatchObject({
-      startingMass: "light",
-      startingItems: ["feather", "spring-glove"],
+    expect(normalizeSettings({ collapseSpeed: "instant" })).toMatchObject({
+      collapseSpeed: "normal",
     });
+  });
+
+  it("maps the 50 through 100 weight slider onto the full mass contract", () => {
+    expect(normalizeStartingWeight(1)).toBe(50);
+    expect(normalizeStartingWeight(74.6)).toBe(75);
+    expect(normalizeStartingWeight(500)).toBe(100);
+    expect(normalizeStartingWeight(Number.NaN)).toBe(75);
+    expect(getStartingMassFactor(50)).toBeCloseTo(0.8, 10);
+    expect(getStartingMassFactor(75)).toBeCloseTo(1, 10);
+    expect(getStartingMassFactor(100)).toBeCloseTo(1.4, 10);
+  });
+
+  it("derives and bounds the item policy for fifty participants", () => {
+    expect(getRecommendedInitialItemCount(50)).toBe(17);
+    expect(getMaximumItemCount(50)).toBe(25);
+    expect(normalizeInitialItemCount(99, 50)).toBe(25);
+    expect(normalizeInitialItemCount(Number.NaN, 50)).toBe(17);
+    expect(normalizeItemRespawnSeconds(-1, "massive")).toBe(0);
+    expect(normalizeItemRespawnSeconds(99, "massive")).toBe(30);
+    expect(normalizeItemRespawnSeconds(Number.NaN, "massive")).toBe(5);
+  });
+
+  it("keeps fixture tiers and expands the forced fifty-player island", () => {
+    expect(getArenaSize(4)).toEqual({ columns: 22, rows: 17 });
+    expect(getArenaSize(16)).toEqual({ columns: 25, rows: 20 });
+    expect(getArenaSize(24)).toEqual({ columns: 28, rows: 23 });
+    expect(getArenaSize(32)).toEqual({ columns: 31, rows: 26 });
+    expect(getArenaSize(50)).toEqual({ columns: 44, rows: 36 });
+  });
+
+  it("keeps exactly two unique items from the nine-item catalog", () => {
     expect(
       normalizeSettings({
-        playerCount: 16,
-        preset: "default",
-        startingMass: "giant",
-        startingItems: ["feather", "feather", "unknown"],
+        startingWeight: 58,
+        startingItems: ["wind-blast", "boat"],
       }),
     ).toMatchObject({
-      startingMass: "normal",
+      startingWeight: 58,
+      startingItems: ["wind-blast", "boat"],
+    });
+    expect(normalizeSettings({ startingItems: ["feather", "feather", "unknown"] })).toMatchObject({
       startingItems: ["iron-boots", "spring-glove"],
     });
   });

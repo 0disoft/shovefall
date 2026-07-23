@@ -105,8 +105,8 @@ function parseConfig(value: unknown): GameConfigV1 {
     throw new SimulationContractError("configVersion is unsupported");
   }
 
-  if (config.participantCount < 4 || config.participantCount > 32) {
-    throw new SimulationContractError("config participant count is outside 4..32");
+  if (config.participantCount < 4 || config.participantCount > 50) {
+    throw new SimulationContractError("config participant count is outside 4..50");
   }
 
   assertIntegerInRange(config.arenaColumns, "config.arenaColumns", 7, 31);

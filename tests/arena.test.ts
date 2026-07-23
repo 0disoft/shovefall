@@ -124,12 +124,35 @@ describe("procedural island arena", () => {
     expect(spawnIds.every((tileId) => stableIds.has(tileId))).toBe(true);
   });
 
+  it("carves several enclosed lakes into the expanded fifty-player island", () => {
+    const massiveConfig = normalizeGameConfig({
+      participantCount: 50,
+      arenaColumns: 44,
+      arenaRows: 36,
+    });
+
+    for (let seed = 0; seed < 12; seed += 1) {
+      const tiles = createArenaTiles(
+        massiveConfig,
+        new RandomStreamSet(`massive-lakes-${seed}`).get("arena"),
+      );
+      const landIds = new Set(
+        tiles.filter(({ state }) => state === "Stable").map(({ tileId }) => tileId),
+      );
+      const lakes = getLakeComponents(tiles, 44, 36);
+
+      expect(getComponents(landIds)).toHaveLength(1);
+      expect(lakes.length).toBeGreaterThanOrEqual(3);
+    }
+  });
+
   it("gives every larger preset strictly more playable land despite independent coast seeds", () => {
     const tiers = [
       { participantCount: 8, arenaColumns: 22, arenaRows: 17 },
       { participantCount: 16, arenaColumns: 25, arenaRows: 20 },
       { participantCount: 24, arenaColumns: 28, arenaRows: 23 },
       { participantCount: 32, arenaColumns: 31, arenaRows: 26 },
+      { participantCount: 50, arenaColumns: 44, arenaRows: 36 },
     ] as const;
 
     for (let seed = 0; seed < 24; seed += 1) {
@@ -144,6 +167,7 @@ describe("procedural island arena", () => {
       expect(landCounts[1]).toBeGreaterThan(landCounts[0] ?? 0);
       expect(landCounts[2]).toBeGreaterThan(landCounts[1] ?? 0);
       expect(landCounts[3]).toBeGreaterThan(landCounts[2] ?? 0);
+      expect(landCounts[4]).toBeGreaterThan(landCounts[3] ?? 0);
     }
   });
 
@@ -152,6 +176,7 @@ describe("procedural island arena", () => {
     { participantCount: 16, arenaColumns: 25, arenaRows: 20 },
     { participantCount: 24, arenaColumns: 28, arenaRows: 23 },
     { participantCount: 32, arenaColumns: 31, arenaRows: 26 },
+    { participantCount: 50, arenaColumns: 44, arenaRows: 36 },
   ])(
     "keeps the $participantCount-player island connected through its protected 20% core",
     ({ participantCount, arenaColumns, arenaRows }) => {

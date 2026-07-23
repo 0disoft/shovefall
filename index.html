@@ -45,53 +45,28 @@
           </div>
 
           <form id="game-settings" class="settings-form">
-            <fieldset class="preset-fieldset">
-              <legend>플레이 방식</legend>
-              <label class="preset-card">
-                <input type="radio" name="preset" value="relaxed" />
-                <span>
-                  <strong>소규모</strong>
-                  <small>여유 있는 8인전</small>
-                </span>
-              </label>
-              <label class="preset-card">
-                <input type="radio" name="preset" value="default" checked />
-                <span>
-                  <strong>기본</strong>
-                  <small>균형 잡힌 16인전</small>
-                </span>
-              </label>
-              <label class="preset-card">
-                <input type="radio" name="preset" value="crowded" />
-                <span>
-                  <strong>대규모</strong>
-                  <small>빽빽한 24인전</small>
-                </span>
-              </label>
-              <label class="preset-card">
-                <input type="radio" name="preset" value="chaos" />
-                <span>
-                  <strong>난장판</strong>
-                  <small>32명이 한꺼번에</small>
-                </span>
-              </label>
-            </fieldset>
+            <p class="settings-summary">50명 · AI 어려움</p>
 
-            <fieldset class="preset-fieldset loadout-fieldset">
-              <legend>시작 몸무게</legend>
-              <label class="preset-card">
-                <input type="radio" name="startingMass" value="light" />
-                <span><strong>가벼움</strong><small>빠르지만 잘 밀려</small></span>
-              </label>
-              <label class="preset-card">
-                <input type="radio" name="startingMass" value="normal" checked />
-                <span><strong>보통</strong><small>속도와 버티기의 균형</small></span>
-              </label>
-              <label class="preset-card">
-                <input type="radio" name="startingMass" value="heavy" />
-                <span><strong>무거움</strong><small>느리지만 잘 버텨</small></span>
-              </label>
-            </fieldset>
+            <div class="player-control">
+              <div class="player-control__label">
+                <label for="starting-weight">몸무게</label>
+                <output id="starting-weight-value" for="starting-weight">75</output>
+              </div>
+              <input
+                id="starting-weight"
+                name="startingWeight"
+                type="range"
+                min="50"
+                max="100"
+                step="1"
+                value="75"
+              />
+              <div class="range-labels" aria-hidden="true">
+                <span>50</span>
+                <span>75</span>
+                <span>100</span>
+              </div>
+            </div>
 
             <fieldset id="starting-items" class="preset-fieldset loadout-fieldset">
               <legend>시작 아이템 <span>2개 선택</span></legend>
@@ -111,53 +86,6 @@
                 라운드를 시작할 때 들고 갈 두 개를 골라.
               </p>
             </fieldset>
-
-            <fieldset class="preset-fieldset">
-              <legend>AI 난이도</legend>
-              <label class="preset-card">
-                <input type="radio" name="botDifficulty" value="easy" />
-                <span>
-                  <strong>쉬움</strong>
-                  <small>천천히 반응해</small>
-                </span>
-              </label>
-              <label class="preset-card">
-                <input type="radio" name="botDifficulty" value="normal" checked />
-                <span>
-                  <strong>보통</strong>
-                  <small>기본 판단 속도</small>
-                </span>
-              </label>
-              <label class="preset-card">
-                <input type="radio" name="botDifficulty" value="hard" />
-                <span>
-                  <strong>어려움</strong>
-                  <small>빈틈을 빠르게 노려</small>
-                </span>
-              </label>
-            </fieldset>
-
-            <div class="player-control">
-              <div class="player-control__label">
-                <label for="player-count">참가 인원</label>
-                <output id="player-count-value" for="player-count">16명</output>
-              </div>
-              <input
-                id="player-count"
-                name="playerCount"
-                type="range"
-                min="8"
-                max="32"
-                step="8"
-                value="16"
-              />
-              <div class="range-labels" aria-hidden="true">
-                <span>8</span>
-                <span>16</span>
-                <span>24</span>
-                <span>32</span>
-              </div>
-            </div>
 
             <fieldset class="preset-fieldset">
               <legend>바닥 붕괴</legend>
@@ -187,16 +115,16 @@
             <div class="player-control">
               <div class="player-control__label">
                 <label for="initial-item-count">시작 아이템</label>
-                <output id="initial-item-count-value" for="initial-item-count">6개</output>
+                <output id="initial-item-count-value" for="initial-item-count">17개</output>
               </div>
               <input
                 id="initial-item-count"
                 name="initialItemCount"
                 type="range"
                 min="0"
-                max="8"
+                max="25"
                 step="1"
-                value="6"
+                value="17"
               />
             </div>
 
@@ -217,7 +145,7 @@
             </div>
 
             <p id="setup-summary" class="settings-summary" aria-live="polite">
-              16명 · AI 보통 · 붕괴 보통 · 시작 아이템 6개 · 5초마다 1개
+              50명 · AI 어려움 · 붕괴 보통 · 몸무게 75 · 시작 아이템 17개 · 5초마다 1개
             </p>
 
             <details id="debug-tuning" class="debug-tuning" data-debug-tuning="disabled">

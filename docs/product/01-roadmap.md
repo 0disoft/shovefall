@@ -13,8 +13,8 @@ Ship a short browser party-action game whose chaos stays readable. The submissio
 must let a first-time player move, shove, dodge, understand most defeats, and restart without an
 account, tutorial wall, backend, or hidden probability deciding combat.
 
-The implementation already proves deterministic rules, production presets, local browser boot,
-bounded 32-participant workload, and the Coal-Twilight procedural visual direction. The critical
+The implementation already proves deterministic rules, fixed 50-participant browser boot,
+bounded local 50-participant workload, and the Coal-Twilight procedural visual direction. The critical
 path is no longer adding systems. It is proving the current systems and final-art readability with
 people, then publishing the exact candidate without burying combat telegraphs.
 
@@ -23,9 +23,8 @@ people, then publishing the exact candidate without burying combat telegraphs.
 - [x] Provider-neutral Vite and PixiJS static application with a pure 60 Hz simulation.
 - [x] Movement, shove, dodge, missed-shove stumble, simultaneous impulses, support loss, falling,
       results, and fresh-world restart.
-- [x] Production presets for 8, 16, 24, and 32 participants, with 16 as Quick Start and 32 labeled
-      Mayhem.
-- [x] Easy, Normal, and Hard utility-bot reaction profiles without bot-only physics advantages.
+- [x] One public 50-participant mode with a 44×36 procedural island and five bounded lake attempts.
+- [x] Hard utility-bot reaction profile fixed for public play without bot-only physics advantages.
 - [x] Slow, Normal, and Fast collapse controls with deterministic warning and collapse schedules.
 - [x] Iron Boots, Feather, and Spring Glove with a bounded 3/2/1 outer-ring placement preference.
 - [x] Deterministic round, mass, item-grant, collapse-pacing, headless scale, and production-Chrome
@@ -47,7 +46,7 @@ Exit conditions:
 - Edge-item attempts are experienced as a visible voluntary risk. Unreadable spawns, accidental
   pickups, and forced deaths are separated from chosen greed.
 - Human identity, shove windup, dodge window, collapse warning, item type, and result state remain
-  distinguishable at 16 and 24 participants.
+  distinguishable in the fixed 50-participant mode.
 
 Current status: `PENDING_EXTERNAL_PLAYTEST`. Automated audits are supporting evidence only.
 

@@ -4,7 +4,7 @@ import { createNeutralCommand, normalizeGameConfig } from "../src/simulation/con
 import { SimulationWorld } from "../src/simulation/world";
 
 const PROFILE_TICKS = 120 * 60;
-const PARTICIPANT_COUNTS = [16, 24, 32] as const;
+const PARTICIPANT_COUNTS = [50] as const;
 
 interface Percentiles {
   readonly p50: number;
@@ -120,11 +120,7 @@ function profileParticipantCount(participantCount: number) {
 }
 
 const profiles = PARTICIPANT_COUNTS.map(profileParticipantCount);
-const thresholds = new Map([
-  [16, 4],
-  [24, 7],
-  [32, 7],
-]);
+const thresholds = new Map([[50, 10]]);
 const ok = profiles.every(
   (profile) =>
     profile.simulationMilliseconds.p95 <= (thresholds.get(profile.participantCount) ?? 0) &&

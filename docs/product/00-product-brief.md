@@ -22,7 +22,7 @@ participants away. The game is successful when that chaos looks earned rather th
 
 - A contest voter or casual desktop or mobile player who should understand the game within seconds.
 - No installation, account, tutorial wall, backend, or online opponent.
-- 8, 16, 24, and 32 participant presets; 16 is Quick Start and 32 is explicit Mayhem.
+- One fixed 50-participant Hard-AI mode; smaller counts remain diagnostic fixtures, not public choices.
 - A hard 75-second round limit with immediate restart after defeat or victory.
 - WASD, arrow-key, mouse-drag, touch-joystick, or gamepad movement; keyboard, touch, and gamepad shove and dodge actions.
 
@@ -55,7 +55,8 @@ physical-device support, cross-browser behavior, hosted CI, or deployment. Human
 
 ## Current State
 
-The gray-box game, production presets, selectable bot difficulty and collapse speed, three items,
-procedural feedback, local production smoke, balance screens, and 16/24/32 performance profiles are
-implemented. Human playtest evidence, final visual direction, approved asset inventory, named
-device/browser coverage, exact-SHA hosted checks, and final HTTPS hosting remain open release work.
+The gray-box game, fixed 50-participant Hard-AI mode, selectable collapse speed, three map items,
+nine starting-item definitions, procedural feedback, local production smoke, balance screens, and
+50-participant performance profiles are implemented. Active-item commands, human playtest evidence,
+approved asset inventory, named device/browser coverage, refreshed exact-SHA hosted checks, and the
+final HTTPS candidate remain open release work.

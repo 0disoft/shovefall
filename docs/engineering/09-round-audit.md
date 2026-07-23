@@ -1,5 +1,14 @@
 # Round and strategy audit
 
+## Fixed-50 `0.26.0` status
+
+- Product: `0.26.0`
+- Simulation: `9.0.0`
+- Content: `5.0.0`
+- Public bound: `44×36`, five bounded lake attempts
+
+The main round and strategy harnesses now target 50 participants. The fresh headless performance profile completed 7,200 Hard-AI ticks at `2.34×` real time with AI p95 `11.538 ms`, simulation p95 `6.702 ms`, and one combined step over 100 ms. The local production-Chrome profile measured p95 `16.8 ms`, zero backlog, no frame over 100 ms, and a `2,848,504`-byte forced-GC heap increase after 20 restarts. Full fixed-50 round and strategy balance results have not yet been accepted; the historical tables below remain provenance only and cannot justify current tuning.
+
 ## Procedural-island `0.22.0` validation status
 
 - Product: `0.22.0`

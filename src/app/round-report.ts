@@ -8,8 +8,8 @@ import {
   SIMULATION_VERSION,
 } from "../simulation/versions";
 
-export interface PlaytestRoundReportV3 {
-  readonly schemaVersion: "shovefall-playtest-round/v3";
+export interface PlaytestRoundReportV4 {
+  readonly schemaVersion: "shovefall-playtest-round/v4";
   readonly versions: {
     readonly product: string;
     readonly simulation: string;
@@ -25,7 +25,7 @@ export interface PlaytestRoundReportV3 {
     readonly collapseSpeed: GameSettings["collapseSpeed"];
     readonly initialItemCount: number;
     readonly itemRespawnSeconds: number;
-    readonly startingMass: GameSettings["startingMass"];
+    readonly startingWeight: GameSettings["startingWeight"];
     readonly startingItems: GameSettings["startingItems"];
   };
   readonly gameplayTuning: GameplayTuningV1;
@@ -44,7 +44,7 @@ export function createPlaytestRoundReport(
   seed: string,
   frame: RenderFrameV1,
   gameplayTuning: GameplayTuningV1,
-): PlaytestRoundReportV3 {
+): PlaytestRoundReportV4 {
   const { round } = frame;
 
   if (round.status !== "Completed" || round.completedTick === null || round.reason === null) {
@@ -64,7 +64,7 @@ export function createPlaytestRoundReport(
   }
 
   return Object.freeze({
-    schemaVersion: "shovefall-playtest-round/v3",
+    schemaVersion: "shovefall-playtest-round/v4",
     versions: Object.freeze({
       product: PRODUCT_VERSION,
       simulation: SIMULATION_VERSION,
@@ -80,7 +80,7 @@ export function createPlaytestRoundReport(
       collapseSpeed: settings.collapseSpeed,
       initialItemCount: settings.initialItemCount,
       itemRespawnSeconds: settings.itemRespawnSeconds,
-      startingMass: settings.startingMass,
+      startingWeight: settings.startingWeight,
       startingItems: settings.startingItems,
     }),
     gameplayTuning,
@@ -95,6 +95,6 @@ export function createPlaytestRoundReport(
   });
 }
 
-export function serializePlaytestRoundReport(report: PlaytestRoundReportV3): string {
+export function serializePlaytestRoundReport(report: PlaytestRoundReportV4): string {
   return JSON.stringify(report, null, 2);
 }
