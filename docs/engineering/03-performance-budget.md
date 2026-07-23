@@ -1,6 +1,6 @@
 # Performance Budget
 
-- Status: Accepted initial budgets; physical browser baseline pending
+- Status: Accepted local production-Chrome budgets; physical browser baseline pending
 - Owner: Repository owner
 - Source of truth: `docs/product/02-spec.md` and this document
 
@@ -17,14 +17,16 @@ The physical baseline device and repeatable browser capture procedure are still 
 
 - The 100-run determinism test executes 12,000 ticks with 12 participants and must finish within its 15-second Vitest budget. Observed 2026-07-22 local runs completed in approximately 2.7 to 13.5 seconds under varying concurrent test load; this is evidence from one workstation, not a portable forecast. Repeated approach to the upper bound requires profiling rather than a silent timeout increase.
 - A 32-participant `RenderFrameV1` has a 256 KiB warning threshold. Production code must not JSON-serialize the full frame every render.
-- Total compressed production JavaScript has a 180 KiB warning budget and CSS has a 20 KiB warning budget before image assets. The Coal-Twilight `0.18.0` Vite build on 2026-07-23 reports approximately 160.78 KiB gzip across emitted JavaScript chunks, a 51.71 KiB gzip entry chunk, and 2.36 KiB gzip CSS. Procedural oscillator audio adds no downloaded media. Chunk count alone is not a failure when Vite and PixiJS load the provider-neutral static artifact correctly.
+- Total compressed production JavaScript has a 180 KiB warning budget and CSS has a 20 KiB warning budget before image assets. The Coal-Twilight `0.18.2` Vite build on 2026-07-23 reports approximately 160.79 KiB gzip across emitted JavaScript chunks, a 51.72 KiB gzip entry chunk, and 2.36 KiB gzip CSS. Procedural oscillator audio adds no downloaded media. Chunk count alone is not a failure when Vite and PixiJS load the provider-neutral static artifact correctly.
 - Replay JSON is capped at 5 MiB and 7,200 ticks before parsing or execution.
 
-The `0.18.0` local production-Chrome profile at 1280×720 and DPR 1 measured p95 frame times of
-`17.0 / 16.9 / 16.9 ms` for 16/24/32 hard-difficulty participants, maximum frames of
-`17.4 / 17.8 / 17.8 ms`, no frame over 100 ms, and zero simulation backlog. Twenty forced
-restarts left an observational forced-GC heap delta of 741,504 bytes. This is one headless Chrome
-run on the local workstation, not physical-device, cross-browser, or field evidence.
+The `0.18.2` local production-Chrome profile at 1280×720 and DPR 1 measured p95 frame times of
+`17.1 / 17.0 / 16.8 ms` for 16/24/32 hard-difficulty participants, maximum frames of
+`33.4 / 17.6 / 29.1 ms`, no frame over 100 ms, and zero simulation backlog. Twenty forced restarts
+left an observational forced-GC heap delta of 2,759,440 bytes. This is the first baseline that
+explicitly presents every requested PixiJS frame; the earlier `0.18.0` measurement did not exercise
+that presentation boundary and is not a valid before/after rendering comparison. This remains one
+headless Chrome run on the local workstation, not physical-device, cross-browser, or field evidence.
 
 ## Hot-path Rules
 

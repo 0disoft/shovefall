@@ -1,5 +1,65 @@
 import { expect, test, type Page } from "@playwright/test";
 
+interface CanvasPixelSummary {
+  readonly luminanceRange: number;
+  readonly sampledPixels: number;
+  readonly uniqueColorBuckets: number;
+}
+
+async function captureArenaCanvas(page: Page): Promise<{
+  readonly png: Buffer;
+  readonly summary: CanvasPixelSummary;
+}> {
+  const png = await page.locator("#arena-host canvas").screenshot();
+  const summary = await page.evaluate(
+    async (dataUrl): Promise<CanvasPixelSummary> => {
+      const image = new Image();
+      image.src = dataUrl;
+      await image.decode();
+
+      const probe = document.createElement("canvas");
+      probe.width = image.naturalWidth;
+      probe.height = image.naturalHeight;
+      const context = probe.getContext("2d", { willReadFrequently: true });
+
+      if (context === null) {
+        throw new Error("Unable to inspect the arena canvas screenshot.");
+      }
+
+      context.drawImage(image, 0, 0);
+      const pixels = context.getImageData(0, 0, probe.width, probe.height).data;
+      const stride = Math.max(1, Math.floor(Math.min(probe.width, probe.height) / 96));
+      const colorBuckets = new Set<string>();
+      let minimumLuminance = 255;
+      let maximumLuminance = 0;
+      let sampledPixels = 0;
+
+      for (let y = 0; y < probe.height; y += stride) {
+        for (let x = 0; x < probe.width; x += stride) {
+          const offset = (y * probe.width + x) * 4;
+          const red = pixels[offset] ?? 0;
+          const green = pixels[offset + 1] ?? 0;
+          const blue = pixels[offset + 2] ?? 0;
+          const luminance = Math.round(red * 0.2126 + green * 0.7152 + blue * 0.0722);
+          minimumLuminance = Math.min(minimumLuminance, luminance);
+          maximumLuminance = Math.max(maximumLuminance, luminance);
+          colorBuckets.add(`${red >> 4}:${green >> 4}:${blue >> 4}`);
+          sampledPixels += 1;
+        }
+      }
+
+      return {
+        luminanceRange: maximumLuminance - minimumLuminance,
+        sampledPixels,
+        uniqueColorBuckets: colorBuckets.size,
+      };
+    },
+    `data:image/png;base64,${png.toString("base64")}`,
+  );
+
+  return { png, summary };
+}
+
 async function fastForwardUntilRoundCompleted(page: Page, remainingFrames = 250): Promise<void> {
   if (
     remainingFrames === 0 ||
@@ -81,6 +141,10 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await expect(page.getByRole("heading", { level: 1, name: "끝까지 남아." })).toBeVisible();
   await expect(page.getByText("WebGL 준비됨")).toBeVisible();
   await expect(page.locator("#arena-host canvas")).toBeVisible();
+  const setupCanvas = await captureArenaCanvas(page);
+  expect(setupCanvas.summary.sampledPixels).toBeGreaterThan(1_000);
+  expect(setupCanvas.summary.uniqueColorBuckets).toBeGreaterThan(4);
+  expect(setupCanvas.summary.luminanceRange).toBeGreaterThan(20);
   await expect(page.locator("#setup-summary")).toHaveText(
     "16명 · AI 보통 · 붕괴 보통 · 시작 아이템 6개 · 5초마다 1개",
   );
@@ -121,6 +185,10 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await expect
     .poll(async () => Number(await page.locator("#game-telemetry").getAttribute("data-tick")))
     .toBeGreaterThan(0);
+  const activeCanvas = await captureArenaCanvas(page);
+  expect(activeCanvas.summary.uniqueColorBuckets).toBeGreaterThan(4);
+  expect(activeCanvas.summary.luminanceRange).toBeGreaterThan(20);
+  expect(activeCanvas.png.equals(setupCanvas.png)).toBe(false);
 
   await page.evaluate(() => window.dispatchEvent(new Event("blur")));
   await expect(page.getByText("일시 정지")).toBeVisible();

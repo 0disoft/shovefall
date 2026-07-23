@@ -499,10 +499,15 @@ export async function createArenaRenderer(
     }
   };
 
+  const present = (): void => {
+    draw();
+    application.render();
+  };
+
   const handleMotionPreference = (event: MediaQueryListEvent): void => {
     reducedMotion = event.matches;
     host.dataset.motion = reducedMotion ? "reduced" : "full";
-    draw();
+    present();
   };
   const handleResize = (): void => {
     tileLayerDirty = true;
@@ -515,7 +520,7 @@ export async function createArenaRenderer(
   };
   const handleContextRestored = (): void => {
     host.dataset.renderer = "ready";
-    draw();
+    present();
     options.onContextRestored?.();
   };
 
@@ -582,7 +587,7 @@ export async function createArenaRenderer(
       );
       latestInterpolationAlpha = clamp(interpolationAlpha, 0, 1);
       latestHumanActorId = humanActorId;
-      draw();
+      present();
     },
   });
 }

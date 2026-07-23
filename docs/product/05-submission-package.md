@@ -1,7 +1,7 @@
 # Contest Submission Package
 
 - Status: Public link and Chrome smoke verified; final captures and human playtest pending
-- Candidate version: `0.18.1`
+- Candidate version: `0.18.2`
 - Candidate SHA: replace with the final exact 40-character release SHA
 - Release gate: [../ops/release.md](../ops/release.md)
 - Asset ledger: [../assets/README.md](../assets/README.md)
