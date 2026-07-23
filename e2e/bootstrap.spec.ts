@@ -357,6 +357,20 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await expect(page.locator("#use-item-slot-0")).toContainText("철 장화 · 상시");
   await expect(page.locator("#use-item-slot-0")).toBeDisabled();
   await expect(page.locator("#use-item-slot-1")).toContainText("장풍 · 2회");
+  const activeCanvas = await captureArenaCanvas(page);
+  expect(activeCanvas.summary.uniqueColorBuckets).toBeGreaterThan(4);
+  expect(activeCanvas.summary.luminanceRange).toBeGreaterThan(20);
+
+  const positionBefore = await readCameraPosition(page);
+  await faceArenaDirection(page, "d");
+  expect(await readCameraPosition(page)).not.toBe(positionBefore);
+  const movedCanvas = await captureArenaCanvas(page);
+  expect(movedCanvas.png.equals(activeCanvas.png)).toBe(false);
+
+  const arrowPositionBefore = await readCameraPosition(page);
+  await faceArenaDirection(page, "ArrowUp");
+  expect(await readCameraPosition(page)).not.toBe(arrowPositionBefore);
+
   await page.keyboard.press("KeyE");
   await expect(page.locator("#use-item-slot-1")).toContainText("장풍 · 1회");
   await page.keyboard.down("Space");
@@ -366,9 +380,6 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await expect
     .poll(async () => Number(await page.locator("#game-telemetry").getAttribute("data-tick")))
     .toBeGreaterThan(0);
-  const activeCanvas = await captureArenaCanvas(page);
-  expect(activeCanvas.summary.uniqueColorBuckets).toBeGreaterThan(4);
-  expect(activeCanvas.summary.luminanceRange).toBeGreaterThan(20);
 
   await page.evaluate(() => window.dispatchEvent(new Event("blur")));
   await expect(page.getByText("일시 정지")).toBeVisible();
@@ -377,21 +388,6 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
     "data-state",
     /playing|spectating/u,
   );
-
-  await page.locator("#arena-host").focus();
-  const positionBefore = await readCameraPosition(page);
-  await page.keyboard.down("d");
-  await page.waitForTimeout(100);
-  await page.keyboard.up("d");
-  await expect.poll(() => readCameraPosition(page)).not.toBe(positionBefore);
-  const movedCanvas = await captureArenaCanvas(page);
-  expect(movedCanvas.png.equals(activeCanvas.png)).toBe(false);
-
-  const arrowPositionBefore = await readCameraPosition(page);
-  await page.keyboard.down("ArrowUp");
-  await page.waitForTimeout(100);
-  await page.keyboard.up("ArrowUp");
-  await expect.poll(() => readCameraPosition(page)).not.toBe(arrowPositionBefore);
 
   const arenaBounds = await page.locator("#arena-host").boundingBox();
   expect(arenaBounds).not.toBeNull();
