@@ -180,9 +180,12 @@ async function readCameraPosition(page: Page): Promise<string> {
 async function faceArenaDirection(page: Page, direction: string): Promise<void> {
   await page.locator("#arena-host").focus();
   const positionBeforeFacing = await readCameraPosition(page);
+  const tickBeforeFacing = await readSimulationTick(page);
   await page.keyboard.down(direction);
 
   try {
+    await page.clock.fastForward(20);
+    await expect.poll(() => readSimulationTick(page)).toBeGreaterThan(tickBeforeFacing);
     await expect.poll(() => readCameraPosition(page)).not.toBe(positionBeforeFacing);
   } finally {
     await page.keyboard.up(direction);
@@ -280,6 +283,7 @@ async function placeSoapFromAvailableDirection(
 
 test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) => {
   test.slow();
+  await page.clock.install();
   await installFixedRoundSeed(page, 1, 0);
   await page.goto("/");
 
@@ -366,14 +370,14 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await expect(page.locator("#app")).toHaveAttribute("data-bot-difficulty", "hard");
   await expect(page.locator("#app")).toHaveAttribute("data-collapse-speed", "slow");
   await expect(page.locator("#renderer-status")).toHaveText("일시 정지");
-  await page.waitForTimeout(600);
+  await page.clock.fastForward(600);
   await expect(page.locator("#game-telemetry")).toHaveAttribute("data-tick", "0");
   await expect(page.locator("#game-telemetry")).toHaveAttribute(
     "data-countdown",
     countdownPauseSnapshot.countdown ?? "",
   );
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
-  await expect(page.locator("#app")).toHaveAttribute("data-round", "active");
+  await finishInstalledClockCountdown(page);
   await expect(page.getByText("시작!", { exact: true })).toBeVisible();
   await expect(page.locator("#game-telemetry")).toHaveAttribute("data-action", "Ready");
   await expect(page.locator("#inventory-actions")).toBeVisible();
@@ -394,11 +398,16 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await faceArenaDirection(page, "ArrowUp");
   expect(await readCameraPosition(page)).not.toBe(arrowPositionBefore);
 
+  const tickBeforeItem = await readSimulationTick(page);
   await page.keyboard.press("KeyE");
+  await page.clock.fastForward(20);
+  await expect.poll(() => readSimulationTick(page)).toBeGreaterThan(tickBeforeItem);
   await expect(page.locator("#use-item-slot-1")).toContainText("장풍 · 1회");
+  const tickBeforeShove = await readSimulationTick(page);
   await page.keyboard.down("Space");
-  await page.waitForTimeout(80);
+  await page.clock.fastForward(80);
   await page.keyboard.up("Space");
+  await expect.poll(() => readSimulationTick(page)).toBeGreaterThan(tickBeforeShove);
   await expect(page.locator("#round-message")).toHaveText(/밀치기 적중!|헛밀치기! 균형을 잡아\./u);
   await expect
     .poll(async () => Number(await page.locator("#game-telemetry").getAttribute("data-tick")))
