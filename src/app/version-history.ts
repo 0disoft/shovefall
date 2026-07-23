@@ -9,6 +9,12 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.32.1",
+    title: "개발 정보는 개발할 때만",
+    reason: "플레이에 필요 없는 숫자가 공개 화면에 남으면 시선만 빼앗아.",
+    change: "공개 빌드에서 틱, 위치, 시드, 상태 해시 패널을 완전히 뺐어.",
+  }),
+  Object.freeze({
     version: "0.32.0",
     title: "날아가기 전에 붙잡기",
     reason: "밀려나는 순간에도 지형을 읽고 버틸 마지막 선택지가 필요했어.",

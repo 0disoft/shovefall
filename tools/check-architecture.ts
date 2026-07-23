@@ -52,6 +52,15 @@ const CLARISSIMI_FORBIDDEN_FRAGMENTS = [
   "CLARISSIMI_PROVIDER_TOKEN",
 ] as const;
 
+const PUBLIC_HTML_FORBIDDEN_DEVELOPER_IDS = [
+  "developer-telemetry",
+  "tick-value",
+  "rate-value",
+  "position-value",
+  "seed-value",
+  "hash-value",
+] as const;
+
 async function listTypeScriptFiles(directory: string): Promise<readonly string[]> {
   const entries = await readdir(directory, { withFileTypes: true }).catch(
     (error: NodeJS.ErrnoException) => {
@@ -183,6 +192,13 @@ async function checkClarissimiWorkflow(root: string): Promise<readonly string[]>
   return violations;
 }
 
+async function checkPublicHtml(root: string): Promise<readonly string[]> {
+  const source = await readFile(join(root, "index.html"), "utf8");
+  return PUBLIC_HTML_FORBIDDEN_DEVELOPER_IDS.filter((id) => source.includes(`id="${id}"`)).map(
+    (id) => `index.html must not ship development-only element #${id}`,
+  );
+}
+
 async function main(): Promise<void> {
   const root = process.cwd();
   const packagePath = join(root, "package.json");
@@ -223,6 +239,7 @@ async function main(): Promise<void> {
   );
   violations.push(...headlessViolations.flat());
   violations.push(...(await checkClarissimiWorkflow(root)));
+  violations.push(...(await checkPublicHtml(root)));
 
   if (violations.length > 0) {
     process.stderr.write(`${JSON.stringify({ ok: false, violations }, null, 2)}\n`);
@@ -237,6 +254,7 @@ async function main(): Promise<void> {
         checkedDependencies: [...dependencyNames].toSorted(),
         clarissimiWorkflow: ".github/workflows/clarissimi.yml",
         headlessBoundaries: ["src/ai", "src/simulation"],
+        publicHtmlBoundary: "index.html excludes development-only telemetry markup",
       },
       null,
       2,

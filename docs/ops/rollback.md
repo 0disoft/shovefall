@@ -12,7 +12,7 @@ input, simulation, or replay determinism differs from the candidate; a required 
 unlicensed; an unexpected network or secret dependency appears; or the deployed artifact cannot be
 tied to its claimed SHA.
 
-Optional audio failure, a rejected clipboard permission with visible fallback, or a known Mayhem
+Optional audio failure, a rejected clipboard permission with a visible failure and retry state, or a known Mayhem
 readability tradeoff is not by itself a rollback trigger.
 
 ## Decision Tree

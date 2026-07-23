@@ -29,7 +29,7 @@ people, then publishing the exact candidate without burying combat telegraphs.
 - [x] Iron Boots, Feather, and Spring Glove with a bounded 3/2/1 outer-ring placement preference.
 - [x] Human Wind Blast, Brick Bag, Boat, Bomb, Soap, and static-anchor Grappling Hook activation through the shared two-slot input contract.
 - [x] Deterministic round, mass, item-grant, collapse-pacing, and fixed-50 headless scale evidence.
-- [ ] Uncontended `0.32.0` production-Chrome performance evidence; functional production-artifact smoke already passes.
+- [ ] Uncontended production-Chrome performance evidence; `0.32.1` functional production-artifact smoke already passes.
 - [x] Local aggregate validation and production-artifact browser smoke.
 
 ## Gate 1: Human Gray-box Evidence
@@ -86,7 +86,7 @@ Exit conditions:
 - Screenshot, short gameplay capture, tool list, asset provenance, and development notes are ready
   in [05-submission-package.md](05-submission-package.md) for the contest post.
 
-Current status: `IN_PROGRESS`. Product `0.32.0` exact SHA `4dc23456673d08ba15228776bdce15e2b768bcd5` passes 169 tests, thirteen production-artifact Chrome paths, the fixed-50 headless profile, hosted CI, Pages deployment, and fresh public-URL smoke. The host-contended production-Chrome performance observation is explicitly rejected; an uncontended profile, final captures, physical-browser coverage, and human evidence remain open.
+Current status: `IN_PROGRESS`. Product `0.32.0` exact SHA `4dc23456673d08ba15228776bdce15e2b768bcd5` retains hosted CI, Pages, and public-URL proof. The local `0.32.1` cleanup candidate passes 169 tests, fourteen DEV Chrome paths, thirteen production-artifact Chrome paths, and the public-HTML telemetry exclusion contract. Its exact-SHA hosted and public proof, an uncontended performance profile, final captures, physical-browser coverage, and human evidence remain open.
 
 ## Deferred Beyond the Submission
 

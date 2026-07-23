@@ -28,6 +28,19 @@ interface ElementConstructor<T extends Element> {
   new (): T;
 }
 
+interface DeveloperTelemetrySnapshot {
+  readonly tick: number;
+  readonly rate: number;
+  readonly position: string;
+  readonly seed: string;
+  readonly stateHash: string;
+}
+
+interface DeveloperTelemetryController {
+  readonly setVisible: (visible: boolean) => void;
+  readonly update: (snapshot: DeveloperTelemetrySnapshot) => void;
+}
+
 const ACTION_LABELS = Object.freeze({
   Ready: "준비",
   ShoveWindup: "밀치기 준비",
@@ -65,6 +78,58 @@ function requireElement<T extends Element>(
   }
 
   return element;
+}
+
+function createDeveloperTelemetry(anchor: HTMLElement): DeveloperTelemetryController {
+  const document = anchor.ownerDocument;
+  const details = document.createElement("details");
+  details.id = "developer-telemetry";
+  details.className = "developer-telemetry";
+  details.dataset.developmentOnly = "true";
+  details.hidden = true;
+
+  const summary = document.createElement("summary");
+  summary.textContent = "개발 정보";
+  details.append(summary);
+
+  const list = document.createElement("dl");
+  list.setAttribute("aria-label", "개발용 라운드 정보");
+  details.append(list);
+
+  const appendOutput = (label: string, id: string, initialValue: string): HTMLOutputElement => {
+    const row = document.createElement("div");
+    const term = document.createElement("dt");
+    term.textContent = label;
+    const definition = document.createElement("dd");
+    const output = document.createElement("output");
+    output.id = id;
+    output.value = initialValue;
+    definition.append(output);
+    row.append(term, definition);
+    list.append(row);
+    return output;
+  };
+
+  const tick = appendOutput("틱", "tick-value", "0");
+  const rate = appendOutput("속도", "rate-value", "1×");
+  const position = appendOutput("위치", "position-value", "0.00, 0.00");
+  const seed = appendOutput("시드", "seed-value", "not-started");
+  const stateHash = appendOutput("상태 해시", "hash-value", "fnv1a32:00000000");
+  anchor.insertAdjacentElement("afterend", details);
+
+  return Object.freeze({
+    setVisible(visible: boolean): void {
+      details.hidden = !visible;
+      details.open = false;
+    },
+    update(snapshot: DeveloperTelemetrySnapshot): void {
+      tick.value = String(snapshot.tick);
+      rate.value = `${snapshot.rate}×`;
+      position.value = snapshot.position;
+      seed.value = snapshot.seed;
+      stateHash.value = snapshot.stateHash;
+    },
+  });
 }
 
 function readSelectedCollapseSpeed(form: HTMLFormElement): GameSettings["collapseSpeed"] {
@@ -205,17 +270,12 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   ] as const);
   const rendererStatus = requireElement(root, "#renderer-status", HTMLElement);
   const telemetry = requireElement(root, "#game-telemetry", HTMLElement);
-  const developerTelemetry = requireElement(root, "#developer-telemetry", HTMLDetailsElement);
-  const tickValue = requireElement(root, "#tick-value", HTMLOutputElement);
+  const developerTelemetry = import.meta.env.DEV ? createDeveloperTelemetry(telemetry) : undefined;
   const actionValue = requireElement(root, "#action-value", HTMLOutputElement);
   const massValue = requireElement(root, "#mass-value", HTMLOutputElement);
   const effectValue = requireElement(root, "#effect-value", HTMLOutputElement);
   const itemValue = requireElement(root, "#item-value", HTMLOutputElement);
   const survivorValue = requireElement(root, "#survivor-value", HTMLOutputElement);
-  const rateValue = requireElement(root, "#rate-value", HTMLOutputElement);
-  const positionValue = requireElement(root, "#position-value", HTMLOutputElement);
-  const seedValue = requireElement(root, "#seed-value", HTMLOutputElement);
-  const hashValue = requireElement(root, "#hash-value", HTMLOutputElement);
   const statPointsValue = requireElement(root, "#stat-points-value", HTMLOutputElement);
   const upgradeButtons = [...root.querySelectorAll<HTMLButtonElement>("[data-upgrade-stat]")];
   const statLevelOutputs: Readonly<Record<UpgradeStatId, HTMLOutputElement>> = Object.freeze({
@@ -394,7 +454,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     telemetry.dataset.backlogTicks = String(current.backlogTicks);
     telemetry.dataset.simulationRate = String(current.simulationRate);
     telemetry.dataset.countdown = current.countdown === null ? "" : String(current.countdown);
-    tickValue.value = String(current.frame.tick);
+    telemetry.dataset.roundId = String(current.frame.roundId);
     actionValue.value = ACTION_LABELS[human.action];
     massValue.value =
       human.massFactor < 0.9 ? "가벼움" : human.massFactor > 1.1 ? "무거움" : "보통";
@@ -452,10 +512,13 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
           participant.action !== "Eliminated",
       ).length,
     );
-    rateValue.value = `${current.simulationRate}×`;
-    positionValue.value = `${human.position.x.toFixed(2)}, ${human.position.y.toFixed(2)}`;
-    seedValue.value = current.masterSeed;
-    hashValue.value = current.frame.stateHash;
+    developerTelemetry?.update({
+      tick: current.frame.tick,
+      rate: current.simulationRate,
+      position: `${human.position.x.toFixed(2)}, ${human.position.y.toFixed(2)}`,
+      seed: current.masterSeed,
+      stateHash: current.frame.stateHash,
+    });
     statPointsValue.value = String(human.progression.statPoints);
 
     for (const stat of UPGRADE_STAT_IDS) {
@@ -618,8 +681,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     arenaActions.hidden = false;
     inventoryActions.hidden = false;
     telemetry.hidden = false;
-    developerTelemetry.hidden = false;
-    developerTelemetry.open = false;
+    developerTelemetry?.setVisible(true);
     readyMessage.textContent = "3";
     arenaHost.setAttribute(
       "aria-label",
@@ -731,7 +793,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
       readyMessage.textContent = "개인정보 없는 라운드 기록을 복사했어.";
     } catch (error: unknown) {
       copyRoundReportButton.textContent = "복사 실패";
-      readyMessage.textContent = "복사하지 못했어. 시드와 상태 해시를 직접 기록해 줘.";
+      readyMessage.textContent = "기록을 복사하지 못했어. 다시 시도해 줘.";
       console.error("Unable to copy the local playtest round report.", error);
     }
   };
@@ -770,8 +832,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     arenaActions.hidden = true;
     inventoryActions.hidden = true;
     telemetry.hidden = true;
-    developerTelemetry.hidden = true;
-    developerTelemetry.open = false;
+    developerTelemetry?.setVisible(false);
     rendererStatus.dataset.state = "ready";
     rendererStatus.textContent = "WebGL 준비됨";
     arenaHost.setAttribute("aria-label", "바닥이 사라지는 술래잡기 아레나");

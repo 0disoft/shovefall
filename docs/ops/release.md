@@ -1,8 +1,8 @@
 # Static Release Procedure
 
-- Status: `0.32.0` local, hosted, Pages, and public smoke accepted; uncontended browser performance and human evidence pending
+- Status: `0.32.1` local candidate accepted; hosted, Pages, uncontended browser performance, and human evidence pending
 - Primary owner: Repository owner
-- Current product version: `0.32.0`
+- Current product version: `0.32.1`
 - Validation source: [../../VALIDATION.md](../../VALIDATION.md)
 - Submission package: [../product/05-submission-package.md](../product/05-submission-package.md)
 - Asset ledger: [../assets/README.md](../assets/README.md)
@@ -33,7 +33,9 @@ Product `0.31.0` adds human Soap placement, three charges, deterministic actor-I
 
 Product `0.32.0` adds the human-only static-anchor Grappling Hook as the ninth offered loadout card with two charges, 4.5-tile range, 1.25-tile minimum, deterministic tile/Brick acquisition, mass-sensitive `0.24 / massFactor` self-pull capped at `0.30`, and 12-tick `GrapplePull` drag. Simulation advances to `15.0.0`, content to `9.0.0`; replay v2 and report v4 remain sufficient. The local suite passes 169 tests and all thirteen production-artifact Chrome paths. Its fixed-50 headless profile exercises both Hook charges and passes at simulation p95 `5.123 ms`, zero 100 ms steps, and `3.69×` real time. The latest production-Chrome performance sample is rejected because total workstation CPU stayed `81.6–94.2%` and both the Brick/Bomb baseline and Hook/Bomb case failed almost identically; its ceiling remains unchanged. [CI run 30038218455](https://github.com/0disoft/shovefall/actions/runs/30038218455) validated, uploaded, and deployed exact implementation SHA `4dc23456673d08ba15228776bdce15e2b768bcd5`. A fresh cache-busted public session confirmed `v0.32.0`, the Hook setting, an active Hard-AI WebGL arena with changing survivor state, and no browser log entries. The `0.31.0` run and SHA above remain exact historical proof.
 
-The current `0.32.0` candidate must not be promoted as the contest release until an uncontended production-browser profile and human playtest pass. Hosted validation, Pages deployment, and public browser smoke are exact-SHA green. Active-item bot balance remains pending; deterministic scenario tests prove rules, not human balance.
+Product `0.32.1` removes the developer telemetry markup from static public HTML and creates it only in DEV. Production no longer creates or updates tick, rate, position, seed, or state-hash outputs; bounded browser checks use existing scheduler and renderer observability instead. Clipboard failure copy no longer tells players to read removed values. Simulation remains `15.0.0`, content remains `9.0.0`, replay remains v2, and report v4 remains sufficient. Local aggregate validation passes 169 tests, DEV smoke passes fourteen paths, production smoke passes thirteen paths, and the public HTML contract rejects any reintroduced developer output ID. Exact-SHA hosted validation, Pages deployment, and public smoke remain pending for this patch candidate.
+
+The current `0.32.1` candidate must not replace the deployed `0.32.0` proof until the same exact SHA passes hosted validation, Pages deployment, and public browser smoke. Contest-release promotion still requires an uncontended production-browser profile and human playtest. Active-item bot balance remains pending; deterministic scenario tests prove rules, not human balance.
 
 ## Release Types
 
@@ -115,7 +117,7 @@ Against the final HTTPS URL and candidate SHA:
 
 1. Hard refresh and verify the title, setup, and canvas render without console-fatal errors.
 2. Run `게임 시작` through countdown, movement, shove, dodge, collapse, result, and restart.
-3. Verify `기록 복사` succeeds in the secure context and denial still leaves visible manual data.
+3. Verify `기록 복사` succeeds in the secure context and denial leaves visible failure and retry guidance.
 4. Test one 16-participant normal round and one 32-participant Mayhem boot.
 5. Confirm optional audio can fail without blocking play.
 6. Inspect network activity for unexpected origins, runtime API calls, mixed content, and missing

@@ -6,6 +6,23 @@ interface CanvasPixelSummary {
   readonly uniqueColorBuckets: number;
 }
 
+function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
+  return typeof value === "object" && value !== null;
+}
+
+function getCompletedTick(report: unknown): number {
+  if (!isRecord(report) || !isRecord(report.result)) {
+    throw new Error("Copied round report is missing its result object.");
+  }
+
+  const completedTick = report.result.completedTick;
+  if (typeof completedTick !== "number" || !Number.isSafeInteger(completedTick)) {
+    throw new Error("Copied round report has an invalid completed tick.");
+  }
+
+  return completedTick;
+}
+
 async function captureArenaCanvas(page: Page): Promise<{
   readonly png: Buffer;
   readonly summary: CanvasPixelSummary;
@@ -147,15 +164,26 @@ async function startGame(page: Page): Promise<void> {
   await page.getByRole("button", { name: "게임 시작" }).click();
 }
 
+async function readSimulationTick(page: Page): Promise<number> {
+  return Number(await page.locator("#game-telemetry").getAttribute("data-tick"));
+}
+
+async function readCameraPosition(page: Page): Promise<string> {
+  const arena = page.locator("#arena-host");
+  const [x, y] = await Promise.all([
+    arena.getAttribute("data-camera-x"),
+    arena.getAttribute("data-camera-y"),
+  ]);
+  return `${x ?? "missing"},${y ?? "missing"}`;
+}
+
 async function faceArenaDirection(page: Page, direction: string): Promise<void> {
   await page.locator("#arena-host").focus();
-  const positionBeforeFacing = await page.locator("#position-value").textContent();
+  const positionBeforeFacing = await readCameraPosition(page);
   await page.keyboard.down(direction);
 
   try {
-    await expect
-      .poll(() => page.locator("#position-value").textContent())
-      .not.toBe(positionBeforeFacing);
+    await expect.poll(() => readCameraPosition(page)).not.toBe(positionBeforeFacing);
   } finally {
     await page.keyboard.up(direction);
   }
@@ -247,9 +275,9 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await versionHistoryButton.click();
   await expect(page.locator("#app")).toHaveAttribute("data-screen", "history");
   await expect(page.getByRole("heading", { level: 2, name: "버전 기록" })).toBeFocused();
-  await expect(page.locator("#current-version")).toHaveText("v0.32.0");
-  await expect(page.locator("#version-history-list > li")).toHaveCount(13);
-  await expect(page.getByText("왜 바꿨냐면")).toHaveCount(13);
+  await expect(page.locator("#current-version")).toHaveText("v0.32.1");
+  await expect(page.locator("#version-history-list > li")).toHaveCount(14);
+  await expect(page.getByText("왜 바꿨냐면")).toHaveCount(14);
   await expect(page.locator("#arena-host canvas")).toBeHidden();
   await page.keyboard.press("Escape");
   await expect(page.locator("#app")).toHaveAttribute("data-screen", "menu");
@@ -302,15 +330,21 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   expect(countdownPauseSnapshot.rendererStatus).toMatch(/^시작까지 [123]$/u);
   await expect(page.locator("#app")).toHaveAttribute("data-screen", "arena");
   await expect(page.locator("#app")).toHaveAttribute("data-round", "countdown");
-  await expect(page.locator("#tick-value")).toHaveText("0");
+  await expect(page.locator("#game-telemetry")).toHaveAttribute("data-tick", "0");
   await expect(page.locator("#game-telemetry")).toBeVisible();
-  await expect(page.locator("#developer-telemetry")).not.toHaveAttribute("open", "");
+  const developerTelemetry = page.locator("#developer-telemetry");
+  const productionArtifact = new URL(page.url()).port === "4175";
+  await expect(developerTelemetry).toHaveCount(productionArtifact ? 0 : 1);
+  if (!productionArtifact) {
+    await expect(developerTelemetry).toBeVisible();
+    await expect(developerTelemetry).not.toHaveAttribute("open", "");
+  }
   await expect(page.locator("#app")).toHaveAttribute("data-initial-items", "17");
   await expect(page.locator("#app")).toHaveAttribute("data-bot-difficulty", "hard");
   await expect(page.locator("#app")).toHaveAttribute("data-collapse-speed", "slow");
   await expect(page.locator("#renderer-status")).toHaveText("일시 정지");
   await page.waitForTimeout(600);
-  await expect(page.locator("#tick-value")).toHaveText("0");
+  await expect(page.locator("#game-telemetry")).toHaveAttribute("data-tick", "0");
   await expect(page.locator("#game-telemetry")).toHaveAttribute(
     "data-countdown",
     countdownPauseSnapshot.countdown ?? "",
@@ -345,21 +379,19 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   );
 
   await page.locator("#arena-host").focus();
-  const positionBefore = await page.locator("#position-value").textContent();
+  const positionBefore = await readCameraPosition(page);
   await page.keyboard.down("d");
   await page.waitForTimeout(100);
   await page.keyboard.up("d");
-  await expect.poll(() => page.locator("#position-value").textContent()).not.toBe(positionBefore);
+  await expect.poll(() => readCameraPosition(page)).not.toBe(positionBefore);
   const movedCanvas = await captureArenaCanvas(page);
   expect(movedCanvas.png.equals(activeCanvas.png)).toBe(false);
 
-  const arrowPositionBefore = await page.locator("#position-value").textContent();
+  const arrowPositionBefore = await readCameraPosition(page);
   await page.keyboard.down("ArrowUp");
   await page.waitForTimeout(100);
   await page.keyboard.up("ArrowUp");
-  await expect
-    .poll(() => page.locator("#position-value").textContent())
-    .not.toBe(arrowPositionBefore);
+  await expect.poll(() => readCameraPosition(page)).not.toBe(arrowPositionBefore);
 
   const arenaBounds = await page.locator("#arena-host").boundingBox();
   expect(arenaBounds).not.toBeNull();
@@ -532,7 +564,7 @@ test("offers a working touch joystick and action buttons on a narrow viewport", 
 
   const joystick = page.locator("#pointer-joystick");
   await expect(joystick).toBeVisible();
-  const positionBefore = await page.locator("#position-value").textContent();
+  const positionBefore = await readCameraPosition(page);
   const joystickBounds = await joystick.boundingBox();
   expect(joystickBounds).not.toBeNull();
   if (joystickBounds !== null) {
@@ -545,7 +577,7 @@ test("offers a working touch joystick and action buttons on a narrow viewport", 
     await expect(joystick).toHaveAttribute("data-active", "true");
     await page.mouse.up();
   }
-  await expect.poll(() => page.locator("#position-value").textContent()).not.toBe(positionBefore);
+  await expect.poll(() => readCameraPosition(page)).not.toBe(positionBefore);
   await expect(joystick).not.toHaveAttribute("data-active", "true");
 
   await page.locator("#touch-shove").dispatchEvent("pointerdown", {
@@ -641,10 +673,10 @@ test("completes a collapsing round and starts a fresh world", async ({ page }) =
   const parsedReport: unknown = JSON.parse(copiedReport ?? "null");
   expect(parsedReport).toMatchObject({
     schemaVersion: "shovefall-playtest-round/v4",
-    seed: await page.locator("#seed-value").textContent(),
-    stateHash: await page.locator("#hash-value").textContent(),
+    seed: expect.any(String),
+    stateHash: expect.stringMatching(/^fnv1a32:[0-9a-f]{8}$/u),
     settings: { participantCount: 50, startingWeight: 75 },
-    result: { completedTick: Number(await page.locator("#tick-value").textContent()) },
+    result: { completedTick: expect.any(Number) },
   });
 
   await page.evaluate(() => {
@@ -659,20 +691,24 @@ test("completes a collapsing round and starts a fresh world", async ({ page }) =
   });
   await page.getByRole("button", { name: "복사됨" }).click();
   await expect(page.getByRole("button", { name: "복사 실패" })).toBeVisible();
-  await expect(page.getByText("복사하지 못했어. 시드와 상태 해시를 직접 기록해 줘.")).toBeVisible();
+  await expect(page.getByText("기록을 복사하지 못했어. 다시 시도해 줘.")).toBeVisible();
 
-  const completedTick = Number(await page.locator("#tick-value").textContent());
-  const completedHash = await page.locator("#hash-value").textContent();
+  const completedTick = getCompletedTick(parsedReport);
+  const completedRoundId = Number(
+    await page.locator("#game-telemetry").getAttribute("data-round-id"),
+  );
   await page.getByRole("button", { name: "다시 시작" }).click();
 
   await expect(page.locator("#app")).toHaveAttribute("data-round", "countdown");
   await expect(copyButton).toBeHidden();
-  await expect(page.locator("#tick-value")).toHaveText("0");
+  await expect(page.locator("#game-telemetry")).toHaveAttribute("data-tick", "0");
+  await expect
+    .poll(async () => Number(await page.locator("#game-telemetry").getAttribute("data-round-id")))
+    .toBeGreaterThan(completedRoundId);
   await finishInstalledClockCountdown(page);
   await expect(page.locator("#arena-host")).toBeFocused();
-  const restartedTick = Number(await page.locator("#tick-value").textContent());
+  const restartedTick = await readSimulationTick(page);
   expect(restartedTick).toBeLessThan(completedTick);
-  await expect(page.locator("#hash-value")).not.toHaveText(completedHash ?? "");
 });
 
 test("allows an immediate fresh restart after a deterministic human defeat", async ({ page }) => {
@@ -755,15 +791,15 @@ test("pauses on WebGL context loss and resumes after restoration", async ({ page
   await page.locator("#arena-host canvas").dispatchEvent("webglcontextlost");
   await expect(page.locator("#arena-host")).toHaveAttribute("data-renderer", "lost");
   await expect(page.locator("#renderer-status")).toHaveText("그래픽 연결이 끊겼어");
-  const pausedTick = Number(await page.locator("#tick-value").textContent());
+  const pausedTick = await readSimulationTick(page);
   await page.waitForTimeout(150);
-  expect(Number(await page.locator("#tick-value").textContent())).toBe(pausedTick);
+  expect(await readSimulationTick(page)).toBe(pausedTick);
 
   await page.locator("#arena-host canvas").dispatchEvent("webglcontextrestored");
   await expect(page.locator("#arena-host")).toHaveAttribute("data-renderer", "ready");
   await expect
     .poll(async () => {
-      const currentTick = Number(await page.locator("#tick-value").textContent());
+      const currentTick = await readSimulationTick(page);
       const roundState = await page.locator("#app").getAttribute("data-round");
       return currentTick > pausedTick || roundState === "completed";
     })

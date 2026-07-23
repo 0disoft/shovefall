@@ -63,7 +63,7 @@ describe("playtest round reports", () => {
       },
     });
     expect(report.versions).toEqual({
-      product: "0.32.0",
+      product: "0.32.1",
       simulation: "15.0.0",
       content: "9.0.0",
     });

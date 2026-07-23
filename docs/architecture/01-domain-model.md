@@ -90,6 +90,8 @@ Product `0.31.0`, simulation `14.0.0`, and content `8.0.0` add Soap placement, c
 
 Product `0.32.0`, simulation `15.0.0`, and content `9.0.0` add the human-only static-anchor Grappling Hook, deterministic tile-versus-Brick acquisition, mass-sensitive capped self-pull, and the 12-tick `GrapplePull` action. Replay remains v2 and local reports remain v4 because the existing loadout IDs, slot commands, action state, and version rejection carry the new use without a persistent tether entity; regenerated simulation-version checkpoints protect the changed action and velocity outcomes.
 
+Product `0.32.1` removes release-only diagnostic markup without changing simulation or content. The developer telemetry controller is a DEV presentation object created after the match-readable HUD and is absent from production HTML and runtime state. Scheduler round ID and tick remain non-authoritative DOM observability attributes; neither enters the world hash nor exposes the master seed or state hash. Simulation remains `15.0.0`, content remains `9.0.0`, replay remains v2, and reports remain v4.
+
 ## Version Ownership
 
 - Product version: `package.json` and `PRODUCT_VERSION`.

@@ -24,7 +24,7 @@ its own evidence for the same candidate SHA.
 2. `게임 시작` uses the last saved settings, reveals the arena, enters a visible countdown, and then accepts keyboard, mouse-drag, touch-joystick, and standard-gamepad input.
 3. WebGL renders participants, items, tile warnings, collapse, falling, and the result state.
 4. Defeat or victory offers an immediate fresh restart.
-5. A completed result can copy a local playtest record; clipboard denial shows a manual fallback.
+5. A completed result can copy a local playtest record; clipboard denial shows a failure state with retry guidance.
 6. Renderer loss pauses the round and restoration resumes it without advancing hidden ticks.
 
 Setup, play, result, and restart are release-critical. Optional audio is not. Final images may fall
@@ -39,7 +39,7 @@ acceptable.
 | 0 | Browser WebGL support | Arena cannot render | Show recoverable unsupported-renderer state; do not claim support |
 | 1 | Static HTTPS host and DNS | Public link unavailable | Restore the last known-good artifact or host route |
 | 1 | GitHub source and Actions | New candidate cannot be independently promoted | Keep the last released artifact; do not substitute local claims |
-| 2 | Web Audio and clipboard APIs | Optional sound or record copy unavailable | Continue with silence or visible manual-copy guidance |
+| 2 | Web Audio and clipboard APIs | Optional sound or record copy unavailable | Continue with silence or a visible failure state with retry guidance |
 
 ## Service Objectives and Evidence
 
