@@ -27,7 +27,16 @@ function survivesProfileWindow(participantCount: number, seed: string): boolean 
       itemRespawnSeconds: participantCount >= 25 ? 3 : participantCount >= 17 ? 4 : 5,
     }),
     seed,
-    { humanActorId: 1 },
+    {
+      humanActorId: 1,
+      participantOverrides: [
+        {
+          actorId: 1,
+          massFactor: 1,
+          startingItems: ["iron-boots", "spring-glove"],
+        },
+      ],
+    },
   );
   const bots = new BotDirector(seed, 1);
   let frame = world.createRenderFrame();
@@ -61,7 +70,16 @@ function findHumanDefeatTick(seed: string): number | undefined {
       itemRespawnSeconds: 3,
     }),
     seed,
-    { humanActorId: 1 },
+    {
+      humanActorId: 1,
+      participantOverrides: [
+        {
+          actorId: 1,
+          massFactor: 1,
+          startingItems: ["iron-boots", "spring-glove"],
+        },
+      ],
+    },
   );
   const bots = new BotDirector(seed, 1);
   let frame = world.createRenderFrame();

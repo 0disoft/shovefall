@@ -160,6 +160,15 @@ function parseCommand(value: unknown): ActorCommandV1 {
     },
     shovePressed: readBoolean(value, "shovePressed"),
     dodgePressed: readBoolean(value, "dodgePressed"),
+    upgradeStat:
+      value.upgradeStat === undefined || value.upgradeStat === null
+        ? null
+        : value.upgradeStat === "power" ||
+            value.upgradeStat === "stability" ||
+            value.upgradeStat === "mobility" ||
+            value.upgradeStat === "reflex"
+          ? value.upgradeStat
+          : fail("command.upgradeStat is unsupported"),
   });
 }
 

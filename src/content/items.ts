@@ -11,7 +11,7 @@ export interface ItemDefinition {
   readonly massMultiplier: number;
   readonly dodgeSpeedMultiplier: number;
   readonly shoveImpulseMultiplier: number;
-  readonly shoveSpeedMultiplier: number;
+  readonly shoveReachMultiplier: number;
   readonly aiTags: readonly ("mass" | "mobility" | "shove")[];
 }
 
@@ -29,7 +29,7 @@ export const ITEM_DEFINITIONS: Readonly<Record<ItemDefinitionId, ItemDefinition>
     massMultiplier: 1.4,
     dodgeSpeedMultiplier: 0.82,
     shoveImpulseMultiplier: 1,
-    shoveSpeedMultiplier: 1,
+    shoveReachMultiplier: 1,
     aiTags: Object.freeze(["mass"] as const),
   }),
   feather: Object.freeze({
@@ -43,7 +43,7 @@ export const ITEM_DEFINITIONS: Readonly<Record<ItemDefinitionId, ItemDefinition>
     massMultiplier: 0.8,
     dodgeSpeedMultiplier: 1.18,
     shoveImpulseMultiplier: 1,
-    shoveSpeedMultiplier: 1,
+    shoveReachMultiplier: 1,
     aiTags: Object.freeze(["mobility"] as const),
   }),
   "spring-glove": Object.freeze({
@@ -57,7 +57,7 @@ export const ITEM_DEFINITIONS: Readonly<Record<ItemDefinitionId, ItemDefinition>
     massMultiplier: 1,
     dodgeSpeedMultiplier: 1,
     shoveImpulseMultiplier: 1.45,
-    shoveSpeedMultiplier: 1.22,
+    shoveReachMultiplier: 1.22,
     aiTags: Object.freeze(["shove"] as const),
   }),
 });

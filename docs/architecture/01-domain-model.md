@@ -18,11 +18,11 @@ The browser's normal-density arena policy derives 10×8 tiles for 4–8 particip
 
 ## Participant
 
-A participant contains stable identity, human or scripted control ownership, an active flag, a circular body, effects, and an action state. The body owns position, velocity, facing, radius, base and effective continuous `massFactor`, and integer unsupported ticks. Effective mass is clamped to `0.8..1.4`; this range survived the checked-in controlled balance audit, but it is not a human fairness claim. Timed Iron Boots and Feather effects refresh rather than stack duplicates; opposite effects may coexist and their product is clamped to the global mass range. Spring Glove is one held charge consumed when a shove starts.
+A participant contains stable identity, human or scripted control ownership, an active flag, a circular body, effects, progression, shove credit, and an action state. The body owns position, velocity, facing, radius, base and effective continuous `massFactor`, and integer unsupported ticks. Effective mass is clamped to `0.8..1.4`. Progression owns unspent points, credited eliminations, and bounded Power, Stability, Mobility, and Reflex levels. Shove credit records the deterministic last attacker and hit tick; falling grants one point only when that hit is at most 180 ticks old.
 
 Action kinds are `Ready`, `ShoveWindup`, `ShoveActive`, `ShoveRecovery`, `DodgeActive`, `Stumbling`, `Anchored`, `Falling`, and `Eliminated`. Action transitions are tick-bounded. If shove and dodge edges arrive together while both are ready, dodge has deterministic priority. `Falling` is irreversible and later transitions to `Eliminated`.
 
-The initial tuning uses six shove-windup ticks, seven active ticks, fifteen recovery ticks, eight dodge ticks with five evasion ticks, nine unsupported grace ticks, and twenty-four falling ticks. `src/simulation/tuning.ts` owns exact numeric values. Product settings cannot expose these internals.
+The current tuning uses six shove-windup ticks, five hand-active ticks, fifteen recovery ticks, five dodge/evasion ticks, nine unsupported grace ticks, and twenty-four falling ticks. ShoveActive no longer forces forward body speed; it exposes a `0.28`-tile hand reach beyond the two body radii. The collapsed local debug lab may override bounded movement, mass-speed, hand-reach, and dodge values for the next round without changing production defaults.
 
 ## Tile
 
@@ -34,7 +34,7 @@ A tile has an integer grid location, stable `column:row` ID, and a `Stable`, `Wa
 
 ## Commands, Frames, and Events
 
-- `ActorCommandV1` contains tick, actor ID, normalized movement, and shove/dodge edge flags.
+- `ActorCommandV1` contains tick, actor ID, normalized movement, shove/dodge edge flags, and an optional stat-spend request.
 - `RenderFrameV1` is an immutable presentation snapshot with current and previous positions, facing, mass, effects, Spring Glove telegraph, items, action, tiles, tick, and state hash.
 - `SimulationEventV1` is a versioned, ordered fact stream for one-time presentation and diagnostics. Events do not drive authoritative physics.
 
@@ -52,7 +52,7 @@ Randomness may select arena variants, content placement, bot personality data, a
 
 The current format accepts UTF-8 JSON up to 5 MiB and 7,200 ticks. Unknown replay majors, incompatible simulation versions, malformed booleans or numbers, commands for bots, duplicate or unordered ticks, range violations, and hash mismatches are errors. Compatibility is never guessed.
 
-Simulation version `5.0.0` added swept-circle weak-contact semantics between fixed ticks. Version `5.1.0` preserves that combat model and changes slow, normal, and fast collapse scheduling to start at ticks 1,080, 780, and 480 with wave intervals of 84, 66, and 48 ticks. Version `5.2.0` changes global mass bounds and deterministic item candidate weighting. Version `5.3.0` expands the normalized and replayed difficulty contract to Easy/Normal/Hard without changing authoritative physics. Content `3.1.0` owns the adjusted Iron Boots and Feather multipliers plus the 3/2/1 placement weights. Contract changes require regenerated replay evidence instead of inheriting older fixture metadata.
+Simulation `6.0.0` adds command-driven stat spending, elimination credit, enlarged arena tiers, starting loadouts, hand-reach shove contacts, and the slower mass-sensitive movement contract. Content `4.0.0` changes Spring Glove from attacker speed to hand reach and retains the 3/2/1 risky-placement weights. Product `0.20.0` reports loadout, tuning, and final human progression in playtest record schema v3. These contract changes regenerated replay fixtures rather than inheriting older hashes.
 
 ## Version Ownership
 

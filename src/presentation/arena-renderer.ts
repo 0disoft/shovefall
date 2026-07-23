@@ -147,17 +147,28 @@ function drawDirection(
   radius: number,
 ): void {
   const length =
-    participant.action === "ShoveActive" || participant.action === "ShoveWindup"
-      ? radius * 2.4
-      : radius * 1.45;
+    participant.action === "ShoveActive"
+      ? radius * 2.05
+      : participant.action === "ShoveWindup"
+        ? radius * 1.18
+        : radius * 1.45;
+  const endX = x + participant.facing.x * length;
+  const endY = y + participant.facing.y * length;
   graphics
     .moveTo(x, y)
-    .lineTo(x + participant.facing.x * length, y + participant.facing.y * length)
+    .lineTo(endX, endY)
     .stroke({
       color: getActionColor(participant.action),
       width: participant.action === "ShoveActive" ? Math.max(4, radius * 0.35) : 2,
       cap: "round",
     });
+
+  if (participant.action === "ShoveActive") {
+    graphics
+      .circle(endX, endY, Math.max(3, radius * 0.2))
+      .fill({ color: getActionColor(participant.action) })
+      .stroke({ color: 0xf6f5ef, width: 1 });
+  }
 }
 
 function drawMassMarker(

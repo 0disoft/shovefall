@@ -1,8 +1,8 @@
 {
   "formatVersion": 1,
-  "productVersion": "0.18.2",
-  "simulationVersion": "5.3.0",
-  "contentVersion": "3.1.0",
+  "productVersion": "0.20.0",
+  "simulationVersion": "6.0.0",
+  "contentVersion": "4.0.0",
   "buildId": "fixture-v3",
   "config": {
     "configVersion": 1,
@@ -32,7 +32,8 @@
         "y": 0
       },
       "shovePressed": false,
-      "dodgePressed": false
+      "dodgePressed": false,
+      "upgradeStat": null
     },
     {
       "commandVersion": 1,
@@ -43,7 +44,8 @@
         "y": 1
       },
       "shovePressed": false,
-      "dodgePressed": false
+      "dodgePressed": false,
+      "upgradeStat": null
     },
     {
       "commandVersion": 1,
@@ -54,7 +56,8 @@
         "y": 0
       },
       "shovePressed": false,
-      "dodgePressed": false
+      "dodgePressed": false,
+      "upgradeStat": null
     },
     {
       "commandVersion": 1,
@@ -65,30 +68,31 @@
         "y": -1
       },
       "shovePressed": false,
-      "dodgePressed": false
+      "dodgePressed": false,
+      "upgradeStat": null
     }
   ],
   "checkpoints": [
     {
       "tick": 30,
-      "stateHash": "fnv1a32:721e4938"
+      "stateHash": "fnv1a32:d8f22308"
     },
     {
       "tick": 60,
-      "stateHash": "fnv1a32:31250a1f"
+      "stateHash": "fnv1a32:e57fc26b"
     },
     {
       "tick": 90,
-      "stateHash": "fnv1a32:f96cab11"
+      "stateHash": "fnv1a32:4e48e27d"
     },
     {
       "tick": 120,
-      "stateHash": "fnv1a32:6eaab8c9"
+      "stateHash": "fnv1a32:19d48d89"
     },
     {
       "tick": 180,
-      "stateHash": "fnv1a32:da547e33"
+      "stateHash": "fnv1a32:01d17ed3"
     }
   ],
-  "finalHash": "fnv1a32:da547e33"
+  "finalHash": "fnv1a32:01d17ed3"
 }

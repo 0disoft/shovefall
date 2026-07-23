@@ -7,7 +7,9 @@
 
 `src/content/items.ts` is the declarative source for Iron Boots, Feather, and Spring Glove. Each definition owns a stable ID, version, presentation keys, duration or consumption policy, refresh-only stacking policy, physical multipliers, and AI tags. No definition adds health, damage, invulnerability, rarity, inventory slots, or a shop.
 
-Iron Boots lasts 480 ticks, multiplies mass by 1.4, and reduces dodge speed to 0.82. Existing mass-based movement curves also reduce acceleration and maximum speed. Feather lasts 480 ticks, multiplies mass by 0.8, and increases dodge speed to 1.18 while amplifying received impulse and missed-shove exposure through the same mass equations. The global effective range is `0.8..1.4`. Spring Glove is one held charge. Shove start consumes it, stores the boost on that action, raises active speed by 1.22 and raw impulse by 1.45, and applies to all valid contacts in that single active window. Missing still consumes the charge and its stronger forward momentum.
+Iron Boots lasts 480 ticks, multiplies mass by 1.4, and reduces dodge speed to 0.82. Feather lasts 480 ticks, multiplies mass by 0.8, and increases dodge speed to 1.18. The global effective range is `0.8..1.4`. Spring Glove is one held charge. Shove start consumes it, stores the boost on that action, raises hand reach by 1.22 and raw impulse by 1.45, and applies to all valid contacts in that hand-active window. It never launches the attacker's body. Missing still consumes the charge.
+
+The human chooses exactly two distinct starting items. They enter the authoritative tick-zero effect state and follow the same refresh, expiry, mass-clamp, and Spring-consumption rules as arena pickups. Bots receive no hidden starting grant.
 
 ## Deterministic Lifecycle
 

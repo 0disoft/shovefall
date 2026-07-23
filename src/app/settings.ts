@@ -1,9 +1,20 @@
-import type { BotDifficulty } from "../simulation/contracts";
+import type { BotDifficulty, ItemDefinitionId } from "../simulation/contracts";
 
 export const PRESET_NAMES = ["relaxed", "default", "crowded", "chaos"] as const;
 export const BOT_DIFFICULTIES = ["easy", "normal", "hard"] as const;
 
 export type PresetName = (typeof PRESET_NAMES)[number];
+export type StartingMass = "light" | "normal" | "heavy";
+
+export const STARTING_MASS_FACTORS: Readonly<Record<StartingMass, number>> = Object.freeze({
+  light: 0.85,
+  normal: 1,
+  heavy: 1.25,
+});
+export const DEFAULT_STARTING_ITEMS = Object.freeze([
+  "iron-boots",
+  "spring-glove",
+] as const satisfies readonly ItemDefinitionId[]);
 
 export interface GameSettings {
   readonly playerCount: number;
@@ -12,6 +23,8 @@ export interface GameSettings {
   readonly initialItemCount: number;
   readonly itemRespawnSeconds: number;
   readonly botDifficulty: BotDifficulty;
+  readonly startingMass: StartingMass;
+  readonly startingItems: readonly ItemDefinitionId[];
 }
 
 export interface ArenaSize {
@@ -59,6 +72,20 @@ export function isBotDifficulty(value: string): value is BotDifficulty {
 
 export function isCollapseSpeed(value: string): value is CollapseSpeed {
   return value === "slow" || value === "normal" || value === "fast";
+}
+
+export function isStartingMass(value: string): value is StartingMass {
+  return value === "light" || value === "normal" || value === "heavy";
+}
+
+function normalizeStartingItems(
+  values: readonly string[] | undefined,
+): readonly ItemDefinitionId[] {
+  const selected = [...new Set(values ?? [])].filter(
+    (value): value is ItemDefinitionId =>
+      value === "iron-boots" || value === "feather" || value === "spring-glove",
+  );
+  return Object.freeze(selected.length === 2 ? selected : [...DEFAULT_STARTING_ITEMS]);
 }
 
 export function getPresetPlayerCount(preset: PresetName): number {
@@ -116,6 +143,8 @@ export function normalizeSettings(input: {
   readonly itemRespawnSeconds?: number;
   readonly botDifficulty?: string;
   readonly collapseSpeed?: string;
+  readonly startingMass?: string;
+  readonly startingItems?: readonly string[];
 }): GameSettings {
   const preset = isPresetName(input.preset) ? input.preset : "default";
   const playerCount = normalizePlayerCount(input.playerCount);
@@ -133,6 +162,11 @@ export function normalizeSettings(input: {
       input.botDifficulty !== undefined && isBotDifficulty(input.botDifficulty)
         ? input.botDifficulty
         : "normal",
+    startingMass:
+      input.startingMass !== undefined && isStartingMass(input.startingMass)
+        ? input.startingMass
+        : "normal",
+    startingItems: normalizeStartingItems(input.startingItems),
   });
 }
 
@@ -140,16 +174,16 @@ export function getArenaSize(playerCount: number): ArenaSize {
   const normalizedCount = normalizePlayerCount(playerCount);
 
   if (normalizedCount <= 8) {
-    return Object.freeze({ columns: 10, rows: 8 });
-  }
-
-  if (normalizedCount <= 16) {
     return Object.freeze({ columns: 12, rows: 10 });
   }
 
-  if (normalizedCount <= 24) {
-    return Object.freeze({ columns: 16, rows: 12 });
+  if (normalizedCount <= 16) {
+    return Object.freeze({ columns: 15, rows: 12 });
   }
 
-  return Object.freeze({ columns: 17, rows: 13 });
+  if (normalizedCount <= 24) {
+    return Object.freeze({ columns: 18, rows: 14 });
+  }
+
+  return Object.freeze({ columns: 20, rows: 15 });
 }

@@ -17,6 +17,7 @@ import {
   type SimulationEventV1,
   type TileId,
   type TileState,
+  type UpgradeStatId,
 } from "./contracts";
 import { advanceCollapse, createCollapsePlan, type CollapseWave } from "./collapse";
 import { hashWorldState } from "./hash";
@@ -40,6 +41,7 @@ import { RandomStreamSet, type SeedInput } from "./random";
 import { ParticipantSpatialHash, type ActorPair } from "./spatial-hash";
 import {
   advanceItemSpawns,
+  applyStartingItems,
   clearEffects,
   consumeSpringGlove,
   createItemSystem,
@@ -51,8 +53,24 @@ import {
   type ItemSpawnOverride,
   type ItemSystemState,
 } from "./items";
+import {
+  awardStatPoint,
+  createParticipantProgression,
+  getMobilityMultiplier,
+  getPowerMultiplier,
+  getReflexCooldownReduction,
+  getStabilityMultiplier,
+  spendStatPoint,
+} from "./progression";
 import { getItemDefinition } from "../content/items";
-import { getMovementProfile, normalizeMassFactor, SIMULATION_TUNING } from "./tuning";
+import {
+  getMovementProfile,
+  normalizeGameplayTuning,
+  normalizeMassFactor,
+  SIMULATION_TUNING,
+  type GameplayTuningInput,
+  type GameplayTuningV1,
+} from "./tuning";
 import { SYSTEM_ORDER } from "./versions";
 
 export interface SimulationStepResult {
@@ -74,6 +92,7 @@ export interface ParticipantSpawnOverride {
   readonly facing?: Vector2;
   readonly massFactor?: number;
   readonly control?: "human" | "scripted";
+  readonly startingItems?: readonly ItemDefinitionId[];
 }
 
 export interface SimulationWorldOptions {
@@ -81,6 +100,7 @@ export interface SimulationWorldOptions {
   readonly humanActorId?: ActorId;
   readonly participantOverrides?: readonly ParticipantSpawnOverride[];
   readonly itemOverrides?: readonly ItemSpawnOverride[];
+  readonly gameplayTuning?: GameplayTuningInput;
 }
 
 interface EventDetails {
@@ -92,6 +112,7 @@ interface EventDetails {
   readonly winnerActorId?: ActorId;
   readonly vector?: Vector2;
   readonly reason?: SimulationEventV1["reason"];
+  readonly upgradeStat?: UpgradeStatId;
 }
 
 interface SweptCircleContact {
@@ -180,6 +201,14 @@ function validateOverride(override: ParticipantSpawnOverride, participantCount: 
   if (override.massFactor !== undefined) {
     assertFiniteNumber(override.massFactor, "participant override massFactor");
   }
+
+  if (
+    override.startingItems !== undefined &&
+    (override.startingItems.length > 2 ||
+      new Set(override.startingItems).size !== override.startingItems.length)
+  ) {
+    throw new SimulationContractError("startingItems must contain at most two unique items");
+  }
 }
 
 function createParticipants(
@@ -227,28 +256,27 @@ function createParticipants(
     );
     const facing = normalizeDirectionOrFallback(override?.facing ?? defaultFacing, defaultFacing);
 
-    participants.push(
-      Object.freeze({
-        actorId,
-        control: override?.control ?? (actorId === humanActorId ? "human" : "scripted"),
-        body: Object.freeze({
-          position,
-          previousPosition: position,
-          velocity,
-          facing,
-          radius: SIMULATION_TUNING.body.radius,
-          baseMassFactor: normalizeMassFactor(
-            override?.massFactor ?? SIMULATION_TUNING.mass.default,
-          ),
-          massFactor: normalizeMassFactor(override?.massFactor ?? SIMULATION_TUNING.mass.default),
-          unsupportedTicks: 0,
-        }),
-        action: createReadyAction(0),
-        cooldowns: Object.freeze({ shoveReadyTick: 0, dodgeReadyTick: 0 }),
-        effects: Object.freeze([]),
-        active: true,
+    const participant: ParticipantState = Object.freeze({
+      actorId,
+      control: override?.control ?? (actorId === humanActorId ? "human" : "scripted"),
+      body: Object.freeze({
+        position,
+        previousPosition: position,
+        velocity,
+        facing,
+        radius: SIMULATION_TUNING.body.radius,
+        baseMassFactor: normalizeMassFactor(override?.massFactor ?? SIMULATION_TUNING.mass.default),
+        massFactor: normalizeMassFactor(override?.massFactor ?? SIMULATION_TUNING.mass.default),
+        unsupportedTicks: 0,
       }),
-    );
+      action: createReadyAction(0),
+      cooldowns: Object.freeze({ shoveReadyTick: 0, dodgeReadyTick: 0 }),
+      effects: Object.freeze([]),
+      progression: createParticipantProgression(),
+      shoveCredit: Object.freeze({ attackerActorId: null, hitTick: null }),
+      active: true,
+    });
+    participants.push(applyStartingItems(participant, override?.startingItems ?? []));
   }
 
   return Object.freeze(participants);
@@ -319,6 +347,7 @@ export class SimulationWorld {
   readonly #roundId: RoundId;
   readonly #collapsePlan: readonly CollapseWave[];
   readonly #collapseTransitionTicks: ReadonlySet<number>;
+  readonly #gameplayTuning: GameplayTuningV1;
   readonly #itemRandom;
   readonly #tieBreakRandom;
   #tiles: readonly TileState[];
@@ -358,6 +387,7 @@ export class SimulationWorld {
     const streams = new RandomStreamSet(masterSeed);
     this.#config = config;
     this.#roundId = roundId;
+    this.#gameplayTuning = normalizeGameplayTuning(options.gameplayTuning);
     this.#tiles = createTiles(config);
     this.#collapsePlan = createCollapsePlan(
       this.#tiles,
@@ -421,6 +451,7 @@ export class SimulationWorld {
 
     participants = this.#advanceExpiredActions(participants, events);
     participants = expireEffects(participants, this.#tick);
+    participants = this.#applyUpgrades(participants, commandsByActor, events);
     participants = this.#startRequestedActions(participants, commandsByActor, events);
     participants = this.#applyMovementIntent(participants, commandsByActor);
     participants = this.#integratePositions(participants);
@@ -511,6 +542,7 @@ export class SimulationWorld {
               dodgeReadyTick: participant.cooldowns.dodgeReadyTick,
               effects: participant.effects,
               springBoosted: participant.action.springBoosted,
+              progression: participant.progression,
             }),
           ),
       ),
@@ -557,6 +589,35 @@ export class SimulationWorld {
     return commandsByActor;
   }
 
+  #applyUpgrades(
+    participants: readonly ParticipantState[],
+    commandsByActor: ReadonlyMap<ActorId, ActorCommandV1>,
+    events: SimulationEventV1[],
+  ): readonly ParticipantState[] {
+    return participants.map((participant) => {
+      const requestedStat: UpgradeStatId | null =
+        commandsByActor.get(participant.actorId)?.upgradeStat ?? null;
+
+      if (requestedStat === null || !participant.active) {
+        return participant;
+      }
+
+      const progression = spendStatPoint(participant.progression, requestedStat);
+
+      if (progression === undefined) {
+        return participant;
+      }
+
+      events.push(
+        this.#createEvent("stat-upgraded", {
+          actorId: participant.actorId,
+          upgradeStat: requestedStat,
+        }),
+      );
+      return Object.freeze({ ...participant, progression });
+    });
+  }
+
   #advanceExpiredActions(
     participants: readonly ParticipantState[],
     events: SimulationEventV1[],
@@ -574,7 +635,7 @@ export class SimulationWorld {
           action: createTimedAction(
             "ShoveActive",
             this.#tick,
-            SIMULATION_TUNING.shove.activeTicks,
+            this.#gameplayTuning.shoveActiveTicks,
             action.lockedDirection,
             action.hitActorIds,
             action.resolvedActorIds,
@@ -679,12 +740,18 @@ export class SimulationWorld {
           action: createTimedAction(
             "DodgeActive",
             this.#tick,
-            SIMULATION_TUNING.dodge.activeTicks,
+            this.#gameplayTuning.dodgeActiveTicks,
             direction,
           ),
           cooldowns: Object.freeze({
             ...participant.cooldowns,
-            dodgeReadyTick: this.#tick + SIMULATION_TUNING.dodge.cooldownTicks,
+            dodgeReadyTick:
+              this.#tick +
+              Math.max(
+                30,
+                SIMULATION_TUNING.dodge.cooldownTicks -
+                  getReflexCooldownReduction(participant.progression.stats),
+              ),
           }),
         });
       }
@@ -714,7 +781,13 @@ export class SimulationWorld {
           ),
           cooldowns: Object.freeze({
             ...participantWithoutSpring.cooldowns,
-            shoveReadyTick: this.#tick + SIMULATION_TUNING.shove.cooldownTicks,
+            shoveReadyTick:
+              this.#tick +
+              Math.max(
+                24,
+                SIMULATION_TUNING.shove.cooldownTicks -
+                  getReflexCooldownReduction(participant.progression.stats),
+              ),
           }),
         });
       }
@@ -735,15 +808,23 @@ export class SimulationWorld {
       const command =
         commandsByActor.get(participant.actorId) ??
         createNeutralCommand(this.#tick, participant.actorId);
-      const profile = getMovementProfile(participant.body.massFactor);
+      const profile = getMovementProfile(participant.body.massFactor, this.#gameplayTuning);
+      const mobilityMultiplier = getMobilityMultiplier(participant.progression.stats);
       const inputDirection = normalizeVector(command.move);
       let velocity = participant.body.velocity;
       let facing = participant.body.facing;
 
       switch (participant.action.kind) {
         case "Ready": {
-          const targetVelocity = scaleVector(inputDirection, profile.maximumSpeed);
-          velocity = moveVectorToward(velocity, targetVelocity, profile.acceleration);
+          const targetVelocity = scaleVector(
+            inputDirection,
+            profile.maximumSpeed * mobilityMultiplier,
+          );
+          velocity = moveVectorToward(
+            velocity,
+            targetVelocity,
+            profile.acceleration * mobilityMultiplier,
+          );
           velocity = isZeroVector(inputDirection)
             ? scaleVector(velocity, SIMULATION_TUNING.movement.passiveDrag)
             : velocity;
@@ -765,17 +846,14 @@ export class SimulationWorld {
         }
         case "ShoveActive": {
           const direction = participant.action.lockedDirection ?? facing;
-          const forwardSpeed = dotVectors(velocity, direction);
-          const lateralVelocity = subtractVectors(velocity, scaleVector(direction, forwardSpeed));
-          const shoveSpeedMultiplier = participant.action.springBoosted
-            ? getItemDefinition("spring-glove").shoveSpeedMultiplier
-            : 1;
-          velocity = addVectors(
-            scaleVector(
-              direction,
-              Math.max(forwardSpeed, SIMULATION_TUNING.shove.activeSpeed * shoveSpeedMultiplier),
-            ),
-            scaleVector(lateralVelocity, 0.25),
+          const targetVelocity = scaleVector(
+            inputDirection,
+            profile.maximumSpeed * mobilityMultiplier * 0.18,
+          );
+          velocity = moveVectorToward(
+            scaleVector(velocity, SIMULATION_TUNING.movement.passiveDrag),
+            targetVelocity,
+            profile.acceleration * 0.18,
           );
           facing = direction;
           break;
@@ -796,7 +874,7 @@ export class SimulationWorld {
           const direction = participant.action.lockedDirection ?? facing;
           velocity = scaleVector(
             direction,
-            SIMULATION_TUNING.dodge.speed * getDodgeSpeedMultiplier(participant),
+            this.#gameplayTuning.dodgeSpeed * getDodgeSpeedMultiplier(participant),
           );
           facing = direction;
           break;
@@ -1003,6 +1081,10 @@ export class SimulationWorld {
     const impulses = new Map<ActorId, Vector2>();
     const newlyHit = new Map<ActorId, Set<ActorId>>();
     const newlyResolved = new Map<ActorId, Set<ActorId>>();
+    const shoveCredits = new Map<
+      ActorId,
+      { readonly actorId: ActorId; readonly strength: number }
+    >();
 
     for (const attacker of ordered) {
       if (!isCollidable(attacker) || attacker.action.kind !== "ShoveActive") {
@@ -1025,7 +1107,12 @@ export class SimulationWorld {
         const distance = vectorLength(delta);
         const normal = distance === 0 ? direction : scaleVector(delta, 1 / distance);
         const maximumContactDistance =
-          attacker.body.radius + target.body.radius + SIMULATION_TUNING.shove.reach;
+          attacker.body.radius +
+          target.body.radius +
+          this.#gameplayTuning.shoveReach *
+            (attacker.action.springBoosted
+              ? getItemDefinition("spring-glove").shoveReachMultiplier
+              : 1);
 
         if (
           distance > maximumContactDistance ||
@@ -1058,6 +1145,8 @@ export class SimulationWorld {
           (SIMULATION_TUNING.shove.baseImpulse +
             forwardSpeed * SIMULATION_TUNING.shove.velocityImpulseScale) *
           (attacker.body.massFactor / target.body.massFactor) *
+          getPowerMultiplier(attacker.progression.stats) *
+          getStabilityMultiplier(target.progression.stats) *
           (attacker.action.springBoosted
             ? getItemDefinition("spring-glove").shoveImpulseMultiplier
             : 1);
@@ -1072,6 +1161,16 @@ export class SimulationWorld {
         const hitTargets = newlyHit.get(attacker.actorId) ?? new Set<ActorId>();
         hitTargets.add(target.actorId);
         newlyHit.set(attacker.actorId, hitTargets);
+        const previousCredit = shoveCredits.get(target.actorId);
+        const strength = vectorLength(impulse);
+
+        if (
+          previousCredit === undefined ||
+          strength > previousCredit.strength ||
+          (strength === previousCredit.strength && attacker.actorId < previousCredit.actorId)
+        ) {
+          shoveCredits.set(target.actorId, Object.freeze({ actorId: attacker.actorId, strength }));
+        }
         events.push(
           this.#createEvent("shove-hit", {
             actorId: attacker.actorId,
@@ -1109,6 +1208,12 @@ export class SimulationWorld {
         addVectors(participant.body.velocity, impulse),
         SIMULATION_TUNING.body.maximumSpeed,
       );
+      const shoveCredit = shoveCredits.has(participant.actorId)
+        ? Object.freeze({
+            attackerActorId: shoveCredits.get(participant.actorId)?.actorId ?? null,
+            hitTick: this.#tick,
+          })
+        : participant.shoveCredit;
 
       if (
         vectorLength(impulse) >= SIMULATION_TUNING.shove.stumbleImpulseThreshold &&
@@ -1126,6 +1231,7 @@ export class SimulationWorld {
         ...participant,
         action,
         body: Object.freeze({ ...participant.body, velocity }),
+        shoveCredit,
       });
     });
   }
@@ -1138,7 +1244,11 @@ export class SimulationWorld {
       this.#tiles.filter(({ state }) => state !== "Void").map(({ tileId }) => tileId),
     );
 
-    return participants.map((participant) => {
+    const creditedEliminations: {
+      readonly attackerActorId: ActorId;
+      readonly targetActorId: ActorId;
+    }[] = [];
+    const resolved = participants.map((participant) => {
       if (!participant.active || !isGroundAction(participant.action.kind)) {
         return participant;
       }
@@ -1169,6 +1279,18 @@ export class SimulationWorld {
           vector: participant.body.velocity,
         }),
       );
+      const { attackerActorId, hitTick } = participant.shoveCredit;
+
+      if (
+        attackerActorId !== null &&
+        hitTick !== null &&
+        attackerActorId !== participant.actorId &&
+        this.#tick - hitTick <= SIMULATION_TUNING.shove.eliminationCreditTicks
+      ) {
+        creditedEliminations.push(
+          Object.freeze({ attackerActorId, targetActorId: participant.actorId }),
+        );
+      }
       const participantWithoutEffects = clearEffects(participant);
       return Object.freeze({
         ...participantWithoutEffects,
@@ -1184,6 +1306,35 @@ export class SimulationWorld {
           null,
         ),
       });
+    });
+
+    if (creditedEliminations.length === 0) {
+      return resolved;
+    }
+
+    const creditsByActor = new Map<ActorId, ActorId[]>();
+
+    for (const credit of creditedEliminations) {
+      const targets = creditsByActor.get(credit.attackerActorId) ?? [];
+      targets.push(credit.targetActorId);
+      creditsByActor.set(credit.attackerActorId, targets);
+      events.push(
+        this.#createEvent("stat-point-earned", {
+          actorId: credit.attackerActorId,
+          targetActorId: credit.targetActorId,
+        }),
+      );
+    }
+
+    return resolved.map((participant) => {
+      const credits = creditsByActor.get(participant.actorId)?.length ?? 0;
+      let progression = participant.progression;
+
+      for (let index = 0; index < credits; index += 1) {
+        progression = awardStatPoint(progression);
+      }
+
+      return credits === 0 ? participant : Object.freeze({ ...participant, progression });
     });
   }
 
@@ -1277,6 +1428,7 @@ export class SimulationWorld {
       ...(details.winnerActorId === undefined ? {} : { winnerActorId: details.winnerActorId }),
       ...(details.vector === undefined ? {} : { vector: details.vector }),
       ...(details.reason === undefined ? {} : { reason: details.reason }),
+      ...(details.upgradeStat === undefined ? {} : { upgradeStat: details.upgradeStat }),
     });
     this.#eventSequence += 1;
     return event;

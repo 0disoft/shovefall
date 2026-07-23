@@ -61,6 +61,41 @@
               </label>
             </fieldset>
 
+            <fieldset class="preset-fieldset loadout-fieldset">
+              <legend>시작 몸무게</legend>
+              <label class="preset-card">
+                <input type="radio" name="startingMass" value="light" />
+                <span><strong>가벼움</strong><small>빠르지만 잘 밀려</small></span>
+              </label>
+              <label class="preset-card">
+                <input type="radio" name="startingMass" value="normal" checked />
+                <span><strong>보통</strong><small>속도와 버티기의 균형</small></span>
+              </label>
+              <label class="preset-card">
+                <input type="radio" name="startingMass" value="heavy" />
+                <span><strong>무거움</strong><small>느리지만 잘 버텨</small></span>
+              </label>
+            </fieldset>
+
+            <fieldset id="starting-items" class="preset-fieldset loadout-fieldset">
+              <legend>시작 아이템 <span>2개 선택</span></legend>
+              <label class="preset-card">
+                <input type="checkbox" name="startingItem" value="iron-boots" checked />
+                <span><strong>철 장화</strong><small>더 묵직하게 버텨</small></span>
+              </label>
+              <label class="preset-card">
+                <input type="checkbox" name="startingItem" value="feather" />
+                <span><strong>깃털</strong><small>더 빠르게 빠져나가</small></span>
+              </label>
+              <label class="preset-card">
+                <input type="checkbox" name="startingItem" value="spring-glove" checked />
+                <span><strong>스프링 장갑</strong><small>첫 밀치기를 더 멀리</small></span>
+              </label>
+              <p id="starting-items-help" class="fieldset-help" aria-live="polite">
+                라운드를 시작할 때 들고 갈 두 개를 골라.
+              </p>
+            </fieldset>
+
             <fieldset class="preset-fieldset">
               <legend>AI 난이도</legend>
               <label class="preset-card">
@@ -169,6 +204,115 @@
               16명 · AI 보통 · 붕괴 보통 · 시작 아이템 6개 · 5초마다 1개
             </p>
 
+            <details id="debug-tuning" class="debug-tuning" data-debug-tuning="disabled">
+              <summary>
+                <span>
+                  <strong>실험실</strong>
+                  <small>이동과 액션 거리 조정</small>
+                </span>
+                <span class="debug-tuning__status" aria-hidden="true">DEBUG</span>
+              </summary>
+
+              <div class="debug-tuning__body">
+                <label class="debug-tuning__toggle" for="debug-tuning-enabled">
+                  <input id="debug-tuning-enabled" type="checkbox" />
+                  <span>
+                    <strong>조정값 사용</strong>
+                    <small>다음 라운드부터 사람과 AI 모두에게 적용해.</small>
+                  </span>
+                </label>
+
+                <div class="debug-tuning__grid">
+                  <div class="player-control">
+                    <div class="player-control__label">
+                      <label for="debug-movement-speed">기본 이동속도</label>
+                      <output id="debug-movement-speed-value" for="debug-movement-speed"
+                        >3.3칸/초</output
+                      >
+                    </div>
+                    <input id="debug-movement-speed" type="range" value="0.055" />
+                  </div>
+
+                  <div class="player-control">
+                    <div class="player-control__label">
+                      <label for="debug-movement-acceleration">이동 가속도</label>
+                      <output
+                        id="debug-movement-acceleration-value"
+                        for="debug-movement-acceleration"
+                        >0.006 · 0.15초</output
+                      >
+                    </div>
+                    <input id="debug-movement-acceleration" type="range" value="0.006" />
+                  </div>
+
+                  <div class="player-control">
+                    <div class="player-control__label">
+                      <label for="debug-lightweight-speed">가벼움 최고속도</label>
+                      <output id="debug-lightweight-speed-value" for="debug-lightweight-speed"
+                        >1.35×</output
+                      >
+                    </div>
+                    <input id="debug-lightweight-speed" type="range" value="1.35" />
+                  </div>
+
+                  <div class="player-control">
+                    <div class="player-control__label">
+                      <label for="debug-heavyweight-speed">무거움 최고속도</label>
+                      <output id="debug-heavyweight-speed-value" for="debug-heavyweight-speed"
+                        >0.82×</output
+                      >
+                    </div>
+                    <input id="debug-heavyweight-speed" type="range" value="0.82" />
+                  </div>
+
+                  <div class="player-control">
+                    <div class="player-control__label">
+                      <label for="debug-shove-reach">밀치기 손길이</label>
+                      <output id="debug-shove-reach-value" for="debug-shove-reach">0.28칸</output>
+                    </div>
+                    <input id="debug-shove-reach" type="range" value="0.28" />
+                  </div>
+
+                  <div class="player-control">
+                    <div class="player-control__label">
+                      <label for="debug-shove-ticks">밀치기 지속</label>
+                      <output id="debug-shove-ticks-value" for="debug-shove-ticks">5틱</output>
+                    </div>
+                    <input id="debug-shove-ticks" type="range" value="5" />
+                  </div>
+
+                  <div class="player-control">
+                    <div class="player-control__label">
+                      <label for="debug-dodge-speed">회피 속도</label>
+                      <output id="debug-dodge-speed-value" for="debug-dodge-speed">0.105</output>
+                    </div>
+                    <input id="debug-dodge-speed" type="range" value="0.105" />
+                  </div>
+
+                  <div class="player-control">
+                    <div class="player-control__label">
+                      <label for="debug-dodge-ticks">회피 지속</label>
+                      <output id="debug-dodge-ticks-value" for="debug-dodge-ticks">5틱</output>
+                    </div>
+                    <input id="debug-dodge-ticks" type="range" value="5" />
+                  </div>
+                </div>
+
+                <p id="debug-tuning-summary" class="debug-tuning__summary" aria-live="polite">
+                  기본 밸런스로 시작해. 켜면 다음 라운드부터 조정값을 써.
+                </p>
+
+                <div class="debug-tuning__actions">
+                  <button id="reset-debug-tuning" class="secondary-action" type="button">
+                    기본값
+                  </button>
+                  <button id="copy-debug-tuning" class="secondary-action" type="button">
+                    튜닝값 복사
+                  </button>
+                </div>
+              </div>
+            </details>
+
             <button class="primary-action" type="submit">
               <span>빠른 시작</span>
               <span aria-hidden="true">→</span>
@@ -179,6 +323,29 @@
             <p id="round-message" class="ready-message" role="status">
               움직여서 가장자리로 몰아붙여.
             </p>
+            <section id="stat-upgrades" class="stat-upgrades" aria-labelledby="stat-upgrades-title">
+              <div class="stat-upgrades__heading">
+                <strong id="stat-upgrades-title">처치 성장</strong>
+                <span>남은 포인트 <output id="stat-points-value">0</output></span>
+              </div>
+              <div class="stat-upgrades__grid">
+                <button type="button" data-upgrade-stat="power" disabled>
+                  <span>1 · 힘</span><small>밀치기 +8%</small><output id="power-level">0</output>
+                </button>
+                <button type="button" data-upgrade-stat="stability" disabled>
+                  <span>2 · 중심</span><small>받는 밀침 -12%</small
+                  ><output id="stability-level">0</output>
+                </button>
+                <button type="button" data-upgrade-stat="mobility" disabled>
+                  <span>3 · 발놀림</span><small>이동 +5%</small
+                  ><output id="mobility-level">0</output>
+                </button>
+                <button type="button" data-upgrade-stat="reflex" disabled>
+                  <span>4 · 반사신경</span><small>재사용 대기 감소</small
+                  ><output id="reflex-level">0</output>
+                </button>
+              </div>
+            </section>
             <div class="arena-actions__buttons">
               <button id="restart-round" class="primary-action" type="button">다시 시작</button>
               <button id="back-to-settings" class="secondary-action" type="button">설정으로</button>

@@ -16,6 +16,7 @@ describe("human input state", () => {
       move: { x: 1, y: -1 },
       shovePressed: true,
       dodgePressed: true,
+      upgradeStat: null,
     });
     expect(input.consumeCommand(5, 1)).toEqual({
       commandVersion: 1,
@@ -24,6 +25,7 @@ describe("human input state", () => {
       move: { x: 1, y: -1 },
       shovePressed: false,
       dodgePressed: false,
+      upgradeStat: null,
     });
   });
 
@@ -49,6 +51,16 @@ describe("human input state", () => {
   it("recognizes only the approved gameplay keys", () => {
     expect(isGameplayCode("KeyW")).toBe(true);
     expect(isGameplayCode("Space")).toBe(true);
+    expect(isGameplayCode("Digit1")).toBe(true);
     expect(isGameplayCode("Enter")).toBe(false);
+  });
+
+  it("queues one stat upgrade from number keys or the UI bridge", () => {
+    const input = new InputState();
+    input.press("Digit3");
+    expect(input.consumeCommand(0, 1).upgradeStat).toBe("mobility");
+    expect(input.consumeCommand(1, 1).upgradeStat).toBeNull();
+    input.queueUpgrade("stability");
+    expect(input.consumeCommand(2, 1).upgradeStat).toBe("stability");
   });
 });

@@ -8,14 +8,18 @@ import {
   isCollapseSpeed,
   isPresetName,
   normalizeSettings,
+  STARTING_MASS_FACTORS,
   type GameSettings,
   type PresetName,
 } from "./settings";
 import { createGameSession, type GameSession, type SessionTelemetry } from "./game-session";
+import { createDebugTuningController, type DebugTuningController } from "./debug-tuning";
 import { createPlaytestRoundReport, serializePlaytestRoundReport } from "./round-report";
-import type { SimulationEventV1 } from "../simulation/contracts";
+import type { SimulationEventV1, UpgradeStatId } from "../simulation/contracts";
 import { normalizeGameConfig } from "../simulation/contracts";
 import { SimulationWorld } from "../simulation/world";
+import { DEFAULT_GAMEPLAY_TUNING, type GameplayTuningV1 } from "../simulation/tuning";
+import { isUpgradeStatId, UPGRADE_STAT_IDS } from "../simulation/progression";
 import { createArenaRenderer, type ArenaRenderer } from "../presentation/arena-renderer";
 import {
   createAudioFeedback,
@@ -131,6 +135,10 @@ function getEventMessage(event: SimulationEventV1): string | undefined {
       return event.actorId === 1 && event.itemDefinitionId !== undefined
         ? `${ITEM_LABELS[event.itemDefinitionId]} 획득!`
         : undefined;
+    case "stat-point-earned":
+      return event.actorId === 1 ? "처치 인정! 스탯 포인트를 얻었어." : undefined;
+    case "stat-upgraded":
+      return event.actorId === 1 ? "스탯을 올렸어." : undefined;
     default:
       return undefined;
   }
@@ -149,6 +157,10 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   const itemRespawn = requireElement(root, "#item-respawn", HTMLInputElement);
   const itemRespawnValue = requireElement(root, "#item-respawn-value", HTMLOutputElement);
   const setupSummary = requireElement(root, "#setup-summary", HTMLElement);
+  const startingItemsHelp = requireElement(root, "#starting-items-help", HTMLElement);
+  const startingItemInputs = [
+    ...form.querySelectorAll<HTMLInputElement>('input[name="startingItem"]'),
+  ];
   const arenaActions = requireElement(root, "#arena-actions", HTMLElement);
   const readyMessage = requireElement(root, "#round-message", HTMLElement);
   const restartButton = requireElement(root, "#restart-round", HTMLButtonElement);
@@ -168,11 +180,21 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   const positionValue = requireElement(root, "#position-value", HTMLOutputElement);
   const seedValue = requireElement(root, "#seed-value", HTMLOutputElement);
   const hashValue = requireElement(root, "#hash-value", HTMLOutputElement);
+  const statPointsValue = requireElement(root, "#stat-points-value", HTMLOutputElement);
+  const upgradeButtons = [...root.querySelectorAll<HTMLButtonElement>("[data-upgrade-stat]")];
+  const statLevelOutputs: Readonly<Record<UpgradeStatId, HTMLOutputElement>> = Object.freeze({
+    power: requireElement(root, "#power-level", HTMLOutputElement),
+    stability: requireElement(root, "#stability-level", HTMLOutputElement),
+    mobility: requireElement(root, "#mobility-level", HTMLOutputElement),
+    reflex: requireElement(root, "#reflex-level", HTMLOutputElement),
+  });
 
   let renderer: ArenaRenderer | undefined;
   let session: GameSession | undefined;
   let audio: AudioFeedback | undefined;
+  let debugTuning: DebugTuningController | undefined;
   let latestSettings = normalizeSettings({ playerCount: 16, preset: "default" });
+  let latestGameplayTuning: GameplayTuningV1 = DEFAULT_GAMEPLAY_TUNING;
   let latestMasterSeed: string | undefined;
   let latestRoundReport: string | undefined;
 
@@ -190,15 +212,33 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
 
   audio = createAudioFeedback(undefined, updateSoundControl);
 
-  const readSettings = (): GameSettings =>
-    normalizeSettings({
+  const readSettings = (): GameSettings => {
+    const data = new FormData(form);
+    const startingMass = data.get("startingMass");
+    return normalizeSettings({
       playerCount: Number(playerCount.value),
       preset: readSelectedPreset(form),
       initialItemCount: Number(initialItemCount.value),
       itemRespawnSeconds: Number(itemRespawn.value),
       botDifficulty: readSelectedBotDifficulty(form),
       collapseSpeed: readSelectedCollapseSpeed(form),
+      startingMass: typeof startingMass === "string" ? startingMass : "normal",
+      startingItems: data
+        .getAll("startingItem")
+        .filter((value): value is string => typeof value === "string"),
     });
+  };
+
+  const renderStartingItemSelection = (): void => {
+    const selectedCount = startingItemInputs.filter(({ checked }) => checked).length;
+
+    for (const input of startingItemInputs) {
+      input.disabled = selectedCount >= 2 && !input.checked;
+    }
+
+    startingItemsHelp.textContent =
+      selectedCount === 2 ? "선택 완료. 다른 걸 고르려면 하나를 먼저 빼." : "하나를 더 골라.";
+  };
 
   const setRecommendedInitialItems = (participantCount: number): void => {
     initialItemCount.max = String(Math.ceil(participantCount * 0.5));
@@ -226,7 +266,14 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
         : settings.collapseSpeed === "fast"
           ? "붕괴 빠름"
           : "붕괴 보통";
-    setupSummary.textContent = `${settings.playerCount}명 · ${difficultyLabel} · ${collapseLabel} · 시작 아이템 ${settings.initialItemCount}개 · ${
+    const startingMassLabel =
+      settings.startingMass === "light"
+        ? "가벼움"
+        : settings.startingMass === "heavy"
+          ? "무거움"
+          : "보통";
+    const loadoutLabel = settings.startingItems.map((item) => ITEM_LABELS[item]).join(" + ");
+    setupSummary.textContent = `${settings.playerCount}명 · ${difficultyLabel} · ${collapseLabel} · 내 체급 ${startingMassLabel} · ${loadoutLabel} · 맵 아이템 ${settings.initialItemCount}개 · ${
       settings.itemRespawnSeconds === 0
         ? "추가 생성 없음"
         : `${settings.itemRespawnSeconds}초마다 1개`
@@ -240,12 +287,25 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     }
 
     const settings = readSettings();
+    const gameplayTuning = debugTuning?.enabled ? debugTuning.read() : DEFAULT_GAMEPLAY_TUNING;
     const previewWorld = new SimulationWorld(
       createConfig(settings),
       `setup-${settings.playerCount}`,
+      {
+        gameplayTuning,
+        participantOverrides: [
+          {
+            actorId: 1,
+            massFactor: STARTING_MASS_FACTORS[settings.startingMass],
+            startingItems: settings.startingItems,
+          },
+        ],
+      },
     );
     renderer.render(previewWorld.createRenderFrame(), 0, 1);
   };
+
+  debugTuning = createDebugTuningController(root, { onChange: renderSetupPreview });
 
   const updateTelemetry = (current: SessionTelemetry): void => {
     const human = current.frame.participants.find((participant) => participant.actorId === 1);
@@ -282,6 +342,19 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     positionValue.value = `${human.position.x.toFixed(2)}, ${human.position.y.toFixed(2)}`;
     seedValue.value = current.masterSeed;
     hashValue.value = current.frame.stateHash;
+    statPointsValue.value = String(human.progression.statPoints);
+
+    for (const stat of UPGRADE_STAT_IDS) {
+      statLevelOutputs[stat].value = String(human.progression.stats[stat]);
+    }
+
+    for (const button of upgradeButtons) {
+      const stat = button.dataset.upgradeStat;
+      button.disabled =
+        !isUpgradeStatId(stat) ||
+        human.progression.statPoints < 1 ||
+        human.progression.stats[stat] >= 5;
+    }
     if (current.countdown !== null) {
       root.dataset.round = "countdown";
       readyMessage.textContent = String(current.countdown);
@@ -352,7 +425,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
         }
 
         latestRoundReport = serializePlaytestRoundReport(
-          createPlaytestRoundReport(latestSettings, latestMasterSeed, frame),
+          createPlaytestRoundReport(latestSettings, latestMasterSeed, frame, latestGameplayTuning),
         );
         root.dataset.round = "completed";
         copyRoundReportButton.hidden = false;
@@ -399,6 +472,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     }
 
     latestSettings = settings;
+    latestGameplayTuning = debugTuning?.enabled ? debugTuning.read() : DEFAULT_GAMEPLAY_TUNING;
     latestMasterSeed = createRoundSeed();
     latestRoundReport = undefined;
     copyRoundReportButton.hidden = true;
@@ -410,6 +484,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     root.dataset.initialItems = String(settings.initialItemCount);
     root.dataset.botDifficulty = settings.botDifficulty;
     root.dataset.collapseSpeed = settings.collapseSpeed;
+    root.dataset.gameplayTuning = debugTuning?.enabled ? "debug" : "default";
     form.hidden = true;
     arenaActions.hidden = false;
     telemetry.hidden = false;
@@ -418,7 +493,10 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
       "aria-label",
       `${settings.playerCount}명이 참가하는 Shovefall 회색 상자 아레나. WASD로 이동하고 Space로 밀치며 Shift로 회피해.`,
     );
-    session.start(createConfig(settings), latestMasterSeed);
+    session.start(createConfig(settings), latestMasterSeed, latestGameplayTuning, {
+      massFactor: STARTING_MASS_FACTORS[settings.startingMass],
+      startingItems: settings.startingItems,
+    });
     arenaHost.focus();
   };
 
@@ -447,6 +525,10 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
       renderSetupPreview();
     }
 
+    if (target.name === "startingItem") {
+      renderStartingItemSelection();
+    }
+
     renderSettingsSummary();
   });
 
@@ -456,6 +538,17 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   });
 
   restartButton.addEventListener("click", () => startRound(latestSettings));
+
+  for (const button of upgradeButtons) {
+    button.addEventListener("click", () => {
+      const stat = button.dataset.upgradeStat;
+
+      if (isUpgradeStatId(stat)) {
+        session?.chooseUpgrade(stat);
+        arenaHost.focus();
+      }
+    });
+  }
 
   const copyRoundReport = async (): Promise<void> => {
     if (latestRoundReport === undefined) {
@@ -524,6 +617,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
       session?.destroy();
       renderer?.destroy();
       audio?.destroy();
+      debugTuning?.destroy();
 
       if (import.meta.env.DEV) {
         window.removeEventListener("shovefall:diagnostic-fatal", handleDiagnosticFatal);
@@ -533,4 +627,5 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   );
 
   renderSettingsSummary();
+  renderStartingItemSelection();
 }

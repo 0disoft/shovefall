@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { createNeutralCommand, normalizeGameConfig } from "../src/simulation/contracts";
 import { vectorLength } from "../src/simulation/math";
-import { getMovementProfile, SIMULATION_TUNING } from "../src/simulation/tuning";
+import {
+  DEFAULT_GAMEPLAY_TUNING,
+  getMovementProfile,
+  SIMULATION_TUNING,
+  type GameplayTuningInput,
+} from "../src/simulation/tuning";
 import { SimulationWorld, type ParticipantSpawnOverride } from "../src/simulation/world";
 
 const CONFIG = normalizeGameConfig({ participantCount: 4, roundLimitSeconds: 10 });
@@ -56,7 +61,7 @@ function beginShove(world: SimulationWorld, actorIds: readonly number[]) {
 }
 
 describe("gray-box movement and action timing", () => {
-  it("keeps the maximum-speed mass curve monotonic and within a 25% spread", () => {
+  it("reserves the old fast pace for lightweight bodies", () => {
     const light = getMovementProfile(SIMULATION_TUNING.mass.minimum);
     const normal = getMovementProfile(SIMULATION_TUNING.mass.default);
     const heavy = getMovementProfile(SIMULATION_TUNING.mass.maximum);
@@ -65,7 +70,61 @@ describe("gray-box movement and action timing", () => {
     expect(normal.maximumSpeed).toBeGreaterThan(heavy.maximumSpeed);
     expect(light.acceleration).toBeGreaterThan(normal.acceleration);
     expect(normal.acceleration).toBeGreaterThan(heavy.acceleration);
-    expect(light.maximumSpeed / heavy.maximumSpeed).toBeLessThan(1.25);
+    expect(light.maximumSpeed / normal.maximumSpeed).toBeCloseTo(
+      DEFAULT_GAMEPLAY_TUNING.lightweightSpeedMultiplier,
+      10,
+    );
+    expect(heavy.maximumSpeed / normal.maximumSpeed).toBeCloseTo(
+      DEFAULT_GAMEPLAY_TUNING.heavyweightSpeedMultiplier,
+      10,
+    );
+    expect(light.maximumSpeed * 60).toBeGreaterThan(4.4);
+    expect(normal.maximumSpeed * 60).toBeCloseTo(3.3, 10);
+  });
+
+  it("keeps the default hand reach and dodge travel compact", () => {
+    expect(DEFAULT_GAMEPLAY_TUNING.shoveReach).toBeLessThanOrEqual(0.3);
+    expect(
+      DEFAULT_GAMEPLAY_TUNING.dodgeSpeed * DEFAULT_GAMEPLAY_TUNING.dodgeActiveTicks,
+    ).toBeLessThan(0.6);
+  });
+
+  it("applies a normalized per-world dodge tuning without mutating the default", () => {
+    const gameplayTuning: GameplayTuningInput = {
+      dodgeActiveTicks: 3,
+      dodgeSpeed: 0.07,
+    };
+    const world = new SimulationWorld(CONFIG, "short-dodge", {
+      participantOverrides: createSeparatedOverrides({
+        actorId: 1,
+        position: { x: 4.5, y: 4.5 },
+      }),
+      gameplayTuning,
+    });
+    const start = getActor(world, 1).position;
+    let result = world.step([
+      {
+        ...createNeutralCommand(world.tick, 1),
+        dodgePressed: true,
+        move: { x: 1, y: 0 },
+      },
+    ]);
+    let lastActivePosition = result.frame.participants[0]?.position;
+
+    while (result.frame.participants[0]?.action === "DodgeActive") {
+      const next = world.step();
+
+      if (next.frame.participants[0]?.action === "DodgeActive") {
+        lastActivePosition = next.frame.participants[0]?.position;
+      }
+
+      result = next;
+    }
+
+    expect(lastActivePosition).toBeDefined();
+    expect((lastActivePosition?.x ?? start.x) - start.x).toBeCloseTo(0.21, 10);
+    expect(DEFAULT_GAMEPLAY_TUNING.dodgeSpeed).toBe(0.105);
+    expect(DEFAULT_GAMEPLAY_TUNING.dodgeActiveTicks).toBe(5);
   });
 
   it("moves a light body farther than a heavy body under identical input", () => {

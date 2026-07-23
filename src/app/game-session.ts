@@ -1,9 +1,16 @@
 import { createKeyboardInput, type KeyboardInput } from "./keyboard-input";
 import { BotDirector } from "../ai/bot-director";
-import type { GameConfigV1, RenderFrameV1, SimulationEventV1 } from "../simulation/contracts";
+import type {
+  GameConfigV1,
+  ItemDefinitionId,
+  RenderFrameV1,
+  SimulationEventV1,
+  UpgradeStatId,
+} from "../simulation/contracts";
 import { clamp } from "../simulation/math";
 import { FIXED_TICKS_PER_SECOND } from "../simulation/versions";
 import { SimulationWorld } from "../simulation/world";
+import type { GameplayTuningInput } from "../simulation/tuning";
 import type { ArenaRenderer } from "../presentation/arena-renderer";
 
 const FIXED_STEP_MILLISECONDS = 1_000 / FIXED_TICKS_PER_SECOND;
@@ -35,9 +42,18 @@ export interface GameSessionHooks {
 
 export interface GameSession {
   readonly active: boolean;
+  chooseUpgrade(stat: UpgradeStatId): void;
   failForDiagnostics(error: unknown): void;
   setRendererAvailable(available: boolean): void;
-  start(config: GameConfigV1, masterSeed: string | number): void;
+  start(
+    config: GameConfigV1,
+    masterSeed: string | number,
+    gameplayTuning?: GameplayTuningInput,
+    humanLoadout?: {
+      readonly massFactor: number;
+      readonly startingItems: readonly ItemDefinitionId[];
+    },
+  ): void;
   stop(): void;
   destroy(): void;
 }
@@ -217,7 +233,15 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
       rendererAvailable = available;
       setPaused(!rendererAvailable || document.visibilityState !== "visible");
     },
-    start(config: GameConfigV1, masterSeed: string | number): void {
+    start(
+      config: GameConfigV1,
+      masterSeed: string | number,
+      gameplayTuning?: GameplayTuningInput,
+      humanLoadout?: {
+        readonly massFactor: number;
+        readonly startingItems: readonly ItemDefinitionId[];
+      },
+    ): void {
       if (animationFrameId !== undefined) {
         window.cancelAnimationFrame(animationFrameId);
       }
@@ -225,6 +249,18 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
       world = new SimulationWorld(config, masterSeed, {
         roundId: nextRoundId,
         humanActorId: HUMAN_ACTOR_ID,
+        ...(gameplayTuning === undefined ? {} : { gameplayTuning }),
+        ...(humanLoadout === undefined
+          ? {}
+          : {
+              participantOverrides: [
+                {
+                  actorId: HUMAN_ACTOR_ID,
+                  massFactor: humanLoadout.massFactor,
+                  startingItems: humanLoadout.startingItems,
+                },
+              ],
+            }),
       });
       nextRoundId += 1;
       bots = new BotDirector(masterSeed, HUMAN_ACTOR_ID, { difficulty: config.difficulty });
@@ -241,6 +277,11 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
       publishFrame();
       hooks.onPauseChanged(paused);
       schedule();
+    },
+    chooseUpgrade(stat: UpgradeStatId): void {
+      if (active && !humanEliminated) {
+        keyboard.state.queueUpgrade(stat);
+      }
     },
     stop(): void {
       active = false;

@@ -4,6 +4,10 @@
 - Owner: Repository owner
 - Source of truth: `docs/product/02-spec.md` and this document
 
+## Product 0.20.0 Local Result
+
+The enlarged arenas, starting loadout state, progression fields, and hand-contact presentation pass the existing bounded local profiles. Hard-difficulty headless p95 AI/simulation time is `0.440/1.704 ms` at 16, `0.794/3.133 ms` at 24, and `1.107/4.064 ms` at 32 participants, with no step above 100 ms. Production Chrome p95 frame time is `16.8/16.8/16.9 ms`, maximum backlog is zero, and no sampled frame exceeds 100 ms. Twenty fresh-round restarts add `2,340,924` Chromium heap bytes after collection. This is one local workstation and headless Chrome result, not field or cross-browser evidence.
+
 ## User-facing Budgets
 
 - The normal 16- and 24-participant modes target 60 rendered frames per second on the named desktop baseline.

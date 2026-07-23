@@ -1,5 +1,6 @@
 import type { GameSettings } from "./settings";
 import type { RenderFrameV1 } from "../simulation/contracts";
+import type { GameplayTuningV1 } from "../simulation/tuning";
 import {
   CONTENT_VERSION,
   FIXED_TICKS_PER_SECOND,
@@ -7,8 +8,8 @@ import {
   SIMULATION_VERSION,
 } from "../simulation/versions";
 
-export interface PlaytestRoundReportV1 {
-  readonly schemaVersion: "shovefall-playtest-round/v1";
+export interface PlaytestRoundReportV3 {
+  readonly schemaVersion: "shovefall-playtest-round/v3";
   readonly versions: {
     readonly product: string;
     readonly simulation: string;
@@ -24,13 +25,17 @@ export interface PlaytestRoundReportV1 {
     readonly collapseSpeed: GameSettings["collapseSpeed"];
     readonly initialItemCount: number;
     readonly itemRespawnSeconds: number;
+    readonly startingMass: GameSettings["startingMass"];
+    readonly startingItems: GameSettings["startingItems"];
   };
+  readonly gameplayTuning: GameplayTuningV1;
   readonly result: {
     readonly outcome: "human-win" | "bot-win" | "no-survivors";
     readonly reason: NonNullable<RenderFrameV1["round"]["reason"]>;
     readonly winnerActorId: number | null;
     readonly completedTick: number;
     readonly durationSeconds: number;
+    readonly humanProgression: RenderFrameV1["participants"][number]["progression"];
   };
 }
 
@@ -38,7 +43,8 @@ export function createPlaytestRoundReport(
   settings: GameSettings,
   seed: string,
   frame: RenderFrameV1,
-): PlaytestRoundReportV1 {
+  gameplayTuning: GameplayTuningV1,
+): PlaytestRoundReportV3 {
   const { round } = frame;
 
   if (round.status !== "Completed" || round.completedTick === null || round.reason === null) {
@@ -51,9 +57,14 @@ export function createPlaytestRoundReport(
       : round.winnerActorId === null
         ? "no-survivors"
         : "bot-win";
+  const human = frame.participants.find(({ actorId }) => actorId === 1);
+
+  if (human === undefined) {
+    throw new Error("A playtest round report requires the human participant.");
+  }
 
   return Object.freeze({
-    schemaVersion: "shovefall-playtest-round/v1",
+    schemaVersion: "shovefall-playtest-round/v3",
     versions: Object.freeze({
       product: PRODUCT_VERSION,
       simulation: SIMULATION_VERSION,
@@ -69,17 +80,21 @@ export function createPlaytestRoundReport(
       collapseSpeed: settings.collapseSpeed,
       initialItemCount: settings.initialItemCount,
       itemRespawnSeconds: settings.itemRespawnSeconds,
+      startingMass: settings.startingMass,
+      startingItems: settings.startingItems,
     }),
+    gameplayTuning,
     result: Object.freeze({
       outcome,
       reason: round.reason,
       winnerActorId: round.winnerActorId,
       completedTick: round.completedTick,
       durationSeconds: round.completedTick / FIXED_TICKS_PER_SECOND,
+      humanProgression: human.progression,
     }),
   });
 }
 
-export function serializePlaytestRoundReport(report: PlaytestRoundReportV1): string {
+export function serializePlaytestRoundReport(report: PlaytestRoundReportV3): string {
   return JSON.stringify(report, null, 2);
 }

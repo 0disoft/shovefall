@@ -14,7 +14,7 @@ The central promise is a readable comic reversal: a player can dodge an incoming
 ## Core Loop
 
 1. Quick Start begins with the recommended preset. Custom settings are secondary.
-2. The human moves with `WASD`, shoves with `Space`, and dodges with `Shift`.
+2. The human selects a starting mass and two distinct starting items, moves with `WASD`, extends a hand shove with `Space`, dodges with `Shift`, and spends earned stat points with `1..4` or the DOM controls.
 3. Mass continuously changes acceleration, turning, top speed, and impulse response without changing outcomes by chance.
 4. Telegraphing tiles collapse and compress the arena.
 5. The last active participant wins. A defeated human can restart immediately or watch no more than five seconds of accelerated resolution.
@@ -39,7 +39,7 @@ Collapse, formal bots, 32-participant scale, items, audio, and final art cannot 
 - Quick Start plus bounded presets for participant count, item frequency, density, collapse speed, and bot difficulty.
 - One human and up to 31 bots using the same `ActorCommandV1` contract.
 - A 60 Hz fixed-tick simulation independent of PixiJS and browser time.
-- Deterministic movement, shove, dodge, stumble, mass, collision, support, falling, and elimination.
+- Deterministic movement, hand-reach shove, dodge, stumble, mass, collision, support, falling, elimination credit, and stat progression.
 - Stable, warning, collapsing, and void tile states.
 - At least three bot personalities implemented as data-driven utility weights.
 - Iron Boots, Feather, and Spring Glove after the core gate passes.
@@ -78,4 +78,4 @@ pre-submission percentages have passed. Results from different behavior SHAs are
 
 ## Current Implementation Slice
 
-Version `0.18.2` exposes four production presets at 8, 16, 24, and 32 participants, with 16 as Quick Start, plus Easy/Normal/Hard bot difficulty and an explicit Slow/Normal/Fast collapse override. Preset changes restore their recommended collapse speed; the player may override it afterward. A completed result can copy a local JSON playtest record containing versions, seed, settings, completion tick, outcome, and state hash without identity data or upload. The Coal-Twilight presentation unifies the DOM shell and PixiJS arena while preserving non-color tile, action, mass, and human-identity signals. The PixiJS stage is explicitly presented for every requested simulation frame rather than relying on a browser resize side effect. Controlled 16-participant Normal-difficulty bot samples measured mean durations of `23.855 / 21.356 / 16.915` seconds for Slow/Normal/Fast, with Slow lasting at least as long as Fast in 81.25% of paired seeds. This is bot-workload pacing evidence, not a guarantee for every round or a human-duration claim. Simulation remains `5.3.0`; content remains `3.1.0` with item policy 2. Local bot duration, item exposure, controlled mass/item/pacing, worst-case difficulty scale, and production-Chrome evidence are recorded in engineering documents. Physical-device, cross-browser, hosted-deployment, human round-duration, risky edge-pickup item balance, final-art readability, audio-device, and external playtest approval remain pending.
+Version `0.20.0` exposes four presets at 8, 16, 24, and 32 participants with enlarged `12×10`, `15×12`, `18×14`, and `20×15` arenas. The human selects light/normal/heavy base mass and two of Iron Boots, Feather, and Spring Glove. Normal speed is 3.3 tiles/second, lightweight reaches 4.455, and heavyweight is slower; a disabled-by-default local debug lab permits bounded next-round tuning. Space now creates a five-tick short hand hitbox instead of forcing body dash velocity. A shove credited within three seconds of irreversible falling grants one point for Power, Stability, Mobility, or Reflex; bots spend through the same command path. A completed result copies local playtest schema v3 with loadout, tuning, final human progression, seed, outcome, and state hash without upload. The focused 32-round bot screen measured no time-limit endings, 8/16/24/32 mean durations of `33.6646 / 40.5438 / 41.6750 / 30.4146` seconds, Aggressor-to-Survivor win rate `0.7875×`, and elimination rate `1.1509×`. Simulation is `6.0.0` and content is `4.0.0`. The legacy 200-round controlled audit exceeded its 300- and 420-second local limits after arena expansion, so controlled causal mass/item/pacing evidence remains unrefreshed. Human play, physical devices, cross-browser behavior, final-art readability, and hosted proof for this exact version remain pending.

@@ -7,6 +7,7 @@ import {
   type RenderFrameV1,
   type RenderItemV1,
   type RenderParticipantV1,
+  type UpgradeStatId,
 } from "../simulation/contracts";
 import {
   addVectors,
@@ -21,12 +22,14 @@ import {
 import { RandomStreamSet, type SeedInput, type XorShift32 } from "../simulation/random";
 import { ParticipantSpatialHash } from "../simulation/spatial-hash";
 import { SIMULATION_TUNING } from "../simulation/tuning";
+import { MAX_UPGRADE_LEVEL } from "../simulation/progression";
 
 export interface BotDirectorOptions {
   readonly difficulty?: BotDifficulty;
   readonly reactionDelayTicks?: number;
   readonly decisionIntervalTicks?: number;
   readonly nearbyCandidateLimit?: number;
+  readonly personalityOverrides?: readonly BotAssignment[];
 }
 
 export interface BotDifficultyProfile {
@@ -209,6 +212,7 @@ export class BotDirector {
   readonly #streams: RandomStreamSet;
   readonly #memories = new Map<ActorId, BotMemory>();
   readonly #history: RenderFrameV1[] = [];
+  readonly #personalityOverrides: ReadonlyMap<ActorId, BotPersonalityKind>;
 
   public constructor(
     masterSeed: SeedInput,
@@ -224,6 +228,16 @@ export class BotDirector {
     assertPositiveInteger(this.#nearbyCandidateLimit, "nearbyCandidateLimit");
     this.#humanActorId = humanActorId;
     this.#streams = new RandomStreamSet(masterSeed);
+    const personalityOverrides = new Map<ActorId, BotPersonalityKind>();
+
+    for (const assignment of options.personalityOverrides ?? []) {
+      if (personalityOverrides.has(assignment.actorId)) {
+        throw new Error(`duplicate personality override for actor ${assignment.actorId}`);
+      }
+
+      personalityOverrides.set(assignment.actorId, assignment.personality);
+    }
+    this.#personalityOverrides = personalityOverrides;
   }
 
   public getAssignments(): readonly BotAssignment[] {
@@ -275,6 +289,7 @@ export class BotDirector {
       const perceived = perceivedActors.get(current.actorId) ?? current;
       let shovePressed = false;
       let dodgePressed = false;
+      const upgradeStat = this.#chooseUpgrade(memory.personality, current);
       const edgeDistance = getEdgeDistance(current, bounds);
       const tileEscape = getImmediateTileEscape(currentFrame, current);
 
@@ -304,6 +319,7 @@ export class BotDirector {
           move: memory.intent,
           shovePressed,
           dodgePressed,
+          upgradeStat,
         }),
       );
     }
@@ -320,6 +336,7 @@ export class BotDirector {
 
     const personalityRandom = this.#streams.get(`bot-personality:${actorId}`);
     const personality =
+      this.#personalityOverrides.get(actorId) ??
       BOT_PERSONALITY_KINDS[personalityRandom.nextUint32() % BOT_PERSONALITY_KINDS.length] ??
       "Survivor";
     const memory: BotMemory = {
@@ -331,6 +348,28 @@ export class BotDirector {
     };
     this.#memories.set(actorId, memory);
     return memory;
+  }
+
+  #chooseUpgrade(
+    personality: BotPersonalityKind,
+    participant: RenderParticipantV1,
+  ): UpgradeStatId | null {
+    if (participant.progression.statPoints < 1) {
+      return null;
+    }
+
+    const priorities: Readonly<Record<BotPersonalityKind, readonly UpgradeStatId[]>> = {
+      Aggressor: ["stability", "power", "mobility", "reflex"],
+      Survivor: ["stability", "reflex", "mobility", "power"],
+      Opportunist: ["mobility", "power", "reflex", "stability"],
+      Disruptor: ["power", "reflex", "stability", "mobility"],
+      Collector: ["mobility", "stability", "reflex", "power"],
+    };
+    return (
+      priorities[personality].find(
+        (stat) => participant.progression.stats[stat] < MAX_UPGRADE_LEVEL,
+      ) ?? null
+    );
   }
 
   #decide(

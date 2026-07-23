@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createPlaytestRoundReport, serializePlaytestRoundReport } from "../src/app/round-report";
 import { normalizeSettings } from "../src/app/settings";
 import { normalizeGameConfig, type RenderFrameV1 } from "../src/simulation/contracts";
+import { DEFAULT_GAMEPLAY_TUNING } from "../src/simulation/tuning";
 import { SimulationWorld } from "../src/simulation/world";
 
 const SETTINGS = normalizeSettings({
@@ -33,10 +34,11 @@ describe("playtest round reports", () => {
         reason: "last-standing",
         completedTick: 1_350,
       }),
+      DEFAULT_GAMEPLAY_TUNING,
     );
 
     expect(report).toMatchObject({
-      schemaVersion: "shovefall-playtest-round/v1",
+      schemaVersion: "shovefall-playtest-round/v3",
       seed: "0000000800000000",
       settings: {
         preset: "default",
@@ -45,16 +47,24 @@ describe("playtest round reports", () => {
         collapseSpeed: "slow",
         initialItemCount: 6,
         itemRespawnSeconds: 5,
+        startingMass: "normal",
+        startingItems: ["iron-boots", "spring-glove"],
       },
+      gameplayTuning: DEFAULT_GAMEPLAY_TUNING,
       result: {
         outcome: "bot-win",
         reason: "last-standing",
         winnerActorId: 7,
         completedTick: 1_350,
         durationSeconds: 22.5,
+        humanProgression: {
+          statPoints: 0,
+          creditedEliminations: 0,
+          stats: { power: 0, stability: 0, mobility: 0, reflex: 0 },
+        },
       },
     });
-    expect(report.versions.product).toBe("0.18.2");
+    expect(report.versions.product).toBe("0.20.0");
     expect(JSON.parse(serializePlaytestRoundReport(report))).toEqual(report);
   });
 
@@ -69,6 +79,7 @@ describe("playtest round reports", () => {
           reason: null,
           completedTick: null,
         }),
+        DEFAULT_GAMEPLAY_TUNING,
       ),
     ).toThrow("requires a completed round");
   });

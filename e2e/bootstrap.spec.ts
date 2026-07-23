@@ -146,7 +146,7 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   expect(setupCanvas.summary.uniqueColorBuckets).toBeGreaterThan(4);
   expect(setupCanvas.summary.luminanceRange).toBeGreaterThan(20);
   await expect(page.locator("#setup-summary")).toHaveText(
-    "16명 · AI 보통 · 붕괴 보통 · 시작 아이템 6개 · 5초마다 1개",
+    "16명 · AI 보통 · 붕괴 보통 · 내 체급 보통 · 철 장화 + 스프링 장갑 · 맵 아이템 6개 · 5초마다 1개",
   );
   await page.getByLabel("어려움").check();
   await page.locator('input[name="collapseSpeed"][value="slow"]').check();
@@ -239,6 +239,55 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await expect(page.locator("#game-telemetry")).toBeHidden();
 });
 
+test("applies and copies bounded debug tuning for the next round", async ({ page }) => {
+  await installClipboardCapture(page);
+  await page.goto("/");
+
+  const debugPanel = page.locator("#debug-tuning");
+  const movementSpeed = page.locator("#debug-movement-speed");
+  await expect(movementSpeed).toBeDisabled();
+  await debugPanel.locator("summary").click();
+  await page.getByLabel("조정값 사용").check();
+  await expect(movementSpeed).toBeEnabled();
+
+  await movementSpeed.fill("0.04");
+  await page.locator("#debug-movement-acceleration").fill("0.004");
+  await page.locator("#debug-lightweight-speed").fill("1.5");
+  await page.locator("#debug-shove-reach").fill("0.24");
+  await page.locator("#debug-shove-ticks").fill("4");
+  await page.locator("#debug-dodge-speed").fill("0.085");
+  await page.locator("#debug-dodge-ticks").fill("4");
+
+  await expect(page.locator("#debug-tuning-summary")).toContainText("기본 2.4칸/초");
+  await expect(page.locator("#debug-tuning-summary")).toContainText("손길이 0.24칸");
+  await expect(page.locator("#debug-tuning-summary")).toContainText("회피 약 0.34칸");
+
+  await page.getByRole("button", { name: "튜닝값 복사" }).click();
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () => (window as Window & { shovefallClipboardCapture?: string }).shovefallClipboardCapture,
+      ),
+    )
+    .toContain("shovefall-debug-tuning/v1");
+  const copiedTuning: unknown = JSON.parse(
+    (await page.evaluate(
+      () => (window as Window & { shovefallClipboardCapture?: string }).shovefallClipboardCapture,
+    )) ?? "null",
+  );
+  expect(copiedTuning).toMatchObject({
+    tuning: {
+      movementMaximumSpeed: 0.04,
+      shoveActiveTicks: 4,
+      shoveReach: 0.24,
+      dodgeActiveTicks: 4,
+    },
+  });
+
+  await page.getByRole("button", { name: "빠른 시작" }).click();
+  await expect(page.locator("#app")).toHaveAttribute("data-gameplay-tuning", "debug");
+});
+
 test("completes a collapsing round and starts a fresh world", async ({ page }) => {
   await page.clock.install();
   await installClipboardCapture(page);
@@ -269,7 +318,7 @@ test("completes a collapsing round and starts a fresh world", async ({ page }) =
   );
   const parsedReport: unknown = JSON.parse(copiedReport ?? "null");
   expect(parsedReport).toMatchObject({
-    schemaVersion: "shovefall-playtest-round/v1",
+    schemaVersion: "shovefall-playtest-round/v3",
     seed: await page.locator("#seed-value").textContent(),
     stateHash: await page.locator("#hash-value").textContent(),
     settings: { participantCount: 8 },
@@ -306,7 +355,7 @@ test("completes a collapsing round and starts a fresh world", async ({ page }) =
 
 test("allows an immediate fresh restart after a deterministic human defeat", async ({ page }) => {
   await page.clock.install();
-  await installFixedRoundSeed(page, 8, 0);
+  await installFixedRoundSeed(page, 8, 1);
   await page.goto("/");
   await page.getByLabel("난장판").check();
   await page.locator("#player-count").fill("8");

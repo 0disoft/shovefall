@@ -11,6 +11,7 @@ export type BotDifficulty = "easy" | "normal" | "hard";
 export type TileStateKind = "Stable" | "Warning" | "Collapsing" | "Void";
 export type RoundEndReason = "last-standing" | "no-survivors" | "time-limit";
 export type ItemDefinitionId = "iron-boots" | "feather" | "spring-glove";
+export type UpgradeStatId = "power" | "stability" | "mobility" | "reflex";
 
 export type ParticipantActionKind =
   | "Ready"
@@ -58,6 +59,25 @@ export interface ActorCommandV1 {
   readonly move: Vector2;
   readonly shovePressed: boolean;
   readonly dodgePressed: boolean;
+  readonly upgradeStat: UpgradeStatId | null;
+}
+
+export interface ParticipantStats {
+  readonly power: number;
+  readonly stability: number;
+  readonly mobility: number;
+  readonly reflex: number;
+}
+
+export interface ParticipantProgression {
+  readonly statPoints: number;
+  readonly creditedEliminations: number;
+  readonly stats: ParticipantStats;
+}
+
+export interface ShoveCreditState {
+  readonly attackerActorId: ActorId | null;
+  readonly hitTick: Tick | null;
 }
 
 export interface BodyState {
@@ -99,6 +119,8 @@ export interface ParticipantState {
   readonly action: ActionState;
   readonly cooldowns: CooldownState;
   readonly effects: readonly EffectInstance[];
+  readonly progression: ParticipantProgression;
+  readonly shoveCredit: ShoveCreditState;
   readonly active: boolean;
 }
 
@@ -138,6 +160,7 @@ export interface RenderParticipantV1 {
   readonly dodgeReadyTick: Tick;
   readonly effects: readonly EffectInstance[];
   readonly springBoosted: boolean;
+  readonly progression: ParticipantProgression;
 }
 
 export interface RenderItemV1 {
@@ -170,6 +193,8 @@ export type SimulationEventKind =
   | "item-spawned"
   | "item-removed"
   | "eliminated"
+  | "stat-point-earned"
+  | "stat-upgraded"
   | "tile-warning"
   | "tile-collapsing"
   | "tile-void"
@@ -186,6 +211,7 @@ export interface SimulationEventV1 {
   readonly tileId?: TileId;
   readonly itemId?: ItemId;
   readonly itemDefinitionId?: ItemDefinitionId;
+  readonly upgradeStat?: UpgradeStatId;
   readonly winnerActorId?: ActorId;
   readonly vector?: Vector2;
   readonly reason?: "inactive-actor" | "unknown-actor" | RoundEndReason;
@@ -279,12 +305,23 @@ export function createNeutralCommand(tick: Tick, actorId: ActorId): ActorCommand
     move: ZERO_VECTOR,
     shovePressed: false,
     dodgePressed: false,
+    upgradeStat: null,
   });
 }
 
 export function normalizeActorCommand(command: ActorCommandV1): ActorCommandV1 {
   assertIntegerInRange(command.tick, "command.tick", 0, Number.MAX_SAFE_INTEGER);
   assertIntegerInRange(command.actorId, "command.actorId", 1, 32);
+
+  if (
+    command.upgradeStat !== null &&
+    command.upgradeStat !== "power" &&
+    command.upgradeStat !== "stability" &&
+    command.upgradeStat !== "mobility" &&
+    command.upgradeStat !== "reflex"
+  ) {
+    throw new SimulationContractError("command.upgradeStat is unsupported");
+  }
 
   return Object.freeze({
     commandVersion: 1,
@@ -293,6 +330,7 @@ export function normalizeActorCommand(command: ActorCommandV1): ActorCommandV1 {
     move: normalizeVector(command.move),
     shovePressed: command.shovePressed,
     dodgePressed: command.dodgePressed,
+    upgradeStat: command.upgradeStat,
   });
 }
 

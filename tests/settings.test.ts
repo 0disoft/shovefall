@@ -34,6 +34,8 @@ describe("settings normalization", () => {
       initialItemCount: 7,
       itemRespawnSeconds: 5,
       botDifficulty: "normal",
+      startingMass: "normal",
+      startingItems: ["iron-boots", "spring-glove"],
     });
   });
 
@@ -96,11 +98,36 @@ describe("settings normalization", () => {
   });
 
   it("derives larger arenas at the participant tier boundaries", () => {
-    expect(getArenaSize(4)).toEqual({ columns: 10, rows: 8 });
-    expect(getArenaSize(8)).toEqual({ columns: 10, rows: 8 });
-    expect(getArenaSize(9)).toEqual({ columns: 12, rows: 10 });
-    expect(getArenaSize(24)).toEqual({ columns: 16, rows: 12 });
-    expect(getArenaSize(25)).toEqual({ columns: 17, rows: 13 });
-    expect(getArenaSize(32)).toEqual({ columns: 17, rows: 13 });
+    expect(getArenaSize(4)).toEqual({ columns: 12, rows: 10 });
+    expect(getArenaSize(8)).toEqual({ columns: 12, rows: 10 });
+    expect(getArenaSize(9)).toEqual({ columns: 15, rows: 12 });
+    expect(getArenaSize(24)).toEqual({ columns: 18, rows: 14 });
+    expect(getArenaSize(25)).toEqual({ columns: 20, rows: 15 });
+    expect(getArenaSize(32)).toEqual({ columns: 20, rows: 15 });
+  });
+
+  it("normalizes the human starting mass and exactly two unique items", () => {
+    expect(
+      normalizeSettings({
+        playerCount: 16,
+        preset: "default",
+        startingMass: "light",
+        startingItems: ["feather", "spring-glove"],
+      }),
+    ).toMatchObject({
+      startingMass: "light",
+      startingItems: ["feather", "spring-glove"],
+    });
+    expect(
+      normalizeSettings({
+        playerCount: 16,
+        preset: "default",
+        startingMass: "giant",
+        startingItems: ["feather", "feather", "unknown"],
+      }),
+    ).toMatchObject({
+      startingMass: "normal",
+      startingItems: ["iron-boots", "spring-glove"],
+    });
   });
 });

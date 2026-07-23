@@ -27,7 +27,9 @@ Perception contains participant positions, velocities, facing, visible action st
 
 ## Personalities
 
-`Aggressor`, `Survivor`, `Opportunist`, `Disruptor`, and `Collector` are weight records over one decision implementation. They adjust approach, edge opportunity, stumbling opportunity, self-safety, heavy-target penalty, shove distance, item interest, and small aim jitter. They do not own separate state machines or physical advantages. `Collector` gives nearby visible items a higher utility without receiving item locations outside its delayed frame.
+`Aggressor`, `Survivor`, `Opportunist`, `Disruptor`, and `Collector` are weight records over one decision implementation. They adjust approach, edge opportunity, stumbling opportunity, self-safety, heavy-target penalty, shove distance, item interest, and small aim jitter. They do not own separate physics. When credited eliminations create points, bots spend through the same command field as the human. Aggressor converts its first point into Stability before Power so successful aggression can survive the next exchange; Survivor uses lower approach and shove ranges instead of receiving a hidden defense bonus.
+
+The checked-in focused strategy audit runs eight fixed seeds at each 8/16/24/32 tier. Product `0.20.0` measured Aggressor at `5.04%` wins and `1.0588` credited eliminations per actor-round versus Survivor at `6.40%` and `0.9200`. The `0.7875×` win-rate and `1.1509×` elimination-rate comparisons pass the declared `0.75×` and `1.0×` screens. This is bot regression evidence, not human meta proof.
 
 Personality selection and decision jitter use `bot-personality:<ActorId>` and `bot-jitter:<ActorId>` streams. Randomness breaks near-equal directions but never changes collision, dodge, mass, support, or action results.
 

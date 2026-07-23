@@ -51,7 +51,9 @@ Color is never the only signal for collapse warning, player identity, or action 
 
 ## 9. Interaction and Accessibility Contract
 
-The initial input contract is `WASD` movement, `Space` shove, and `Shift` dodge. Key edges become `ActorCommandV1` actions and held movement is sampled once per fixed tick. Setup and settings remain fully keyboard operable through DOM controls with visible focus. Gameplay keys are ignored when an input, link, or button owns focus so Space can still activate controls. Window blur and document visibility loss clear held input and pause the scheduler. Reduced-motion mode removes nonessential camera shake and large flashes without changing simulation timing or hit windows.
+The input contract is `WASD` movement, `Space` hand shove, `Shift` dodge, and `1..4` stat spending. Key edges become `ActorCommandV1` actions and held movement is sampled once per fixed tick. Setup offers three starting-mass radios and exactly two distinct starting-item checkboxes; once two are selected, the unused option is disabled until one is removed. The in-round DOM panel exposes the same four stat choices as number keys and returns focus to the arena after a click. Gameplay keys are ignored when an input, link, or button owns focus. Window blur and document visibility loss clear held input and pause the scheduler.
+
+The experimental tuning lab is collapsed and disabled by default. Enabling it exposes bounded sliders for base movement, acceleration, light/heavy speed multipliers, hand reach, active ticks, dodge speed, and dodge ticks. Values apply to the next round for both human and bots, can be reset, and copy as local schema `shovefall-debug-tuning/v1`; they never persist or upload.
 
 ## 10. Loading, Empty, Error, and Disabled States
 
@@ -71,7 +73,7 @@ Remote analytics, session replay, advertising, and automatic error upload are ex
 
 ## 14. Test Strategy
 
-Vitest covers pure state, input edges, settings tiers, collapse phases, result sealing, presentation-event deduplication, optional-audio fallback, mute state, and voice limits. Playwright Test covers setup, countdown tick-zero and input isolation, countdown pause/resume, fixed-tick progress, keyboard movement and shove, sound controls, active-round pause/resume, focus entry, settings return, collapse completion, result focus, fresh-world countdown restart, deterministic human defeat, reduced motion, development fatal recovery, and WebGL context loss and restoration. The same production-safe paths run against the generated `dist` preview. Visual review still must check telegraph, human identity, mass, item, and transient-effect readability. Oxfmt and Oxlint do not replace product interaction testing.
+Vitest covers pure state, input edges, loadout normalization, starting effects, compact hand reach, credited elimination, bounded stat spending, settings tiers, collapse phases, result sealing, and presentation boundaries. Playwright covers setup, debug tuning copy/apply, countdown, movement and hand shove, deterministic human defeat and restart, audio fallback, reduced motion, fatal recovery, and WebGL restoration. Visual review still must check the denser loadout cards, hand marker, stat availability, human identity, and item/mass readability.
 
 ## 15. Implementation Sequence
 

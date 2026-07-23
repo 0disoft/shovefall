@@ -3,6 +3,10 @@
 - Status: Accepted local automated baseline; physical and cross-browser evidence pending
 - Owner: Repository owner
 
+## 0.20.0 Expanded-arena Profile
+
+On 2026-07-23, Hard-difficulty 7,200-tick headless runs passed at 16/24/32 participants with simulation p95 `1.704 / 3.133 / 4.064 ms`, AI p95 `0.440 / 0.794 / 1.107 ms`, and zero steps over 100 ms. Production Chrome p95 frames were `16.8 / 16.8 / 16.9 ms`, maximum backlog was zero, and twenty restarts produced a `2,340,924`-byte collected heap delta. The larger `15×12`, `18×14`, and `20×15` grids therefore remain inside the existing local frame and tick budgets.
+
 ## Semantics Boundary
 
 The simulation builds one participant spatial hash after position integration. The 1.7-world-unit cell is approximately 2.5 participant diameters. Same-cell and adjacent-cell candidates are emitted in stable `(leftActorId, rightActorId)` order. Weak-contact iterations and directed shove checks preserve the previous ActorId order; the index may remove impossible comparisons but cannot choose a collision result.

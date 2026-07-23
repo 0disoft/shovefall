@@ -1,4 +1,8 @@
-import { createNeutralCommand, type ActorCommandV1 } from "../simulation/contracts";
+import {
+  createNeutralCommand,
+  type ActorCommandV1,
+  type UpgradeStatId,
+} from "../simulation/contracts";
 
 export const GAMEPLAY_CODES = Object.freeze([
   "KeyW",
@@ -8,6 +12,10 @@ export const GAMEPLAY_CODES = Object.freeze([
   "Space",
   "ShiftLeft",
   "ShiftRight",
+  "Digit1",
+  "Digit2",
+  "Digit3",
+  "Digit4",
 ] as const);
 
 type GameplayCode = (typeof GAMEPLAY_CODES)[number];
@@ -22,6 +30,7 @@ export class InputState {
   readonly #heldCodes = new Set<GameplayCode>();
   #shoveQueued = false;
   #dodgeQueued = false;
+  #upgradeQueued: UpgradeStatId | null = null;
 
   public press(code: GameplayCode, repeat = false): void {
     this.#heldCodes.add(code);
@@ -37,6 +46,21 @@ export class InputState {
     if (code === "ShiftLeft" || code === "ShiftRight") {
       this.#dodgeQueued = true;
     }
+
+    const upgradeStat =
+      code === "Digit1"
+        ? "power"
+        : code === "Digit2"
+          ? "stability"
+          : code === "Digit3"
+            ? "mobility"
+            : code === "Digit4"
+              ? "reflex"
+              : null;
+
+    if (upgradeStat !== null) {
+      this.#upgradeQueued = upgradeStat;
+    }
   }
 
   public release(code: GameplayCode): void {
@@ -47,6 +71,11 @@ export class InputState {
     this.#heldCodes.clear();
     this.#shoveQueued = false;
     this.#dodgeQueued = false;
+    this.#upgradeQueued = null;
+  }
+
+  public queueUpgrade(stat: UpgradeStatId): void {
+    this.#upgradeQueued = stat;
   }
 
   public consumeCommand(tick: number, actorId: number): ActorCommandV1 {
@@ -58,9 +87,11 @@ export class InputState {
       }),
       shovePressed: this.#shoveQueued,
       dodgePressed: this.#dodgeQueued,
+      upgradeStat: this.#upgradeQueued,
     });
     this.#shoveQueued = false;
     this.#dodgeQueued = false;
+    this.#upgradeQueued = null;
     return command;
   }
 }

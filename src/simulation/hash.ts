@@ -66,6 +66,14 @@ export function hashWorldState(state: HashableWorldState): string {
             (effect) => `${effect.definitionId},${effect.appliedTick},${effect.endsTick ?? "none"}`,
           )
           .join("/"),
+        participant.progression.statPoints,
+        participant.progression.creditedEliminations,
+        participant.progression.stats.power,
+        participant.progression.stats.stability,
+        participant.progression.stats.mobility,
+        participant.progression.stats.reflex,
+        participant.shoveCredit.attackerActorId ?? "none",
+        participant.shoveCredit.hitTick ?? "none",
       ].join(":");
     });
   const itemParts = state.items.map(

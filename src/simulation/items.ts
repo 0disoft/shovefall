@@ -331,6 +331,23 @@ function applyItemEffect(
   return withEffectiveMass(Object.freeze({ ...participant, effects }));
 }
 
+export function applyStartingItems(
+  participant: ParticipantState,
+  definitionIds: readonly ItemDefinitionId[],
+): ParticipantState {
+  let result = participant;
+
+  for (const definitionId of definitionIds) {
+    if (!ITEM_DEFINITION_IDS.some((candidate) => candidate === definitionId)) {
+      throw new SimulationContractError(`unsupported starting item: ${definitionId}`);
+    }
+
+    result = applyItemEffect(result, definitionId, 0);
+  }
+
+  return result;
+}
+
 export function consumeSpringGlove(participant: ParticipantState): ParticipantState {
   if (!participant.effects.some(({ definitionId }) => definitionId === "spring-glove")) {
     return participant;

@@ -1,4 +1,5 @@
 import { BotDirector } from "../src/ai/bot-director";
+import { BOT_PERSONALITY_KINDS, type BotPersonalityKind } from "../src/ai/personalities";
 import { ITEM_DEFINITION_IDS } from "../src/content/items";
 import {
   getArenaSize,
@@ -68,6 +69,7 @@ interface ActorBalanceObservation {
   readonly massTicks: Record<MassBand, number>;
   activeTicks: number;
   massFactorTotal: number;
+  creditedEliminations: number;
 }
 
 interface RoundObservation {
@@ -83,6 +85,7 @@ interface RoundAuditResult {
   readonly round: RoundObservation;
   readonly actors: ReadonlyMap<ActorId, ActorBalanceObservation>;
   readonly itemSpawnBands: Readonly<Record<ItemSpawnBand, number>>;
+  readonly personalities: ReadonlyMap<ActorId, BotPersonalityKind>;
 }
 
 function createItemCounts(): Record<ItemDefinitionId, number> {
@@ -161,6 +164,7 @@ function createActorObservations(participantCount: number): Map<ActorId, ActorBa
         massTicks: createMassCounts(),
         activeTicks: 0,
         massFactorTotal: 0,
+        creditedEliminations: 0,
       },
     ]),
   );
@@ -196,6 +200,14 @@ function auditRound(config: GameConfigV1, seed: string): RoundAuditResult {
     recordItemSpawns(frame, seenItemIds, itemSpawnBands);
 
     for (const event of result.events) {
+      if (event.kind === "stat-point-earned" && event.actorId !== undefined) {
+        const actor = actors.get(event.actorId);
+
+        if (actor !== undefined) {
+          actor.creditedEliminations += 1;
+        }
+      }
+
       if (
         event.kind !== "item-picked-up" ||
         event.actorId === undefined ||
@@ -255,6 +267,84 @@ function auditRound(config: GameConfigV1, seed: string): RoundAuditResult {
     }),
     actors,
     itemSpawnBands: Object.freeze({ ...itemSpawnBands }),
+    personalities: new Map(
+      bots.getAssignments().map(({ actorId, personality }) => [actorId, personality] as const),
+    ),
+  });
+}
+
+function aggregateStrategy(results: readonly RoundAuditResult[]) {
+  const aggregates: Record<
+    BotPersonalityKind,
+    { actorRounds: number; wins: number; creditedEliminations: number; activeTicks: number }
+  > = {
+    Aggressor: { actorRounds: 0, wins: 0, creditedEliminations: 0, activeTicks: 0 },
+    Survivor: { actorRounds: 0, wins: 0, creditedEliminations: 0, activeTicks: 0 },
+    Opportunist: { actorRounds: 0, wins: 0, creditedEliminations: 0, activeTicks: 0 },
+    Disruptor: { actorRounds: 0, wins: 0, creditedEliminations: 0, activeTicks: 0 },
+    Collector: { actorRounds: 0, wins: 0, creditedEliminations: 0, activeTicks: 0 },
+  };
+
+  for (const result of results) {
+    for (const [actorId, actor] of result.actors) {
+      const personality = result.personalities.get(actorId);
+
+      if (personality === undefined) {
+        throw new Error(`round ${result.round.seed} is missing personality ${actorId}`);
+      }
+
+      const aggregate = aggregates[personality];
+      aggregate.actorRounds += 1;
+      aggregate.wins += actorId === result.round.winnerActorId ? 1 : 0;
+      aggregate.creditedEliminations += actor.creditedEliminations;
+      aggregate.activeTicks += actor.activeTicks;
+    }
+  }
+
+  const strategies = Object.freeze(
+    Object.fromEntries(
+      BOT_PERSONALITY_KINDS.map((personality) => {
+        const aggregate = aggregates[personality];
+        return [
+          personality,
+          Object.freeze({
+            ...aggregate,
+            winRate: roundRatio(aggregate.wins, aggregate.actorRounds),
+            creditedEliminationsPerActorRound: roundRatio(
+              aggregate.creditedEliminations,
+              aggregate.actorRounds,
+            ),
+            meanSurvivalSeconds: roundRatio(
+              aggregate.activeTicks,
+              aggregate.actorRounds * FIXED_TICKS_PER_SECOND,
+            ),
+          }),
+        ];
+      }),
+    ),
+  );
+  const aggressor = strategies.Aggressor;
+  const survivor = strategies.Survivor;
+
+  if (aggressor === undefined || survivor === undefined) {
+    throw new Error("strategy audit is missing Aggressor or Survivor observations");
+  }
+
+  return Object.freeze({
+    strategies,
+    aggressorToSurvivorWinRate:
+      aggressor.winRate === null || survivor.winRate === null || survivor.winRate === 0
+        ? null
+        : roundRatio(aggressor.winRate, survivor.winRate),
+    aggressorToSurvivorEliminationRate:
+      aggressor.creditedEliminationsPerActorRound === null ||
+      survivor.creditedEliminationsPerActorRound === null ||
+      survivor.creditedEliminationsPerActorRound === 0
+        ? null
+        : roundRatio(
+            aggressor.creditedEliminationsPerActorRound,
+            survivor.creditedEliminationsPerActorRound,
+          ),
   });
 }
 
@@ -450,6 +540,7 @@ function auditParticipantCount(participantCount: (typeof PARTICIPANT_COUNTS)[num
       maximumWinsByOneActor: Math.max(0, ...winnerCounts.values()),
     }),
     balance: aggregateBalance(results),
+    strategy: aggregateStrategy(results),
     rounds: Object.freeze(rounds),
   });
 }
@@ -809,6 +900,13 @@ const structuralOk = scenarios.every(
 const edgePreferenceOk = scenarios.every(
   ({ balance }) => (balance.itemSpawnLocation.riskBandShare ?? 0) >= 0.6,
 );
+const strategyOk = scenarios.every(({ strategy }) => {
+  const winRatio = strategy.aggressorToSurvivorWinRate;
+  const eliminationRatio = strategy.aggressorToSurvivorEliminationRate;
+  return (
+    winRatio !== null && winRatio >= 0.75 && eliminationRatio !== null && eliminationRatio >= 1
+  );
+});
 const controlledMassOk = MASS_BANDS.every((band) => {
   const ratio = controlledMass.bands[band].relativeToEqualSlotExpectation;
   return ratio !== null && ratio >= 0.4 && ratio <= 1.8;
@@ -833,14 +931,19 @@ const controlledCollapseOk =
     controlledCollapse.speeds.fast.durationSeconds.p50 &&
   (controlledCollapse.pairedSlowAtLeastFastShare ?? 0) >= 0.6;
 const ok =
-  structuralOk && edgePreferenceOk && controlledMassOk && controlledItemsOk && controlledCollapseOk;
+  structuralOk &&
+  edgePreferenceOk &&
+  strategyOk &&
+  controlledMassOk &&
+  controlledItemsOk &&
+  controlledCollapseOk;
 
 process.stdout.write(
   `${JSON.stringify(
     {
       ok,
       kind: "deterministic-round-and-balance-audit",
-      auditVersion: 5,
+      auditVersion: 6,
       productVersion: PRODUCT_VERSION,
       simulationVersion: SIMULATION_VERSION,
       fixedTicksPerSecond: FIXED_TICKS_PER_SECOND,
@@ -854,6 +957,7 @@ process.stdout.write(
         "Every sampled production-preset round must produce a structurally valid terminal result within 75 seconds.",
         "No sampled all-bot production-preset round may rely on the time-limit draw to terminate.",
         "At least 60% of observed item spawns must land in the outer two stable tile rings.",
+        "Aggressor win rate must remain at least 0.75x Survivor and its credited-elimination rate must not trail Survivor in every production preset sample.",
         "Each controlled base-mass band must remain between 0.4x and 1.8x of equal-slot expected win rate.",
         "Each controlled tick-zero item grant group must remain between 0.4x and 1.8x of equal-slot expected win rate.",
         "The controlled item winner-distribution chi-square statistic must not exceed 7.815 for three degrees of freedom.",
