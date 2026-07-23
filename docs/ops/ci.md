@@ -87,6 +87,8 @@ the validated job rather than rebuilding. The artifact digest was
 `sha256:e3031183663b44eb4285a5499ee4e953dae6ee25e7daa8953fbd438b2a7d27ef`, and the
 public URL critical path was then verified separately in Chrome.
 
+The Boat candidate completed [CI run 30025468513](https://github.com/0disoft/shovefall/actions/runs/30025468513) for exact implementation SHA `d32e66711d87db21fc0b2d4adf1261d2cd52d9e0`. `Validate` completed in 3 minutes 52 seconds, including the slower Ubuntu production Chrome smoke, and the dependent Pages deployment completed in 10 seconds from the tested artifact. A fresh public session then confirmed `v0.29.0` and the `배 1회 · 5초 동안 물 위 이동` setting at the Pages URL.
+
 ## Owners and Failure Handling
 
 - Primary owner: Repository owner
@@ -99,7 +101,7 @@ Dependency or action download failure is infrastructure evidence, not a source f
 
 - Required validation names: `check` and `smoke-dist`
 - Public URL: `https://0disoft.github.io/shovefall/`
-- Release blocker status: Hosted validation, Pages deployment, and public-URL Chrome smoke are green for Pages candidate SHA `7794e9a47f89aefea1f39483680996a5236963ae`; every later runtime or release-candidate change requires its own exact-SHA run, successful deploy job, and URL smoke.
+- Release blocker status: Hosted validation, Pages deployment, and public version/Boat-setting smoke are green for implementation SHA `d32e66711d87db21fc0b2d4adf1261d2cd52d9e0`; every later runtime or release-candidate change requires its own exact-SHA run, successful deploy job, and URL smoke.
 - Remaining operational risk: Branch protection, real merged-contributor Clarissimi staging and
   promotion, runner-image Chrome drift, broader physical-device coverage, cross-browser coverage,
   and human playtest remain unproven until separately observed.
