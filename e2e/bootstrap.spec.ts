@@ -348,25 +348,39 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await expect(page.locator("#inventory-actions")).toBeHidden();
 });
 
-test("equips Brick Bag and Boat and uses both in a fresh round", async ({ page }) => {
+test("equips and places a Brick Bag wall in a fresh round", async ({ page }) => {
   await installFixedRoundSeed(page, 1, 0);
   await page.goto("/");
   await openSettings(page);
   await page.locator('input[name="startingItem"][value="iron-boots"]').uncheck();
   await page.locator('input[name="startingItem"][value="spring-glove"]').uncheck();
   await page.locator('input[name="startingItem"][value="brick-bag"]').check();
-  await page.locator('input[name="startingItem"][value="boat"]').check();
-  await expect(page.locator("#setup-summary")).toContainText("벽돌 가방 + 배");
+  await page.locator('input[name="startingItem"][value="iron-boots"]').check();
+  await expect(page.locator("#setup-summary")).toContainText("철 장화 + 벽돌 가방");
   await saveSettings(page);
   await startGame(page);
   await expect(page.locator("#app")).toHaveAttribute("data-round", "active", { timeout: 5_000 });
-  await expect(page.locator("#use-item-slot-0")).toContainText("벽돌 가방 · 4회");
-  await expect(page.locator("#use-item-slot-1")).toContainText("배 · 1회");
+  await expect(page.locator("#use-item-slot-1")).toContainText("벽돌 가방 · 4회");
 
-  await useBrickBagFromAvailableDirection(page, 0);
+  await useBrickBagFromAvailableDirection(page, 1);
 
-  await expect(page.locator("#use-item-slot-0")).toContainText("벽돌 가방 · 3회");
+  await expect(page.locator("#use-item-slot-1")).toContainText("벽돌 가방 · 3회");
   await expect(page.getByText("벽돌을 세웠어.")).toBeVisible();
+});
+
+test("equips and launches a Boat in a fresh round", async ({ page }) => {
+  await installFixedRoundSeed(page, 1, 0);
+  await page.goto("/");
+  await openSettings(page);
+  await page.locator('input[name="startingItem"][value="iron-boots"]').uncheck();
+  await page.locator('input[name="startingItem"][value="spring-glove"]').uncheck();
+  await page.locator('input[name="startingItem"][value="iron-boots"]').check();
+  await page.locator('input[name="startingItem"][value="boat"]').check();
+  await expect(page.locator("#setup-summary")).toContainText("철 장화 + 배");
+  await saveSettings(page);
+  await startGame(page);
+  await expect(page.locator("#app")).toHaveAttribute("data-round", "active", { timeout: 5_000 });
+  await expect(page.locator("#use-item-slot-1")).toContainText("배 · 1회");
   await page.locator("#use-item-slot-1").click();
   await expect(page.locator("#use-item-slot-1")).toContainText("배 · 0회");
   await expect(page.locator("#effect-value")).toContainText(/배 [1-5]초/u);
