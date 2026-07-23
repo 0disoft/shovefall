@@ -86,7 +86,7 @@ Exit conditions:
 - Screenshot, short gameplay capture, tool list, asset provenance, and development notes are ready
   in [05-submission-package.md](05-submission-package.md) for the contest post.
 
-Current status: `IN_PROGRESS`. Product `0.32.0` is the current local candidate contract. Its 169 tests, thirteen production-artifact Chrome paths, and fixed-50 headless profile pass; the host-contended production-Chrome performance observation is explicitly rejected. Exact candidate SHA, uncontended browser profile, hosted CI, Pages deployment, and public-URL smoke remain pending. The exact `0.31.0` hosted evidence remains valid history but does not prove Grappling Hook. Final captures, physical-browser coverage, and human evidence remain open.
+Current status: `IN_PROGRESS`. Product `0.32.0` exact SHA `4dc23456673d08ba15228776bdce15e2b768bcd5` passes 169 tests, thirteen production-artifact Chrome paths, the fixed-50 headless profile, hosted CI, Pages deployment, and fresh public-URL smoke. The host-contended production-Chrome performance observation is explicitly rejected; an uncontended profile, final captures, physical-browser coverage, and human evidence remain open.
 
 ## Deferred Beyond the Submission
 

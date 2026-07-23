@@ -91,6 +91,8 @@ The Boat candidate completed [CI run 30025468513](https://github.com/0disoft/sho
 
 The Bomb candidate completed [CI run 30030306125](https://github.com/0disoft/shovefall/actions/runs/30030306125) for exact SHA `9b82be027846192464aff861ec7e7dd86e86cd19`. Merge checks, eleven isolated production Chrome paths, artifact upload, and the dependent Pages deployment all passed. A fresh public session confirmed `v0.30.0`, the `시한폭탄 2개 · 5초 뒤 주변을 날려` setting, and no console warnings or errors.
 
+The Grappling Hook candidate completed [CI run 30038218455](https://github.com/0disoft/shovefall/actions/runs/30038218455) for exact SHA `4dc23456673d08ba15228776bdce15e2b768bcd5`. `Validate` completed in 4 minutes 19 seconds with merge checks, thirteen production Chrome paths, Pages configuration, and exact tested-artifact upload. The dependent Pages job completed in 11 seconds without rebuilding. A fresh cache-busted public session confirmed `v0.32.0`, the `구조 갈고리 2회 · 땅이나 벽을 붙잡아` setting, an active Hard-AI WebGL arena with changing survivors, and no browser log entries.
+
 ## Owners and Failure Handling
 
 - Primary owner: Repository owner
@@ -103,7 +105,7 @@ Dependency or action download failure is infrastructure evidence, not a source f
 
 - Required validation names: `check` and `smoke-dist`
 - Public URL: `https://0disoft.github.io/shovefall/`
-- Release blocker status: Hosted validation, Pages deployment, and public version/Bomb-setting smoke are green for exact SHA `9b82be027846192464aff861ec7e7dd86e86cd19`; every later runtime or release-candidate change requires its own exact-SHA run, successful deploy job, and URL smoke.
+- Release blocker status: Hosted validation, Pages deployment, and public version/Hook-setting smoke are green for exact SHA `4dc23456673d08ba15228776bdce15e2b768bcd5`; every later runtime or release-candidate change requires its own exact-SHA run, successful deploy job, and URL smoke.
 - Remaining operational risk: Branch protection, real merged-contributor Clarissimi staging and
   promotion, runner-image Chrome drift, broader physical-device coverage, cross-browser coverage,
   and human playtest remain unproven until separately observed.
