@@ -157,26 +157,35 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await expect(page.locator("#setup-summary")).toContainText("붕괴 느림");
 
   await page.getByRole("button", { name: "빠른 시작" }).click();
+  await page.keyboard.press("Space");
+  const countdownPauseSnapshot = await page.locator("#game-telemetry").evaluate((telemetry) => {
+    const arena = document.querySelector("#arena-host");
+    const rendererStatus = document.querySelector("#renderer-status");
+    const snapshot = {
+      countdown: telemetry.getAttribute("data-countdown"),
+      arenaFocused: document.activeElement === arena,
+      rendererStatus: rendererStatus?.textContent ?? "",
+    };
+    window.dispatchEvent(new Event("blur"));
+    return snapshot;
+  });
 
+  expect(countdownPauseSnapshot.countdown).toMatch(/^[123]$/u);
+  expect(countdownPauseSnapshot.arenaFocused).toBe(true);
+  expect(countdownPauseSnapshot.rendererStatus).toMatch(/^시작까지 [123]$/u);
   await expect(page.locator("#app")).toHaveAttribute("data-screen", "arena");
   await expect(page.locator("#app")).toHaveAttribute("data-round", "countdown");
-  await expect(page.locator("#renderer-status")).toHaveText(/^시작까지 [123]$/u);
   await expect(page.locator("#tick-value")).toHaveText("0");
-  await expect(page.locator("#arena-host")).toBeFocused();
   await expect(page.locator("#game-telemetry")).toBeVisible();
   await expect(page.locator("#app")).toHaveAttribute("data-initial-items", "3");
   await expect(page.locator("#app")).toHaveAttribute("data-bot-difficulty", "easy");
   await expect(page.locator("#app")).toHaveAttribute("data-collapse-speed", "slow");
-  await page.keyboard.press("Space");
-  await page.evaluate(() => window.dispatchEvent(new Event("blur")));
   await expect(page.locator("#renderer-status")).toHaveText("일시 정지");
-  const countdownBeforePause = await page.locator("#game-telemetry").getAttribute("data-countdown");
-  expect(countdownBeforePause).toMatch(/^[123]$/u);
   await page.waitForTimeout(600);
   await expect(page.locator("#tick-value")).toHaveText("0");
   await expect(page.locator("#game-telemetry")).toHaveAttribute(
     "data-countdown",
-    countdownBeforePause ?? "",
+    countdownPauseSnapshot.countdown ?? "",
   );
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
   await expect(page.locator("#app")).toHaveAttribute("data-round", "active");
