@@ -23,24 +23,24 @@ const PROFILE_CASES = Object.freeze([
   {
     participantCount: 16,
     preset: "default",
-    seed: "0000001000000001",
-    seedWords: [16, 1],
+    seed: "0000001000000000",
+    seedWords: [16, 0],
     p95Budget: 20,
     tickRateBudget: 55,
   },
   {
     participantCount: 24,
     preset: "crowded",
-    seed: "0000001800000001",
-    seedWords: [24, 1],
+    seed: "0000001800000000",
+    seedWords: [24, 0],
     p95Budget: 20,
     tickRateBudget: 55,
   },
   {
     participantCount: 32,
     preset: "chaos",
-    seed: "0000002000000000",
-    seedWords: [32, 0],
+    seed: "0000002000000001",
+    seedWords: [32, 1],
     p95Budget: 22,
     tickRateBudget: 42,
   },
@@ -154,6 +154,7 @@ async function profileCases(page: Page, index: number, profiles: FrameProfile[])
   await expect(page.locator("#app")).toHaveAttribute("data-bot-difficulty", "hard");
   const profile = await collectFrameProfile(page, profileCase.participantCount, profileCase.seed);
   profiles.push(profile);
+  process.stdout.write(`${JSON.stringify({ kind: "browser-profile-case", profile })}\n`);
   expect(profile.p95FrameMilliseconds).toBeLessThanOrEqual(profileCase.p95Budget);
   expect(profile.deliveredTicksPerRequestedSimulationSecond).toBeGreaterThanOrEqual(
     profileCase.tickRateBudget,

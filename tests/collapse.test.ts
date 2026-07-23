@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { createCollapsePlan } from "../src/simulation/collapse";
+import {
+  advanceCollapse,
+  createCollapsePlan,
+  MINIMUM_REMAINING_LAND_RATIO,
+} from "../src/simulation/collapse";
 import { normalizeGameConfig, type SimulationEventV1 } from "../src/simulation/contracts";
 import { SimulationContractError } from "../src/simulation/math";
 import { RandomStreamSet } from "../src/simulation/random";
@@ -67,36 +71,34 @@ describe("collapse and round lifecycle", () => {
     expect(samePlan).toEqual(plan("same-plan"));
     expect(samePlan).not.toEqual(plan("different-plan"));
 
+    const stableIds = new Set(
+      frame.tiles.filter(({ state }) => state === "Stable").map(({ tileId }) => tileId),
+    );
     const firstWaveIds = new Set(samePlan[0]?.tileIds);
     const firstWaveTiles = frame.tiles.filter(({ tileId }) => firstWaveIds.has(tileId));
     expect(
       firstWaveTiles.every(
         ({ column, row }) =>
-          column === 0 ||
-          row === 0 ||
-          column === config.arenaColumns - 1 ||
-          row === config.arenaRows - 1,
+          !stableIds.has(`${column + 1}:${row}`) ||
+          !stableIds.has(`${column - 1}:${row}`) ||
+          !stableIds.has(`${column}:${row + 1}`) ||
+          !stableIds.has(`${column}:${row - 1}`),
       ),
     ).toBe(true);
 
-    const tileLayers = new Map(
-      frame.tiles.map(
-        (tile) =>
-          [
-            tile.tileId,
-            Math.min(
-              tile.column,
-              tile.row,
-              config.arenaColumns - tile.column - 1,
-              config.arenaRows - tile.row - 1,
-            ),
-          ] as const,
-      ),
-    );
-    const waveLayers = samePlan.map((wave) =>
-      Math.min(...wave.tileIds.map((tileId) => tileLayers.get(tileId) ?? Infinity)),
-    );
-    expect(waveLayers).toEqual(waveLayers.toSorted((left, right) => left - right));
+    const scheduledIds = samePlan.flatMap(({ tileIds }) => tileIds);
+    const expectedRemaining = Math.ceil(stableIds.size * MINIMUM_REMAINING_LAND_RATIO);
+    expect(new Set(scheduledIds)).toHaveLength(scheduledIds.length);
+    expect(scheduledIds).toHaveLength(stableIds.size - expectedRemaining);
+
+    const finalTick = samePlan.at(-1)?.voidTick ?? 0;
+    const collapsed = advanceCollapse(frame.tiles, samePlan, finalTick).tiles;
+    expect(collapsed.filter(({ state }) => state !== "Void")).toHaveLength(expectedRemaining);
+    expect(
+      frame.tiles
+        .filter(({ state }) => state === "Void")
+        .every((tile) => collapsed.find(({ tileId }) => tileId === tile.tileId)?.state === "Void"),
+    ).toBe(true);
   });
 
   it("declares the only standing actor the winner and seals the completed world", () => {

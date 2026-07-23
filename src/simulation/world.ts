@@ -1,6 +1,5 @@
 import {
   createNeutralCommand,
-  createTileId,
   normalizeActorCommand,
   type ActionState,
   type ActorCommandV1,
@@ -72,6 +71,11 @@ import {
   type GameplayTuningV1,
 } from "./tuning";
 import { SYSTEM_ORDER } from "./versions";
+import {
+  createArenaTiles,
+  createParticipantSpawnPositions,
+  createRectangularArenaTiles,
+} from "./arena";
 
 export interface SimulationStepResult {
   readonly frame: RenderFrameV1;
@@ -101,6 +105,7 @@ export interface SimulationWorldOptions {
   readonly participantOverrides?: readonly ParticipantSpawnOverride[];
   readonly itemOverrides?: readonly ItemSpawnOverride[];
   readonly gameplayTuning?: GameplayTuningInput;
+  readonly arenaLayout?: "procedural-island" | "rectangular-fixture";
 }
 
 interface EventDetails {
@@ -120,25 +125,6 @@ interface SweptCircleContact {
   readonly normal: Vector2;
   readonly leftPosition: Vector2;
   readonly rightPosition: Vector2;
-}
-
-function createTiles(config: GameConfigV1): readonly TileState[] {
-  const tiles: TileState[] = [];
-
-  for (let row = 0; row < config.arenaRows; row += 1) {
-    for (let column = 0; column < config.arenaColumns; column += 1) {
-      tiles.push(
-        Object.freeze({
-          tileId: createTileId(column, row),
-          column,
-          row,
-          state: "Stable",
-        }),
-      );
-    }
-  }
-
-  return Object.freeze(tiles);
 }
 
 function createReadyAction(tick: number): ActionState {
@@ -213,6 +199,7 @@ function validateOverride(override: ParticipantSpawnOverride, participantCount: 
 
 function createParticipants(
   config: GameConfigV1,
+  tiles: readonly TileState[],
   streams: RandomStreamSet,
   humanActorId: ActorId,
   participantOverrides: readonly ParticipantSpawnOverride[],
@@ -231,10 +218,8 @@ function createParticipants(
     overrides.set(override.actorId, override);
   }
 
-  const centerX = config.arenaColumns / 2;
-  const centerY = config.arenaRows / 2;
-  const spawnRadius = Math.min(config.arenaColumns, config.arenaRows) * 0.28;
   const phase = streams.get("arena").nextFloat() * Math.PI * 2;
+  const spawnPositions = createParticipantSpawnPositions(tiles, config.participantCount, phase);
   const participants: ParticipantState[] = [];
 
   for (let index = 0; index < config.participantCount; index += 1) {
@@ -244,10 +229,7 @@ function createParticipants(
       x: -Math.cos(angle),
       y: -Math.sin(angle),
     });
-    const defaultPosition = Object.freeze({
-      x: centerX + Math.cos(angle) * spawnRadius,
-      y: centerY + Math.sin(angle) * spawnRadius,
-    });
+    const defaultPosition = spawnPositions[index] ?? Object.freeze({ x: 0.5, y: 0.5 });
     const override = overrides.get(actorId);
     const position = Object.freeze({ ...(override?.position ?? defaultPosition) });
     const velocity = clampVectorLength(
@@ -388,7 +370,10 @@ export class SimulationWorld {
     this.#config = config;
     this.#roundId = roundId;
     this.#gameplayTuning = normalizeGameplayTuning(options.gameplayTuning);
-    this.#tiles = createTiles(config);
+    this.#tiles =
+      options.arenaLayout === "rectangular-fixture"
+        ? createRectangularArenaTiles(config)
+        : createArenaTiles(config, streams.get("arena"));
     this.#collapsePlan = createCollapsePlan(
       this.#tiles,
       config.arenaColumns,
@@ -405,6 +390,7 @@ export class SimulationWorld {
     );
     this.#participants = createParticipants(
       config,
+      this.#tiles,
       streams,
       humanActorId,
       options.participantOverrides ?? [],

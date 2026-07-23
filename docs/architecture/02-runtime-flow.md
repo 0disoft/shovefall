@@ -7,7 +7,7 @@
 
 1. The DOM setup model normalizes a supported preset or bounded custom settings.
 2. The application creates one master seed and immutable `GameConfigV1`.
-3. The world derives named PRNG streams and assigns stable actors, tiles, and spawn state.
+3. The world derives named PRNG streams, builds a connected island with an irregular coastline and enclosed lakes, and assigns supported spawn state.
 4. Input adapters and bot controllers begin producing `ActorCommandV1` for the next integer tick.
 5. PixiJS receives the initial read-only `RenderFrameV1`; it does not own simulation state.
 
@@ -30,7 +30,7 @@ Each 60 Hz tick uses this versioned order:
 13. Decide round result.
 14. Emit ordered events, an immutable render frame, and a quantized state hash.
 
-All fourteen stages are implemented. Weak contact first resolves a swept circle intersection from `previousPosition` to the integrated position, then applies iterative overlap correction. Timed effects expire with action transitions before movement. Item pickup runs after support, so a valid pickup wins over a tile that begins collapsing later in the same tick. Collapse then advances, void-tile items are removed, the safe-area cap is enforced, and at most one due item is spawned on a stable clear tile using the 3/2/1 edge-ring weights. Collapse still cannot retroactively remove support earlier in the same tick. Later work cannot reorder the pipeline or change contact meaning without a simulation-version decision and regenerated replay evidence.
+All fourteen stages are implemented. Weak contact first resolves a swept circle intersection from `previousPosition` to the integrated position, then applies iterative overlap correction. Timed effects expire with action transitions before movement. Item pickup runs after support, so a valid pickup wins over a tile that begins collapsing later in the same tick. Collapse advances from the actual ocean and lake shoreline rather than the rectangular render bounds. A connected protected core equal to `ceil(initial playable land × 0.20)` is never scheduled, so pre-existing water never returns as land and collapse never crosses the 20% floor. Void-tile items are removed, the safe-area cap is enforced, and at most one due item is spawned on a stable clear tile using the 3/2/1 shoreline-ring weights. Collapse still cannot retroactively remove support earlier in the same tick. Later work cannot reorder the pipeline or change contact meaning without a simulation-version decision and regenerated replay evidence.
 
 ## Browser Scheduling
 

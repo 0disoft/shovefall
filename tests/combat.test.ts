@@ -27,7 +27,10 @@ function createWorld(
   overrides: readonly ParticipantSpawnOverride[],
   seed = "combat-fixture",
 ): SimulationWorld {
-  return new SimulationWorld(CONFIG, seed, { participantOverrides: overrides });
+  return new SimulationWorld(CONFIG, seed, {
+    participantOverrides: overrides,
+    arenaLayout: "rectangular-fixture",
+  });
 }
 
 function createSeparatedOverrides(

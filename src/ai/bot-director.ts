@@ -7,6 +7,7 @@ import {
   type RenderFrameV1,
   type RenderItemV1,
   type RenderParticipantV1,
+  type TileId,
   type UpgradeStatId,
 } from "../simulation/contracts";
 import {
@@ -55,6 +56,7 @@ interface ArenaBounds {
   readonly columns: number;
   readonly rows: number;
   readonly center: Vector2;
+  readonly stableTileDepths: ReadonlyMap<string, number>;
 }
 
 interface BotDecision {
@@ -100,7 +102,7 @@ export function getBotDifficultyProfile(difficulty: BotDifficulty): BotDifficult
   return BOT_DIFFICULTY_PROFILES[difficulty];
 }
 
-function getArenaBounds(frame: RenderFrameV1): ArenaBounds {
+function createArenaBounds(frame: RenderFrameV1): ArenaBounds {
   const dimensions = frame.tiles.reduce(
     (result, tile) => ({
       columns: Math.max(result.columns, tile.column + 1),
@@ -108,48 +110,112 @@ function getArenaBounds(frame: RenderFrameV1): ArenaBounds {
     }),
     { columns: 1, rows: 1 },
   );
-  return Object.freeze({
-    ...dimensions,
-    center: Object.freeze({ x: dimensions.columns / 2, y: dimensions.rows / 2 }),
-  });
+  const stableTiles = frame.tiles.filter(({ state }) => state === "Stable");
+  const stableTileIds = new Set(stableTiles.map(({ tileId }) => tileId));
+  const stableTilesById = new Map(stableTiles.map((tile) => [tile.tileId, tile] as const));
+  const stableTileDepths = new Map<TileId, number>();
+  let frontier = stableTiles
+    .filter(({ column, row }) =>
+      (
+        [
+          `${column + 1}:${row}`,
+          `${column - 1}:${row}`,
+          `${column}:${row + 1}`,
+          `${column}:${row - 1}`,
+        ] as readonly TileId[]
+      ).some((tileId) => !stableTileIds.has(tileId)),
+    )
+    .map(({ tileId }) => tileId);
+
+  for (const tileId of frontier) {
+    stableTileDepths.set(tileId, 0);
+  }
+
+  let depth = 1;
+
+  while (frontier.length > 0 && stableTileDepths.size < stableTiles.length) {
+    const nextFrontier: TileId[] = [];
+
+    for (const tileId of frontier) {
+      const tile = stableTilesById.get(tileId);
+
+      if (tile === undefined) {
+        continue;
+      }
+
+      for (const neighborId of [
+        `${tile.column + 1}:${tile.row}`,
+        `${tile.column - 1}:${tile.row}`,
+        `${tile.column}:${tile.row + 1}`,
+        `${tile.column}:${tile.row - 1}`,
+      ] as readonly TileId[]) {
+        if (stableTileIds.has(neighborId) && !stableTileDepths.has(neighborId)) {
+          stableTileDepths.set(neighborId, depth);
+          nextFrontier.push(neighborId);
+        }
+      }
+    }
+
+    frontier = nextFrontier;
+    depth += 1;
+  }
+
+  const center = stableTiles.reduce(
+    (sum, tile) => ({ x: sum.x + tile.column + 0.5, y: sum.y + tile.row + 0.5 }),
+    { x: 0, y: 0 },
+  );
+  center.x /= Math.max(1, stableTiles.length);
+  center.y /= Math.max(1, stableTiles.length);
+
+  return Object.freeze({ ...dimensions, center: Object.freeze(center), stableTileDepths });
 }
 
 function getEdgeDistance(participant: RenderParticipantV1, bounds: ArenaBounds): number {
-  return Math.min(
-    participant.position.x,
-    participant.position.y,
-    bounds.columns - participant.position.x,
-    bounds.rows - participant.position.y,
-  );
+  const tileId = `${Math.floor(participant.position.x)}:${Math.floor(participant.position.y)}`;
+  const depth = bounds.stableTileDepths.get(tileId);
+  return depth === undefined ? 0 : depth + 0.5;
 }
 
 function getImmediateTileEscape(
   frame: RenderFrameV1,
   participant: RenderParticipantV1,
+  bounds: ArenaBounds,
 ): Vector2 | undefined {
   const column = Math.floor(participant.position.x);
   const row = Math.floor(participant.position.y);
   const currentTile = frame.tiles.find((tile) => tile.column === column && tile.row === row);
 
-  if (currentTile?.state === "Stable") {
+  if (currentTile?.state === "Stable" && getEdgeDistance(participant, bounds) > 0.5) {
     return undefined;
   }
 
-  const safeTile = frame.tiles
-    .filter(({ state }) => state === "Stable")
-    .map((tile) => ({
-      tile,
-      distance: vectorLength(
-        subtractVectors(
-          Object.freeze({ x: tile.column + 0.5, y: tile.row + 0.5 }),
-          participant.position,
-        ),
-      ),
-    }))
-    .toSorted(
-      (left, right) =>
-        left.distance - right.distance || left.tile.tileId.localeCompare(right.tile.tileId),
-    )[0]?.tile;
+  const currentIsStable = currentTile?.state === "Stable";
+  let safeTile: (typeof frame.tiles)[number] | undefined;
+  let bestScore = Number.NEGATIVE_INFINITY;
+
+  for (const tile of frame.tiles) {
+    if (tile.state !== "Stable") {
+      continue;
+    }
+
+    const position = Object.freeze({ x: tile.column + 0.5, y: tile.row + 0.5 });
+    const distance = vectorLength(subtractVectors(position, participant.position));
+    const depth = bounds.stableTileDepths.get(tile.tileId) ?? 0;
+
+    if (currentIsStable && (distance > 2.5 || depth === 0)) {
+      continue;
+    }
+
+    const score = currentIsStable ? depth * 4 - distance : depth * 0.1 - distance;
+
+    if (
+      score > bestScore ||
+      (score === bestScore && tile.tileId.localeCompare(safeTile?.tileId ?? "") < 0)
+    ) {
+      safeTile = tile;
+      bestScore = score;
+    }
+  }
 
   return safeTile === undefined
     ? undefined
@@ -213,6 +279,7 @@ export class BotDirector {
   readonly #memories = new Map<ActorId, BotMemory>();
   readonly #history: RenderFrameV1[] = [];
   readonly #personalityOverrides: ReadonlyMap<ActorId, BotPersonalityKind>;
+  readonly #arenaBoundsCache = new WeakMap<RenderFrameV1["tiles"], ArenaBounds>();
 
   public constructor(
     masterSeed: SeedInput,
@@ -265,7 +332,7 @@ export class BotDirector {
       this.#history.findLast((frame) => frame.tick <= perceptionTick) ??
       this.#history[0] ??
       currentFrame;
-    const bounds = getArenaBounds(currentFrame);
+    const bounds = this.#getArenaBounds(currentFrame);
     const perceivedActors = new Map(
       perceptionFrame.participants.map(
         (participant) => [participant.actorId, participant] as const,
@@ -291,7 +358,7 @@ export class BotDirector {
       let dodgePressed = false;
       const upgradeStat = this.#chooseUpgrade(memory.personality, current);
       const edgeDistance = getEdgeDistance(current, bounds);
-      const tileEscape = getImmediateTileEscape(currentFrame, current);
+      const tileEscape = getImmediateTileEscape(currentFrame, current, bounds);
 
       if (tileEscape !== undefined || edgeDistance < EDGE_EMERGENCY_DISTANCE) {
         memory.intent =
@@ -348,6 +415,18 @@ export class BotDirector {
     };
     this.#memories.set(actorId, memory);
     return memory;
+  }
+
+  #getArenaBounds(frame: RenderFrameV1): ArenaBounds {
+    const cached = this.#arenaBoundsCache.get(frame.tiles);
+
+    if (cached !== undefined) {
+      return cached;
+    }
+
+    const bounds = createArenaBounds(frame);
+    this.#arenaBoundsCache.set(frame.tiles, bounds);
+    return bounds;
   }
 
   #chooseUpgrade(

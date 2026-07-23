@@ -56,6 +56,8 @@ Simulation `6.0.0` adds command-driven stat spending, elimination credit, enlarg
 
 Product `0.21.0` adds browser input adapters and public presentation changes without changing command, simulation, content, or replay-format semantics. Replay fixtures carry the new product version but retain their simulation hashes.
 
+Product `0.22.0` and simulation `7.0.0` replace the full rectangular land sheet with deterministic connected islands, smoothed seeded coastlines, and enclosed lakes. The 8/16/24/32 tiers use `16×13`, `20×16`, `24×19`, and `28×22` bounding grids; only generated land is playable. Collapse measures layers from the real shoreline and protects one connected core of `ceil(initial playable land × 0.20)` tiles. Item bands and bots read current stable-tile shore depth instead of rectangular canvas distance. This changes tick-zero tiles, spawns, AI choices, collapse schedules, and state hashes, so replay fixtures are regenerated under simulation `7.0.0`; content remains `4.0.0`.
+
 ## Version Ownership
 
 - Product version: `package.json` and `PRODUCT_VERSION`.

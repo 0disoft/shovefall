@@ -1,8 +1,19 @@
 # Round and strategy audit
 
+## Procedural-island `0.22.0` validation status
+
+- Product: `0.22.0`
+- Simulation: `7.0.0`
+- Content: `4.0.0`
+- Preset bounds: `16×13`, `20×16`, `24×19`, and `28×22`
+
+The island contract has deterministic tests across all four participant tiers and multiple seeds. They require one connected tick-zero landmass, enclosed lakes, distinct supported default spawns, an exact `ceil(initial playable land × 0.20)` final land count, and one connected protected final core. These invariants validate topology and collapse limits; they do not prove human pacing or item risk preference.
+
+The full `audit:rounds` workload again hit its configured 300-second timeout before emitting a result. It is neither a pass nor a balance failure, and the historical `0.20.0` round tables below do not transfer to procedural islands. Current headless scale profiling completed 7,200 ticks at 16/24/32 participants with 0 steps over 100 ms; the 32-participant run reported AI p95 `5.404 ms`, simulation p95 `3.917 ms`, and `3.61×` real-time throughput. Current local production Chrome profiling reported p95 `16.9/17.0/16.9 ms`, 0 backlog ticks, 0 frames over 100 ms, and a 1,436,776-byte heap increase after 20 restarts. This is local lab evidence, not field or cross-browser evidence.
+
 ## Current evidence
 
-- Product: `0.20.0`
+- Historical product: `0.20.0`
 - Simulation: `6.0.0`
 - Content: `4.0.0`
 - Focused command: `bun run audit:strategy`

@@ -11,7 +11,11 @@ function createBotWorld(
   return new SimulationWorld(
     normalizeGameConfig({ participantCount, roundLimitSeconds: 10 }),
     seed,
-    { humanActorId: 1, participantOverrides: overrides },
+    {
+      humanActorId: 1,
+      participantOverrides: overrides,
+      arenaLayout: "rectangular-fixture",
+    },
   );
 }
 

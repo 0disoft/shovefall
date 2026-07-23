@@ -174,16 +174,16 @@ export function getArenaSize(playerCount: number): ArenaSize {
   const normalizedCount = normalizePlayerCount(playerCount);
 
   if (normalizedCount <= 8) {
-    return Object.freeze({ columns: 12, rows: 10 });
+    return Object.freeze({ columns: 16, rows: 13 });
   }
 
   if (normalizedCount <= 16) {
-    return Object.freeze({ columns: 15, rows: 12 });
+    return Object.freeze({ columns: 20, rows: 16 });
   }
 
   if (normalizedCount <= 24) {
-    return Object.freeze({ columns: 18, rows: 14 });
+    return Object.freeze({ columns: 24, rows: 19 });
   }
 
-  return Object.freeze({ columns: 20, rows: 15 });
+  return Object.freeze({ columns: 28, rows: 22 });
 }

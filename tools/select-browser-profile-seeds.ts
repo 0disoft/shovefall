@@ -38,7 +38,7 @@ function survivesProfileWindow(participantCount: number, seed: string): boolean 
       ],
     },
   );
-  const bots = new BotDirector(seed, 1);
+  const bots = new BotDirector(seed, 1, { difficulty: "hard" });
   let frame = world.createRenderFrame();
 
   while (world.tick < SURVIVAL_TICKS && frame.round.status === "Active") {

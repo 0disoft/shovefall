@@ -1,7 +1,7 @@
 # Contest Submission Package
 
 - Status: Public link and Chrome smoke verified; final captures and human playtest pending
-- Candidate version: `0.21.0`
+- Candidate version: `0.22.0`
 - Candidate SHA: replace with the final exact 40-character release SHA
 - Release gate: [../ops/release.md](../ops/release.md)
 - Asset ledger: [../assets/README.md](../assets/README.md)
@@ -12,7 +12,7 @@
 
 ## 2. 게임 설명
 
-무너지는 타일 아레나에서 상대를 밀어내고 끝까지 살아남는 짧은 브라우저 파티 액션
+해안선과 호수가 매번 달라지는 무인도에서 상대를 밀어내고 끝까지 살아남는 짧은 브라우저 파티 액션
 게임이다. 플레이어 한 명과 규칙 기반 컴퓨터들이 같은 물리 규칙으로 싸운다. WASD,
 방향키, 마우스 드래그, 터치 조이스틱, 게임패드로 이동하고 키보드·터치·게임패드로
 밀치기와 회피를 한다.
@@ -22,7 +22,7 @@
 있다. Iron Boots, Feather, Spring Glove 아이템은 위험한 가장자리 쪽에 더 자주 나타나서,
 먹으러 갈지 포기할지 선택하게 만든다.
 
-8·16·24·32명 프리셋과 Easy·Normal·Hard 컴퓨터 난이도, Slow·Normal·Fast 붕괴 속도를
+바닥은 처음부터 있던 육지의 20%까지 무너진 뒤 멈춘다. 8·16·24·32명 프리셋과 Easy·Normal·Hard 컴퓨터 난이도, Slow·Normal·Fast 붕괴 속도를
 지원한다. 32명은 정교한 경쟁 모드가 아니라 일부러 빽빽한 `Mayhem` 모드다. 전투 결과는
 숨겨진 확률이 아니라 고정 틱, 위치, 속도, 몸무게, 행동 타이밍으로 결정된다.
 

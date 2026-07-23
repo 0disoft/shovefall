@@ -61,6 +61,7 @@ function stepUntilHit(world: SimulationWorld) {
 describe("deterministic item effects", () => {
   it("applies and refreshes timed mass effects within the global mass bounds", () => {
     const world = new SimulationWorld(createItemConfig(), "stacked-mass", {
+      arenaLayout: "rectangular-fixture",
       participantOverrides: PARTICIPANT_OVERRIDES,
       itemOverrides: [
         { itemId: 1, definitionId: "iron-boots", position: { x: 4, y: 4.5 } },
@@ -83,6 +84,7 @@ describe("deterministic item effects", () => {
 
   it("expires a timed effect before movement and collision on its exact end tick", () => {
     const world = new SimulationWorld(createItemConfig(), "effect-expiry", {
+      arenaLayout: "rectangular-fixture",
       participantOverrides: PARTICIPANT_OVERRIDES,
       itemOverrides: [{ itemId: 1, definitionId: "iron-boots", position: { x: 4, y: 4.5 } }],
     });
@@ -99,6 +101,7 @@ describe("deterministic item effects", () => {
 
   it("consumes a spring glove on shove start and boosts every valid target in that active window", () => {
     const world = new SimulationWorld(createItemConfig(), "spring-multi-hit", {
+      arenaLayout: "rectangular-fixture",
       participantOverrides: [
         PARTICIPANT_OVERRIDES[0]!,
         { actorId: 2, position: { x: 4.72, y: 4.15 }, facing: { x: -1, y: 0 } },
@@ -123,6 +126,7 @@ describe("deterministic item effects", () => {
   it("produces more target velocity than the same unboosted shove", () => {
     function run(boosted: boolean): number {
       const world = new SimulationWorld(createItemConfig(), `spring-compare-${boosted}`, {
+        arenaLayout: "rectangular-fixture",
         participantOverrides: [
           PARTICIPANT_OVERRIDES[0]!,
           { actorId: 2, position: { x: 4.78, y: 4.5 }, facing: { x: -1, y: 0 } },
@@ -144,6 +148,7 @@ describe("deterministic item effects", () => {
 
   it("consumes spring momentum on a miss and clears timed effects on falling", () => {
     const springWorld = new SimulationWorld(createItemConfig(), "spring-miss", {
+      arenaLayout: "rectangular-fixture",
       participantOverrides: PARTICIPANT_OVERRIDES,
       itemOverrides: [{ itemId: 1, definitionId: "spring-glove", position: { x: 4, y: 4.5 } }],
     });
@@ -159,6 +164,7 @@ describe("deterministic item effects", () => {
     expect(getActor(springWorld, 1).effects).toEqual([]);
 
     const fallingWorld = new SimulationWorld(createItemConfig(), "falling-clears-effects", {
+      arenaLayout: "rectangular-fixture",
       participantOverrides: [
         { actorId: 1, position: { x: -0.5, y: 4.5 } },
         ...PARTICIPANT_OVERRIDES.slice(1),
@@ -221,14 +227,16 @@ describe("deterministic item placement", () => {
     const world = new SimulationWorld(
       createItemConfig({ initialItemCount: 2, respawnSeconds: 1 }),
       "bounded-respawn",
-      { participantOverrides: PARTICIPANT_OVERRIDES },
     );
+    const initialStableTiles = world
+      .createRenderFrame()
+      .tiles.filter(({ state }) => state === "Stable").length;
 
     for (let index = 0; index < 300; index += 1) {
       const result = world.step();
       expect(result.frame.items.length).toBeLessThanOrEqual(2);
       const stableTiles = result.frame.tiles.filter(({ state }) => state === "Stable").length;
-      const areaCap = Math.ceil(2 * (stableTiles / result.frame.tiles.length));
+      const areaCap = Math.ceil(2 * (stableTiles / initialStableTiles));
       expect(result.frame.items.length).toBeLessThanOrEqual(areaCap);
 
       if (result.frame.round.status === "Completed") {
@@ -241,7 +249,6 @@ describe("deterministic item placement", () => {
     const world = new SimulationWorld(
       createItemConfig({ initialItemCount: 0, respawnSeconds: 1 }),
       "stable-spawns",
-      { participantOverrides: PARTICIPANT_OVERRIDES },
     );
     let spawnCount = 0;
 
