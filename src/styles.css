@@ -93,36 +93,17 @@ button:disabled {
 }
 
 .masthead {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(260px, 0.56fr);
-  gap: 24px;
-  align-items: end;
   margin-bottom: 42px;
-}
-
-.eyebrow {
-  grid-column: 1 / -1;
-  margin: 0;
-  color: var(--accent);
-  font-size: 0.78rem;
-  font-weight: 800;
-  letter-spacing: 0.18em;
 }
 
 .masthead h1 {
   margin: 0;
-  font-size: clamp(3rem, 8vw, 7.2rem);
+  max-width: 13ch;
+  font-size: clamp(2.7rem, 7vw, 6.2rem);
   font-weight: 900;
-  letter-spacing: -0.08em;
-  line-height: 0.86;
+  letter-spacing: -0.075em;
+  line-height: 0.96;
   color: var(--ink-strong);
-}
-
-.masthead__copy {
-  margin: 0 0 0.45rem;
-  color: var(--text-muted);
-  font-size: clamp(1rem, 1.7vw, 1.25rem);
-  line-height: 1.65;
 }
 
 .play-layout {
@@ -147,20 +128,11 @@ button:disabled {
 .section-heading,
 .arena-panel__header {
   display: flex;
-  gap: 16px;
   align-items: flex-start;
 }
 
 .section-heading {
   margin-bottom: 28px;
-}
-
-.section-heading__index {
-  margin: 0;
-  color: var(--accent);
-  font-size: 0.75rem;
-  font-weight: 900;
-  letter-spacing: 0.1em;
 }
 
 .section-heading h2,
@@ -169,12 +141,6 @@ button:disabled {
   font-size: 1.35rem;
   letter-spacing: -0.04em;
   color: var(--ink-strong);
-}
-
-.section-heading p:not(.section-heading__index) {
-  margin: 6px 0 0;
-  color: var(--text-muted);
-  font-size: 0.92rem;
 }
 
 .settings-form {
@@ -587,12 +553,6 @@ button:disabled {
   padding: 5px 6px 17px;
 }
 
-.arena-panel__header > div {
-  display: flex;
-  gap: 12px;
-  align-items: baseline;
-}
-
 .renderer-status {
   margin: 0;
   padding: 7px 10px;
@@ -631,10 +591,16 @@ button:disabled {
   background: rgba(95, 214, 166, 0.14);
 }
 
+.arena-stage {
+  position: relative;
+}
+
 .arena-host {
   width: 100%;
   min-height: 430px;
   overflow: hidden;
+  touch-action: none;
+  user-select: none;
   border-radius: 12px;
   background: var(--void);
   border: 1px solid var(--line);
@@ -642,6 +608,94 @@ button:disabled {
 
 .arena-host:focus-visible {
   outline-color: var(--accent);
+}
+
+.arena-host[data-pointer-moving="true"] {
+  cursor: grabbing;
+}
+
+.touch-controls {
+  position: absolute;
+  z-index: 2;
+  right: max(18px, env(safe-area-inset-right));
+  bottom: max(18px, env(safe-area-inset-bottom));
+  left: max(18px, env(safe-area-inset-left));
+  display: none;
+  justify-content: space-between;
+  align-items: end;
+  pointer-events: none;
+}
+
+.pointer-joystick {
+  position: relative;
+  width: 112px;
+  height: 112px;
+  touch-action: none;
+  pointer-events: auto;
+  border: 2px solid rgba(230, 233, 231, 0.42);
+  border-radius: 50%;
+  background: rgba(12, 15, 14, 0.72);
+  box-shadow: inset 0 0 0 12px rgba(255, 255, 255, 0.025);
+}
+
+.pointer-joystick::after {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  width: 6px;
+  height: 6px;
+  content: "";
+  background: rgba(230, 233, 231, 0.55);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.pointer-joystick__knob {
+  --joystick-x: 0px;
+  --joystick-y: 0px;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 48px;
+  height: 48px;
+  border: 2px solid rgba(255, 255, 255, 0.72);
+  border-radius: 50%;
+  background: rgba(59, 140, 255, 0.9);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.38);
+  transform: translate(calc(-50% + var(--joystick-x)), calc(-50% + var(--joystick-y)));
+}
+
+.pointer-joystick[data-active="true"] {
+  border-color: var(--accent);
+}
+
+.touch-actions {
+  display: flex;
+  gap: 10px;
+  align-items: end;
+  pointer-events: auto;
+}
+
+.touch-actions button {
+  width: 76px;
+  height: 76px;
+  padding: 0;
+  touch-action: manipulation;
+  color: var(--ink-strong);
+  border: 2px solid rgba(230, 233, 231, 0.48);
+  border-radius: 50%;
+  background: rgba(35, 42, 39, 0.9);
+  font-size: 0.84rem;
+  font-weight: 900;
+  box-shadow: 0 7px 20px rgba(0, 0, 0, 0.36);
+}
+
+.touch-actions button:last-child {
+  border-color: rgba(255, 143, 92, 0.7);
+  background: rgba(112, 50, 31, 0.92);
+}
+
+.touch-actions button:active {
+  transform: scale(0.94);
 }
 
 .app-shell[data-round="countdown"] .ready-message {
@@ -670,7 +724,7 @@ button:disabled {
 
 .game-telemetry {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 1px;
   margin: 12px 0 0;
   overflow: hidden;
@@ -711,10 +765,6 @@ button:disabled {
   color: var(--ink);
 }
 
-.game-telemetry__hash {
-  grid-column: 1 / -1;
-}
-
 .control-guide div {
   display: flex;
   justify-content: space-between;
@@ -733,8 +783,63 @@ button:disabled {
 }
 
 .control-guide dd {
+  text-align: right;
   font-weight: 900;
   color: var(--accent);
+}
+
+.developer-telemetry {
+  margin-top: 10px;
+  overflow: clip;
+  color: var(--text-muted);
+  border: 1px solid var(--line-subtle);
+  border-radius: 10px;
+  background: var(--surface-strong);
+}
+
+.developer-telemetry[hidden] {
+  display: none;
+}
+
+.developer-telemetry > summary {
+  padding: 9px 11px;
+  cursor: pointer;
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.developer-telemetry dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  margin: 0;
+  padding: 1px 0 0;
+  background: var(--line-subtle);
+}
+
+.developer-telemetry div {
+  min-width: 0;
+  padding: 8px 10px;
+  background: var(--surface-strong);
+}
+
+.developer-telemetry dt,
+.developer-telemetry dd {
+  margin: 0;
+}
+
+.developer-telemetry dt {
+  font-size: 0.65rem;
+}
+
+.developer-telemetry dd {
+  overflow: hidden;
+  margin-top: 3px;
+  color: var(--ink);
+  font-size: 0.72rem;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 @media (max-width: 820px) {
@@ -761,7 +866,7 @@ button:disabled {
   }
 
   .game-telemetry {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .loadout-fieldset {
@@ -777,6 +882,50 @@ button:disabled {
     flex-direction: row;
     align-items: center;
     min-height: 62px;
+  }
+}
+
+@media (max-width: 820px), (pointer: coarse) {
+  .app-shell[data-round="active"]:not([data-human-eliminated="true"]) .touch-controls {
+    display: flex;
+  }
+
+  .arena-host {
+    min-height: 440px;
+  }
+}
+
+@media (max-width: 480px) {
+  .app-shell {
+    width: calc(100% - 16px);
+    padding: 24px 0;
+  }
+
+  .masthead {
+    margin-bottom: 24px;
+  }
+
+  .setup-panel,
+  .arena-panel {
+    padding: 14px;
+  }
+
+  .control-guide {
+    grid-template-columns: 1fr;
+  }
+
+  .pointer-joystick {
+    width: 104px;
+    height: 104px;
+  }
+
+  .touch-actions button {
+    width: 68px;
+    height: 68px;
+  }
+
+  .developer-telemetry dl {
+    grid-template-columns: 1fr;
   }
 }
 

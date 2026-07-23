@@ -54,6 +54,8 @@ The current format accepts UTF-8 JSON up to 5 MiB and 7,200 ticks. Unknown repla
 
 Simulation `6.0.0` adds command-driven stat spending, elimination credit, enlarged arena tiers, starting loadouts, hand-reach shove contacts, and the slower mass-sensitive movement contract. Content `4.0.0` changes Spring Glove from attacker speed to hand reach and retains the 3/2/1 risky-placement weights. Product `0.20.0` reports loadout, tuning, and final human progression in playtest record schema v3. These contract changes regenerated replay fixtures rather than inheriting older hashes.
 
+Product `0.21.0` adds browser input adapters and public presentation changes without changing command, simulation, content, or replay-format semantics. Replay fixtures carry the new product version but retain their simulation hashes.
+
 ## Version Ownership
 
 - Product version: `package.json` and `PRODUCT_VERSION`.

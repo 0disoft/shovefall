@@ -4,13 +4,13 @@
 
 ## 0. Decision Summary
 
-Shovefall uses one static browser application. PixiJS 8 with WebGL owns the game world. Semantic HTML, DOM, and CSS own setup, settings, results, fatal errors, focus, and accessibility text. TypeScript 7, Vite 8, Bun, Oxlint, and Oxfmt form the accepted toolchain baseline.
+바닥이 사라지는 술래잡기 uses one static browser application. PixiJS 8 with WebGL owns the game world. Semantic HTML, DOM, and CSS own setup, settings, results, fatal errors, focus, and accessibility text. TypeScript 7, Vite 8, Bun, Oxlint, and Oxfmt form the accepted toolchain baseline.
 
 React, Vue, Svelte, Phaser, Tailwind CSS, a general state manager, and a general-purpose physics engine are not part of the initial baseline. The contest-submission visual direction is Coal-Twilight: a single dark palette shared by the DOM shell and the PixiJS canvas, built only from procedural shapes, text, and CSS. No external raster image assets are required. Generated image inventory remains empty by design; animation polish is limited to reduced-motion-respecting telegraphs already in the simulation contract.
 
 ## 1. Product Surface and Scope
 
-The primary surface is a short desktop-browser single-player game reached through a public HTTPS link. The default entry point must reach quick start without installation, account creation, or a network service. Mobile touch, online multiplayer, authentication, a backend, a database, runtime LLM calls, and remote analytics are outside the MVP.
+The primary surface is a short desktop-or-mobile browser single-player game reached through a public HTTPS link. The default entry point must reach quick start without installation, account creation, or a network service. Online multiplayer, authentication, a backend, a database, runtime LLM calls, and remote analytics are outside the MVP.
 
 ## 2. User Flow Map
 
@@ -51,7 +51,7 @@ Color is never the only signal for collapse warning, player identity, or action 
 
 ## 9. Interaction and Accessibility Contract
 
-The input contract is `WASD` movement, `Space` hand shove, `Shift` dodge, and `1..4` stat spending. Key edges become `ActorCommandV1` actions and held movement is sampled once per fixed tick. Setup offers three starting-mass radios and exactly two distinct starting-item checkboxes; once two are selected, the unused option is disabled until one is removed. The in-round DOM panel exposes the same four stat choices as number keys and returns focus to the arena after a click. Gameplay keys are ignored when an input, link, or button owns focus. Window blur and document visibility loss clear held input and pause the scheduler.
+The input contract accepts `WASD` and arrow-key movement, mouse drag, a mobile virtual joystick, a standard gamepad left stick or D-pad, `Space`/the first gamepad button/touch hand shove, `Shift`/the second gamepad button/touch dodge, and `1..4` stat spending. Every adapter writes the same bounded human command state sampled once per fixed tick; pointer input overrides gamepad input while actively dragged, gamepad input overrides held keyboard movement while displaced, and releasing or losing focus restores a neutral vector. Setup offers three starting-mass radios and exactly two distinct starting-item checkboxes; once two are selected, the unused option is disabled until one is removed. The in-round DOM panel exposes the same four stat choices as number keys and returns focus to the arena after a click. Gameplay keys are ignored when an input, link, or button owns focus. Window blur and document visibility loss clear held input and pause the scheduler.
 
 The experimental tuning lab is collapsed and disabled by default. Enabling it exposes bounded sliders for base movement, acceleration, light/heavy speed multipliers, hand reach, active ticks, dodge speed, and dodge ticks. Values apply to the next round for both human and bots, can be reset, and copy as local schema `shovefall-debug-tuning/v1`; they never persist or upload.
 
@@ -65,15 +65,15 @@ Settings are local client inputs validated at the DOM boundary and normalized ag
 
 ## 12. Responsive and Layout Rules
 
-The MVP targets desktop viewports with a minimum supported layout recorded during application bootstrap. DOM controls wrap without overlapping the canvas. Device-pixel ratio is capped by measured performance policy. Mobile touch and safe-area support remain non-goals until explicitly promoted.
+The layout supports narrow mobile viewports without covering setup controls. A coarse pointer or viewport at or below 820 px reveals an arena-overlay virtual joystick plus shove and dodge buttons; desktop keeps mouse-drag and keyboard controls without the overlay. DOM controls wrap without clipping the canvas, controls remain at least 44 CSS pixels, and device-pixel ratio stays capped by measured performance policy. Physical-device and safe-area testing remain release evidence gates rather than inferred support claims.
 
 ## 13. Observability and Analytics
 
-Remote analytics, session replay, advertising, and automatic error upload are excluded. Development builds may expose local frame, fixed-tick backlog, AI decision, collision, and state-hash diagnostics. Fatal errors may show copyable non-secret reproduction metadata without uploading it. Completed rounds may copy a local versioned playtest record with seed, normalized settings, result, and state hash; this is a user-triggered clipboard write, not analytics or persistence.
+Remote analytics, session replay, advertising, and automatic error upload are excluded. The normal HUD contains only match-readable state; tick, rate, position, seed, and state hash live in one collapsed element marked `data-development-only`. A contest release must remove that element or gate it behind `import.meta.env.DEV` before final capture. Fatal errors may show copyable non-secret reproduction metadata without uploading it. Completed rounds may copy a local versioned playtest record with seed, normalized settings, result, and state hash; this is a user-triggered clipboard write, not analytics or persistence.
 
 ## 14. Test Strategy
 
-Vitest covers pure state, input edges, loadout normalization, starting effects, compact hand reach, credited elimination, bounded stat spending, settings tiers, collapse phases, result sealing, and presentation boundaries. Playwright covers setup, debug tuning copy/apply, countdown, movement and hand shove, deterministic human defeat and restart, audio fallback, reduced motion, fatal recovery, and WebGL restoration. Visual review still must check the denser loadout cards, hand marker, stat availability, human identity, and item/mass readability.
+Vitest covers pure state, keyboard and pointer vectors, gamepad dead zones, input edges, loadout normalization, starting effects, compact hand reach, credited elimination, bounded stat spending, settings tiers, collapse phases, result sealing, and presentation boundaries. Playwright covers setup, debug tuning copy/apply, countdown, keyboard, arrow-key, mouse-drag and narrow-viewport joystick movement, touch action bridging, deterministic human defeat and restart, audio fallback, reduced motion, fatal recovery, and WebGL restoration. Physical touch hardware and gamepad hardware remain manual device-matrix gates.
 
 ## 15. Implementation Sequence
 

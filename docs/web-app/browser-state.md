@@ -23,11 +23,11 @@ There is no server state, durable URL state, cookie, local storage, IndexedDB, s
 
 ## Input Contract
 
-`WASD`, `Space`, and left or right `Shift` are intercepted only while a non-paused round is active and focus is not owned by an input, textarea, select, button, link, or editable element. Movement remains held state. Shove and dodge are edge queues consumed at most once. Repeated keydown does not create repeated action edges. Blur, visibility loss, stop, restart, and destroy clear every held key and queued edge.
+`WASD`, arrow keys, `Space`, and left or right `Shift` are intercepted only while a non-paused round is active and focus is not owned by an input, textarea, select, button, link, or editable element. Mouse drag and the virtual joystick produce bounded analog vectors through Pointer Events; pointer capture keeps a drag coherent and pointer up, cancel, blur, or visibility loss clears it. The first connected standard gamepad uses its left stick or D-pad for movement, first button for shove, and second button for dodge with an axis dead zone and action-edge detection. Pointer movement has priority only while displaced, followed by gamepad and keyboard movement. Shove and dodge are edge queues consumed at most once. Repeated keydown does not create repeated action edges. Blur, visibility loss, stop, restart, and destroy clear every held or analog input and queued edge.
 
 ## Diagnostics and Privacy
 
-The local HUD exposes tick, human action, mass category, standing participant count, simulation rate, position, seed, state hash, and catch-up backlog. These values stay in the page and are not uploaded. Errors use the DOM boundary and console without including credentials or private user data; the MVP has no such runtime values.
+The match HUD exposes human action, mass category, effects, item count, and standing participant count. Tick, simulation rate, position, seed, and state hash remain in a collapsed `data-development-only` panel during development and must be removed or development-gated before the contest release. These values stay in the page and are not uploaded. Errors use the DOM boundary and console without including credentials or private user data; the MVP has no such runtime values.
 
 ## Pending States
 

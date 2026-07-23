@@ -21,7 +21,7 @@ its own evidence for the same candidate SHA.
 ## Critical User Journeys
 
 1. Open the HTTPS URL and reach a rendered setup screen.
-2. Quick Start enters a visible countdown and then accepts WASD, Space, and Shift.
+2. Quick Start enters a visible countdown and then accepts keyboard, mouse-drag, touch-joystick, and standard-gamepad input.
 3. WebGL renders participants, items, tile warnings, collapse, falling, and the result state.
 4. Defeat or victory offers an immediate fresh restart.
 5. A completed result can copy a local playtest record; clipboard denial shows a manual fallback.

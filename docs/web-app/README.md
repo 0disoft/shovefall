@@ -11,7 +11,7 @@
 
 This repository owns the single-page browser shell, normalized local settings, keyboard input,
 fixed-step scheduling, semantic states, PixiJS presentation, accessibility behavior, local
-diagnostics, static build, and browser validation. The pure simulation and AI remain browser-free
+  pointer and gamepad input, diagnostics, static build, and browser validation. The pure simulation and AI remain browser-free
 modules inside the same repository.
 
 There is no server state. Backend API consumption, authentication, accounts, database storage,
@@ -22,7 +22,7 @@ remote analytics, and application network requests are outside the MVP.
 - One static document route that boots setup, settings, countdown, active round, result, pause,
   unsupported-renderer, and recoverable-error states.
 - Quick Start plus bounded participant, item, bot-difficulty, and collapse-speed choices.
-- WASD, Space, and Shift gameplay input after the canvas region receives gameplay focus.
+- WASD, arrow-key, mouse-drag, virtual-joystick, and standard-gamepad movement plus keyboard, touch, and gamepad shove/dodge input.
 - A provider-neutral `dist` artifact that supports the configured Vite base path.
 
 URL state, hash routing, shareable query settings, service workers, cookies, and durable browser

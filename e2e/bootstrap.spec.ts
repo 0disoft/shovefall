@@ -137,8 +137,11 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await installFixedRoundSeed(page, 1, 0);
   await page.goto("/");
 
-  await expect(page).toHaveTitle("Shovefall");
-  await expect(page.getByRole("heading", { level: 1, name: "끝까지 남아." })).toBeVisible();
+  await expect(page).toHaveTitle("바닥이 사라지는 술래잡기");
+  await expect(
+    page.getByRole("heading", { level: 1, name: "바닥이 사라지는 술래잡기" }),
+  ).toBeVisible();
+  await expect(page.getByText("SHOVE · DODGE · SURVIVE")).toHaveCount(0);
   await expect(page.getByText("WebGL 준비됨")).toBeVisible();
   await expect(page.locator("#arena-host canvas")).toBeVisible();
   const setupCanvas = await captureArenaCanvas(page);
@@ -177,6 +180,7 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await expect(page.locator("#app")).toHaveAttribute("data-round", "countdown");
   await expect(page.locator("#tick-value")).toHaveText("0");
   await expect(page.locator("#game-telemetry")).toBeVisible();
+  await expect(page.locator("#developer-telemetry")).not.toHaveAttribute("open", "");
   await expect(page.locator("#app")).toHaveAttribute("data-initial-items", "3");
   await expect(page.locator("#app")).toHaveAttribute("data-bot-difficulty", "easy");
   await expect(page.locator("#app")).toHaveAttribute("data-collapse-speed", "slow");
@@ -189,7 +193,7 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   );
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
   await expect(page.locator("#app")).toHaveAttribute("data-round", "active");
-  await expect(page.getByText("시작! 움직여서 가장자리로 몰아붙여.")).toBeVisible();
+  await expect(page.getByText("시작!", { exact: true })).toBeVisible();
   await expect(page.locator("#game-telemetry")).toHaveAttribute("data-action", "Ready");
   await expect
     .poll(async () => Number(await page.locator("#game-telemetry").getAttribute("data-tick")))
@@ -214,6 +218,30 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await page.keyboard.up("d");
   await expect.poll(() => page.locator("#position-value").textContent()).not.toBe(positionBefore);
 
+  const arrowPositionBefore = await page.locator("#position-value").textContent();
+  await page.keyboard.down("ArrowUp");
+  await page.waitForTimeout(100);
+  await page.keyboard.up("ArrowUp");
+  await expect
+    .poll(() => page.locator("#position-value").textContent())
+    .not.toBe(arrowPositionBefore);
+
+  const pointerPositionBefore = await page.locator("#position-value").textContent();
+  const arenaBounds = await page.locator("#arena-host").boundingBox();
+  expect(arenaBounds).not.toBeNull();
+  if (arenaBounds !== null) {
+    const originX = arenaBounds.x + arenaBounds.width / 2;
+    const originY = arenaBounds.y + arenaBounds.height / 2;
+    await page.mouse.move(originX, originY);
+    await page.mouse.down();
+    await page.mouse.move(originX + 80, originY, { steps: 4 });
+    await page.waitForTimeout(100);
+    await page.mouse.up();
+  }
+  await expect
+    .poll(() => page.locator("#position-value").textContent())
+    .not.toBe(pointerPositionBefore);
+
   await page.keyboard.press("Space");
   await expect(page.locator("#game-telemetry")).toHaveAttribute(
     "data-action",
@@ -237,6 +265,39 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await expect(page.locator("#app")).toHaveAttribute("data-screen", "setup");
   await expect(page.getByRole("button", { name: "빠른 시작" })).toBeFocused();
   await expect(page.locator("#game-telemetry")).toBeHidden();
+});
+
+test("offers a working touch joystick and action buttons on a narrow viewport", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  await page.getByRole("button", { name: "빠른 시작" }).click();
+  await expect(page.locator("#app")).toHaveAttribute("data-round", "active");
+
+  const joystick = page.locator("#pointer-joystick");
+  await expect(joystick).toBeVisible();
+  const positionBefore = await page.locator("#position-value").textContent();
+  const joystickBounds = await joystick.boundingBox();
+  expect(joystickBounds).not.toBeNull();
+  if (joystickBounds !== null) {
+    const centerX = joystickBounds.x + joystickBounds.width / 2;
+    const centerY = joystickBounds.y + joystickBounds.height / 2;
+    await page.mouse.move(centerX, centerY);
+    await page.mouse.down();
+    await page.mouse.move(centerX + joystickBounds.width / 2, centerY, { steps: 4 });
+    await page.waitForTimeout(120);
+    await expect(joystick).toHaveAttribute("data-active", "true");
+    await page.mouse.up();
+  }
+  await expect.poll(() => page.locator("#position-value").textContent()).not.toBe(positionBefore);
+  await expect(joystick).not.toHaveAttribute("data-active", "true");
+
+  await page.locator("#touch-shove").click();
+  await expect(page.locator("#game-telemetry")).toHaveAttribute(
+    "data-action",
+    /ShoveWindup|ShoveActive|ShoveRecovery|Stumbling/u,
+  );
 });
 
 test("applies and copies bounded debug tuning for the next round", async ({ page }) => {

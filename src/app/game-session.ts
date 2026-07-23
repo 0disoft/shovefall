@@ -1,4 +1,5 @@
 import { createKeyboardInput, type KeyboardInput } from "./keyboard-input";
+import { createGamepadInput, type GamepadInput } from "./gamepad-input";
 import { BotDirector } from "../ai/bot-director";
 import type {
   GameConfigV1,
@@ -43,7 +44,10 @@ export interface GameSessionHooks {
 export interface GameSession {
   readonly active: boolean;
   chooseUpgrade(stat: UpgradeStatId): void;
+  queueDodge(): void;
+  queueShove(): void;
   failForDiagnostics(error: unknown): void;
+  setPointerMovement(x: number, y: number): void;
   setRendererAvailable(available: boolean): void;
   start(
     config: GameConfigV1,
@@ -76,6 +80,7 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
   const keyboard: KeyboardInput = createKeyboardInput(
     () => active && !paused && countdown === null && !humanEliminated,
   );
+  const gamepad: GamepadInput = createGamepadInput();
 
   const publishFrame = (): void => {
     if (world === undefined || latestFrame === undefined) {
@@ -145,6 +150,11 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
       let steps = 0;
 
       while (accumulatorMilliseconds >= FIXED_STEP_MILLISECONDS && steps < MAX_STEPS_PER_RENDER) {
+        if (humanEliminated) {
+          gamepad.clear(keyboard.state);
+        } else {
+          gamepad.sample(keyboard.state);
+        }
         const result = world.step([
           keyboard.state.consumeCommand(world.tick, HUMAN_ACTOR_ID),
           ...(bots?.createCommands(world.tick, latestFrame ?? world.createRenderFrame()) ?? []),
@@ -165,12 +175,14 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
         ) {
           humanEliminated = true;
           keyboard.state.clear();
+          gamepad.clear(keyboard.state);
           hooks.onHumanEliminated();
         }
 
         if (result.frame.round.status === "Completed") {
           active = false;
           keyboard.state.clear();
+          gamepad.clear(keyboard.state);
           animationFrameId = undefined;
           publishFrame();
           hooks.onRoundCompleted(result.frame);
@@ -193,6 +205,7 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
     paused = nextPaused;
     previousTimestamp = undefined;
     keyboard.state.clear();
+    gamepad.clear(keyboard.state);
     hooks.onPauseChanged(paused);
     publishFrame();
   };
@@ -209,6 +222,7 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
   const fail = (error: unknown): void => {
     active = false;
     keyboard.state.clear();
+    gamepad.clear(keyboard.state);
 
     if (animationFrameId !== undefined) {
       window.cancelAnimationFrame(animationFrameId);
@@ -274,6 +288,7 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
       countdownElapsedMilliseconds = 0;
       active = true;
       keyboard.state.clear();
+      gamepad.clear(keyboard.state);
       publishFrame();
       hooks.onPauseChanged(paused);
       schedule();
@@ -281,6 +296,23 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
     chooseUpgrade(stat: UpgradeStatId): void {
       if (active && !humanEliminated) {
         keyboard.state.queueUpgrade(stat);
+      }
+    },
+    queueDodge(): void {
+      if (active && !paused && countdown === null && !humanEliminated) {
+        keyboard.state.queueDodge();
+      }
+    },
+    queueShove(): void {
+      if (active && !paused && countdown === null && !humanEliminated) {
+        keyboard.state.queueShove();
+      }
+    },
+    setPointerMovement(x: number, y: number): void {
+      if (active && !paused && countdown === null && !humanEliminated) {
+        keyboard.state.setPointerMovement(x, y);
+      } else {
+        keyboard.state.setPointerMovement(0, 0);
       }
     },
     stop(): void {
@@ -294,6 +326,7 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
       countdown = null;
       countdownElapsedMilliseconds = 0;
       keyboard.state.clear();
+      gamepad.clear(keyboard.state);
 
       if (animationFrameId !== undefined) {
         window.cancelAnimationFrame(animationFrameId);

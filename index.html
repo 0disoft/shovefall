@@ -3,29 +3,20 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta
-      name="description"
-      content="무너지는 아레나에서 상대를 밀어내고 마지막까지 살아남는 Shovefall"
-    />
-    <title>Shovefall</title>
+    <meta name="description" content="바닥이 사라지는 술래잡기" />
+    <title>바닥이 사라지는 술래잡기</title>
   </head>
   <body>
     <a class="skip-link" href="#setup-title">게임 설정으로 이동</a>
     <main id="app" class="app-shell" data-screen="setup">
       <header class="masthead">
-        <p class="eyebrow">SHOVE · DODGE · SURVIVE</p>
-        <h1>끝까지 남아.</h1>
-        <p class="masthead__copy">무너지는 바닥을 읽고, 빈틈을 노려 상대를 밀어내.</p>
+        <h1>바닥이 사라지는 술래잡기</h1>
       </header>
 
       <div class="play-layout">
         <section class="setup-panel" aria-labelledby="setup-title">
           <div class="section-heading">
-            <p class="section-heading__index" aria-hidden="true">01</p>
-            <div>
-              <h2 id="setup-title">게임 설정</h2>
-              <p>한 판은 짧게, 선택은 간단하게.</p>
-            </div>
+            <h2 id="setup-title">게임 설정</h2>
           </div>
 
           <form id="game-settings" class="settings-form">
@@ -320,9 +311,7 @@
           </form>
 
           <div id="arena-actions" class="arena-actions" hidden>
-            <p id="round-message" class="ready-message" role="status">
-              움직여서 가장자리로 몰아붙여.
-            </p>
+            <p id="round-message" class="ready-message" role="status">준비</p>
             <section id="stat-upgrades" class="stat-upgrades" aria-labelledby="stat-upgrades-title">
               <div class="stat-upgrades__heading">
                 <strong id="stat-upgrades-title">처치 성장</strong>
@@ -361,24 +350,34 @@
 
         <section class="arena-panel" aria-labelledby="arena-title">
           <div class="arena-panel__header">
-            <div>
-              <p class="section-heading__index" aria-hidden="true">02</p>
-              <h2 id="arena-title">아레나</h2>
-            </div>
+            <h2 id="arena-title">아레나</h2>
             <p id="renderer-status" class="renderer-status" aria-live="polite">불러오는 중</p>
           </div>
-          <div
-            id="arena-host"
-            class="arena-host"
-            role="img"
-            aria-label="타일로 이루어진 Shovefall 아레나 미리보기"
-            tabindex="0"
-          ></div>
-          <dl id="game-telemetry" class="game-telemetry" aria-label="현재 라운드 상태" hidden>
-            <div>
-              <dt>틱</dt>
-              <dd><output id="tick-value">0</output></dd>
+          <div class="arena-stage">
+            <div
+              id="arena-host"
+              class="arena-host"
+              role="img"
+              aria-label="바닥이 사라지는 술래잡기 아레나 미리보기"
+              tabindex="0"
+            ></div>
+            <div class="touch-controls" aria-label="터치 조작">
+              <div
+                id="pointer-joystick"
+                class="pointer-joystick"
+                role="group"
+                aria-label="이동 조이스틱"
+                tabindex="0"
+              >
+                <span id="pointer-joystick-knob" class="pointer-joystick__knob"></span>
+              </div>
+              <div class="touch-actions">
+                <button id="touch-dodge" type="button">회피</button>
+                <button id="touch-shove" type="button">밀치기</button>
+              </div>
             </div>
+          </div>
+          <dl id="game-telemetry" class="game-telemetry" aria-label="현재 라운드 상태" hidden>
             <div>
               <dt>상태</dt>
               <dd><output id="action-value">준비</output></dd>
@@ -399,27 +398,41 @@
               <dt>생존</dt>
               <dd><output id="survivor-value">16</output></dd>
             </div>
-            <div>
-              <dt>속도</dt>
-              <dd><output id="rate-value">1×</output></dd>
-            </div>
-            <div>
-              <dt>위치</dt>
-              <dd><output id="position-value">0.00, 0.00</output></dd>
-            </div>
-            <div class="game-telemetry__hash">
-              <dt>시드</dt>
-              <dd><output id="seed-value">not-started</output></dd>
-            </div>
-            <div class="game-telemetry__hash">
-              <dt>상태 해시</dt>
-              <dd><output id="hash-value">fnv1a32:00000000</output></dd>
-            </div>
           </dl>
+          <details
+            id="developer-telemetry"
+            class="developer-telemetry"
+            data-development-only="true"
+            hidden
+          >
+            <summary>개발 정보</summary>
+            <dl aria-label="개발용 라운드 정보">
+              <div>
+                <dt>틱</dt>
+                <dd><output id="tick-value">0</output></dd>
+              </div>
+              <div>
+                <dt>속도</dt>
+                <dd><output id="rate-value">1×</output></dd>
+              </div>
+              <div>
+                <dt>위치</dt>
+                <dd><output id="position-value">0.00, 0.00</output></dd>
+              </div>
+              <div>
+                <dt>시드</dt>
+                <dd><output id="seed-value">not-started</output></dd>
+              </div>
+              <div>
+                <dt>상태 해시</dt>
+                <dd><output id="hash-value">fnv1a32:00000000</output></dd>
+              </div>
+            </dl>
+          </details>
           <dl class="control-guide" aria-label="조작법">
             <div>
               <dt>이동</dt>
-              <dd>WASD</dd>
+              <dd>WASD · 방향키 · 드래그</dd>
             </div>
             <div>
               <dt>밀치기</dt>

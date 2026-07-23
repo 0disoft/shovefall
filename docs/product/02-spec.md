@@ -7,14 +7,14 @@
 
 ## Product
 
-Shovefall is a brief single-player browser party-action game with a 75-second hard round limit. One human and deterministic rule-based bots shove each other from a collapsing tile arena. The game must explain itself through movement, telegraphs, impacts, and falling rather than a long tutorial. A target human-play duration distribution remains a playtest decision rather than a claim inferred from bot-only rounds.
+바닥이 사라지는 술래잡기 (`Shovefall`) is a brief single-player browser party-action game with a 75-second hard round limit. One human and deterministic rule-based bots shove each other from a collapsing tile arena. The game must explain itself through movement, telegraphs, impacts, and falling rather than a long tutorial or decorative marketing copy. A target human-play duration distribution remains a playtest decision rather than a claim inferred from bot-only rounds.
 
 The central promise is a readable comic reversal: a player can dodge an incoming shove so that the attacker stumbles into the void, or two attackers can collide on the same tick and both fly away. A result may be chaotic, but it must follow visible state and deterministic rules rather than a hidden probability roll.
 
 ## Core Loop
 
 1. Quick Start begins with the recommended preset. Custom settings are secondary.
-2. The human selects a starting mass and two distinct starting items, moves with `WASD`, extends a hand shove with `Space`, dodges with `Shift`, and spends earned stat points with `1..4` or the DOM controls.
+2. The human selects a starting mass and two distinct starting items; moves with `WASD`, arrow keys, mouse drag, a touch joystick, a standard gamepad stick, or its D-pad; extends a hand shove with `Space`, the first gamepad button, or the touch action; dodges with `Shift`, the second gamepad button, or the touch action; and spends earned stat points with `1..4` or the DOM controls.
 3. Mass continuously changes acceleration, turning, top speed, and impulse response without changing outcomes by chance.
 4. Telegraphing tiles collapse and compress the arena.
 5. The last active participant wins. A defeated human can restart immediately or watch no more than five seconds of accelerated resolution.
@@ -72,10 +72,12 @@ pre-submission percentages have passed. Results from different behavior SHAs are
 
 - Online multiplayer, accounts, authentication, cloud saves, leaderboards, chat, or a database.
 - Runtime LLMs, remote AI calls, advertising, analytics SDKs, or automatic error upload.
-- Mobile touch, gamepad, console, or installed desktop support in the MVP.
+- Console or installed desktop support in the MVP.
 - Progression, shops, unlocks, user-generated maps, skins, campaigns, or a mod API.
 - User-facing replay upload, sharing, or long-term backward compatibility.
 
 ## Current Implementation Slice
 
 Version `0.20.0` exposes four presets at 8, 16, 24, and 32 participants with enlarged `12×10`, `15×12`, `18×14`, and `20×15` arenas. The human selects light/normal/heavy base mass and two of Iron Boots, Feather, and Spring Glove. Normal speed is 3.3 tiles/second, lightweight reaches 4.455, and heavyweight is slower; a disabled-by-default local debug lab permits bounded next-round tuning. Space now creates a five-tick short hand hitbox instead of forcing body dash velocity. A shove credited within three seconds of irreversible falling grants one point for Power, Stability, Mobility, or Reflex; bots spend through the same command path. A completed result copies local playtest schema v3 with loadout, tuning, final human progression, seed, outcome, and state hash without upload. The focused 32-round bot screen measured no time-limit endings, 8/16/24/32 mean durations of `33.6646 / 40.5438 / 41.6750 / 30.4146` seconds, Aggressor-to-Survivor win rate `0.7875×`, and elimination rate `1.1509×`. Simulation is `6.0.0` and content is `4.0.0`. The legacy 200-round controlled audit exceeded its 300- and 420-second local limits after arena expansion, so controlled causal mass/item/pacing evidence remains unrefreshed. Human play, physical devices, cross-browser behavior, final-art readability, and hosted proof for this exact version remain pending.
+
+Version `0.21.0` changes only the product and input/presentation layer. The public title is `바닥이 사라지는 술래잡기`; decorative English copy and numbered section ornaments are removed. Arrow-key, mouse-drag, virtual-joystick, and standard-gamepad adapters feed the same human command state as keyboard input. The normal HUD no longer exposes development identifiers; tick, rate, position, seed, and state hash sit in one collapsed `data-development-only` panel that must be removed or development-gated before the contest release. Simulation remains `6.0.0` and content remains `4.0.0`.

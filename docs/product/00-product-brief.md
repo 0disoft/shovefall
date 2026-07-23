@@ -9,7 +9,7 @@
 
 ## The Game
 
-Shovefall is a short single-player desktop-browser party-action game. One person and deterministic
+바닥이 사라지는 술래잡기 (`Shovefall`) is a short single-player browser party-action game. One person and deterministic
 rule-based bots fight on a collapsing tile arena. Movement, shove timing, dodge timing, changing
 mass, item temptation, and the distance to the void decide the result. Hidden random combat rolls
 do not.
@@ -20,11 +20,11 @@ participants away. The game is successful when that chaos looks earned rather th
 
 ## Audience and Session
 
-- A contest voter or casual desktop player who should understand the game within seconds.
+- A contest voter or casual desktop or mobile player who should understand the game within seconds.
 - No installation, account, tutorial wall, backend, or online opponent.
 - 8, 16, 24, and 32 participant presets; 16 is Quick Start and 32 is explicit Mayhem.
 - A hard 75-second round limit with immediate restart after defeat or victory.
-- WASD movement, Space shove, and Shift dodge.
+- WASD, arrow-key, mouse-drag, touch-joystick, or gamepad movement; keyboard, touch, and gamepad shove and dodge actions.
 
 ## Product Bet
 
@@ -44,7 +44,7 @@ presentation layers consume versioned commands, frames, and events without mutat
 state.
 
 Out of scope are online multiplayer, accounts, cloud saves, leaderboards, remote analytics,
-runtime LLM calls, mobile touch, gamepad, progression, shops, user maps, and a database.
+runtime LLM calls, persistent progression, shops, user maps, and a database.
 
 ## Evidence Boundary
 

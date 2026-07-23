@@ -9,6 +9,10 @@ export const GAMEPLAY_CODES = Object.freeze([
   "KeyA",
   "KeyS",
   "KeyD",
+  "ArrowUp",
+  "ArrowLeft",
+  "ArrowDown",
+  "ArrowRight",
   "Space",
   "ShiftLeft",
   "ShiftRight",
@@ -28,6 +32,10 @@ export function isGameplayCode(code: string): code is GameplayCode {
 
 export class InputState {
   readonly #heldCodes = new Set<GameplayCode>();
+  #pointerMoveX = 0;
+  #pointerMoveY = 0;
+  #gamepadMoveX = 0;
+  #gamepadMoveY = 0;
   #shoveQueued = false;
   #dodgeQueued = false;
   #upgradeQueued: UpgradeStatId | null = null;
@@ -69,6 +77,10 @@ export class InputState {
 
   public clear(): void {
     this.#heldCodes.clear();
+    this.#pointerMoveX = 0;
+    this.#pointerMoveY = 0;
+    this.#gamepadMoveX = 0;
+    this.#gamepadMoveY = 0;
     this.#shoveQueued = false;
     this.#dodgeQueued = false;
     this.#upgradeQueued = null;
@@ -78,12 +90,38 @@ export class InputState {
     this.#upgradeQueued = stat;
   }
 
+  public queueShove(): void {
+    this.#shoveQueued = true;
+  }
+
+  public queueDodge(): void {
+    this.#dodgeQueued = true;
+  }
+
+  public setPointerMovement(x: number, y: number): void {
+    this.#pointerMoveX = Number.isFinite(x) ? Math.max(-1, Math.min(1, x)) : 0;
+    this.#pointerMoveY = Number.isFinite(y) ? Math.max(-1, Math.min(1, y)) : 0;
+  }
+
+  public setGamepadMovement(x: number, y: number): void {
+    this.#gamepadMoveX = Number.isFinite(x) ? Math.max(-1, Math.min(1, x)) : 0;
+    this.#gamepadMoveY = Number.isFinite(y) ? Math.max(-1, Math.min(1, y)) : 0;
+  }
+
   public consumeCommand(tick: number, actorId: number): ActorCommandV1 {
+    const keyboardX =
+      Number(this.#heldCodes.has("KeyD") || this.#heldCodes.has("ArrowRight")) -
+      Number(this.#heldCodes.has("KeyA") || this.#heldCodes.has("ArrowLeft"));
+    const keyboardY =
+      Number(this.#heldCodes.has("KeyS") || this.#heldCodes.has("ArrowDown")) -
+      Number(this.#heldCodes.has("KeyW") || this.#heldCodes.has("ArrowUp"));
+    const pointerActive = this.#pointerMoveX !== 0 || this.#pointerMoveY !== 0;
+    const gamepadActive = this.#gamepadMoveX !== 0 || this.#gamepadMoveY !== 0;
     const command = Object.freeze({
       ...createNeutralCommand(tick, actorId),
       move: Object.freeze({
-        x: Number(this.#heldCodes.has("KeyD")) - Number(this.#heldCodes.has("KeyA")),
-        y: Number(this.#heldCodes.has("KeyS")) - Number(this.#heldCodes.has("KeyW")),
+        x: pointerActive ? this.#pointerMoveX : gamepadActive ? this.#gamepadMoveX : keyboardX,
+        y: pointerActive ? this.#pointerMoveY : gamepadActive ? this.#gamepadMoveY : keyboardY,
       }),
       shovePressed: this.#shoveQueued,
       dodgePressed: this.#dodgeQueued,

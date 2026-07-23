@@ -14,6 +14,7 @@ import {
 } from "./settings";
 import { createGameSession, type GameSession, type SessionTelemetry } from "./game-session";
 import { createDebugTuningController, type DebugTuningController } from "./debug-tuning";
+import { createPointerControls, type PointerControls } from "./pointer-controls";
 import { createPlaytestRoundReport, serializePlaytestRoundReport } from "./round-report";
 import type { SimulationEventV1, UpgradeStatId } from "../simulation/contracts";
 import { normalizeGameConfig } from "../simulation/contracts";
@@ -168,8 +169,13 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   const copyRoundReportButton = requireElement(root, "#copy-round-report", HTMLButtonElement);
   const soundButton = requireElement(root, "#toggle-sound", HTMLButtonElement);
   const arenaHost = requireElement(root, "#arena-host", HTMLElement);
+  const pointerJoystick = requireElement(root, "#pointer-joystick", HTMLElement);
+  const pointerJoystickKnob = requireElement(root, "#pointer-joystick-knob", HTMLElement);
+  const touchShoveButton = requireElement(root, "#touch-shove", HTMLButtonElement);
+  const touchDodgeButton = requireElement(root, "#touch-dodge", HTMLButtonElement);
   const rendererStatus = requireElement(root, "#renderer-status", HTMLElement);
   const telemetry = requireElement(root, "#game-telemetry", HTMLElement);
+  const developerTelemetry = requireElement(root, "#developer-telemetry", HTMLDetailsElement);
   const tickValue = requireElement(root, "#tick-value", HTMLOutputElement);
   const actionValue = requireElement(root, "#action-value", HTMLOutputElement);
   const massValue = requireElement(root, "#mass-value", HTMLOutputElement);
@@ -193,6 +199,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   let session: GameSession | undefined;
   let audio: AudioFeedback | undefined;
   let debugTuning: DebugTuningController | undefined;
+  let pointerControls: PointerControls | undefined;
   let latestSettings = normalizeSettings({ playerCount: 16, preset: "default" });
   let latestGameplayTuning: GameplayTuningV1 = DEFAULT_GAMEPLAY_TUNING;
   let latestMasterSeed: string | undefined;
@@ -360,7 +367,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
       readyMessage.textContent = String(current.countdown);
     } else if (root.dataset.round === "countdown") {
       root.dataset.round = "active";
-      readyMessage.textContent = "시작! 움직여서 가장자리로 몰아붙여.";
+      readyMessage.textContent = "시작!";
     }
 
     const rendererLost = arenaHost.dataset.renderer === "lost";
@@ -443,7 +450,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
         if (paused) {
           readyMessage.textContent = "잠시 멈췄어.";
         } else if (session?.active === true && root.dataset.round !== "countdown") {
-          readyMessage.textContent = "움직여서 가장자리로 몰아붙여.";
+          readyMessage.textContent = "계속";
         }
       },
       onFatalError(error): void {
@@ -456,6 +463,20 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
         restartButton.focus();
         console.error("The Shovefall round stopped at its error boundary.", error);
       },
+    });
+    pointerControls = createPointerControls({
+      arena: arenaHost,
+      joystick: pointerJoystick,
+      joystickKnob: pointerJoystickKnob,
+      shoveButton: touchShoveButton,
+      dodgeButton: touchDodgeButton,
+      isActive: () =>
+        session?.active === true &&
+        root.dataset.round === "active" &&
+        root.dataset.humanEliminated !== "true",
+      onMove: (x, y) => session?.setPointerMovement(x, y),
+      onShove: () => session?.queueShove(),
+      onDodge: () => session?.queueDodge(),
     });
     rendererStatus.dataset.state = "ready";
     rendererStatus.textContent = "WebGL 준비됨";
@@ -488,10 +509,12 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     form.hidden = true;
     arenaActions.hidden = false;
     telemetry.hidden = false;
+    developerTelemetry.hidden = false;
+    developerTelemetry.open = false;
     readyMessage.textContent = "3";
     arenaHost.setAttribute(
       "aria-label",
-      `${settings.playerCount}명이 참가하는 Shovefall 회색 상자 아레나. WASD로 이동하고 Space로 밀치며 Shift로 회피해.`,
+      `${settings.playerCount}명이 참가하는 바닥이 사라지는 술래잡기 아레나. WASD, 방향키, 마우스 드래그 또는 터치 조이스틱으로 이동해.`,
     );
     session.start(createConfig(settings), latestMasterSeed, latestGameplayTuning, {
       massFactor: STARTING_MASS_FACTORS[settings.startingMass],
@@ -603,10 +626,12 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     delete root.dataset.round;
     arenaActions.hidden = true;
     telemetry.hidden = true;
+    developerTelemetry.hidden = true;
+    developerTelemetry.open = false;
     form.hidden = false;
     rendererStatus.dataset.state = "ready";
     rendererStatus.textContent = "WebGL 준비됨";
-    arenaHost.setAttribute("aria-label", "타일로 이루어진 Shovefall 아레나 미리보기");
+    arenaHost.setAttribute("aria-label", "바닥이 사라지는 술래잡기 아레나 미리보기");
     renderSetupPreview();
     requireElement(form, "button[type='submit']", HTMLButtonElement).focus();
   });
@@ -618,6 +643,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
       renderer?.destroy();
       audio?.destroy();
       debugTuning?.destroy();
+      pointerControls?.destroy();
 
       if (import.meta.env.DEV) {
         window.removeEventListener("shovefall:diagnostic-fatal", handleDiagnosticFatal);

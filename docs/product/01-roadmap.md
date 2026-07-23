@@ -9,7 +9,7 @@
 
 ## Release Objective
 
-Ship a short desktop-browser party-action game whose chaos stays readable. The submission build
+Ship a short browser party-action game whose chaos stays readable. The submission build
 must let a first-time player move, shove, dodge, understand most defeats, and restart without an
 account, tutorial wall, backend, or hidden probability deciding combat.
 
@@ -95,7 +95,7 @@ remain open.
 ## Deferred Beyond the Submission
 
 - Online multiplayer, accounts, leaderboards, cloud saves, remote analytics, and a database.
-- Mobile touch, gamepad, installed desktop packages, progression, shops, skins, and user maps.
+- Installed desktop packages, persistent progression, shops, skins, and user maps.
 - Additional items or mechanics unless human evidence identifies a specific missing decision.
 - Public replay upload or backward compatibility beyond the current developer format.
 
