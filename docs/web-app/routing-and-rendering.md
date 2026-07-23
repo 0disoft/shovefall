@@ -29,7 +29,7 @@ but it cannot change authoritative ticks, hit windows, bot commands, or state ha
 ## Lifecycle States
 
 1. Boot verifies required content and WebGL support.
-2. The menu owns `게임 시작` and entry to custom settings; the start action always consumes the last saved in-memory settings.
+2. The menu owns `게임 시작` plus entry to custom settings and static version history; the start action always consumes the last saved in-memory settings.
 3. Countdown renders the fresh arena while simulation and gameplay input remain at tick zero.
 4. Active play samples held movement and edge-triggered actions once per fixed tick.
 5. Blur, visibility loss, or renderer loss clears held input and pauses progression.

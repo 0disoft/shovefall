@@ -2,7 +2,7 @@
 
 ## Scope
 
-- Request: replace the always-visible setup/arena layout with a simple menu, open settings only on demand, reveal the arena only after starting, reduce the title scale, enlarge supporting text, and use a player-follow camera over a larger island.
+- Request: replace the always-visible setup/arena layout with a simple menu, open settings only on demand, reveal the arena only after starting, reduce the title scale, enlarge supporting text, use a player-follow camera over a larger island, and add a concise version-history branch.
 - Reference screenshots:
   - `C:/Users/cherr/AppData/Local/Temp/codex-clipboard-f6d8fbaf-1f78-4d99-84ac-36ab61f0dc60.png`
   - `C:/Users/cherr/AppData/Local/Temp/codex-clipboard-aaa7ab56-1314-40f8-b05a-4912e5c8ea75.png`
@@ -16,13 +16,13 @@
 ## Full-view comparison
 
 - The reference exposed the configuration form and arena before play and gave the title most of the first viewport.
-- The rendered menu exposes only the reduced title, fullscreen guidance, `게임 시작`, and `설정`.
+- The rendered menu exposes only the reduced title, fullscreen guidance, `게임 시작`, `설정`, and `버전 기록`.
 - Supporting menu text and controls are larger and remain readable without competing with the title.
 - The arena is absent from the initial DOM presentation and becomes visible only after `게임 시작`.
 
 ## Focused interaction evidence
 
-- In-app Browser DOM inspection confirmed the initial menu contains one `게임 시작` button and one `설정` button, with no visible arena canvas.
+- Browser smoke inspection confirmed the initial menu contains one each of `게임 시작`, `설정`, and `버전 기록`, with no visible arena canvas.
 - Starting the game switches to the arena landmark and exposes the Pixi canvas, HUD, controls, restart, and menu return actions.
 - The 16-player preset creates a 25 x 20 tile world while the desktop camera targets roughly 18 x 11 tiles, so the whole coastline cannot fit in one frame.
 - The renderer follows the local player and clamps the camera to the world plus ocean margin; browser smoke coverage checks that movement changes the camera frame.
@@ -36,6 +36,14 @@
 4. P2: a saved-settings summary made the menu busier than requested. Removed.
 5. P2: the centered menu could become too tall on short screens. Bounded with `min(420px, 58dvh)` and responsive spacing.
 6. P3: final island art is intentionally still procedural gray-box artwork. Asset generation remains a separate visual-polish pass and does not block the requested navigation or camera behavior.
+
+## Version-history review
+
+- Product `0.25.0` adds a third menu action without weakening the visual priority of `게임 시작`; `설정` and `버전 기록` remain equal secondary actions.
+- The history is a separate DOM screen rather than an overlay, so long text uses normal page scrolling and never traps the arena or menu beneath a modal.
+- Six newest-first cards use the Gemini 3.6 Flash copy structure: a short title, `왜 바꿨냐면`, and `이렇게 바뀌었어`. Exact technical claims were shortened to player-visible outcomes.
+- The current entry receives the only accent rail. Remaining entries share neutral surfaces, keeping the list readable without turning every version into a competing callout.
+- `메뉴로` and `Escape` both restore focus to `버전 기록`; the skip link retargets to the screen heading, and the pre-game canvas remains hidden.
 
 ## 58-degree projection review
 

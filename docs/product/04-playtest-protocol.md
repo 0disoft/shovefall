@@ -54,7 +54,7 @@ commit SHA, browser, and device still come from the build record above.
 ## Session A: First-time Discovery
 
 Give the player the link and only say: "한번 해봐." Do not explain controls, item effects, collapse,
-or the desired number of rounds. Start on the menu with `게임 시작` and `설정` visible.
+or the desired number of rounds. Start on the menu with `게임 시작`, `설정`, and `버전 기록` visible.
 
 Observe until the player chooses to stop. Do not prompt a restart during the first five seconds
 after the first defeat. If the player asks what to do, record the question before answering. After

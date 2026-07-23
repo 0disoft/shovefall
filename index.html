@@ -19,7 +19,23 @@
         <div class="main-menu__actions">
           <button id="start-game" class="primary-action" type="button">게임 시작</button>
           <button id="open-settings" class="secondary-action" type="button">설정</button>
+          <button id="open-version-history" class="secondary-action" type="button">
+            버전 기록
+          </button>
         </div>
+      </section>
+
+      <section
+        id="version-history"
+        class="version-history-panel"
+        aria-labelledby="version-history-title"
+      >
+        <header class="version-history__header">
+          <h2 id="version-history-title" tabindex="-1">버전 기록</h2>
+          <output id="current-version" aria-label="현재 버전"></output>
+        </header>
+        <ol id="version-history-list" class="version-history__list"></ol>
+        <button id="close-version-history" class="secondary-action" type="button">메뉴로</button>
       </section>
 
       <div class="play-layout">

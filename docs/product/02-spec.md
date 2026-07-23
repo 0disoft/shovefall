@@ -13,7 +13,7 @@ The central promise is a readable comic reversal: a player can dodge an incoming
 
 ## Core Loop
 
-1. `게임 시작` begins with the last saved settings; custom settings remain a secondary menu branch.
+1. `게임 시작` begins with the last saved settings; settings and the concise version history remain secondary menu branches.
 2. The human selects a starting mass and two distinct starting items; moves with `WASD`, arrow keys, mouse drag, a touch joystick, a standard gamepad stick, or its D-pad; extends a hand shove with `Space`, the first gamepad button, or the touch action; dodges with `Shift`, the second gamepad button, or the touch action; and spends earned stat points with `1..4` or the DOM controls.
 3. Mass continuously changes acceleration, turning, top speed, and impulse response without changing outcomes by chance.
 4. Telegraphing tiles collapse and compress the arena.
@@ -37,6 +37,7 @@ Collapse, formal bots, 32-participant scale, items, audio, and final art cannot 
 ## MVP Scope
 
 - A menu-first game start plus bounded settings for participant count, item frequency, density, collapse speed, and bot difficulty.
+- A concise in-game version history that records why each important product change was made and what players can notice.
 - One human and up to 31 bots using the same `ActorCommandV1` contract.
 - A 60 Hz fixed-tick simulation independent of PixiJS and browser time.
 - Deterministic movement, hand-reach shove, dodge, stumble, mass, collision, support, falling, elimination credit, and stat progression.
@@ -87,3 +88,5 @@ Version `0.22.0` changes the arena into a deterministic procedural island. Each 
 Version `0.23.0` opens on a menu containing only `게임 시작` and `설정`; the start action always consumes the last saved settings, and the arena is not visible until the round begins. The camera follows the human through a local viewport instead of shrinking the whole island into one screen. The 8/16/24/32 bounds grow to `22×17`, `25×20`, `28×23`, and `31×26`; seeded coastlines keep their irregular outline while using a fixed tier land budget, so larger presets cannot accidentally contain less playable land. Simulation is `8.0.0`, product is `0.23.0`, and content remains `4.0.0`.
 
 Version `0.24.0` changes presentation only. The arena is projected at a fixed 58-degree camera elevation while simulation, collision, support, AI, and replay coordinates remain top-down. Ground depth uses `sin(58°)` foreshortening; unsupported southern tile edges expose a bounded procedural cliff front, participants remain upright, and projected shadows, facing vectors, effects, depth ordering, and camera bounds share the same screen plane. Simulation remains `8.0.0` and content remains `4.0.0`.
+
+Version `0.25.0` adds a static `버전 기록` branch to the main menu. It lists the six meaningful product milestones from `0.20.0` through the current version in newest-first order, with one short reason and one player-visible change for each. The screen restores focus to its launcher through either `메뉴로` or `Escape`, updates the skip link target, never initializes the arena, and fails startup if the newest history record drifts from the product version. Simulation remains `8.0.0` and content remains `4.0.0`.

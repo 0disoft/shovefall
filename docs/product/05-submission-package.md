@@ -1,7 +1,7 @@
 # Contest Submission Package
 
 - Status: Public link and Chrome smoke verified; final captures and human playtest pending
-- Candidate version: `0.24.0`
+- Candidate version: `0.25.0`
 - Candidate SHA: replace with the final exact 40-character release SHA
 - Release gate: [../ops/release.md](../ops/release.md)
 - Asset ledger: [../assets/README.md](../assets/README.md)
@@ -31,7 +31,7 @@
 `https://0disoft.github.io/shovefall/`
 
 제출 전에 링크가 최종 후보 SHA를 제공하는지, 새 브라우저에서 설치·로그인 없이
-열리는지, 메뉴와 설정 저장, 게임 시작 뒤 WebGL 아레나가 정상인지 확인한다.
+열리는지, 메뉴와 버전 기록, 설정 저장, 게임 시작 뒤 WebGL 아레나가 정상인지 확인한다.
 
 ## 4. 스크린샷 또는 플레이 영상
 
@@ -39,7 +39,7 @@
 
 권장 캡처 목록:
 
-1. 작은 제목, 전체화면 안내, `게임 시작`, `설정`만 보이는 첫 화면.
+1. 작은 제목, 전체화면 안내, `게임 시작`, `설정`, `버전 기록`이 보이는 첫 화면.
 2. 가장자리 아이템을 향해 접근하는 장면.
 3. 밀치기를 회피해 공격자가 휘청거리거나 떨어지는 장면.
 4. 여러 타일이 경고 후 무너지는 24명 전투.

@@ -14,7 +14,7 @@ The primary surface is a short desktop-or-mobile browser single-player game reac
 
 ## 2. User Flow Map
 
-The minimum user flow is load, menu, game start, a pausable `3→2→1` countdown, play, elimination or victory, and immediate restart through a fresh countdown. Settings are a secondary menu branch: edits remain draft values until `설정 저장`, then return to the menu; `게임 시작` always consumes the last saved values. Required initialization failure disables start and enters a recoverable DOM error state. There are no application permission or authentication flows.
+The minimum user flow is load, menu, game start, a pausable `3→2→1` countdown, play, elimination or victory, and immediate restart through a fresh countdown. Settings are a secondary menu branch: edits remain draft values until `설정 저장`, then return to the menu; `게임 시작` always consumes the last saved values. Version history is another static secondary branch: it renders concise newest-first milestones, returns through `메뉴로` or `Escape`, and restores focus to its launcher without creating URL or persisted state. Required initialization failure disables start and enters a recoverable DOM error state. There are no application permission or authentication flows.
 
 ## 3. Routing Contract
 
@@ -22,7 +22,7 @@ The MVP is a single-page static application with one document route. URL paramet
 
 ## 4. Page and Layout Model
 
-The DOM shell owns the initial menu, settings, HUD overlays outside the game world, results, errors, and accessibility text. The PixiJS canvas is hidden before play and owns arena tiles, participants, items, world effects, and a human-follow camera after start. The camera renders a local viewport and clamps at the projected world edge with an ocean margin; it never shrinks the full island into one screen. Presentation uses a fixed 58-degree elevation: world depth is foreshortened by `sin(58°)`, while simulation and collision coordinates remain top-down.
+The DOM shell owns the initial menu, version history, settings, HUD overlays outside the game world, results, errors, and accessibility text. The PixiJS canvas is hidden before play and owns arena tiles, participants, items, world effects, and a human-follow camera after start. The camera renders a local viewport and clamps at the projected world edge with an ocean margin; it never shrinks the full island into one screen. Presentation uses a fixed 58-degree elevation: world depth is foreshortened by `sin(58°)`, while simulation and collision coordinates remain top-down.
 
 ## 5. State Ownership Model
 
@@ -75,7 +75,7 @@ Remote analytics, session replay, advertising, and automatic error upload are ex
 
 ## 14. Test Strategy
 
-Vitest covers pure state, keyboard and pointer vectors, gamepad dead zones, input edges, loadout normalization, starting effects, compact hand reach, credited elimination, bounded stat spending, settings tiers, collapse phases, result sealing, 58-degree projection math, projected camera bounds, and presentation boundaries. Playwright covers setup, debug tuning copy/apply, countdown, keyboard, arrow-key, mouse-drag and narrow-viewport joystick movement, touch action bridging, deterministic human defeat and restart, audio fallback, reduced motion, fatal recovery, and WebGL restoration. Physical touch hardware and gamepad hardware remain manual device-matrix gates.
+Vitest covers pure state, keyboard and pointer vectors, gamepad dead zones, input edges, loadout normalization, starting effects, compact hand reach, credited elimination, bounded stat spending, settings tiers, collapse phases, result sealing, version-history/product-version alignment, 58-degree projection math, projected camera bounds, and presentation boundaries. Playwright covers version-history entry and focus return, setup, debug tuning copy/apply, countdown, keyboard, arrow-key, mouse-drag and narrow-viewport joystick movement, touch action bridging, deterministic human defeat and restart, audio fallback, reduced motion, fatal recovery, and WebGL restoration. Physical touch hardware and gamepad hardware remain manual device-matrix gates.
 
 ## 15. Implementation Sequence
 

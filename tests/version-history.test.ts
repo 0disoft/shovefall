@@ -1,0 +1,16 @@
+import { describe, expect, it } from "vitest";
+import { VERSION_HISTORY } from "../src/app/version-history";
+import { PRODUCT_VERSION } from "../src/simulation/versions";
+
+describe("version history", () => {
+  it("keeps the current product version first and records concise reasons and changes", () => {
+    expect(VERSION_HISTORY[0]?.version).toBe(PRODUCT_VERSION);
+    expect(VERSION_HISTORY.length).toBeGreaterThanOrEqual(6);
+
+    for (const entry of VERSION_HISTORY) {
+      expect(entry.title.length).toBeGreaterThan(0);
+      expect(entry.reason.length).toBeGreaterThan(0);
+      expect(entry.change.length).toBeGreaterThan(0);
+    }
+  });
+});

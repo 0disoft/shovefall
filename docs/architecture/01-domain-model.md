@@ -62,6 +62,8 @@ Product `0.23.0` and simulation `8.0.0` enlarge the browser tiers to `22×17`, `
 
 Product `0.24.0` keeps simulation `8.0.0` and content `4.0.0`. A pure presentation projection maps the top-down world to a fixed 58-degree camera elevation, adds bounded cliff fronts and upright shadows, orders participants by interpolated depth, and computes camera clamps from projected bounds. The projection cannot enter simulation state or hashes; replay fixtures change only because the product version is recorded in their envelope.
 
+Product `0.25.0` keeps simulation `8.0.0` and content `4.0.0`. `VERSION_HISTORY` is immutable product metadata owned by the application layer; its newest record must equal `PRODUCT_VERSION`. The DOM shell derives a static history screen from it without adding simulation state, persistence, URL state, network calls, or replay behavior. Replay fixtures change only because their product-version envelope advances.
+
 ## Version Ownership
 
 - Product version: `package.json` and `PRODUCT_VERSION`.

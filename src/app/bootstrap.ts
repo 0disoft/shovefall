@@ -16,6 +16,7 @@ import { createGameSession, type GameSession, type SessionTelemetry } from "./ga
 import { createDebugTuningController, type DebugTuningController } from "./debug-tuning";
 import { createPointerControls, type PointerControls } from "./pointer-controls";
 import { createPlaytestRoundReport, serializePlaytestRoundReport } from "./round-report";
+import { VERSION_HISTORY } from "./version-history";
 import type { SimulationEventV1, UpgradeStatId } from "../simulation/contracts";
 import { normalizeGameConfig } from "../simulation/contracts";
 import { DEFAULT_GAMEPLAY_TUNING, type GameplayTuningV1 } from "../simulation/tuning";
@@ -26,6 +27,7 @@ import {
   type AudioFeedback,
   type AudioFeedbackState,
 } from "../presentation/audio-feedback";
+import { PRODUCT_VERSION } from "../simulation/versions";
 
 interface ElementConstructor<T extends Element> {
   new (): T;
@@ -148,6 +150,15 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   const skipLink = requireElement(document, ".skip-link", HTMLAnchorElement);
   const startGameButton = requireElement(root, "#start-game", HTMLButtonElement);
   const openSettingsButton = requireElement(root, "#open-settings", HTMLButtonElement);
+  const openVersionHistoryButton = requireElement(root, "#open-version-history", HTMLButtonElement);
+  const closeVersionHistoryButton = requireElement(
+    root,
+    "#close-version-history",
+    HTMLButtonElement,
+  );
+  const versionHistoryTitle = requireElement(root, "#version-history-title", HTMLElement);
+  const versionHistoryList = requireElement(root, "#version-history-list", HTMLOListElement);
+  const currentVersion = requireElement(root, "#current-version", HTMLOutputElement);
   const cancelSettingsButton = requireElement(root, "#cancel-settings", HTMLButtonElement);
   const form = requireElement(root, "#game-settings", HTMLFormElement);
   const playerCount = requireElement(root, "#player-count", HTMLInputElement);
@@ -209,21 +220,68 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   let latestMasterSeed: string | undefined;
   let latestRoundReport: string | undefined;
 
-  const setScreen = (screen: "menu" | "settings" | "arena"): void => {
+  const setScreen = (screen: "menu" | "settings" | "history" | "arena"): void => {
     root.dataset.screen = screen;
     const target =
       screen === "menu"
         ? "#main-menu-title"
         : screen === "settings"
           ? "#setup-title"
-          : "#arena-host";
+          : screen === "history"
+            ? "#version-history-title"
+            : "#arena-host";
     skipLink.href = target;
     skipLink.textContent =
       screen === "menu"
         ? "메뉴로 이동"
         : screen === "settings"
           ? "게임 설정으로 이동"
-          : "아레나로 이동";
+          : screen === "history"
+            ? "버전 기록으로 이동"
+            : "아레나로 이동";
+  };
+
+  const renderVersionHistory = (): void => {
+    currentVersion.value = `v${PRODUCT_VERSION}`;
+    const fragment = document.createDocumentFragment();
+
+    for (const [index, entry] of VERSION_HISTORY.entries()) {
+      const item = document.createElement("li");
+      const article = document.createElement("article");
+      const header = document.createElement("header");
+      const version = document.createElement("span");
+      const title = document.createElement("h3");
+      const details = document.createElement("dl");
+      const reasonRow = document.createElement("div");
+      const reasonLabel = document.createElement("dt");
+      const reason = document.createElement("dd");
+      const changeRow = document.createElement("div");
+      const changeLabel = document.createElement("dt");
+      const change = document.createElement("dd");
+
+      version.textContent = `v${entry.version}`;
+      version.className = "version-history__version";
+      title.textContent = entry.title;
+      reasonLabel.textContent = "왜 바꿨냐면";
+      reason.textContent = entry.reason;
+      changeLabel.textContent = "이렇게 바뀌었어";
+      change.textContent = entry.change;
+      header.append(version, title);
+      reasonRow.append(reasonLabel, reason);
+      changeRow.append(changeLabel, change);
+      details.append(reasonRow, changeRow);
+      article.append(header, details);
+      item.append(article);
+
+      if (index === 0) {
+        article.dataset.current = "true";
+        version.setAttribute("aria-label", `현재 버전 ${entry.version}`);
+      }
+
+      fragment.append(item);
+    }
+
+    versionHistoryList.replaceChildren(fragment);
   };
 
   const updateSoundControl = (state: AudioFeedbackState): void => {
@@ -595,6 +653,27 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     requireElement(root, "#setup-title", HTMLElement).focus({ preventScroll: true });
   });
 
+  openVersionHistoryButton.addEventListener("click", () => {
+    setScreen("history");
+    versionHistoryTitle.focus({ preventScroll: true });
+  });
+
+  const closeVersionHistory = (): void => {
+    setScreen("menu");
+    openVersionHistoryButton.focus();
+  };
+
+  closeVersionHistoryButton.addEventListener("click", closeVersionHistory);
+
+  const handleVersionHistoryEscape = (event: KeyboardEvent): void => {
+    if (event.key === "Escape" && root.dataset.screen === "history") {
+      event.preventDefault();
+      closeVersionHistory();
+    }
+  };
+
+  document.addEventListener("keydown", handleVersionHistoryEscape);
+
   cancelSettingsButton.addEventListener("click", () => {
     hydrateSettingsForm();
     setScreen("menu");
@@ -683,6 +762,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
       audio?.destroy();
       debugTuning?.destroy();
       pointerControls?.destroy();
+      document.removeEventListener("keydown", handleVersionHistoryEscape);
 
       if (import.meta.env.DEV) {
         window.removeEventListener("shovefall:diagnostic-fatal", handleDiagnosticFatal);
@@ -693,4 +773,5 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
 
   renderSettingsSummary();
   renderStartingItemSelection();
+  renderVersionHistory();
 }
