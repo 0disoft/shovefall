@@ -87,7 +87,7 @@ Exit conditions:
 - Screenshot, short gameplay capture, tool list, asset provenance, and development notes are ready
   in [05-submission-package.md](05-submission-package.md) for the contest post.
 
-Current status: `IN_PROGRESS`. Product `0.32.0` exact SHA `4dc23456673d08ba15228776bdce15e2b768bcd5` retains hosted CI, Pages, and public-URL proof. The local `0.33.0` widened-island candidate passes 170 tests, fourteen DEV Chrome paths, thirteen production-artifact Chrome paths, the public-HTML telemetry exclusion contract, and the headless scale budget. Its exact-SHA hosted and public proof, completed round audit, uncontended browser profile, final captures, physical-browser coverage, and human evidence remain open.
+Current status: `IN_PROGRESS`. Product `0.33.0` exact implementation SHA `732f95f3a777220d0410612a2fb95840a8e7e721` passes hosted CI, Pages deployment, a fresh public-URL functional check, 170 local tests, fourteen DEV Chrome paths, thirteen production-artifact Chrome paths, the public-HTML telemetry exclusion contract, and the headless scale budget. The completed round audit, uncontended browser profile, final captures, physical-browser coverage, and human evidence remain open.
 
 ## Deferred Beyond the Submission
 
