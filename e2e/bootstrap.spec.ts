@@ -231,14 +231,12 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await expect(page.locator("#app")).toHaveAttribute("data-round", "active");
   await expect(page.getByText("시작!", { exact: true })).toBeVisible();
   await expect(page.locator("#game-telemetry")).toHaveAttribute("data-action", "Ready");
-  await page.evaluate(() => {
-    window.dispatchEvent(new KeyboardEvent("keydown", { code: "Space", key: " " }));
-    window.dispatchEvent(new KeyboardEvent("keyup", { code: "Space", key: " " }));
-  });
+  await page.keyboard.down("Space");
   await expect(page.locator("#game-telemetry")).toHaveAttribute(
     "data-action",
     /ShoveWindup|ShoveActive|ShoveRecovery|Stumbling/u,
   );
+  await page.keyboard.up("Space");
   await expect
     .poll(async () => Number(await page.locator("#game-telemetry").getAttribute("data-tick")))
     .toBeGreaterThan(0);
