@@ -78,6 +78,7 @@ import {
   type GameplayTuningInput,
   type GameplayTuningV1,
 } from "./tuning";
+import { createSuddenDeathPlan, getSuddenDeathPulse, type SuddenDeathPlan } from "./sudden-death";
 import { SYSTEM_ORDER } from "./versions";
 import {
   createArenaTiles,
@@ -614,6 +615,7 @@ export class SimulationWorld {
   readonly #roundId: RoundId;
   readonly #collapsePlan: readonly CollapseWave[];
   readonly #collapseTransitionTicks: ReadonlySet<number>;
+  readonly #suddenDeathPlan: SuddenDeathPlan | undefined;
   readonly #gameplayTuning: GameplayTuningV1;
   readonly #itemRandom;
   readonly #tieBreakRandom;
@@ -678,6 +680,7 @@ export class SimulationWorld {
         voidTick,
       ]),
     );
+    this.#suddenDeathPlan = createSuddenDeathPlan(this.#tiles, this.#collapsePlan);
     this.#participants = createParticipants(
       config,
       this.#tiles,
@@ -736,6 +739,7 @@ export class SimulationWorld {
       events,
     );
     participants = this.#applyMovementIntent(participants, commandsByActor);
+    participants = this.#applySuddenDeathPressure(participants, events);
     participants = this.#integratePositions(participants);
     participants = this.#resolveBrickWallContacts(participants);
     const collidableParticipants = participants.filter(isCollidable).map((participant) =>
@@ -1210,7 +1214,7 @@ export class SimulationWorld {
             (SIMULATION_TUNING.bomb.centerImpulse - SIMULATION_TUNING.bomb.edgeImpulse) *
               distanceRatio;
           const rawImpulse =
-            (baseImpulse / target.body.massFactor) *
+            (baseImpulse / Math.sqrt(target.body.massFactor)) *
             (ownerPower === undefined ? 1 : getPowerMultiplier(ownerPower)) *
             getStabilityMultiplier(target.progression.stats);
           const direction = normalizeDirectionOrFallback(offset, bomb.fallbackDirection);
@@ -1614,7 +1618,7 @@ export class SimulationWorld {
       }
 
       const rawImpulse =
-        (SIMULATION_TUNING.windBlast.baseImpulse / target.body.massFactor) *
+        (SIMULATION_TUNING.windBlast.baseImpulse / Math.sqrt(target.body.massFactor)) *
         getPowerMultiplier(attacker.progression.stats) *
         getStabilityMultiplier(target.progression.stats);
       const impulse = scaleVector(
@@ -1984,6 +1988,55 @@ export class SimulationWorld {
       return Object.freeze({
         ...participant,
         body: Object.freeze({ ...participant.body, position }),
+      });
+    });
+  }
+
+  #applySuddenDeathPressure(
+    participants: readonly ParticipantState[],
+    events: SimulationEventV1[],
+  ): readonly ParticipantState[] {
+    const pulse = getSuddenDeathPulse(this.#suddenDeathPlan, this.#tick);
+
+    if (pulse === undefined) {
+      return participants;
+    }
+
+    events.push(this.#createEvent("sudden-death-pulse", { position: pulse.center }));
+
+    return participants.map((participant) => {
+      if (!isCollidable(participant)) {
+        return participant;
+      }
+
+      const centerOffset = subtractVectors(participant.body.position, pulse.center);
+      const fallbackAngle = participant.actorId * 2.399_963_229_728_653;
+      const direction = getUnitDirectionOrFallback(centerOffset, {
+        x: Math.cos(fallbackAngle),
+        y: Math.sin(fallbackAngle),
+      });
+      const impulseStrength =
+        (pulse.strength / Math.sqrt(participant.body.massFactor)) *
+        getStabilityMultiplier(participant.progression.stats);
+      const impulse = scaleVector(direction, impulseStrength);
+      const velocity = clampVectorLength(
+        addVectors(participant.body.velocity, impulse),
+        SIMULATION_TUNING.body.maximumLaunchSpeed,
+      );
+      const action =
+        impulseStrength >= SIMULATION_TUNING.suddenDeath.stumbleImpulseThreshold
+          ? createTimedAction(
+              "Stumbling",
+              this.#tick,
+              SIMULATION_TUNING.suddenDeath.stumbleTicks,
+              direction,
+            )
+          : participant.action;
+
+      return Object.freeze({
+        ...participant,
+        action,
+        body: Object.freeze({ ...participant.body, velocity }),
       });
     });
   }
@@ -2371,7 +2424,7 @@ export class SimulationWorld {
         const rawImpulse =
           (SIMULATION_TUNING.shove.baseImpulse +
             forwardSpeed * SIMULATION_TUNING.shove.velocityImpulseScale) *
-          (attacker.body.massFactor / target.body.massFactor) *
+          Math.sqrt(attacker.body.massFactor / target.body.massFactor) *
           getPowerMultiplier(attacker.progression.stats) *
           getStabilityMultiplier(target.progression.stats) *
           (attacker.action.springBoosted

@@ -80,7 +80,7 @@ describe("deterministic item effects", () => {
       { slotIndex: 0, definitionId: "iron-boots", charges: null },
       { slotIndex: 1, definitionId: "spring-glove", charges: null },
     ]);
-    expect(getActor(passiveWorld, 1).massFactor).toBeCloseTo(1.4, 10);
+    expect(getActor(passiveWorld, 1).massFactor).toBeCloseTo(1.1, 10);
     beginShove(passiveWorld);
     expect(getActor(passiveWorld, 1).inventory[1]?.definitionId).toBe("spring-glove");
 
@@ -569,7 +569,7 @@ describe("deterministic item effects", () => {
       );
     };
 
-    expect(blastStrength(0.8)).toBeGreaterThan(blastStrength(1.4));
+    expect(blastStrength(0.85)).toBeGreaterThan(blastStrength(1.25));
   });
 
   it("lets a same-tick dodge evade Wind Blast while still spending its charge", () => {
@@ -898,7 +898,7 @@ describe("deterministic item effects", () => {
       return speed;
     };
 
-    expect(pullSpeed(0.8)).toBeGreaterThan(pullSpeed(1.4));
+    expect(pullSpeed(0.85)).toBeGreaterThan(pullSpeed(1.25));
   });
 
   it("lets an incoming same-tick Wind Blast override GrapplePull without moving the Wind user", () => {
@@ -1859,7 +1859,7 @@ describe("deterministic item effects", () => {
     ]);
     expect(actor.massFactor).toBeGreaterThanOrEqual(SIMULATION_TUNING.mass.minimum);
     expect(actor.massFactor).toBeLessThanOrEqual(SIMULATION_TUNING.mass.maximum);
-    expect(actor.massFactor).toBeCloseTo(1.4 * 0.8, 10);
+    expect(actor.massFactor).toBeCloseTo(1.1 * 0.85, 10);
   });
 
   it("expires a timed effect before movement and collision on its exact end tick", () => {

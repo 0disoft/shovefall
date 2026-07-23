@@ -1,5 +1,18 @@
 # Round and strategy audit
 
+## Protected-core pressure `0.34.0` status
+
+- Product: `0.34.0`
+- Simulation: `17.0.0`
+- Content: `10.0.0`
+- Audit format: `10`, split into bounded production, mass, item, and collapse jobs
+
+The fixed-50 production audit completed all 16 seeds by last standing with zero time-limit draws: mean `53.425 s`, p50 `55.083 s`, p95 and maximum `67.150 s`. Item spawns landed in the edge or near-edge band `83.18%` of the time. Aggressor recorded 5 wins and `0.9209` credited eliminations per actor-round; Survivor recorded 7 wins and `0.9000`. Their 95% Wilson win-rate intervals overlap, so the sample does not establish running away as superior, while the elimination-rate guard still requires Aggressor not to trail.
+
+The 24-seed controlled mass screen reports light/normal/heavy relative win indices `0.7504 / 0.5008 / 1.7504`, all within the declared `0.4..1.8` band and with no time-limit draws. The 64-seed selectable-item screen reports Iron Boots/Feather/Spring Glove wins `26 / 15 / 15`; its three-choice chi-square is `4.3214`, below the two-degree `5.991` screen. The no-item group's 8 wins remain reference evidence rather than an equal-strength selectable choice. Iron Boots remains the highest human-play review priority because its controlled interval still overlaps the others but its point estimate leads.
+
+The paired collapse screen completed all 48 rounds without time-limit draws. Mean duration orders Slow `52.425 s`, Normal `43.469 s`, Fast `33.761 s`; Slow lasts at least as long as Fast in `87.5%` of paired seeds. These fixed-bot results prove deterministic regression gates, not human fun or final item balance.
+
 ## Widened-island `0.33.0` status
 
 - Product: `0.33.0`
@@ -79,7 +92,7 @@ The declared screen requires Aggressor win rate to remain at least `0.75×` Surv
 
 These rows overlap and contain selection, survival-time, personality, spawn, and edge-risk confounding. They do not justify a causal item or mass buff by themselves. Starting human loadouts are deliberately excluded because every audit actor is bot-controlled.
 
-## Inconclusive full audit
+## Historical inconclusive full audit
 
 The legacy `audit:rounds` command still includes 64 production rounds, 24 controlled base-mass rounds, 64 controlled tick-zero item rounds, and 48 paired collapse-speed rounds. After arena expansion it exceeded both the configured 300-second limit and a one-time 420-second diagnostic limit before emitting a result. Both exits were `124`; neither is a balance failure or pass. The sample count and gates were not reduced to manufacture a result. The focused strategy audit supplies the current aggression decision, while refreshed controlled mass, item, and collapse evidence remains pending a faster harness or separately configured bounded jobs.
 

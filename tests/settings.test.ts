@@ -63,9 +63,9 @@ describe("settings normalization", () => {
     expect(normalizeStartingWeight(74.6)).toBe(75);
     expect(normalizeStartingWeight(500)).toBe(100);
     expect(normalizeStartingWeight(Number.NaN)).toBe(75);
-    expect(getStartingMassFactor(50)).toBeCloseTo(0.8, 10);
+    expect(getStartingMassFactor(50)).toBeCloseTo(0.85, 10);
     expect(getStartingMassFactor(75)).toBeCloseTo(1, 10);
-    expect(getStartingMassFactor(100)).toBeCloseTo(1.4, 10);
+    expect(getStartingMassFactor(100)).toBeCloseTo(1.25, 10);
   });
 
   it("derives and bounds the item policy for fifty participants", () => {

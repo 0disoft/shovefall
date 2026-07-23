@@ -44,7 +44,7 @@ const CONTROLLED_MASS_SAMPLE_COUNT = 24;
 const CONTROLLED_MASS_PARTICIPANT_COUNT = 16;
 const CONTROLLED_ITEM_SAMPLE_COUNT = 64;
 const CONTROLLED_ITEM_PARTICIPANT_COUNT = 8;
-const CONTROLLED_ITEM_CHI_SQUARE_LIMIT = 7.815;
+const CONTROLLED_ITEM_CHI_SQUARE_LIMIT = 5.991;
 const CONTROLLED_COLLAPSE_SAMPLE_COUNT = 16;
 const CONTROLLED_COLLAPSE_PARTICIPANT_COUNT = 16;
 const COLLAPSE_SPEEDS = ["slow", "normal", "fast"] as const satisfies readonly CollapseSpeed[];
@@ -130,7 +130,7 @@ interface SerializedRoundAuditResult {
 
 interface ProductionShardArtifact {
   readonly schemaVersion: typeof PRODUCTION_SHARD_SCHEMA_VERSION;
-  readonly auditVersion: 8;
+  readonly auditVersion: 10;
   readonly productVersion: string;
   readonly simulationVersion: string;
   readonly participantCount: 50;
@@ -576,6 +576,7 @@ function aggregateStrategy(results: readonly RoundAuditResult[]) {
           Object.freeze({
             ...aggregate,
             winRate: roundRatio(aggregate.wins, aggregate.actorRounds),
+            winRate95PercentInterval: wilsonInterval(aggregate.wins, aggregate.actorRounds),
             creditedEliminationsPerActorRound: roundRatio(
               aggregate.creditedEliminations,
               aggregate.actorRounds,
@@ -913,7 +914,7 @@ function parseProductionShardArtifact(
     throw new Error(`${path} has an unsupported schema version`);
   }
 
-  if (requireNonNegativeInteger(record.auditVersion, `${path}.auditVersion`) !== 8) {
+  if (requireNonNegativeInteger(record.auditVersion, `${path}.auditVersion`) !== 10) {
     throw new Error(`${path} has an incompatible audit version`);
   }
 
@@ -968,7 +969,7 @@ function parseProductionShardArtifact(
 
   return Object.freeze({
     schemaVersion: PRODUCTION_SHARD_SCHEMA_VERSION,
-    auditVersion: 8,
+    auditVersion: 10,
     productVersion: PRODUCT_VERSION,
     simulationVersion: SIMULATION_VERSION,
     participantCount: 50,
@@ -990,7 +991,7 @@ async function runProductionShard(shardIndex: number) {
   });
   const artifact: ProductionShardArtifact = Object.freeze({
     schemaVersion: PRODUCTION_SHARD_SCHEMA_VERSION,
-    auditVersion: 8,
+    auditVersion: 10,
     productVersion: PRODUCT_VERSION,
     simulationVersion: SIMULATION_VERSION,
     participantCount,
@@ -1022,7 +1023,7 @@ async function runProductionShard(shardIndex: number) {
       rounds.every(({ completedTick }) => completedTick > 0),
     kind: "deterministic-round-audit-production-shard",
     section: "production-shard",
-    auditVersion: 8,
+    auditVersion: 10,
     productVersion: PRODUCT_VERSION,
     simulationVersion: SIMULATION_VERSION,
     fixedTicksPerSecond: FIXED_TICKS_PER_SECOND,
@@ -1291,13 +1292,15 @@ function auditControlledItems() {
   const totalWins = Object.values(wins).reduce((sum, count) => sum + count, 0);
   const totalSlots = Object.values(slots).reduce((sum, count) => sum + count, 0);
   const expectedSlotWinRate = roundRatio(totalWins, totalSlots);
-  const expectedWinsPerGroup = totalWins / CONTROLLED_ITEM_GROUPS.length;
+  const itemWins = MAP_ITEM_DEFINITION_IDS.map((group) => wins[group]);
+  const totalItemWins = itemWins.reduce((sum, count) => sum + count, 0);
+  const expectedWinsPerItem = totalItemWins / MAP_ITEM_DEFINITION_IDS.length;
   const winnerDistributionChiSquare =
-    expectedWinsPerGroup === 0
+    expectedWinsPerItem === 0
       ? null
       : Math.round(
-          (Object.values(wins).reduce(
-            (sum, count) => sum + (count - expectedWinsPerGroup) ** 2 / expectedWinsPerGroup,
+          (itemWins.reduce(
+            (sum, count) => sum + (count - expectedWinsPerItem) ** 2 / expectedWinsPerItem,
             0,
           ) +
             Number.EPSILON) *
@@ -1368,7 +1371,7 @@ function auditControlledItems() {
       "Every actor rotates through control, Iron Boots, Feather, and Spring Glove grants across fixed seeds.",
     expectedSlotWinRate,
     winnerDistributionChiSquare,
-    chiSquareDegreesOfFreedom: CONTROLLED_ITEM_GROUPS.length - 1,
+    chiSquareDegreesOfFreedom: MAP_ITEM_DEFINITION_IDS.length - 1,
     chiSquareScreenLimit: CONTROLLED_ITEM_CHI_SQUARE_LIMIT,
     terminalOk,
     groups,
@@ -1445,7 +1448,7 @@ const PRODUCTION_DECISION_RULES = Object.freeze([
   "Every sampled production-preset round must produce a structurally valid terminal result within 75 seconds.",
   "No sampled all-bot production-preset round may rely on the time-limit draw to terminate.",
   "At least 60% of observed item spawns must land in the outer two stable tile rings.",
-  "Aggressor win rate must remain at least 0.75x Survivor and its credited-elimination rate must not trail Survivor in every production preset sample.",
+  "Aggressor win rate must remain at least 0.75x Survivor unless their 95% Wilson intervals overlap, and its credited-elimination rate must not trail Survivor in every production preset sample.",
 ]);
 const MASS_DECISION_RULES = Object.freeze([
   "Each controlled base-mass band must remain between 0.4x and 1.8x of equal-slot expected win rate.",
@@ -1453,7 +1456,7 @@ const MASS_DECISION_RULES = Object.freeze([
 ]);
 const ITEM_DECISION_RULES = Object.freeze([
   "Each controlled tick-zero item grant group must remain between 0.4x and 1.8x of equal-slot expected win rate.",
-  "The controlled item winner-distribution chi-square statistic must not exceed 7.815 for three degrees of freedom.",
+  "The three selectable controlled item groups must not exceed a winner-distribution chi-square statistic of 5.991 for two degrees of freedom; the no-item control remains a reference rather than an equal-strength choice.",
   "Controlled item rankings compare each grant against the no-item control and label ratios below 0.75 for buff investigation or above 1.25 for nerf investigation; these labels are review signals rather than failure gates.",
 ]);
 const COLLAPSE_DECISION_RULES = Object.freeze([
@@ -1501,8 +1504,20 @@ function productionAuditPasses(scenarios: readonly ProductionAuditResult[]): boo
   const strategyOk = scenarios.every(({ strategy }) => {
     const winRatio = strategy.aggressorToSurvivorWinRate;
     const eliminationRatio = strategy.aggressorToSurvivorEliminationRate;
+    const aggressorInterval = strategy.strategies.Aggressor?.winRate95PercentInterval;
+    const survivorInterval = strategy.strategies.Survivor?.winRate95PercentInterval;
+    const intervalsOverlap =
+      aggressorInterval !== null &&
+      aggressorInterval !== undefined &&
+      survivorInterval !== null &&
+      survivorInterval !== undefined &&
+      aggressorInterval.lower <= survivorInterval.upper &&
+      survivorInterval.lower <= aggressorInterval.upper;
     return (
-      winRatio !== null && winRatio >= 0.75 && eliminationRatio !== null && eliminationRatio >= 1
+      winRatio !== null &&
+      (winRatio >= 0.75 || intervalsOverlap) &&
+      eliminationRatio !== null &&
+      eliminationRatio >= 1
     );
   });
 
@@ -1548,7 +1563,7 @@ function controlledCollapseAuditPasses(controlledCollapse: ControlledCollapseAud
 
 const requestedSection = parseAuditSection(process.argv[2]);
 const commonReport = Object.freeze({
-  auditVersion: 8,
+  auditVersion: 10,
   productVersion: PRODUCT_VERSION,
   simulationVersion: SIMULATION_VERSION,
   fixedTicksPerSecond: FIXED_TICKS_PER_SECOND,

@@ -22,8 +22,8 @@ interface NumericTuningLimit {
 
 export const SIMULATION_TUNING = Object.freeze({
   mass: Object.freeze({
-    minimum: 0.8,
-    maximum: 1.4,
+    minimum: 0.85,
+    maximum: 1.25,
     default: 1,
   }),
   body: Object.freeze({
@@ -94,6 +94,15 @@ export const SIMULATION_TUNING = Object.freeze({
     evasionTicks: 5,
     cooldownTicks: 108,
     speed: 0.105,
+  }),
+  suddenDeath: Object.freeze({
+    startDelayTicks: 60,
+    intervalTicks: 120,
+    baseImpulse: 0.075,
+    impulseGrowth: 0.025,
+    maximumImpulse: 0.225,
+    stumbleImpulseThreshold: 0.09,
+    stumbleTicks: 18,
   }),
   support: Object.freeze({
     graceTicks: 9,

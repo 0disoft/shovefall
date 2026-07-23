@@ -73,7 +73,7 @@ describe("replay fixture contract", () => {
       masterSeed: "active-item-replay",
       humanActorId: 1,
       humanSetup: {
-        baseMassFactor: 1.4,
+        baseMassFactor: 1.25,
         startingItems: ["wind-blast", "iron-boots"],
       },
       endTick: 30,
@@ -83,7 +83,7 @@ describe("replay fixture contract", () => {
     const parsed = parseReplayFixtureJson(JSON.stringify(fixture));
 
     expect(parsed.humanSetup).toEqual({
-      baseMassFactor: 1.4,
+      baseMassFactor: 1.25,
       startingItems: ["wind-blast", "iron-boots"],
     });
     expect(parsed.commands[0]?.useItemSlot).toBe(0);

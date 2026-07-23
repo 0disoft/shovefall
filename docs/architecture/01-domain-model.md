@@ -94,6 +94,8 @@ Product `0.32.1` removes release-only diagnostic markup without changing simulat
 
 Product `0.33.0` and simulation `16.0.0` widen the public island to 48×40, require eight separated lakes under a 72-tile budget, and select item risk bands at a fixed 3:2:1 ratio before choosing a tile within the selected band. The generated world, item placement, collapse order, and state hash change for the public 50-participant configuration. Content remains `9.0.0`, replay remains v2, and reports remain v4; checked-in fixtures advance their simulation envelope even where their small-tier hashes remain unchanged.
 
+Product `0.34.0`, simulation `17.0.0`, and content `10.0.0` add protected-core sudden-death pressure, narrow the hidden mass contract to `0.85..1.25`, use square-root mass scaling for offensive and environmental impulses, and retune the three map passives. Pressure timing is derived from the final collapse wave and tick, so no mutable pulse counter enters the hash. The new event kind, changed system order, participant trajectories, item definitions, and state hashes require regenerated replay fixtures; replay remains v2 and reports remain v4 because their existing event, setup, and version envelopes carry the change.
+
 ## Version Ownership
 
 - Product version: `package.json` and `PRODUCT_VERSION`.

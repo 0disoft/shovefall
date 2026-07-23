@@ -85,6 +85,14 @@ const SOUND_DEFINITIONS: Partial<Record<SimulationEventKind, SoundDefinition>> =
     priority: 4,
     oscillatorType: "sawtooth",
   }),
+  "sudden-death-pulse": Object.freeze({
+    frequency: 84,
+    endFrequency: 38,
+    durationSeconds: 0.42,
+    gain: 0.085,
+    priority: 5,
+    oscillatorType: "sawtooth",
+  }),
   "brick-wall-placed": Object.freeze({
     frequency: 118,
     endFrequency: 72,

@@ -46,7 +46,8 @@ type VisualEffectKind =
   | "bomb-detonated"
   | "soap-placed"
   | "soap-triggered"
-  | "grappling-hook-hit";
+  | "grappling-hook-hit"
+  | "sudden-death-pulse";
 
 interface VisualEffect {
   readonly key: string;
@@ -669,7 +670,8 @@ function isVisualEffectKind(kind: SimulationEventV1["kind"]): kind is VisualEffe
     kind === "bomb-detonated" ||
     kind === "soap-placed" ||
     kind === "soap-triggered" ||
-    kind === "grappling-hook-hit"
+    kind === "grappling-hook-hit" ||
+    kind === "sudden-death-pulse"
   );
 }
 
@@ -687,7 +689,15 @@ function drawWorldEffect(
   const expansion = reducedMotion ? 1 : 1 + progress * 1.8;
   const alpha = Math.max(0, 1 - progress);
 
-  if (effect.kind === "grappling-hook-hit") {
+  if (effect.kind === "sudden-death-pulse") {
+    const waveScale = reducedMotion ? 1.8 : 1.2 + progress * 7.5;
+    graphics
+      .ellipse(x, y, projection.pitch * waveScale, projection.depthPitch * waveScale)
+      .stroke({ color: 0x72d8ff, width: 5, alpha });
+    graphics
+      .ellipse(x, y, projection.pitch * waveScale * 0.72, projection.depthPitch * waveScale * 0.72)
+      .stroke({ color: 0xdaf7ff, width: 2, alpha: alpha * 0.8 });
+  } else if (effect.kind === "grappling-hook-hit") {
     const cableAlpha = alpha;
     const anchorVector = effect.vector ?? { x: 0, y: 0 };
     const anchor = projectArenaPoint(
@@ -996,7 +1006,15 @@ export async function createArenaRenderer(
             kind: event.kind,
             roundId: event.roundId,
             startTick: event.tick,
-            endTick: event.tick + (event.kind === "grappling-hook-hit" ? 10 : durationTicks),
+            endTick:
+              event.tick +
+              (event.kind === "sudden-death-pulse"
+                ? reducedMotion
+                  ? 5
+                  : 24
+                : event.kind === "grappling-hook-hit"
+                  ? 10
+                  : durationTicks),
             position,
             vector: event.vector,
             itemDefinitionId: event.itemDefinitionId,

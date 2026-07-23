@@ -255,6 +255,7 @@ export type SimulationEventKind =
   | "tile-warning"
   | "tile-collapsing"
   | "tile-void"
+  | "sudden-death-pulse"
   | "round-completed";
 
 export interface SimulationEventV1 {

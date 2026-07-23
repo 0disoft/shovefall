@@ -1,8 +1,8 @@
 {
   "formatVersion": 2,
-  "productVersion": "0.33.0",
-  "simulationVersion": "16.0.0",
-  "contentVersion": "9.0.0",
+  "productVersion": "0.34.0",
+  "simulationVersion": "17.0.0",
+  "contentVersion": "10.0.0",
   "buildId": "fixture-v4",
   "config": {
     "configVersion": 1,

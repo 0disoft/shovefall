@@ -23,7 +23,7 @@ describe("elimination progression", () => {
     });
     const human = world.createRenderFrame().participants.find(({ actorId }) => actorId === 1);
 
-    expect(human?.massFactor).toBe(0.8);
+    expect(human?.massFactor).toBe(0.85);
     expect(human?.effects).toEqual([]);
     expect(human?.inventory).toEqual([
       { slotIndex: 0, definitionId: "feather", charges: null },

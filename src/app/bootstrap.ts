@@ -217,6 +217,8 @@ function getEventMessage(event: SimulationEventV1): string | undefined {
       return event.actorId === 1 ? "처치 인정! 스탯 포인트를 얻었어." : undefined;
     case "stat-upgraded":
       return event.actorId === 1 ? "스탯을 올렸어." : undefined;
+    case "sudden-death-pulse":
+      return "해일이 밀려와!";
     default:
       return undefined;
   }

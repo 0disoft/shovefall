@@ -1,5 +1,6 @@
 import { ITEM_DEFINITION_IDS } from "../content/items";
 import type { BotDifficulty, ItemDefinitionId } from "../simulation/contracts";
+import { SIMULATION_TUNING } from "../simulation/tuning";
 
 export const FORCED_PLAYER_COUNT = 50;
 export const FORCED_BOT_DIFFICULTY = "hard" as const satisfies BotDifficulty;
@@ -120,10 +121,18 @@ export function getStartingMassFactor(weight: number): number {
   const normalized = normalizeStartingWeight(weight);
 
   if (normalized <= DEFAULT_STARTING_WEIGHT) {
-    return 0.8 + ((normalized - STARTING_WEIGHT_LIMITS.minimum) / 25) * 0.2;
+    return (
+      SIMULATION_TUNING.mass.minimum +
+      ((normalized - STARTING_WEIGHT_LIMITS.minimum) / 25) *
+        (SIMULATION_TUNING.mass.default - SIMULATION_TUNING.mass.minimum)
+    );
   }
 
-  return 1 + ((normalized - DEFAULT_STARTING_WEIGHT) / 25) * 0.4;
+  return (
+    SIMULATION_TUNING.mass.default +
+    ((normalized - DEFAULT_STARTING_WEIGHT) / 25) *
+      (SIMULATION_TUNING.mass.maximum - SIMULATION_TUNING.mass.default)
+  );
 }
 
 export function normalizeSettings(

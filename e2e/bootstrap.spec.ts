@@ -275,9 +275,9 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await versionHistoryButton.click();
   await expect(page.locator("#app")).toHaveAttribute("data-screen", "history");
   await expect(page.getByRole("heading", { level: 2, name: "버전 기록" })).toBeFocused();
-  await expect(page.locator("#current-version")).toHaveText("v0.33.0");
-  await expect(page.locator("#version-history-list > li")).toHaveCount(15);
-  await expect(page.getByText("왜 바꿨냐면")).toHaveCount(15);
+  await expect(page.locator("#current-version")).toHaveText("v0.34.0");
+  await expect(page.locator("#version-history-list > li")).toHaveCount(16);
+  await expect(page.getByText("왜 바꿨냐면")).toHaveCount(16);
   await expect(page.locator("#arena-host canvas")).toBeHidden();
   await page.keyboard.press("Escape");
   await expect(page.locator("#app")).toHaveAttribute("data-screen", "menu");

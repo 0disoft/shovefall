@@ -9,6 +9,13 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.34.0",
+    title: "마지막 땅에도 해일은 온다",
+    reason: "넓어진 섬에서 20%의 안전한 땅만 차지한 채 버티면 판이 너무 오래 늘어졌어.",
+    change:
+      "마지막 땅은 더 사라지지 않지만 중앙에서 해일이 반복해서 밀어내. 철 장화는 덜 무거워지고 회피가 더 둔해졌어.",
+  }),
+  Object.freeze({
     version: "0.33.0",
     title: "더 넓고 더 갈라진 무인도",
     reason: "50명이 한 덩어리로 몰리지 않고 지형을 골라 움직일 여유가 더 필요했어.",

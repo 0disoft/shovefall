@@ -141,6 +141,18 @@ describe("optional Web Audio feedback", () => {
     expect(context.oscillators[0]?.type).toBe("sawtooth");
   });
 
+  it("plays a low surge when the protected core starts pushing outward", async () => {
+    const context = new FakeAudioContext();
+    const audio = createAudioFeedback(() => context);
+    await audio.unlock();
+
+    audio.consumeEvents([createEvent(1, 0, 0, "sudden-death-pulse")]);
+
+    expect(context.oscillators).toHaveLength(1);
+    expect(context.oscillators[0]?.type).toBe("sawtooth");
+    expect(context.oscillators[0]?.frequency.values).toEqual([84, 38]);
+  });
+
   it("uses distinct procedural cues for Bomb placement and detonation", async () => {
     const context = new FakeAudioContext();
     const audio = createAudioFeedback(() => context);
