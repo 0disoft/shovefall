@@ -1,6 +1,6 @@
 # CI and GitHub Pages Deployment
 
-- Status: GitHub Actions validation green for the prior runtime candidate; Pages deployment added and awaiting first hosted proof
+- Status: GitHub Actions validation and GitHub Pages deployment observed green
 
 ## Operational Contract
 
@@ -56,6 +56,13 @@ The subsequent Coal-Twilight runtime candidate also completed
 for exact SHA `7809502b8c33a12ad9cdd86d2dceb66424585579`. This is the current hosted runtime
 evidence; a later runtime or release-candidate change still requires its own exact-SHA run.
 
+The first Pages-enabled run, [CI #12](https://github.com/0disoft/shovefall/actions/runs/29979359647),
+completed both jobs for exact SHA `7794e9a47f89aefea1f39483680996a5236963ae`: `Validate` in 34
+seconds and `Deploy GitHub Pages` in 10 seconds. The deployment consumed the artifact uploaded by
+the validated job rather than rebuilding. The artifact digest was
+`sha256:e3031183663b44eb4285a5499ee4e953dae6ee25e7daa8953fbd438b2a7d27ef`, and the
+public URL critical path was then verified separately in Chrome.
+
 ## Owners and Failure Handling
 
 - Primary owner: Repository owner
@@ -68,5 +75,5 @@ Dependency or action download failure is infrastructure evidence, not a source f
 
 - Required validation names: `check` and `smoke-dist`
 - Public URL: `https://0disoft.github.io/shovefall/`
-- Release blocker status: Hosted validation is green for Coal-Twilight runtime SHA `7809502b8c33a12ad9cdd86d2dceb66424585579`; the Pages workflow change and every later candidate require their own exact-SHA run, successful deploy job, and URL smoke.
-- Remaining operational risk: Branch protection, runner-image Chrome drift, physical-device coverage, cross-browser coverage, first Pages deployment, URL smoke, and human playtest remain unproven until separately observed.
+- Release blocker status: Hosted validation, Pages deployment, and public-URL Chrome smoke are green for Pages candidate SHA `7794e9a47f89aefea1f39483680996a5236963ae`; every later runtime or release-candidate change requires its own exact-SHA run, successful deploy job, and URL smoke.
+- Remaining operational risk: Branch protection, runner-image Chrome drift, broader physical-device coverage, cross-browser coverage, and human playtest remain unproven until separately observed.

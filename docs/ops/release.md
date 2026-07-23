@@ -1,6 +1,6 @@
 # Static Release Procedure
 
-- Status: GitHub Pages deployment configured; first public deployment pending hosted proof
+- Status: GitHub Pages deployment and public Chrome smoke verified
 - Primary owner: Repository owner
 - Current product version: `0.18.0`
 - Validation source: [../../VALIDATION.md](../../VALIDATION.md)
@@ -66,6 +66,20 @@ only when the dependent `Deploy GitHub Pages` job succeeds and the final HTTPS c
 The first source push after enabling Pages is the initial deployment. Do not call the public link
 ready until its workflow run, `github-pages` environment deployment, URL content, and critical
 journey are observed at the same candidate SHA.
+
+## Current Deployment Evidence
+
+On 2026-07-23, [CI #12](https://github.com/0disoft/shovefall/actions/runs/29979359647)
+validated and deployed exact commit `7794e9a47f89aefea1f39483680996a5236963ae`. The `Validate`
+job completed in 34 seconds, the dependent `Deploy GitHub Pages` job completed in 10 seconds, and
+the retained `github-pages` artifact reported digest
+`sha256:e3031183663b44eb4285a5499ee4e953dae6ee25e7daa8953fbd438b2a7d27ef`.
+
+The public URL loaded in Chrome with WebGL ready and no captured console log entries. An 8-player,
+Easy, Slow round reached active play; a held `D` input changed the reported position from
+`2.77, 4.24` to `3.66, 4.24`, and Space produced the visible `Stumbling` action state. This is
+deployment and critical-path browser evidence, not human fun, balance, physical-device matrix, or
+cross-browser evidence.
 
 ## Post-deploy Verification
 
