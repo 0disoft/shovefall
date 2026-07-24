@@ -243,9 +243,9 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await versionHistoryButton.click();
   await expect(page.locator("#app")).toHaveAttribute("data-screen", "history");
   await expect(page.getByRole("heading", { level: 2, name: "버전 기록" })).toBeFocused();
-  await expect(page.locator("#current-version")).toHaveText("v0.35.0");
-  await expect(page.locator("#version-history-list > li")).toHaveCount(18);
-  await expect(page.getByText("왜 바꿨냐면요")).toHaveCount(18);
+  await expect(page.locator("#current-version")).toHaveText("v0.36.0");
+  await expect(page.locator("#version-history-list > li")).toHaveCount(19);
+  await expect(page.getByText("왜 바꿨냐면요")).toHaveCount(19);
   await expect(page.locator("#arena-host canvas")).toBeHidden();
   await page.keyboard.press("Escape");
   await expect(page.locator("#app")).toHaveAttribute("data-screen", "menu");
@@ -475,7 +475,7 @@ test("equips and places a timed bomb in a fresh round", async ({ page }) => {
   await expect(page.locator("#app")).toHaveAttribute("data-round", "active", { timeout: 5_000 });
   await expect(page.locator("#use-item-slot-1")).toContainText("시한폭탄 · 2회");
   await expect(page.locator("#use-item-slot-1")).toBeEnabled();
-  await page.locator("#use-item-slot-1").click();
+  await clickInventorySlotAfterActiveTick(page, "#use-item-slot-1");
   await expect(page.locator("#use-item-slot-1")).toContainText("시한폭탄 · 1회");
   await expect(page.getByText("폭탄을 놨어. 5초 뒤 터져.")).toBeVisible();
 });
@@ -521,7 +521,7 @@ test("selects Grappling Hook and catches a deterministic anchor in a fresh round
   await expect(slot).toContainText("구조 갈고리 · 2회");
   await faceArenaDirection(page, "ArrowRight");
   await expect(slot).toBeEnabled();
-  await slot.click();
+  await clickInventorySlotAfterActiveTick(page, "#use-item-slot-1");
 
   await expect(slot).toContainText("구조 갈고리 · 1회");
   await expect(page.getByText("갈고리가 걸렸어.", { exact: true })).toBeVisible();

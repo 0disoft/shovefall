@@ -1,6 +1,7 @@
 import { createKeyboardInput, type KeyboardInput } from "./keyboard-input";
 import { createGamepadInput, type GamepadInput } from "./gamepad-input";
 import { BotDirector } from "../ai/bot-director";
+import { createBotLoadoutAssignments } from "../ai/bot-loadouts";
 import type {
   GameConfigV1,
   ItemDefinitionId,
@@ -272,21 +273,27 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
         window.cancelAnimationFrame(animationFrameId);
       }
 
+      const botLoadouts = createBotLoadoutAssignments(
+        masterSeed,
+        config.participantCount,
+        HUMAN_ACTOR_ID,
+      );
       world = new SimulationWorld(config, masterSeed, {
         roundId: nextRoundId,
         humanActorId: HUMAN_ACTOR_ID,
         ...(gameplayTuning === undefined ? {} : { gameplayTuning }),
-        ...(humanLoadout === undefined
-          ? {}
-          : {
-              participantOverrides: [
+        participantOverrides: [
+          ...(humanLoadout === undefined
+            ? []
+            : [
                 {
                   actorId: HUMAN_ACTOR_ID,
                   massFactor: humanLoadout.massFactor,
                   startingItems: humanLoadout.startingItems,
                 },
-              ],
-            }),
+              ]),
+          ...botLoadouts,
+        ],
       });
       nextRoundId += 1;
       bots = new BotDirector(masterSeed, HUMAN_ACTOR_ID, { difficulty: config.difficulty });

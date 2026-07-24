@@ -2,6 +2,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import { BotDirector } from "../src/ai/bot-director";
+import { createBotLoadoutAssignments } from "../src/ai/bot-loadouts";
 import { BOT_PERSONALITY_KINDS, type BotPersonalityKind } from "../src/ai/personalities";
 import { ITEM_DEFINITION_IDS, MAP_ITEM_DEFINITION_IDS } from "../src/content/items";
 import {
@@ -393,6 +394,7 @@ function createAuditConfig(participantCount: (typeof PARTICIPANT_COUNTS)[number]
     arenaRows: arena.rows,
     roundLimitSeconds: ROUND_LIMIT_SECONDS,
     collapseSpeed: getPresetCollapseSpeed(preset),
+    difficulty: "hard",
     itemsEnabled: true,
     initialItemCount: getRecommendedInitialItemCount(participantCount),
     itemRespawnSeconds: getPresetItemRespawnSeconds(preset),
@@ -459,8 +461,11 @@ function createRoundObservation(
 }
 
 function auditRoundCompletion(config: GameConfigV1, seed: string): RoundObservation {
-  const world = new SimulationWorld(config, seed, { humanActorId: 1 });
-  const bots = new BotDirector(seed, null);
+  const world = new SimulationWorld(config, seed, {
+    humanActorId: 1,
+    participantOverrides: createBotLoadoutAssignments(seed, config.participantCount, null),
+  });
+  const bots = new BotDirector(seed, null, { difficulty: "hard" });
   let frame = world.createRenderFrame();
 
   while (frame.round.status === "Active") {
@@ -471,8 +476,11 @@ function auditRoundCompletion(config: GameConfigV1, seed: string): RoundObservat
 }
 
 function auditRound(config: GameConfigV1, seed: string): RoundAuditResult {
-  const world = new SimulationWorld(config, seed, { humanActorId: 1 });
-  const bots = new BotDirector(seed, null);
+  const world = new SimulationWorld(config, seed, {
+    humanActorId: 1,
+    participantOverrides: createBotLoadoutAssignments(seed, config.participantCount, null),
+  });
+  const bots = new BotDirector(seed, null, { difficulty: "hard" });
   const actors = createActorObservations(config.participantCount);
   const seenItemIds = new Set<number>();
   const itemSpawnBands = createSpawnBandCounts();
