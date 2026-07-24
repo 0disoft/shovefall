@@ -446,6 +446,22 @@ function drawItem(graphics: Graphics, item: RenderItemV1, projection: ArenaProje
   }
 }
 
+function removeStaleSprites<Key extends string | number>(
+  layer: Container,
+  sprites: Map<Key, Sprite>,
+  visibleKeys: ReadonlySet<Key>,
+): void {
+  for (const [key, sprite] of sprites) {
+    if (visibleKeys.has(key)) {
+      continue;
+    }
+
+    layer.removeChild(sprite);
+    sprite.destroy();
+    sprites.delete(key);
+  }
+}
+
 function syncItemSprites(
   layer: Container,
   sprites: Map<number, Sprite>,
@@ -476,9 +492,7 @@ function syncItemSprites(
     sprite.visible = true;
   }
 
-  for (const [itemId, sprite] of sprites) {
-    sprite.visible = visibleItemIds.has(itemId);
-  }
+  removeStaleSprites(layer, sprites, visibleItemIds);
 }
 
 function syncPirateShipSprites(
@@ -596,13 +610,8 @@ function syncProjectileSprites(
     sprite.visible = true;
   }
 
-  for (const [shotId, sprite] of cannonSprites) {
-    sprite.visible = visibleCannonShotIds.has(shotId);
-  }
-
-  for (const [shotId, sprite] of rockSprites) {
-    sprite.visible = visibleRockShotIds.has(shotId);
-  }
+  removeStaleSprites(layer, cannonSprites, visibleCannonShotIds);
+  removeStaleSprites(layer, rockSprites, visibleRockShotIds);
 }
 
 function syncImpactSprites(
@@ -650,9 +659,7 @@ function syncImpactSprites(
     sprite.visible = true;
   }
 
-  for (const [effectKey, sprite] of sprites) {
-    sprite.visible = visibleEffectKeys.has(effectKey);
-  }
+  removeStaleSprites(layer, sprites, visibleEffectKeys);
 }
 
 function syncParticipantSprites(

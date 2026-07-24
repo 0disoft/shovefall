@@ -118,6 +118,14 @@ vi.mock("pixi.js", () => {
     public removeChildren(): Array<{ destroy(): void }> {
       return this.#children.splice(0);
     }
+
+    public removeChild(child: { destroy(): void }): void {
+      const index = this.#children.indexOf(child);
+
+      if (index >= 0) {
+        this.#children.splice(index, 1);
+      }
+    }
   }
 
   class FakeRectangle {
