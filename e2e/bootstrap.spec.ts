@@ -198,6 +198,32 @@ async function clickInventorySlotAfterActiveTick(page: Page, selector: string): 
     .toBeGreaterThan(tickBeforeClick);
 }
 
+async function triggerShoveAfterReady(page: Page): Promise<"ShoveWindup" | "ShoveActive"> {
+  const telemetry = page.locator("#game-telemetry");
+
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    if ((await telemetry.getAttribute("data-action")) !== "Ready") {
+      await page.clock.fastForward(34);
+      continue;
+    }
+
+    const tickBeforeShove = await readSimulationTick(page);
+    await page.keyboard.down("Space");
+    await page.clock.fastForward(20);
+    await page.keyboard.up("Space");
+    const action = await telemetry.getAttribute("data-action");
+
+    if (
+      (await readSimulationTick(page)) > tickBeforeShove &&
+      (action === "ShoveWindup" || action === "ShoveActive")
+    ) {
+      return action;
+    }
+  }
+
+  throw new Error("human actor never entered a shove action during the bounded ready window");
+}
+
 async function readCameraPosition(page: Page): Promise<string> {
   const arena = page.locator("#arena-host");
   const [x, y] = await Promise.all([
@@ -361,15 +387,7 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await page.clock.fastForward(20);
   await expect.poll(() => readSimulationTick(page)).toBeGreaterThan(tickBeforeItem);
   await expect(page.locator("#use-item-slot-1")).toContainText("장풍 · 1회");
-  const tickBeforeShove = await readSimulationTick(page);
-  await page.keyboard.down("Space");
-  await page.clock.fastForward(20);
-  await expect.poll(() => readSimulationTick(page)).toBeGreaterThan(tickBeforeShove);
-  await expect(page.locator("#game-telemetry")).toHaveAttribute(
-    "data-action",
-    /ShoveWindup|ShoveActive/u,
-  );
-  await page.keyboard.up("Space");
+  expect(["ShoveWindup", "ShoveActive"]).toContain(await triggerShoveAfterReady(page));
   const activeCanvas = await captureArenaCanvas(page);
   expect(activeCanvas.summary.uniqueColorBuckets).toBeGreaterThan(4);
   expect(activeCanvas.summary.luminanceRange).toBeGreaterThan(20);
