@@ -1,15 +1,15 @@
 # Asset Provenance Ledger
 
-- Status: Active; seven generated PNG assets ship with procedural fallbacks
+- Status: Active; eight generated PNG assets ship with procedural fallbacks
 - Owner: Repository owner
 - Visual gate: [../product/01-roadmap.md](../product/01-roadmap.md)
 - Frontend boundary: [../frontend/FRONTEND_DESIGN.md](../frontend/FRONTEND_DESIGN.md)
 
 ## Current Inventory
 
-Repository inspection on 2026-07-24 found two accepted owner-generated PNG atlases and five
-Codex-generated single sprites. Six earlier multi-asset outputs
-generated outputs were rejected before intake because their visible checkerboard was baked into
+Repository inspection on 2026-07-24 found two accepted owner-generated PNG atlases, one
+Codex-generated terrain atlas, and five Codex-generated single sprites. Six earlier multi-asset
+outputs were rejected before intake because their visible checkerboard was baked into
 opaque RGB pixels rather than represented by alpha transparency.
 
 | ID | Shipped surface | Implementation | External source | License / terms | Attribution |
@@ -24,6 +24,7 @@ opaque RGB pixels rather than represented by alpha transparency.
 | `generated-lethal-boulder` | Protected-core rock trajectories | `src/assets/generated/lethal-boulder.png` | Codex built-in image generation plus local chroma-key removal | Same output-ownership evidence | Generator and processing recorded here |
 | `generated-impact-explosion` | Bomb and rock impacts | `src/assets/generated/impact-explosion.png` | Codex built-in image generation plus local chroma-key removal | Same output-ownership evidence | Generator and processing recorded here |
 | `generated-seawater-impact` | Flooded-tile impacts | `src/assets/generated/seawater-impact.png` | Codex built-in image generation plus local chroma-key removal | Same output-ownership evidence | Generator and processing recorded here |
+| `generated-island-terrain` | Stable coast and warning tiles | `src/assets/generated/island-terrain-atlas.png` | Codex built-in image generation plus local chroma-key removal | Same output-ownership evidence | Generator and processing recorded here |
 
 Dependencies are tracked by `package.json` and `bun.lock`; this ledger owns media and creative
 assets, not dependency license inventory.
@@ -87,13 +88,29 @@ assets, not dependency license inventory.
 | `src/assets/generated/impact-explosion.png` | `docs/assets/prompts/impact-explosion-chroma.txt` | Built-in generation; border key `#03f905`; soft matte, despill, and Lanczos downsample; 512×512 RGBA, 132,099 bytes, SHA-256 `43c108796a0a098107e3c401439954563c8f2f86cb22c86c45a5327a38ebf213`; transparent corners | Accepted 2026-07-24; fades over Bomb and rock-impact geometry |
 | `src/assets/generated/seawater-impact.png` | `docs/assets/prompts/seawater-impact-chroma.txt` | Built-in generation; border key `#fc03fa`; soft matte, despill, and Lanczos downsample; 512×512 RGBA, 121,260 bytes, SHA-256 `8bfe7107ecab16ed5ac81b1ff1a58da5b3651cc339b9b68194546f6ddbacd41e`; transparent corners | Accepted 2026-07-24; fades over tile-flood geometry |
 
+### `generated-island-terrain`
+
+| Field | Record |
+|---|---|
+| Asset ID and repository path | `generated-island-terrain`; `src/assets/generated/island-terrain-atlas.png` |
+| Type and purpose | Transparent 4×4 PNG atlas; deterministic grass, coast, corner, water, and warning tile presentation |
+| Source | Codex built-in image generation using the rejected opaque terrain sheet only as a style reference |
+| Snapshot | Generated, processed, and inspected 2026-07-24 |
+| Copy extent | New generated atlas; repository-owned frame metadata selects sixteen cells without altering simulation topology |
+| Rights evidence | [OpenAI Terms of Use](https://openai.com/policies/row-terms-of-use/) output-ownership clause, with user responsibility and non-uniqueness limits |
+| Attribution decision | No attribution requirement was identified in the cited ownership clause; voluntary generator provenance remains in this ledger |
+| Prompt/source record | `docs/assets/prompts/island-terrain-atlas-magenta.txt` |
+| Modifications | Built-in output used a flat magenta background; the installed image-generation helper sampled border key `#fb02fa`, applied soft matte and despill, and wrote alpha PNG |
+| Technical contract | 1254×1254 RGBA PNG, 1,977,027 bytes, SHA-256 `6b8832ed16393d654895ff6e3fc45a166192215271ae9eae44629ab66c4a2bc9`; transparent corners; asynchronous same-origin load; procedural tile geometry remains beneath the atlas fallback |
+| Reviewer decision | Accepted 2026-07-24 after alpha and visual-edge inspection; public 50-player frame cost and final coast alignment remain pending browser evidence |
+
 The selected images contain no visible trademark, signature, watermark, named copyrighted
 character, or named living-artist imitation. A metadata probe reported no container tags. This is a
 repository review record, not a legal conclusion.
 
 ## Rejected Generated Outputs
 
-The original multi-ship sheet, cannon-collapse VFX, lethal-rock VFX, island terrain, character
+The original multi-ship sheet, cannon-collapse VFX, lethal-rock VFX, island terrain sheet, character
 actions, and world props remain outside this repository. Although their visible canvas imitated transparency, the
 files were opaque RGB PNGs with a baked checkerboard. They are not valid game sprites and were not
 silently promoted. Replacement prompts require a real RGBA alpha channel, alpha-zero corner and

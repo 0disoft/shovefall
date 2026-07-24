@@ -1360,6 +1360,7 @@ export class SimulationWorld {
         ActorId,
         { readonly attackerActorId: ActorId | null; readonly distance: number }
       >();
+      const ownerImpulses = new Map<ActorId, Vector2>();
 
       for (const bomb of dueBombs) {
         events.push(
@@ -1382,8 +1383,30 @@ export class SimulationWorld {
             continue;
           }
 
+          if (target.actorId === bomb.ownerActorId) {
+            const falloff = Math.max(
+              SIMULATION_TUNING.bomb.ownerMinimumFalloff,
+              1 - edgeDistance / SIMULATION_TUNING.bomb.blastRadius,
+            );
+            const direction = normalizeDirectionOrFallback(offset, bomb.fallbackDirection);
+            const rawImpulse =
+              SIMULATION_TUNING.bomb.ownerBaseImpulse *
+              falloff *
+              getIncomingMassImpulseMultiplier(target.body.massFactor) *
+              getStabilityMultiplier(target.progression.stats);
+            const impulse = scaleVector(
+              direction,
+              Math.min(rawImpulse, SIMULATION_TUNING.bomb.ownerMaximumImpulse),
+            );
+            ownerImpulses.set(
+              target.actorId,
+              addVectors(ownerImpulses.get(target.actorId) ?? ZERO_VECTOR, impulse),
+            );
+            continue;
+          }
+
           const previous = victims.get(target.actorId);
-          const attackerActorId = target.actorId === bomb.ownerActorId ? null : bomb.ownerActorId;
+          const attackerActorId = bomb.ownerActorId;
 
           if (
             previous === undefined ||
@@ -1404,6 +1427,27 @@ export class SimulationWorld {
         ),
         events,
       ).toSorted((left, right) => left.actorId - right.actorId);
+      ordered = ordered.map((participant) => {
+        const impulse = ownerImpulses.get(participant.actorId);
+
+        if (impulse === undefined || !isCollidable(participant)) {
+          return participant;
+        }
+
+        return Object.freeze({
+          ...participant,
+          body: Object.freeze({
+            ...participant.body,
+            velocity: addVectors(participant.body.velocity, impulse),
+          }),
+          action: createTimedAction(
+            "Stumbling",
+            this.#tick,
+            SIMULATION_TUNING.bomb.ownerStumbleTicks,
+            normalizeDirectionOrFallback(impulse, participant.body.facing),
+          ),
+        });
+      });
       updatedById = new Map(ordered.map((participant) => [participant.actorId, participant]));
     }
 
@@ -1417,7 +1461,8 @@ export class SimulationWorld {
       if (
         slotIndex === undefined ||
         slot?.definitionId !== "brick-bag" ||
-        !isCollidable(attacker)
+        !isCollidable(attacker) ||
+        attacker.action.kind !== "Ready"
       ) {
         continue;
       }
@@ -1468,7 +1513,12 @@ export class SimulationWorld {
           ? undefined
           : participant.inventory.find((candidate) => candidate.slotIndex === slotIndex);
 
-      if (slotIndex === undefined || slot?.definitionId !== "bomb" || !isCollidable(participant)) {
+      if (
+        slotIndex === undefined ||
+        slot?.definitionId !== "bomb" ||
+        !isCollidable(participant) ||
+        participant.action.kind !== "Ready"
+      ) {
         continue;
       }
 
@@ -1514,7 +1564,12 @@ export class SimulationWorld {
           ? undefined
           : participant.inventory.find((candidate) => candidate.slotIndex === slotIndex);
 
-      if (slotIndex === undefined || slot?.definitionId !== "soap" || !isCollidable(participant)) {
+      if (
+        slotIndex === undefined ||
+        slot?.definitionId !== "soap" ||
+        !isCollidable(participant) ||
+        participant.action.kind !== "Ready"
+      ) {
         continue;
       }
 
@@ -1562,7 +1617,12 @@ export class SimulationWorld {
           ? undefined
           : participant.inventory.find((candidate) => candidate.slotIndex === slotIndex);
 
-      if (slotIndex === undefined || slot?.definitionId !== "boat" || !isCollidable(participant)) {
+      if (
+        slotIndex === undefined ||
+        slot?.definitionId !== "boat" ||
+        !isCollidable(participant) ||
+        participant.action.kind !== "Ready"
+      ) {
         continue;
       }
 
@@ -1592,7 +1652,8 @@ export class SimulationWorld {
       if (
         slotIndex === undefined ||
         slot?.definitionId !== "grappling-hook" ||
-        !isCollidable(participant)
+        !isCollidable(participant) ||
+        participant.action.kind !== "Ready"
       ) {
         continue;
       }
@@ -1695,7 +1756,7 @@ export class SimulationWorld {
     for (const attacker of ordered) {
       const slotIndex = activeItemSlots.get(attacker.actorId);
 
-      if (slotIndex === undefined || !isCollidable(attacker)) {
+      if (slotIndex === undefined || !isCollidable(attacker) || attacker.action.kind !== "Ready") {
         continue;
       }
 

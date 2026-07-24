@@ -306,8 +306,8 @@ describe("deterministic item effects", () => {
     ).toEqual(["bomb-detonated"]);
     expect(detonation.frame.bombs).toEqual([]);
     expect(getActor(world, 1).inventory[0]?.charges).toBe(1);
-    expect(getActor(world, 1).action).toBe("Eliminated");
-    expect(getActor(world, 1).velocity).toEqual({ x: 0, y: 0 });
+    expect(getActor(world, 1).action).toBe("Stumbling");
+    expect(getActor(world, 1).velocity.x).toBeGreaterThan(0);
   });
 
   it("resolves competing Bomb placements by actor id without spending the loser charge", () => {
@@ -360,7 +360,7 @@ describe("deterministic item effects", () => {
     expect(forward.charges).toEqual([1, 2]);
   });
 
-  it("kills every actor in the Bomb radius even during a same-tick dodge", () => {
+  it("kills opponents through Dodge while launching and staggering the Bomb owner", () => {
     const world = new SimulationWorld(createItemConfig(), "bomb-dodge", {
       arenaLayout: "rectangular-fixture",
       participantOverrides: [
@@ -387,7 +387,9 @@ describe("deterministic item effects", () => {
       expect.objectContaining({ kind: "dodge-succeeded", actorId: 2, targetActorId: 1 }),
     );
     expect(getActor(world, 2).action).toBe("Eliminated");
-    expect(getActor(world, 1).action).toBe("Eliminated");
+    expect(getActor(world, 1).active).toBe(true);
+    expect(getActor(world, 1).action).toBe("Stumbling");
+    expect(getActor(world, 1).velocity.x).toBeGreaterThan(0);
   });
 
   it("batches due Bomb, Boat, and Wind Blast independently of command order", () => {
@@ -444,7 +446,11 @@ describe("deterministic item effects", () => {
     const reverse = run([3, 2]);
 
     expect(reverse).toEqual(forward);
-    expect(forward.eventOrder).toEqual(["bomb-detonated:bomb", "item-used:wind-blast"]);
+    expect(forward.eventOrder).toEqual([
+      "bomb-detonated:bomb",
+      "item-used:wind-blast",
+      "wind-blast-hit:wind-blast",
+    ]);
     expect(forward.target.effects).toEqual([]);
     expect(forward.target.action).toBe("Eliminated");
   });
@@ -953,7 +959,7 @@ describe("deterministic item effects", () => {
 
     expect(result.events.some(({ kind }) => kind === "bomb-detonated")).toBe(true);
     expect(result.events.some(({ kind }) => kind === "grappling-hook-hit")).toBe(false);
-    expect(getActor(world, 1).action).toBe("Eliminated");
+    expect(getActor(world, 1).action).toBe("Stumbling");
     expect(getActor(world, 1).inventory[1]?.charges).toBe(2);
   });
 

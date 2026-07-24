@@ -9,6 +9,13 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.37.0",
+    title: "내 폭탄에는 즉사하지 않는다요 ㅇㅅㅇ",
+    reason: "강한 넉백으로 휘청이다 물에 빠질 수 있다요 ㅇㅅㅇ",
+    change:
+      "적은 폭발 범위를 회피로 피할 수 없고, 잔디와 모래, 해안, 경고 바닥은 더 선명하게 보인다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.36.0",
     title: "컴퓨터도 아이템을 쓴다요 ㅇㅅㅇ",
     reason: "아이템을 주워 놓고 들고만 있으니 49명이 있어도 사람만 제대로 싸웠다요.",

@@ -30,6 +30,7 @@ people, then publishing the exact candidate without burying combat telegraphs.
 - [x] Human Wind Blast, Brick Bag, Boat, Bomb, Soap, and static-anchor Grappling Hook activation through the shared two-slot input contract.
 - [x] Immediate locomotion, saved automatic growth planning, Brick dodge mounting, direct-kill Bombs, exact-ammunition pirate cannon collapse, and protected-core lethal rocks in the local `0.35.0` ruleset.
 - [x] Hard bots receive balanced passive-plus-active loadouts and spend charges through delayed perception and bounded deterministic utility rules in `0.36.0`.
+- [x] Bomb owners survive their own blast with dangerous launch and stumble, and the alpha terrain atlas replaces flat island tiles in `0.37.0`.
 - [x] Sharded deterministic `0.34.0` round, mass, item-grant, and collapse-pacing evidence with no sampled time-limit draws.
 - [x] Widened-island fixed-50 headless scale evidence at simulation p95 `6.823 ms` with no 100 ms step.
 - [ ] Host-qualified production-Chrome performance evidence. The configured five-sample preflight blocks contaminated runs; two independent `0.34.0` attempts rejected `63.5 / 64.1%` average and `87.4 / 84.3%` maximum host CPU before Chrome started.
@@ -91,7 +92,7 @@ Exit conditions:
 - Screenshot, short gameplay capture, tool list, asset provenance, and development notes are ready
   in [05-submission-package.md](05-submission-package.md) for the contest post.
 
-Current status: `IN_PROGRESS`. Product `0.36.0`, simulation `18.0.0`, and content `12.0.0` are the current local rules. Seven accepted generated assets total about 1.33 MB after downsampling and retain independent procedural fallbacks; Bomb, Soap, and Boat props reuse the accepted item atlas. Local formatting, lint, TypeScript, 187 tests, and all thirteen production Chrome paths pass. Production audit shard zero passes all eight 50-participant seeds with one survivor and no time limit, while the optimized public-scale bot screen is roughly twice as fast as the pre-cache local run. Shard one and merged balance, exact-SHA capture, hosted CI, Pages, cache-busted public proof, terrain/action art, named physical-browser coverage, and human-play evidence remain open.
+Current status: `IN_PROGRESS`. Product `0.37.0`, simulation `19.0.0`, and content `13.0.0` are the current local rules. Eight accepted generated assets total about 3.15 MiB and retain independent procedural fallbacks; the new alpha terrain atlas covers grass, sand, coast, corner, water, and warning states. The prior `0.36.0` local validation and audit evidence is historical only because Bomb outcomes and replay hashes changed. Fresh grouped checks, 50-participant balance, exact-SHA capture, hosted CI, Pages, cache-busted public proof, action art, named physical-browser coverage, and human-play evidence remain open.
 
 ## Deferred Beyond the Submission
 

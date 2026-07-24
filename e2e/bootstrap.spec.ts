@@ -243,9 +243,9 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await versionHistoryButton.click();
   await expect(page.locator("#app")).toHaveAttribute("data-screen", "history");
   await expect(page.getByRole("heading", { level: 2, name: "버전 기록" })).toBeFocused();
-  await expect(page.locator("#current-version")).toHaveText("v0.36.0");
-  await expect(page.locator("#version-history-list > li")).toHaveCount(19);
-  await expect(page.getByText("왜 바꿨냐면요")).toHaveCount(19);
+  await expect(page.locator("#current-version")).toHaveText("v0.37.0");
+  await expect(page.locator("#version-history-list > li")).toHaveCount(20);
+  await expect(page.getByText("왜 바꿨냐면요")).toHaveCount(20);
   await expect(page.locator("#arena-host canvas")).toBeHidden();
   await page.keyboard.press("Escape");
   await expect(page.locator("#app")).toHaveAttribute("data-screen", "menu");
@@ -259,7 +259,7 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await expect(page.getByText("패시브 · 더 묵직하게 버텨", { exact: true })).toBeVisible();
   await expect(page.getByText("패시브 · 더 빠르게 빠져나가", { exact: true })).toBeVisible();
   await expect(page.getByText("패시브 · 첫 밀치기를 더 멀리", { exact: true })).toBeVisible();
-  await expect(page.getByText("2개 · 5초 뒤 반경 즉사", { exact: true })).toBeVisible();
+  await expect(page.getByText("2개 · 5초 뒤 적만 즉사", { exact: true })).toBeVisible();
   await expect(page.locator("#starting-items .item-art")).toHaveCount(9);
   await expect(page.locator(".item-art--grappling-hook")).toHaveCSS(
     "background-image",

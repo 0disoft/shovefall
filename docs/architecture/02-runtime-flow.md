@@ -17,7 +17,7 @@ Each 60 Hz tick uses this versioned order:
 
 1. Validate and collect commands; fill missing actor commands with neutral input.
 2. Advance action-state transitions.
-3. Resolve Brick proposals, due direct-kill Bombs, new Bomb placements, Boat activations, and Wind targeting; batch Wind impulses.
+3. Resolve Brick proposals, due opponent-lethal and owner-launching Bombs, new Bomb placements, Boat activations, and Wind targeting; batch Wind impulses.
 4. Convert ordinary movement commands directly into current mass-sensitive velocity while retaining explicit external-action physics.
 5. Apply dodge, Brick mounting, stumble, and other active displacement.
 6. Integrate positions and velocities.

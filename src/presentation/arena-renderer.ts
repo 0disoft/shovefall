@@ -549,6 +549,85 @@ function removeStaleSprites<Key extends string | number>(
   }
 }
 
+function getTerrainTextureIndex(tile: TileState, supportedTileIds: ReadonlySet<string>): number {
+  if (tile.state === "Warning" || tile.state === "Collapsing") {
+    return 14;
+  }
+
+  const north = !supportedTileIds.has(`${tile.column}:${tile.row - 1}`);
+  const east = !supportedTileIds.has(`${tile.column + 1}:${tile.row}`);
+  const south = !supportedTileIds.has(`${tile.column}:${tile.row + 1}`);
+  const west = !supportedTileIds.has(`${tile.column - 1}:${tile.row}`);
+
+  if (north && east) return 8;
+  if (east && south) return 9;
+  if (south && west) return 10;
+  if (west && north) return 11;
+  if (north) return 4;
+  if (east) return 5;
+  if (south) return 6;
+  if (west) return 7;
+  return getTileTerrainVariant(tile);
+}
+
+function syncTerrainSprites(
+  layer: Container,
+  sprites: Map<string, Sprite>,
+  frame: RenderFrameV1,
+  projection: ArenaProjection,
+  assets: ArenaVisualAssets,
+): void {
+  const textures = assets.terrainTextures;
+
+  if (textures === null || textures.length < 16) {
+    removeStaleSprites(layer, sprites, new Set<string>());
+    return;
+  }
+
+  const supportedTileIds = new Set(
+    frame.tiles.filter(({ state }) => state !== "Void").map(({ tileId }) => tileId),
+  );
+  const visibleTileIds = new Set<string>();
+
+  for (const tile of frame.tiles) {
+    if (tile.state === "Void") {
+      continue;
+    }
+
+    const texture = textures[getTerrainTextureIndex(tile, supportedTileIds)];
+
+    if (texture === undefined) {
+      continue;
+    }
+
+    visibleTileIds.add(tile.tileId);
+    let sprite = sprites.get(tile.tileId);
+
+    if (sprite === undefined) {
+      sprite = new Sprite(texture);
+      sprite.anchor.set(0.5);
+      sprites.set(tile.tileId, sprite);
+      layer.addChild(sprite);
+    }
+
+    const x = projection.originX + tile.column * projection.pitch;
+    const y = projection.originY + tile.row * projection.depthPitch;
+    sprite.texture = texture;
+    sprite.position.set(
+      x + projection.tileWidth * 0.5,
+      y + (projection.tileDepth + projection.cliffDepth) * 0.5,
+    );
+    sprite.width = projection.tileWidth * 1.18;
+    sprite.height = (projection.tileDepth + projection.cliffDepth) * 1.25;
+    sprite.alpha = tile.state === "Collapsing" ? 0.86 : 1;
+    sprite.tint =
+      tile.state === "Warning" ? 0xffc66d : tile.state === "Collapsing" ? 0xff7a68 : 0xffffff;
+    sprite.zIndex = tile.row * 10_000 + tile.column;
+  }
+
+  removeStaleSprites(layer, sprites, visibleTileIds);
+}
+
 function syncItemSprites(
   layer: Container,
   sprites: Map<number, Sprite>,
@@ -1480,6 +1559,8 @@ export async function createArenaRenderer(
   host.dataset.visualAssets = "loading";
 
   const tiles = new Graphics();
+  const terrainSprites = new Container();
+  terrainSprites.sortableChildren = true;
   const artillery = new Graphics();
   const pirateShipSprites = new Container();
   const projectileSprites = new Container();
@@ -1494,6 +1575,7 @@ export async function createArenaRenderer(
   participantSprites.sortableChildren = true;
   application.stage.addChild(
     tiles,
+    terrainSprites,
     artillery,
     pirateShipSprites,
     projectileSprites,
@@ -1506,6 +1588,7 @@ export async function createArenaRenderer(
     artilleryLabels,
   );
   const itemSpritesById = new Map<number, Sprite>();
+  const terrainSpritesByTileId = new Map<string, Sprite>();
   const bombSpritesByKey = new Map<string, Sprite>();
   const soapSpritesByTileId = new Map<string, Sprite>();
   const pirateShipSpritesById = new Map<number, Sprite>();
@@ -1542,6 +1625,7 @@ export async function createArenaRenderer(
 
     for (const layer of [
       tiles,
+      terrainSprites,
       artillery,
       pirateShipSprites,
       projectileSprites,
@@ -1590,6 +1674,16 @@ export async function createArenaRenderer(
           !supportedTileIds.has(`${tile.column}:${tile.row - 1}`) ||
           !supportedTileIds.has(`${tile.column}:${tile.row + 1}`);
         drawTile(tiles, tile, projection, isShore);
+      }
+
+      if (visualAssets !== null) {
+        syncTerrainSprites(
+          terrainSprites,
+          terrainSpritesByTileId,
+          latestFrame,
+          projection,
+          visualAssets,
+        );
       }
 
       tileLayerDirty = false;
@@ -1767,15 +1861,17 @@ export async function createArenaRenderer(
       loadedAssets.lethalBoulderTexture,
       loadedAssets.impactExplosionTexture,
       loadedAssets.seawaterImpactTexture,
+      loadedAssets.terrainTextures,
     ].filter((asset) => asset !== null).length;
     host.dataset.visualAssets =
       loadedAssetCount === 0
         ? "procedural-fallback"
-        : loadedAssetCount === 7
+        : loadedAssetCount === 8
           ? "generated"
           : "partial";
 
     if (latestFrame !== undefined) {
+      tileLayerDirty = true;
       present();
     }
 

@@ -77,6 +77,10 @@ export const SIMULATION_TUNING = Object.freeze({
   bomb: Object.freeze({
     fuseTicks: 300,
     blastRadius: 3,
+    ownerBaseImpulse: 0.42,
+    ownerMaximumImpulse: 0.52,
+    ownerMinimumFalloff: 0.65,
+    ownerStumbleTicks: 42,
   }),
   soap: Object.freeze({
     minimumSpeed: 0.105,

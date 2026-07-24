@@ -13,6 +13,8 @@ const IMPACT_EXPLOSION_URL = new URL("../assets/generated/impact-explosion.png",
   .href;
 const SEAWATER_IMPACT_URL = new URL("../assets/generated/seawater-impact.png", import.meta.url)
   .href;
+const TERRAIN_ATLAS_URL = new URL("../assets/generated/island-terrain-atlas.png", import.meta.url)
+  .href;
 
 type AtlasFrame = readonly [x: number, y: number, width: number, height: number];
 const ATLAS_SOURCE_SCALE = 0.5;
@@ -48,6 +50,20 @@ const ITEM_ATLAS_FRAMES: Readonly<Record<ItemDefinitionId, AtlasFrame>> = Object
   "grappling-hook": Object.freeze([774, 560, 202, 174] as const),
 });
 
+const TERRAIN_ATLAS_FRAMES: readonly AtlasFrame[] = Object.freeze(
+  [65, 345, 620, 895].flatMap((y, row) =>
+    [55, 345, 615, 890].map(
+      (x, column) =>
+        Object.freeze([
+          x,
+          y,
+          [300, 290, 290, 300][column] ?? 290,
+          [280, 270, 280, 285][row] ?? 280,
+        ]),
+    ),
+  ),
+);
+
 export interface ArenaVisualAssets {
   readonly characterTextures: readonly Texture[] | null;
   readonly itemTextures: Readonly<Record<ItemDefinitionId, Texture>> | null;
@@ -56,20 +72,34 @@ export interface ArenaVisualAssets {
   readonly lethalBoulderTexture: Texture | null;
   readonly impactExplosionTexture: Texture | null;
   readonly seawaterImpactTexture: Texture | null;
+  readonly terrainTextures: readonly Texture[] | null;
 }
 
-function createAtlasTexture(atlas: Texture, frame: AtlasFrame, label: string): Texture {
+function createAtlasTexture(
+  atlas: Texture,
+  frame: AtlasFrame,
+  label: string,
+  sourceScale = ATLAS_SOURCE_SCALE,
+): Texture {
   const [x, y, width, height] = frame;
   return new Texture({
     source: atlas.source,
     frame: new Rectangle(
-      x * ATLAS_SOURCE_SCALE,
-      y * ATLAS_SOURCE_SCALE,
-      width * ATLAS_SOURCE_SCALE,
-      height * ATLAS_SOURCE_SCALE,
+      x * sourceScale,
+      y * sourceScale,
+      width * sourceScale,
+      height * sourceScale,
     ),
     label,
   });
+}
+
+function createTerrainTextures(atlas: Texture): readonly Texture[] {
+  return Object.freeze(
+    TERRAIN_ATLAS_FRAMES.map((frame, index) =>
+      createAtlasTexture(atlas, frame, `generated-terrain-${index + 1}`, 1),
+    ),
+  );
 }
 
 function createCharacterTextures(atlas: Texture): readonly Texture[] {
@@ -131,6 +161,7 @@ export async function loadArenaVisualAssets(): Promise<ArenaVisualAssets> {
     lethalBoulderTexture,
     impactExplosionTexture,
     seawaterImpactTexture,
+    terrainAtlas,
   ] = await Promise.all([
     loadOptionalTexture(CHARACTER_ATLAS_URL),
     loadOptionalTexture(ITEM_ATLAS_URL),
@@ -139,6 +170,7 @@ export async function loadArenaVisualAssets(): Promise<ArenaVisualAssets> {
     loadOptionalTexture(LETHAL_BOULDER_URL),
     loadOptionalTexture(IMPACT_EXPLOSION_URL),
     loadOptionalTexture(SEAWATER_IMPACT_URL),
+    loadOptionalTexture(TERRAIN_ATLAS_URL),
   ]);
 
   return Object.freeze({
@@ -149,5 +181,6 @@ export async function loadArenaVisualAssets(): Promise<ArenaVisualAssets> {
     lethalBoulderTexture,
     impactExplosionTexture,
     seawaterImpactTexture,
+    terrainTextures: terrainAtlas === null ? null : createTerrainTextures(terrainAtlas),
   });
 }

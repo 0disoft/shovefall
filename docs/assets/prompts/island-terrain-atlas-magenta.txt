@@ -1,0 +1,14 @@
+Use case: stylized-concept
+Asset type: production game terrain sprite atlas for a PixiJS 2D island arena
+Input image: use the supplied island terrain image only as a style and subject reference; do not preserve its checkerboard background.
+Primary request: create one clean 4-by-4 atlas of sixteen square isometric island terrain tiles viewed from a consistent elevated camera. Every cell must have exactly one centered tile at the same scale and footprint.
+Tile set, row by row:
+1) three grass variants, one sandy grass;
+2) north coast, east coast, south coast, west coast;
+3) northeast coast corner, southeast corner, southwest corner, northwest corner;
+4) shallow lake, deep lake, cracked warning ground, flooded/water tile.
+Style: polished hand-painted cute adventure game art, crisp dark earth sidewall, readable grass/sand/water materials, warm green island look.
+Scene/backdrop: perfectly flat uniform solid #ff00ff chroma-key background only.
+Composition: square 4x4 grid, equal cell spacing, generous padding, no tile overlaps, no labels, no separators.
+Constraints: all sixteen tiles share identical perspective, dimensions, lighting direction, edge thickness, and scale. Fully opaque tile artwork with crisp boundaries. The outer background must be exactly uniform #ff00ff with no shadows, gradients, texture, reflections, checkerboard, floor plane, glow, or lighting variation.
+Avoid: characters, items, ships, text, numbers, UI, cast shadows outside tile bounds, transparent-looking checkerboard, extra debris crossing cell boundaries, water splashes extending outside a tile.
