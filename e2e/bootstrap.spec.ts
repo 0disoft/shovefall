@@ -378,6 +378,11 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await expect
     .poll(async () => Number(await page.locator("#game-telemetry").getAttribute("data-tick")))
     .toBeGreaterThan(0);
+  await expect
+    .poll(async () =>
+      Number(await page.locator("#game-telemetry").getAttribute("data-backlog-ticks")),
+    )
+    .toBeLessThanOrEqual(8);
 
   await page.evaluate(() => window.dispatchEvent(new Event("blur")));
   await expect(page.getByText("일시 정지")).toBeVisible();

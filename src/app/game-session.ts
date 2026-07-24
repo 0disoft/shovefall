@@ -18,6 +18,8 @@ import type { ArenaRenderer } from "../presentation/arena-renderer";
 
 const FIXED_STEP_MILLISECONDS = 1_000 / FIXED_TICKS_PER_SECOND;
 const MAX_STEPS_PER_RENDER = 8;
+export const MAX_SIMULATION_BACKLOG_TICKS = MAX_STEPS_PER_RENDER * 2;
+const MAX_SIMULATION_BACKLOG_MILLISECONDS = FIXED_STEP_MILLISECONDS * MAX_SIMULATION_BACKLOG_TICKS;
 const HUMAN_ACTOR_ID = 1;
 const POST_HUMAN_ELIMINATION_RATE = 6;
 const COUNTDOWN_STEP_MILLISECONDS = 500;
@@ -63,6 +65,17 @@ export interface GameSession {
   ): void;
   stop(): void;
   destroy(): void;
+}
+
+export function accumulateSimulationTime(
+  currentMilliseconds: number,
+  elapsedMilliseconds: number,
+  simulationRate: number,
+): number {
+  return Math.min(
+    MAX_SIMULATION_BACKLOG_MILLISECONDS,
+    currentMilliseconds + Math.max(0, elapsedMilliseconds) * simulationRate,
+  );
 }
 
 export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHooks): GameSession {
@@ -144,9 +157,11 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
     if (previousTimestamp === undefined) {
       previousTimestamp = timestamp;
     } else {
-      accumulatorMilliseconds +=
-        Math.max(0, timestamp - previousTimestamp) *
-        (humanEliminated ? POST_HUMAN_ELIMINATION_RATE : 1);
+      accumulatorMilliseconds = accumulateSimulationTime(
+        accumulatorMilliseconds,
+        timestamp - previousTimestamp,
+        humanEliminated ? POST_HUMAN_ELIMINATION_RATE : 1,
+      );
       previousTimestamp = timestamp;
     }
 

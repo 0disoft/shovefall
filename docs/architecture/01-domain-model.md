@@ -110,6 +110,8 @@ Product `0.36.0` keeps simulation `18.0.0` and advances content to `12.0.0`. Bef
 
 Product `0.37.0`, simulation `19.0.0`, and content `13.0.0` replace Bomb-owner direct elimination with a deterministic owner-only launch and 42-tick stumble while preserving opponent direct elimination and same-tick action interruption. Replay remains v2 because no command or setup field changes, but the new outcome and action state change hashes and require regenerated fixtures. A sixteen-frame alpha terrain atlas is presentation-only: stable topology chooses deterministic interior, coast, and corner frames, dangerous tiles select the cracked frame, and the procedural layer remains beneath every sprite as the independent load failure fallback.
 
+The `0.37.0` browser scheduler caps accumulated wall-clock debt at sixteen fixed ticks before stepping. Time older than that bound is discarded instead of replayed, so slow rendering cannot create an unbounded catch-up loop or advance the match faster than the player can observe. This changes only real-time session scheduling; deterministic world steps, replay hashes, and report semantics remain unchanged.
+
 ## Version Ownership
 
 - Product version: `package.json` and `PRODUCT_VERSION`.
