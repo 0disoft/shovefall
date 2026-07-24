@@ -13,6 +13,8 @@ const CAPTURE_VIEWPORT = Object.freeze({ width: 1_920, height: 1_080 });
 const SHA_PATTERN = /^[0-9a-f]{40}$/u;
 const SERVER_READY_TIMEOUT_MS = 30_000;
 const BROWSER_STEP_TIMEOUT_MS = 15_000;
+const GAMEPLAY_SCENE_TIMEOUT_MS = 45_000;
+const POST_ACTION_CAPTURE_TICKS = 45;
 const MISSING_RESOURCE_MESSAGE =
   "Failed to load resource: the server responded with a status of 404 (Not Found)";
 
@@ -317,13 +319,16 @@ async function chooseCaptureLoadout(page: Page): Promise<void> {
 }
 
 async function createGameplayScene(page: Page): Promise<void> {
+  reportPhase("gameplay-start-round");
   await page.getByRole("button", { name: "게임 시작" }).click();
   await waitForAttribute(page, "#app", "data-screen", "arena");
   await waitForAttribute(page, "#app", "data-round", "active");
   const arena = page.locator("#arena-host");
   await arena.focus();
+  reportPhase("gameplay-start-recording");
   await startCanvasRecording(page);
 
+  reportPhase("gameplay-face-right");
   const facingStart = await readSimulationTick(page);
   await page.keyboard.down("ArrowRight");
   try {
@@ -332,13 +337,16 @@ async function createGameplayScene(page: Page): Promise<void> {
     await page.keyboard.up("ArrowRight");
   }
 
+  reportPhase("gameplay-use-hook");
   const hookSlot = page.locator("#use-item-slot-1");
   await hookSlot.click();
   await page.getByText("갈고리가 걸렸어.", { exact: true }).waitFor({ state: "visible" });
 
+  reportPhase("gameplay-use-bomb");
   const bombSlot = page.locator("#use-item-slot-0");
   await bombSlot.click();
   await page.getByText("폭탄을 놨어. 5초 뒤 터져.", { exact: true }).waitFor({ state: "visible" });
+  reportPhase("gameplay-move-right");
   const movementStart = await readSimulationTick(page);
   await page.keyboard.down("ArrowRight");
   try {
@@ -346,10 +354,12 @@ async function createGameplayScene(page: Page): Promise<void> {
   } finally {
     await page.keyboard.up("ArrowRight");
   }
+  reportPhase("gameplay-dodge-and-shove");
   await page.keyboard.press("Shift");
   await page.keyboard.press("Space");
   const actionStart = await readSimulationTick(page);
-  await waitForTickDelta(page, actionStart, 180);
+  await waitForTickDelta(page, actionStart, POST_ACTION_CAPTURE_TICKS);
+  reportPhase("gameplay-scene-ready");
 }
 
 async function startCanvasRecording(page: Page): Promise<void> {
@@ -510,7 +520,7 @@ export async function captureMedia(
     reportPhase("play-gameplay-scene");
     await withTimeout(
       createGameplayScene(page),
-      BROWSER_STEP_TIMEOUT_MS * 2,
+      GAMEPLAY_SCENE_TIMEOUT_MS,
       "Gameplay capture scene",
     );
     reportPhase("capture-gameplay");

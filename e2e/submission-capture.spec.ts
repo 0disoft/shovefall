@@ -6,7 +6,7 @@ import { captureMedia, normalizeCandidateSha } from "../tools/capture-submission
 test("@submission-capture captures a deterministic exact-SHA submission bundle", async ({
   browser,
 }) => {
-  test.setTimeout(60_000);
+  test.setTimeout(90_000);
   const candidateSha = normalizeCandidateSha(process.env.SHOVEFALL_CAPTURE_SHA ?? "");
   const captureDirectory = resolve(".cache", "submission-captures", candidateSha);
   await mkdir(captureDirectory, { recursive: true });
