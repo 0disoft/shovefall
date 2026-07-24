@@ -1,8 +1,8 @@
 # Static Release Procedure
 
-- Status: `0.35.0` local candidate validation in progress; `0.34.1` remains the newest accepted exact-SHA CI, Pages, public functional, and submission-capture proof
+- Status: `0.36.0` local implementation batch; grouped validation and hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.35.0`
+- Current product version: `0.36.0`
 - Validation source: [../../VALIDATION.md](../../VALIDATION.md)
 - Submission package: [../product/05-submission-package.md](../product/05-submission-package.md)
 - Asset ledger: [../assets/README.md](../assets/README.md)
@@ -43,7 +43,9 @@ Product `0.34.1` removes the local tuning lab and `DEBUG` marker from production
 
 Product `0.35.0`, simulation `18.0.0`, and content `11.0.0` replace delayed locomotion and protected-core pressure with immediate movement, stronger hand-shove commitment, saved automatic growth planning, Brick dodge mounting, direct-kill Bombs, exact-ammunition pirate cannon collapse, and lethal land-preserving rock pressure. Reports advance to v5, replay fixtures are regenerated under the new simulation envelope, and replay remains v2. Unit/scenario validation passes 182 tests; browser, deterministic audit, performance, capture, hosted CI, Pages, and public functional evidence must be refreshed before promotion.
 
-The deployed `0.34.1` runtime is still the newest exact-SHA hosted, Pages, public functional, and submission-capture proof; it does not prove `0.35.0`. The browser profile rejects a host above its five-sample CPU qualification before Chrome starts; the first qualified attempt was rejected at `63.5%` average and `87.4%` maximum host CPU. Contest-release promotion still requires a passing host-qualified production-browser profile and human playtest. Active-item bot use and human balance remain pending; deterministic scenario tests prove rules, not human balance.
+Product `0.36.0` keeps simulation `18.0.0` and advances content to `12.0.0`. Hard bots may request charged items through the existing command contract after delayed perception, context-specific utility checks, and a deterministic decision cooldown. Generated character motion, placed Bomb and Soap props, Boat presentation, and bounded camera kick remain presentation-only. Formatting, lint, and TypeScript checks pass for the implementation batch; unit, browser, audit, profile, capture, hosted CI, Pages, and public functional evidence are intentionally grouped for the next validation batch.
+
+Older exact-SHA hosted, Pages, public functional, and submission-capture evidence does not prove `0.36.0`. The browser profile rejects a host above its five-sample CPU qualification before Chrome starts; the first qualified attempt was rejected at `63.5%` average and `87.4%` maximum host CPU. Contest-release promotion still requires grouped checks, a passing host-qualified production-browser profile, active-item balance evidence, and human playtest.
 
 ## Release Types
 

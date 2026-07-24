@@ -29,6 +29,7 @@ people, then publishing the exact candidate without burying combat telegraphs.
 - [x] Iron Boots, Feather, and Spring Glove with a bounded 3/2/1 outer-ring placement preference.
 - [x] Human Wind Blast, Brick Bag, Boat, Bomb, Soap, and static-anchor Grappling Hook activation through the shared two-slot input contract.
 - [x] Immediate locomotion, saved automatic growth planning, Brick dodge mounting, direct-kill Bombs, exact-ammunition pirate cannon collapse, and protected-core lethal rocks in the local `0.35.0` ruleset.
+- [x] Hard bots spend picked-up charged items through delayed perception and bounded deterministic utility rules in `0.36.0`.
 - [x] Sharded deterministic `0.34.0` round, mass, item-grant, and collapse-pacing evidence with no sampled time-limit draws.
 - [x] Widened-island fixed-50 headless scale evidence at simulation p95 `6.823 ms` with no 100 ms step.
 - [ ] Host-qualified production-Chrome performance evidence. The configured five-sample preflight blocks contaminated runs; two independent `0.34.0` attempts rejected `63.5 / 64.1%` average and `87.4 / 84.3%` maximum host CPU before Chrome started.
@@ -90,7 +91,7 @@ Exit conditions:
 - Screenshot, short gameplay capture, tool list, asset provenance, and development notes are ready
   in [05-submission-package.md](05-submission-package.md) for the contest post.
 
-Current status: `IN_PROGRESS`. Product `0.35.0`, simulation `18.0.0`, and content `11.0.0` are the current local rules. The current local production artifact passes 184 tests and thirteen Chrome paths; seven accepted generated assets total about 1.33 MB after downsampling and retain independent procedural fallbacks. Product `0.34.1` runtime SHA `354a602392cccb453ebb1a4ac1fd52c5a39fac6c` remains the newest accepted hosted, Pages, public functional, and submission-capture proof. [CI run 30061893140](https://github.com/0disoft/shovefall/actions/runs/30061893140) uploaded and deployed that older artifact. That evidence does not transfer to `0.35.0`; fresh exact-SHA capture, hosted and public proof, host-qualified browser performance, remaining terrain/action/prop art, named physical-browser coverage, and human-play evidence remain open.
+Current status: `IN_PROGRESS`. Product `0.36.0`, simulation `18.0.0`, and content `12.0.0` are the current local rules. Seven accepted generated assets total about 1.33 MB after downsampling and retain independent procedural fallbacks; Bomb, Soap, and Boat props now reuse the accepted item atlas. Product `0.35.0` passed its local 184-test and thirteen-path production browser batch before the bot-item policy changed. That evidence does not transfer to `0.36.0`; grouped local validation, exact-SHA capture, hosted CI, Pages, cache-busted public proof, active-item balance, terrain/action art, named physical-browser coverage, and human-play evidence remain open.
 
 ## Deferred Beyond the Submission
 

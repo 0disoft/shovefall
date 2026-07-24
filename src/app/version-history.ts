@@ -9,6 +9,13 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.36.0",
+    title: "컴퓨터도 아이템을 쓴다요 ㅇㅅㅇ",
+    reason: "아이템을 주워 놓고 들고만 있으니 49명이 있어도 사람만 제대로 싸웠다요.",
+    change:
+      "봇도 장풍과 벽돌, 배, 폭탄, 비누, 갈고리를 상황에 맞춰 쓴다요. 폭탄과 배 같은 소품도 전장에서 바로 보인다요.",
+  }),
+  Object.freeze({
     version: "0.35.0",
     title: "대포가 섬을 삼킨다요 ㅇㅅㅇ",
     reason: "방향키와 밀치기만 연타하니 싸움이 너무 늘어졌다요.",

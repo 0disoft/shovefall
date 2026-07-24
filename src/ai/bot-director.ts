@@ -4,6 +4,8 @@ import {
   type ActorCommandV1,
   type ActorId,
   type BotDifficulty,
+  type InventorySlotIndex,
+  type ItemDefinitionId,
   type RenderFrameV1,
   type RenderItemV1,
   type RenderParticipantV1,
@@ -49,6 +51,7 @@ interface BotMemory {
   readonly personality: BotPersonalityKind;
   readonly jitter: XorShift32;
   intent: Vector2;
+  lastItemUseTick: number;
   nextDecisionTick: number;
 }
 
@@ -63,6 +66,7 @@ interface BotDecision {
   readonly move: Vector2;
   readonly shovePressed: boolean;
   readonly dodgePressed: boolean;
+  readonly useItemSlot: InventorySlotIndex | null;
 }
 
 const DEFAULT_REACTION_DELAY_TICKS = 10;
@@ -89,6 +93,17 @@ const BOT_DIFFICULTY_PROFILES: Readonly<Record<BotDifficulty, BotDifficultyProfi
 const EDGE_EMERGENCY_DISTANCE = 0.82;
 const THREAT_DISTANCE = 1.65;
 const THREAT_FACING_DOT = 0.55;
+const ACTIVE_ITEM_DECISION_COOLDOWN_TICKS = 75;
+
+const ACTIVE_ITEM_IDS = Object.freeze([
+  "wind-blast",
+  "brick-bag",
+  "boat",
+  "bomb",
+  "soap",
+  "grappling-hook",
+] as const satisfies readonly ItemDefinitionId[]);
+type ActiveItemDefinitionId = (typeof ACTIVE_ITEM_IDS)[number];
 
 function assertPositiveInteger(value: number, name: string, allowZero = false): void {
   const minimum = allowZero ? 0 : 1;
@@ -270,6 +285,42 @@ function isThreatening(candidate: RenderParticipantV1, self: RenderParticipantV1
   );
 }
 
+function getChargedItemSlot(
+  participant: RenderParticipantV1,
+  definitionId: ActiveItemDefinitionId,
+): InventorySlotIndex | null {
+  const slot = participant.inventory.find(
+    (candidate) => candidate.definitionId === definitionId && (candidate.charges ?? 0) > 0,
+  );
+  return slot?.slotIndex ?? null;
+}
+
+function createDecision(
+  move: Vector2,
+  shovePressed = false,
+  dodgePressed = false,
+  useItemSlot: InventorySlotIndex | null = null,
+): BotDecision {
+  return Object.freeze({ move, shovePressed, dodgePressed, useItemSlot });
+}
+
+function chooseEmergencyItemSlot(
+  participant: RenderParticipantV1,
+  edgeDistance: number,
+): InventorySlotIndex | null {
+  if (participant.unsupportedTicks > 0) {
+    return (
+      getChargedItemSlot(participant, "boat") ?? getChargedItemSlot(participant, "grappling-hook")
+    );
+  }
+
+  if (edgeDistance < EDGE_EMERGENCY_DISTANCE) {
+    return getChargedItemSlot(participant, "grappling-hook");
+  }
+
+  return null;
+}
+
 export class BotDirector {
   readonly #humanActorId: ActorId | null;
   readonly #reactionDelayTicks: number;
@@ -356,6 +407,7 @@ export class BotDirector {
       const perceived = perceivedActors.get(current.actorId) ?? current;
       let shovePressed = false;
       let dodgePressed = false;
+      let useItemSlot: InventorySlotIndex | null = null;
       const upgradeStat = this.#chooseUpgrade(memory.personality, current);
       const edgeDistance = getEdgeDistance(current, bounds);
       const tileEscape = getImmediateTileEscape(currentFrame, current, bounds);
@@ -363,6 +415,15 @@ export class BotDirector {
       if (tileEscape !== undefined || edgeDistance < EDGE_EMERGENCY_DISTANCE) {
         memory.intent =
           tileEscape ?? normalizeVector(subtractVectors(bounds.center, current.position));
+        useItemSlot =
+          current.action === "Ready" &&
+          tick - memory.lastItemUseTick >= Math.min(20, ACTIVE_ITEM_DECISION_COOLDOWN_TICKS)
+            ? chooseEmergencyItemSlot(current, edgeDistance)
+            : null;
+
+        if (useItemSlot !== null) {
+          memory.lastItemUseTick = tick;
+        }
         memory.nextDecisionTick = Math.min(memory.nextDecisionTick, tick + 1);
       } else if (tick >= memory.nextDecisionTick) {
         const decision = this.#decide(
@@ -370,13 +431,18 @@ export class BotDirector {
           perceived,
           current,
           perceivedSpatialHash,
-          perceptionFrame.items,
+          perceptionFrame,
           bounds,
           memory,
         );
         memory.intent = decision.move;
         shovePressed = decision.shovePressed;
         dodgePressed = decision.dodgePressed;
+        useItemSlot = decision.useItemSlot;
+
+        if (useItemSlot !== null) {
+          memory.lastItemUseTick = tick;
+        }
         memory.nextDecisionTick = tick + this.#decisionIntervalTicks;
       }
 
@@ -386,6 +452,7 @@ export class BotDirector {
           move: memory.intent,
           shovePressed,
           dodgePressed,
+          useItemSlot,
           upgradeStat,
         }),
       );
@@ -411,6 +478,7 @@ export class BotDirector {
       personality,
       jitter: this.#streams.get(`bot-jitter:${actorId}`),
       intent: ZERO_VECTOR,
+      lastItemUseTick: Number.NEGATIVE_INFINITY,
       nextDecisionTick: (actorId * 3) % this.#decisionIntervalTicks,
     };
     this.#memories.set(actorId, memory);
@@ -456,12 +524,16 @@ export class BotDirector {
     perceived: RenderParticipantV1,
     current: RenderParticipantV1,
     perceivedSpatialHash: ParticipantSpatialHash<RenderParticipantV1>,
-    perceivedItems: readonly RenderItemV1[],
+    perceptionFrame: RenderFrameV1,
     bounds: ArenaBounds,
     memory: BotMemory,
   ): BotDecision {
     const personality = BOT_PERSONALITIES[memory.personality];
-    const perceivedParticipants = perceivedSpatialHash.queryNearby(perceived.position, 2);
+    const perceivedItems: readonly RenderItemV1[] = perceptionFrame.items;
+    const perceivedParticipants = perceivedSpatialHash.queryNearby(
+      perceived.position,
+      SIMULATION_TUNING.windBlast.range,
+    );
     const threats = perceivedParticipants
       .filter(
         (candidate) =>
@@ -478,11 +550,11 @@ export class BotDirector {
     const threat = threats[0];
 
     if (threat !== undefined && tick >= current.dodgeReadyTick && current.action === "Ready") {
-      return Object.freeze({
-        move: getPerpendicularTowardCenter(threat.facing, current.position, bounds.center),
-        shovePressed: false,
-        dodgePressed: true,
-      });
+      return createDecision(
+        getPerpendicularTowardCenter(threat.facing, current.position, bounds.center),
+        false,
+        true,
+      );
     }
 
     let nearestItem: { item: RenderItemV1; distance: number } | undefined;
@@ -504,11 +576,9 @@ export class BotDirector {
       nearestItem.distance <= 3.5 * personality.itemInterestWeight &&
       current.action === "Ready"
     ) {
-      return Object.freeze({
-        move: normalizeVector(subtractVectors(nearestItem.item.position, current.position)),
-        shovePressed: false,
-        dodgePressed: false,
-      });
+      return createDecision(
+        normalizeVector(subtractVectors(nearestItem.item.position, current.position)),
+      );
     }
 
     const nearby = perceivedParticipants
@@ -547,38 +617,105 @@ export class BotDirector {
     }
 
     if (bestTarget === undefined) {
-      return Object.freeze({
-        move: normalizeVector(subtractVectors(bounds.center, current.position)),
-        shovePressed: false,
-        dodgePressed: false,
-      });
+      return createDecision(normalizeVector(subtractVectors(bounds.center, current.position)));
     }
 
     const direct = normalizeVector(subtractVectors(bestTarget.position, perceived.position));
     const jitter = (memory.jitter.nextFloat() * 2 - 1) * personality.jitterRadians;
     const move = normalizeVector(rotateVector(direct, jitter));
     const safetyPressure = Math.max(0, 1.45 - getEdgeDistance(current, bounds));
+    const canUseActiveItem =
+      current.action === "Ready" &&
+      tick - memory.lastItemUseTick >= ACTIVE_ITEM_DECISION_COOLDOWN_TICKS;
+
+    if (canUseActiveItem) {
+      const closeOpponents = nearby.filter(
+        ({ distance }) => distance <= SIMULATION_TUNING.bomb.blastRadius * 0.9,
+      );
+      const nearbyBomb = perceptionFrame.bombs.some(
+        (bomb) =>
+          vectorLength(subtractVectors(bomb.position, perceived.position)) <=
+          SIMULATION_TUNING.bomb.blastRadius * 2,
+      );
+      const bombSlot = getChargedItemSlot(current, "bomb");
+
+      if (
+        bombSlot !== null &&
+        closeOpponents.length >= 3 &&
+        !nearbyBomb &&
+        getEdgeDistance(current, bounds) >= 3.25 &&
+        (memory.personality === "Aggressor" || memory.personality === "Disruptor")
+      ) {
+        const crowdCenter = closeOpponents.reduce(
+          (sum, { candidate }) => addVectors(sum, candidate.position),
+          ZERO_VECTOR,
+        );
+        const average = scaleVector(crowdCenter, 1 / closeOpponents.length);
+        return createDecision(
+          normalizeVector(subtractVectors(current.position, average)),
+          false,
+          false,
+          bombSlot,
+        );
+      }
+
+      const windBlastSlot = getChargedItemSlot(current, "wind-blast");
+
+      if (
+        windBlastSlot !== null &&
+        bestDistance >= 1.1 &&
+        bestDistance <= SIMULATION_TUNING.windBlast.range &&
+        getEdgeDistance(bestTarget, bounds) <= 3
+      ) {
+        return createDecision(direct, false, false, windBlastSlot);
+      }
+
+      const brickBagSlot = getChargedItemSlot(current, "brick-bag");
+
+      if (
+        brickBagSlot !== null &&
+        threat !== undefined &&
+        bestDistance <= 1.8 &&
+        getEdgeDistance(current, bounds) <= 2.5
+      ) {
+        return createDecision(direct, false, false, brickBagSlot);
+      }
+
+      const soapSlot = getChargedItemSlot(current, "soap");
+
+      if (
+        soapSlot !== null &&
+        bestDistance <= 1.3 &&
+        (threat !== undefined ||
+          memory.personality === "Survivor" ||
+          memory.personality === "Opportunist")
+      ) {
+        return createDecision(
+          normalizeVector(subtractVectors(bounds.center, current.position)),
+          false,
+          false,
+          soapSlot,
+        );
+      }
+    }
 
     if (safetyPressure * personality.safetyWeight > 1) {
-      return Object.freeze({
-        move: normalizeVector(
+      return createDecision(
+        normalizeVector(
           addVectors(
             scaleVector(move, 0.35),
             scaleVector(normalizeVector(subtractVectors(bounds.center, current.position)), 0.65),
           ),
         ),
-        shovePressed: false,
-        dodgePressed: false,
-      });
+      );
     }
 
-    return Object.freeze({
+    return createDecision(
       move,
-      shovePressed:
-        current.action === "Ready" &&
+      current.action === "Ready" &&
         tick >= current.shoveReadyTick &&
         bestDistance <= personality.shoveDistance,
-      dodgePressed: false,
-    });
+      false,
+    );
   }
 }

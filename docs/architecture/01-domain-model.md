@@ -106,6 +106,8 @@ Product `0.34.1` changes only the browser presentation envelope. The debug tunin
 
 Product `0.35.0`, simulation `18.0.0`, and content `11.0.0` add direct locomotion, the automatic growth-plan application boundary, Brick dodge mounting, direct Bomb elimination, exact-ammunition cannon collapse, and protected-core rock artillery. The old sudden-death pulse module and system stage are removed. Artillery state, RNG, events, altered action timing, direct elimination, and system order change hashes, so checked-in replay fixtures are regenerated. Replay remains v2 because setup plus explicit commands still reproduce a round; local playtest reports advance to v5 to include the saved upgrade plan.
 
+Product `0.36.0` keeps simulation `18.0.0` and advances content to `12.0.0`. The bot director may populate the existing `useItemSlot` command field after delayed perception and bounded utility checks; it receives no private simulation state and active items still resolve through the same actor-ID-ordered simulation systems. Bot memory owns only deterministic intent, decision timing, personality jitter, and the last requested item-use tick. Presentation-only prop sprites, action deformation, and camera kick do not enter snapshots or replay hashes.
+
 ## Version Ownership
 
 - Product version: `package.json` and `PRODUCT_VERSION`.

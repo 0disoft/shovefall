@@ -1,8 +1,8 @@
 {
   "formatVersion": 2,
-  "productVersion": "0.35.0",
+  "productVersion": "0.36.0",
   "simulationVersion": "18.0.0",
-  "contentVersion": "11.0.0",
+  "contentVersion": "12.0.0",
   "buildId": "fixture-v4",
   "config": {
     "configVersion": 1,
@@ -23,7 +23,10 @@
   "humanActorId": 1,
   "humanSetup": {
     "baseMassFactor": 1,
-    "startingItems": ["wind-blast", "iron-boots"]
+    "startingItems": [
+      "wind-blast",
+      "iron-boots"
+    ]
   },
   "endTick": 180,
   "commands": [
