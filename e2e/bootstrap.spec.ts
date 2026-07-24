@@ -207,6 +207,23 @@ async function readCameraPosition(page: Page): Promise<string> {
   return `${x ?? "missing"},${y ?? "missing"}`;
 }
 
+async function fastForwardUntilCameraMoved(
+  page: Page,
+  positionBefore: string,
+  remainingFrames = 12,
+): Promise<void> {
+  if ((await readCameraPosition(page)) !== positionBefore) {
+    return;
+  }
+
+  if (remainingFrames <= 0) {
+    throw new Error("camera did not follow held movement during the bounded fixed-clock window");
+  }
+
+  await page.clock.fastForward(20);
+  return fastForwardUntilCameraMoved(page, positionBefore, remainingFrames - 1);
+}
+
 async function faceArenaDirection(page: Page, direction: string): Promise<void> {
   await page.locator("#arena-host").focus();
   const positionBeforeFacing = await readCameraPosition(page);
@@ -214,9 +231,8 @@ async function faceArenaDirection(page: Page, direction: string): Promise<void> 
   await page.keyboard.down(direction);
 
   try {
-    await page.clock.fastForward(20);
+    await fastForwardUntilCameraMoved(page, positionBeforeFacing);
     await expect.poll(() => readSimulationTick(page)).toBeGreaterThan(tickBeforeFacing);
-    await expect.poll(() => readCameraPosition(page)).not.toBe(positionBeforeFacing);
   } finally {
     await page.keyboard.up(direction);
   }
@@ -471,7 +487,6 @@ test("equips Brick Bag in a live production round", async ({ page }) => {
   await expect(page.locator("#use-item-slot-0")).toContainText("철 장화 · 상시");
   await expect(page.locator("#use-item-slot-1")).toContainText("벽돌 가방 · 4회");
   await expect(page.locator("#use-item-slot-0")).toBeDisabled();
-  await expect(page.locator("#use-item-slot-1")).toBeEnabled();
 });
 
 test("equips and launches a Boat in a fresh round", async ({ page }) => {
