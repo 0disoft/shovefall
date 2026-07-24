@@ -30,7 +30,7 @@ people, then publishing the exact candidate without burying combat telegraphs.
 - [x] Human Wind Blast, Brick Bag, Boat, Bomb, Soap, and static-anchor Grappling Hook activation through the shared two-slot input contract.
 - [x] Sharded deterministic `0.34.0` round, mass, item-grant, and collapse-pacing evidence with no sampled time-limit draws.
 - [x] Widened-island fixed-50 headless scale evidence at simulation p95 `6.823 ms` with no 100 ms step.
-- [ ] Uncontended production-Chrome performance evidence; preflight host CPU was too contended to produce an admissible `0.33.0` sample.
+- [ ] Host-qualified production-Chrome performance evidence. The configured five-sample preflight now blocks contaminated runs; its first `0.34.0` attempt rejected `63.5%` average and `87.4%` maximum host CPU before Chrome started.
 - [x] Local aggregate validation and thirteen production-artifact Chrome paths on `0.34.0`.
 - [x] Exact-SHA hosted validation, tested-artifact Pages deployment, and cache-busted public 50-participant WebGL smoke on `0.34.0`.
 
@@ -88,7 +88,7 @@ Exit conditions:
 - Screenshot, short gameplay capture, tool list, asset provenance, and development notes are ready
   in [05-submission-package.md](05-submission-package.md) for the contest post.
 
-Current status: `IN_PROGRESS`. Product `0.34.0` SHA `bd34d78fe9f80dd091c1df1725cfa07d88ab4860` is the newest accepted hosted, Pages, and public functional candidate with sharded deterministic balance evidence. Uncontended browser performance, named physical-browser coverage, final captures, and human-play evidence remain open.
+Current status: `IN_PROGRESS`. Product `0.34.0` runtime SHA `c0ddda93e1d75520909c79888c342f4b57747d7f` is the newest accepted hosted, Pages, and public functional candidate with sharded deterministic balance evidence. [CI run 30055148110](https://github.com/0disoft/shovefall/actions/runs/30055148110) passed all 173 tests and thirteen production Chrome paths before deploying the tested artifact. Host-qualified browser performance, named physical-browser coverage, final captures, and human-play evidence remain open.
 
 ## Deferred Beyond the Submission
 

@@ -1,8 +1,14 @@
 # Performance Budget
 
-- Status: Budgets accepted; `0.33.0` widened-island headless result accepted and uncontended browser baseline pending
+- Status: Budgets accepted; `0.34.0` fixed-50 headless result accepted and host-qualified browser baseline pending
 - Owner: Repository owner
 - Source of truth: `docs/product/02-spec.md` and this document
+
+## Product 0.34.0 Local Result
+
+The production-browser budget remains frame p95 at most `25 ms`, delivered ticks at least `45` per requested simulation second, maximum backlog eight ticks, no accelerated simulation rate, at most one frame above 100 ms per case, effective DPR at most 1 for the fixed-50 workload, and at most 15 MiB forced-GC heap growth after twenty restarts. The command now admits a run only after five 500 ms total-host-CPU samples stay at or below `35%` average and `65%` maximum.
+
+A preflight-less observation reported `18.3 ms` frame p95 for both Brick/Bomb and Hook/Bomb, zero long frames, zero backlog, `61.44 / 61.10` delivered ticks, and a `2,825,092`-byte restart heap delta. It is retained as an unqualified observation, not a pass. The first run under the new command rejected `63.5%` average and `87.4%` maximum host CPU before starting Chrome, so no host-qualified `0.34.0` browser pass is claimed. The fixed limits remain unchanged.
 
 ## Product 0.33.0 Local Result
 

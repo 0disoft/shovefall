@@ -97,6 +97,8 @@ The widened-island candidate completed [CI run 30043768628](https://github.com/0
 
 The protected-core pressure candidate completed [CI run 30052278919](https://github.com/0disoft/shovefall/actions/runs/30052278919) for exact SHA `bd34d78fe9f80dd091c1df1725cfa07d88ab4860`. Merge checks, all thirteen production Chrome paths, Pages configuration, tested-artifact upload, and the dependent Pages deployment succeeded. A fresh cache-busted public session confirmed the `v0.34.0` menu, an active 50-participant Hard-AI WebGL arena, changing survivor state, and no browser warnings or errors.
 
+The current `0.34.0` runtime candidate completed [CI run 30055148110](https://github.com/0disoft/shovefall/actions/runs/30055148110) for exact SHA `c0ddda93e1d75520909c79888c342f4b57747d7f`. `Validate` passed all 173 tests and thirteen production Chrome paths, uploaded the exact tested artifact, and the dependent Pages job deployed it. A fresh cache-busted public session separately confirmed the menu, active fixed-50 Hard-AI WebGL arena, changing tick and survivor state, one canvas, and no browser warnings or errors.
+
 ## Owners and Failure Handling
 
 - Primary owner: Repository owner
@@ -109,7 +111,7 @@ Dependency or action download failure is infrastructure evidence, not a source f
 
 - Required validation names: `check` and `smoke-dist`
 - Public URL: `https://0disoft.github.io/shovefall/`
-- Release blocker status: Hosted validation, Pages deployment, and public version/50-participant arena smoke are green for exact SHA `bd34d78fe9f80dd091c1df1725cfa07d88ab4860`; every later runtime or release-candidate change requires its own exact-SHA run, successful deploy job, and URL smoke.
+- Release blocker status: Hosted validation, Pages deployment, and public version/50-participant arena smoke are green for exact runtime SHA `c0ddda93e1d75520909c79888c342f4b57747d7f`; every later runtime or release-candidate change requires its own exact-SHA run, successful deploy job, and URL smoke.
 - Remaining operational risk: Branch protection, real merged-contributor Clarissimi staging and
   promotion, runner-image Chrome drift, broader physical-device coverage, cross-browser coverage,
   and human playtest remain unproven until separately observed.

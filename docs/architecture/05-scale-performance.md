@@ -1,13 +1,21 @@
 # Scale and Performance
 
-- Status: `0.33.0` widened-island headless baseline accepted; uncontended production Chrome, physical, and cross-browser evidence pending
+- Status: `0.34.0` fixed-50 headless baseline accepted; host-qualified production Chrome, physical, and cross-browser evidence pending
 - Owner: Repository owner
+
+## 0.34.0 Host-qualified Browser Profile
+
+The production-Chrome command now builds first and then samples aggregate host CPU five times at 500 ms intervals. Chrome starts only when average host CPU is at most `35%` and no sample exceeds `65%`. A rejected preflight exits before the browser workload and is environment evidence, not a product-performance failure. This makes host qualification part of the repeatable command instead of a manually remembered release note.
+
+One earlier `0.34.0` observation ran before that gate existed. Brick/Bomb and Grappling-Hook/Bomb both reported frame p95 `18.3 ms`, zero frames above 100 ms, zero backlog, effective DPR 1, and `61.44 / 61.10` delivered ticks per requested simulation second; their maximum frames were `35.7 / 18.8 ms`. Twenty immediate restarts left a `2,825,092`-byte forced-GC heap delta. These numbers show no product symptom but are not accepted release evidence because the command did not prove host load first.
+
+The first qualified attempt then rejected host samples `60.9 / 87.4 / 80.6 / 48.6 / 39.8%`, averaging `63.5%` with an `87.4%` maximum, before Chrome launched. The fixed `25 ms` frame p95, eight-tick backlog, 45 delivered-tick, one-long-frame, DPR, and 15 MiB restart-heap gates remain unchanged. A clean qualified rerun is still required; physical-device, cross-browser, and field performance remain separate evidence boundaries.
 
 ## 0.33.0 Widened Island Profile
 
 On 2026-07-24, the 48×40 public island with exactly eight 6–10-tile lakes completed the 7,200-tick fixed-50 workload in `69,437.294 ms`, or `1.73×` real time. AI p95 was `15.425 ms` with a `35.067 ms` maximum, simulation p95 was `6.823 ms` with a `51.648 ms` maximum, the spatial candidate/full-pair ratio was `0.1024`, and no combined step exceeded 100 ms. The run observed one Brick wall, two simultaneous Bomb detonations, six Soap triggers, and four Grappling Hook hits. The `23,898,755`-byte heap delta remains observational because the harness does not force garbage collection.
 
-This accepts the unchanged `10 ms` simulation p95 gate but not browser performance. A five-sample preflight before the browser harness observed total host CPU between `27.1%` and `96.4%`, averaging `67.6%`; the run was skipped rather than laundering another host-contended sample into release evidence. The previous `0.32.0` Chrome rejection below remains historical and an uncontended `0.33.0` browser run is still required.
+This accepts the unchanged `10 ms` simulation p95 gate but not browser performance. A five-sample preflight before the browser harness observed total host CPU between `27.1%` and `96.4%`, averaging `67.6%`; the run was skipped rather than laundering another host-contended sample into release evidence. The previous `0.32.0` Chrome rejection below remains historical; the current qualified-run requirement is owned by the `0.34.0` section above.
 
 ## 0.32.0 Grappling Hook Profile
 
