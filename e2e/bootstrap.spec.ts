@@ -437,14 +437,6 @@ test("equips Brick Bag in a live production round", async ({ page }) => {
   await saveSettings(page);
   await startGame(page);
   await expect(page.locator("#app")).toHaveAttribute("data-round", "active", { timeout: 5_000 });
-  await expect(page.locator("#stat-status")).toBeVisible();
-  await expect(page.locator("#next-upgrade-value")).toHaveText("힘");
-  await expect(page.locator("#shove-status-value")).toContainText("Space · 밀치기");
-  await expect(page.locator("#dodge-status-value")).toContainText("Shift · 회피");
-  await expect(page.locator("#use-item-slot-0")).toContainText("철 장화 · 상시");
-  await expect(page.locator("#use-item-slot-1")).toContainText("벽돌 가방 · 4회");
-  await expect(page.locator("#use-item-slot-0")).toBeDisabled();
-  await expect(page.locator("#use-item-slot-1")).toBeEnabled();
   const telemetry = page.locator("#game-telemetry");
   const arena = page.locator("#arena-host");
   await expect
@@ -461,6 +453,14 @@ test("equips Brick Bag in a live production round", async ({ page }) => {
       { timeout: 15_000 },
     )
     .toMatch(/ShoveWindup|ShoveActive|ShoveRecovery/u);
+  await expect(page.locator("#stat-status")).toBeVisible();
+  await expect(page.locator("#next-upgrade-value")).toHaveText("힘");
+  await expect(page.locator("#shove-status-value")).toContainText("Space · 밀치기");
+  await expect(page.locator("#dodge-status-value")).toContainText("Shift · 회피");
+  await expect(page.locator("#use-item-slot-0")).toContainText("철 장화 · 상시");
+  await expect(page.locator("#use-item-slot-1")).toContainText("벽돌 가방 · 4회");
+  await expect(page.locator("#use-item-slot-0")).toBeDisabled();
+  await expect(page.locator("#use-item-slot-1")).toBeEnabled();
 });
 
 test("equips and launches a Boat in a fresh round", async ({ page }) => {
