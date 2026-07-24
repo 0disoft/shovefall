@@ -12,8 +12,8 @@ const CAPTURE_ORIGIN = `http://127.0.0.1:${CAPTURE_PORT}`;
 const CAPTURE_VIEWPORT = Object.freeze({ width: 1_920, height: 1_080 });
 const SHA_PATTERN = /^[0-9a-f]{40}$/u;
 const SERVER_READY_TIMEOUT_MS = 30_000;
-const BROWSER_STEP_TIMEOUT_MS = 15_000;
-const GAMEPLAY_SCENE_TIMEOUT_MS = 45_000;
+const BROWSER_STEP_TIMEOUT_MS = 20_000;
+const GAMEPLAY_SCENE_TIMEOUT_MS = 75_000;
 const POST_ACTION_CAPTURE_TICKS = 45;
 const GRAPPLING_CAPTURE_DIRECTIONS = Object.freeze([
   "ArrowRight",
@@ -318,7 +318,7 @@ async function chooseCaptureLoadout(page: Page): Promise<void> {
   await page.locator('input[name="startingItem"][value="spring-glove"]').uncheck();
   await page.locator('input[name="startingItem"][value="bomb"]').check();
   await page.locator('input[name="startingItem"][value="grappling-hook"]').check();
-  await page.locator("#starting-weight").fill("75");
+  await page.locator("#starting-weight").fill("100");
   await page.locator('input[name="collapseSpeed"][value="normal"]').check();
   await page.getByRole("button", { name: "설정 저장" }).click();
   await waitForAttribute(page, "#app", "data-screen", "menu");
@@ -335,6 +335,22 @@ async function faceDirectionForCapture(page: Page, direction: string): Promise<v
   }
 }
 
+async function waitForInventorySlotReady(page: Page, selector: string): Promise<void> {
+  await page.waitForFunction(
+    ({ slotSelector }) => {
+      const slot = document.querySelector(slotSelector);
+      const telemetry = document.querySelector("#game-telemetry");
+      return (
+        slot instanceof HTMLButtonElement &&
+        !slot.disabled &&
+        telemetry?.getAttribute("data-action") === "Ready"
+      );
+    },
+    { slotSelector: selector },
+    { timeout: BROWSER_STEP_TIMEOUT_MS },
+  );
+}
+
 async function useGrapplingHookForCapture(page: Page, directionIndex = 0): Promise<void> {
   const hookSlot = page.locator("#use-item-slot-1");
   const direction = GRAPPLING_CAPTURE_DIRECTIONS[directionIndex];
@@ -344,7 +360,9 @@ async function useGrapplingHookForCapture(page: Page, directionIndex = 0): Promi
   }
 
   reportPhase(`gameplay-use-hook-${direction}`);
+  await waitForInventorySlotReady(page, "#use-item-slot-1");
   await faceDirectionForCapture(page, direction);
+  await waitForInventorySlotReady(page, "#use-item-slot-1");
   const attemptTick = await readSimulationTick(page);
   await hookSlot.click();
   await waitForTickDelta(page, attemptTick, 2);
@@ -372,6 +390,7 @@ async function createGameplayScene(page: Page): Promise<void> {
 
   reportPhase("gameplay-use-bomb");
   const bombSlot = page.locator("#use-item-slot-0");
+  await waitForInventorySlotReady(page, "#use-item-slot-0");
   await bombSlot.click();
   await page.getByText("폭탄을 놨어. 5초 뒤 터져.", { exact: true }).waitFor({ state: "visible" });
   reportPhase("gameplay-move-right");

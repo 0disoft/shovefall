@@ -9,7 +9,7 @@ export default defineConfig({
   retries: 0,
   workers: 1,
   reporter: [["list"]],
-  timeout: 60_000,
+  timeout: 90_000,
   use: {
     channel: "chrome",
     headless: true,
