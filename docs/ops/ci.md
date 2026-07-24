@@ -104,6 +104,8 @@ The current `0.34.0` runtime candidate completed [CI run 30055148110](https://gi
 
 Follow-up validation-only SHA `3863e3f1ac4f6f5f9ef539d1eb23e569543de145` completed [CI run 30056108194](https://github.com/0disoft/shovefall/actions/runs/30056108194). `Validate` passed 176 tests including the new host-preflight contract, all thirteen production Chrome paths, tested-artifact upload, and the dependent Pages deployment. The application bundle remained unchanged. A cache-busted public session then confirmed the `v0.34.0` version record and zero browser warnings or errors.
 
+The production-cleanup candidate completed [CI run 30061893140](https://github.com/0disoft/shovefall/actions/runs/30061893140) for exact runtime SHA `354a602392cccb453ebb1a4ac1fd52c5a39fac6c`. `Validate` passed 179 tests and all thirteen production Chrome paths, including the zero-node debug-tuning assertion, then uploaded both the tested Pages artifact and `shovefall-submission-capture-354a602392cccb453ebb1a4ac1fd52c5a39fac6c`. The dependent Pages job completed without rebuilding. A fresh cache-busted session confirmed `v0.34.1`, no `실험실` or `DEBUG` label, zero debug-tuning nodes, and no browser warnings or errors.
+
 ## Owners and Failure Handling
 
 - Primary owner: Repository owner

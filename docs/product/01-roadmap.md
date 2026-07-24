@@ -31,8 +31,8 @@ people, then publishing the exact candidate without burying combat telegraphs.
 - [x] Sharded deterministic `0.34.0` round, mass, item-grant, and collapse-pacing evidence with no sampled time-limit draws.
 - [x] Widened-island fixed-50 headless scale evidence at simulation p95 `6.823 ms` with no 100 ms step.
 - [ ] Host-qualified production-Chrome performance evidence. The configured five-sample preflight blocks contaminated runs; two independent `0.34.0` attempts rejected `63.5 / 64.1%` average and `87.4 / 84.3%` maximum host CPU before Chrome started.
-- [x] Local aggregate validation and thirteen production-artifact Chrome paths on `0.34.0`.
-- [x] Exact-SHA hosted validation, tested-artifact Pages deployment, and cache-busted public 50-participant WebGL smoke on `0.34.0`.
+- [x] Local aggregate validation, fourteen DEV Chrome paths, and thirteen production-artifact Chrome paths on `0.34.1`.
+- [x] Exact-SHA hosted validation, tested-artifact Pages deployment, cache-busted public smoke, and exact-SHA submission capture on `0.34.1`.
 
 ## Gate 1: Human Gray-box Evidence
 
@@ -88,7 +88,7 @@ Exit conditions:
 - Screenshot, short gameplay capture, tool list, asset provenance, and development notes are ready
   in [05-submission-package.md](05-submission-package.md) for the contest post.
 
-Current status: `IN_PROGRESS`. Product `0.34.0` runtime SHA `c0ddda93e1d75520909c79888c342f4b57747d7f` is the newest accepted hosted, Pages, and public functional candidate with sharded deterministic balance evidence. [CI run 30055148110](https://github.com/0disoft/shovefall/actions/runs/30055148110) passed all 173 product tests and thirteen production Chrome paths before deploying the tested artifact. Follow-up validation SHA `3863e3f1ac4f6f5f9ef539d1eb23e569543de145` added three host-preflight tests; [CI run 30056108194](https://github.com/0disoft/shovefall/actions/runs/30056108194) passed all 176 tests, the same production Chrome paths, and the dependent Pages deployment. A cache-busted public session showed `v0.34.0` with no browser warning or error. Host-qualified browser performance, named physical-browser coverage, final captures, and human-play evidence remain open.
+Current status: `IN_PROGRESS`. Product `0.34.1` runtime SHA `354a602392cccb453ebb1a4ac1fd52c5a39fac6c` is the newest accepted hosted, Pages, public functional, and submission-capture candidate. Its simulation `17.0.0` and content `10.0.0` are unchanged from the accepted `0.34.0` deterministic audits. [CI run 30061893140](https://github.com/0disoft/shovefall/actions/runs/30061893140) passed all 179 tests and thirteen production Chrome paths, uploaded the exact-SHA media bundle, and deployed the tested artifact. A cache-busted public session showed `v0.34.1`, no production tuning-lab UI, and no browser warning or error. Host-qualified browser performance, named physical-browser coverage, and human-play evidence remain open.
 
 ## Deferred Beyond the Submission
 
