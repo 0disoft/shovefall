@@ -13,6 +13,8 @@ const CAPTURE_VIEWPORT = Object.freeze({ width: 1_920, height: 1_080 });
 const SHA_PATTERN = /^[0-9a-f]{40}$/u;
 const SERVER_READY_TIMEOUT_MS = 30_000;
 const BROWSER_STEP_TIMEOUT_MS = 15_000;
+const MISSING_RESOURCE_MESSAGE =
+  "Failed to load resource: the server responded with a status of 404 (Not Found)";
 
 interface CommandResult {
   readonly exitCode: number;
@@ -24,6 +26,11 @@ interface ArtifactMetadata {
   readonly bytes: number;
   readonly file: string;
   readonly sha256: string;
+}
+
+interface IgnoredConsoleMessage {
+  readonly text: string;
+  readonly url: string;
 }
 
 export interface CaptureManifest {
@@ -40,6 +47,7 @@ export interface CaptureManifest {
     readonly capturedAt: string;
     readonly consoleErrors: readonly string[];
     readonly consoleWarnings: readonly string[];
+    readonly ignoredConsoleMessages: readonly IgnoredConsoleMessage[];
     readonly origin: typeof CAPTURE_ORIGIN;
     readonly pageErrors: readonly string[];
     readonly seed: readonly [number, number];
@@ -69,6 +77,17 @@ export function normalizeCandidateSha(value: string): string {
     );
   }
   return normalized;
+}
+
+export function isIgnorableFaviconProbe(text: string, url: string): boolean {
+  if (text !== MISSING_RESOURCE_MESSAGE) {
+    return false;
+  }
+  try {
+    return new URL(url).pathname === "/favicon.ico";
+  } catch {
+    return false;
+  }
 }
 
 function wait(milliseconds: number): Promise<void> {
@@ -350,6 +369,7 @@ export async function captureMedia(
   let page: Page | undefined;
   const consoleErrors: string[] = [];
   const consoleWarnings: string[] = [];
+  const ignoredConsoleMessages: IgnoredConsoleMessage[] = [];
   const pageErrors: string[] = [];
   const menuScreenshotPath = join(captureDirectory, "menu.png");
   const gameplayScreenshotPath = join(captureDirectory, "gameplay.png");
@@ -370,7 +390,13 @@ export async function captureMedia(
     page.setDefaultTimeout(BROWSER_STEP_TIMEOUT_MS);
     page.on("console", (message) => {
       if (message.type() === "error") {
-        consoleErrors.push(message.text());
+        const text = message.text();
+        const url = message.location().url;
+        if (isIgnorableFaviconProbe(text, url)) {
+          ignoredConsoleMessages.push({ text, url });
+        } else {
+          consoleErrors.push(url.length > 0 ? `${url}: ${text}` : text);
+        }
       } else if (message.type() === "warning") {
         consoleWarnings.push(message.text());
       }
@@ -445,6 +471,7 @@ export async function captureMedia(
         capturedAt: new Date().toISOString(),
         consoleErrors,
         consoleWarnings,
+        ignoredConsoleMessages,
         origin: CAPTURE_ORIGIN,
         pageErrors,
         seed: [1, 0],
