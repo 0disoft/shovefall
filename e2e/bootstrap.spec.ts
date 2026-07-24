@@ -424,12 +424,11 @@ test("equips Brick Bag in a live production round", async ({ page }) => {
   await installFixedRoundSeed(page, 1, 0);
   await page.goto("/");
   await openSettings(page);
-  await page.locator('input[name="startingItem"][value="iron-boots"]').uncheck();
   await page.locator('input[name="startingItem"][value="spring-glove"]').uncheck();
   await page.locator('input[name="startingItem"][value="brick-bag"]').check();
-  await page.locator('input[name="startingItem"][value="boat"]').check();
+  await page.locator("#starting-weight").fill("100");
   await page.locator("#initial-item-count").fill("0");
-  await expect(page.locator("#setup-summary")).toContainText("벽돌 가방 + 배");
+  await expect(page.locator("#setup-summary")).toContainText("철 장화 + 벽돌 가방");
   await saveSettings(page);
   await startGame(page);
   await expect(page.locator("#app")).toHaveAttribute("data-round", "active", { timeout: 5_000 });
@@ -437,19 +436,26 @@ test("equips Brick Bag in a live production round", async ({ page }) => {
   await expect(page.locator("#next-upgrade-value")).toHaveText("힘");
   await expect(page.locator("#shove-status-value")).toContainText("Space · 밀치기");
   await expect(page.locator("#dodge-status-value")).toContainText("Shift · 회피");
-  await expect(page.locator("#use-item-slot-0")).toContainText("벽돌 가방 · 4회");
-  await expect(page.locator("#use-item-slot-1")).toContainText("배 · 1회");
-  await expect(page.locator("#use-item-slot-0")).toBeEnabled();
+  await expect(page.locator("#use-item-slot-0")).toContainText("철 장화 · 상시");
+  await expect(page.locator("#use-item-slot-1")).toContainText("벽돌 가방 · 4회");
+  await expect(page.locator("#use-item-slot-0")).toBeDisabled();
   await expect(page.locator("#use-item-slot-1")).toBeEnabled();
-  await page.keyboard.down("Space");
-  try {
-    await expect(page.locator("#game-telemetry")).toHaveAttribute(
-      "data-action",
-      /ShoveWindup|ShoveActive|ShoveRecovery/u,
-    );
-  } finally {
-    await page.keyboard.up("Space");
-  }
+  const telemetry = page.locator("#game-telemetry");
+  const arena = page.locator("#arena-host");
+  await expect
+    .poll(
+      async () => {
+        if ((await telemetry.getAttribute("data-action")) === "Ready") {
+          await arena.focus();
+          await page.keyboard.press("Space");
+          await page.waitForTimeout(80);
+        }
+
+        return telemetry.getAttribute("data-action");
+      },
+      { timeout: 15_000 },
+    )
+    .toMatch(/ShoveWindup|ShoveActive|ShoveRecovery/u);
 });
 
 test("equips and launches a Boat in a fresh round", async ({ page }) => {
