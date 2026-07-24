@@ -7,6 +7,7 @@ export default defineConfig({
   outputDir: ".cache/playwright/test-results",
   fullyParallel: false,
   forbidOnly: true,
+  grepInvert: /@profile|@submission-capture/u,
   retries: 0,
   workers: 1,
   reporter: [["list"], ["html", { open: "never", outputFolder: ".cache/playwright/report" }]],

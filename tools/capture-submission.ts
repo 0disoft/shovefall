@@ -1,9 +1,9 @@
 import { createHash } from "node:crypto";
 import { spawn, type ChildProcess } from "node:child_process";
-import { mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, rm } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { chromium, type Browser, type BrowserContext, type Page } from "@playwright/test";
+import { type Browser, type BrowserContext, type Page } from "@playwright/test";
 import { CONTENT_VERSION, PRODUCT_VERSION, SIMULATION_VERSION } from "../src/simulation/versions";
 
 const CAPTURE_SCHEMA_VERSION = "shovefall.submission-capture/v1";
@@ -26,7 +26,7 @@ interface ArtifactMetadata {
   readonly sha256: string;
 }
 
-interface CaptureManifest {
+export interface CaptureManifest {
   readonly schemaVersion: typeof CAPTURE_SCHEMA_VERSION;
   readonly candidate: {
     readonly commitSha: string;
@@ -100,9 +100,14 @@ async function withTimeout<T>(
   }
 }
 
-async function runCommand(command: string, args: readonly string[]): Promise<CommandResult> {
+async function runCommand(
+  command: string,
+  args: readonly string[],
+  environment: NodeJS.ProcessEnv = process.env,
+): Promise<CommandResult> {
   const child = spawn(command, args, {
     cwd: projectRoot,
+    env: environment,
     shell: false,
     stdio: ["ignore", "pipe", "pipe"],
     windowsHide: true,
@@ -126,8 +131,9 @@ async function requireSuccessfulCommand(
   command: string,
   args: readonly string[],
   label: string,
+  environment?: NodeJS.ProcessEnv,
 ): Promise<CommandResult> {
-  const result = await runCommand(command, args);
+  const result = await runCommand(command, args, environment);
   if (result.exitCode !== 0) {
     throw new Error(
       `${label} failed with exit code ${result.exitCode}.\n${result.stderr || result.stdout}`,
@@ -164,6 +170,18 @@ async function buildProductionArtifact(): Promise<void> {
     process.execPath,
     [viteEntrypoint, "build"],
     "production build",
+  );
+  process.stdout.write(result.stdout);
+  process.stderr.write(result.stderr);
+}
+
+async function runPlaywrightCapture(candidateSha: string): Promise<void> {
+  const playwrightCli = join(projectRoot, "node_modules", "@playwright", "test", "cli.js");
+  const result = await requireSuccessfulCommand(
+    "node",
+    [playwrightCli, "test", "--config=playwright.capture.config.ts"],
+    "Playwright submission capture",
+    { ...process.env, SHOVEFALL_CAPTURE_SHA: candidateSha },
   );
   process.stdout.write(result.stdout);
   process.stderr.write(result.stderr);
@@ -323,11 +341,11 @@ async function readArtifactMetadata(file: string): Promise<ArtifactMetadata> {
   };
 }
 
-async function captureMedia(
+export async function captureMedia(
+  browser: Browser,
   candidateSha: string,
   captureDirectory: string,
 ): Promise<CaptureManifest> {
-  let browser: Browser | undefined;
   let context: BrowserContext | undefined;
   let page: Page | undefined;
   const consoleErrors: string[] = [];
@@ -338,12 +356,7 @@ async function captureMedia(
   const gameplayVideoPath = join(captureDirectory, "gameplay.webm");
 
   try {
-    reportPhase("launch-browser");
-    browser = await withTimeout(
-      chromium.launch({ channel: "chrome", headless: true }),
-      BROWSER_STEP_TIMEOUT_MS,
-      "Chrome launch",
-    );
+    reportPhase("create-browser-context");
     context = await browser.newContext({
       colorScheme: "dark",
       locale: "ko-KR",
@@ -460,9 +473,6 @@ async function captureMedia(
     if (context !== undefined) {
       await withTimeout(context.close(), 5_000, "Failure context close").catch(() => undefined);
     }
-    if (browser !== undefined) {
-      await withTimeout(browser.close(), 5_000, "Browser close").catch(() => undefined);
-    }
   }
 }
 
@@ -478,17 +488,23 @@ async function main(): Promise<void> {
   const server = startPreviewServer();
   try {
     await waitForPreviewServer(server);
-    const manifest = await captureMedia(candidateSha, captureDirectory);
+    reportPhase("run-playwright-capture");
+    await runPlaywrightCapture(candidateSha);
     const manifestPath = join(captureDirectory, "manifest.json");
-    await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
-    const manifestStats = await stat(manifestPath);
+    const manifestBytes = await readFile(manifestPath);
+    const manifest: CaptureManifest = JSON.parse(manifestBytes.toString("utf8"));
+    if (manifest.candidate.commitSha !== candidateSha) {
+      throw new Error(
+        `Capture manifest SHA ${manifest.candidate.commitSha} does not match ${candidateSha}.`,
+      );
+    }
     process.stdout.write(
       `${JSON.stringify(
         {
           ok: true,
           candidateSha,
           captureDirectory,
-          manifestBytes: manifestStats.size,
+          manifestBytes: manifestBytes.byteLength,
           artifacts: manifest.artifacts,
           browserWarnings: manifest.capture.consoleWarnings,
         },
