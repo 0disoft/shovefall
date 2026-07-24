@@ -141,6 +141,41 @@ function createCameraOffset(
   return Object.freeze({ x, y });
 }
 
+function createCameraShake(
+  effects: readonly VisualEffect[],
+  frameTick: number,
+  reducedMotion: boolean,
+): Vector2 {
+  if (reducedMotion) {
+    return Object.freeze({ x: 0, y: 0 });
+  }
+
+  let amplitude = 0;
+
+  for (const effect of effects) {
+    const duration = Math.max(1, effect.endTick - effect.startTick);
+    const progress = clamp((frameTick - effect.startTick) / duration, 0, 1);
+    const strength =
+      effect.kind === "rock-impact" || effect.kind === "bomb-detonated"
+        ? 8
+        : effect.kind === "tile-void"
+          ? 3.5
+          : effect.kind === "shove-hit" || effect.kind === "wind-blast-hit"
+            ? 2.25
+            : 0;
+    amplitude = Math.max(amplitude, strength * (1 - progress));
+  }
+
+  if (amplitude <= 0.05) {
+    return Object.freeze({ x: 0, y: 0 });
+  }
+
+  return Object.freeze({
+    x: Math.sin(frameTick * 2.17) * amplitude,
+    y: Math.cos(frameTick * 2.83) * amplitude * 0.62,
+  });
+}
+
 function getActionColor(action: ParticipantActionKind): number {
   return ACTION_COLORS[action];
 }
@@ -740,19 +775,23 @@ function syncImpactSprites(
 function syncParticipantSprites(
   layer: Container,
   sprites: Map<number, Sprite>,
+  boatSprites: Map<number, Sprite>,
   frame: RenderFrameV1,
   projection: ArenaProjection,
   interpolationAlpha: number,
+  reducedMotion: boolean,
   assets: ArenaVisualAssets,
 ): void {
   const characterTextures = assets.characterTextures;
 
   if (characterTextures === null || characterTextures.length === 0) {
     removeStaleSprites(layer, sprites, new Set<number>());
+    removeStaleSprites(layer, boatSprites, new Set<number>());
     return;
   }
 
   const visibleActorIds = new Set<number>();
+  const visibleBoatActorIds = new Set<number>();
 
   for (const participant of frame.participants) {
     if (!participant.active && participant.action === "Eliminated") {
@@ -787,17 +826,150 @@ function syncParticipantSprites(
     const collisionRadius = participant.radius * projection.pitch;
     const visualScale = 1 + (participant.massFactor - 1) * 0.16;
     const targetHeight = Math.max(28, collisionRadius * visualScale * 3.45);
-    sprite.position.set(point.x, point.y + collisionRadius * 0.82);
-    sprite.height = targetHeight;
-    sprite.width = targetHeight * (texture.width / texture.height);
+    const baseWidth = targetHeight * (texture.width / texture.height);
+    const actionPhase = ((frame.tick + participant.actorId * 5) % 18) / 18;
+    const stumbleTilt = reducedMotion ? 0 : Math.sin(actionPhase * Math.PI * 2) * 0.13;
+    const actionScaleX =
+      participant.action === "ShoveWindup"
+        ? 0.92
+        : participant.action === "ShoveActive"
+          ? 1.12
+          : participant.action === "DodgeActive"
+            ? 1.18
+            : 1;
+    const actionScaleY =
+      participant.action === "ShoveWindup"
+        ? 1.06
+        : participant.action === "ShoveActive"
+          ? 0.92
+          : participant.action === "DodgeActive"
+            ? 0.88
+            : participant.action === "Falling"
+              ? Math.max(0.58, 1 - actionPhase * 0.26)
+              : 1;
+    const actionLift =
+      !reducedMotion && participant.action === "DodgeActive"
+        ? Math.sin(actionPhase * Math.PI) * collisionRadius * 0.36
+        : 0;
+    sprite.position.set(point.x, point.y + collisionRadius * 0.82 - actionLift);
+    sprite.width = baseWidth * actionScaleX;
+    sprite.height = targetHeight * actionScaleY;
     sprite.alpha = participant.action === "Falling" ? 0.42 : 1;
+    sprite.rotation =
+      participant.action === "Stumbling"
+        ? stumbleTilt
+        : participant.action === "Falling" && !reducedMotion
+          ? actionPhase * 0.32
+          : participant.action === "ShoveActive" && !reducedMotion
+            ? participant.facing.x * 0.055
+            : 0;
     sprite.zIndex = Math.round(worldY * 1_000) + participant.actorId;
     sprite.visible = true;
+
+    const hasBoat = participant.effects.some(({ definitionId }) => definitionId === "boat");
+    const boatTexture = assets.itemTextures?.boat;
+
+    if (hasBoat && boatTexture !== undefined) {
+      visibleBoatActorIds.add(participant.actorId);
+      let boatSprite = boatSprites.get(participant.actorId);
+
+      if (boatSprite === undefined) {
+        boatSprite = new Sprite(boatTexture);
+        boatSprite.anchor.set(0.5, 0.55);
+        boatSprites.set(participant.actorId, boatSprite);
+        layer.addChild(boatSprite);
+      }
+
+      const boatWidth = visualScale * collisionRadius * 3.55;
+      const boatBob = reducedMotion
+        ? 0
+        : Math.sin(actionPhase * Math.PI * 2) * collisionRadius * 0.08;
+      boatSprite.position.set(point.x, point.y + collisionRadius * 1.1 + boatBob);
+      boatSprite.width = boatWidth;
+      boatSprite.height = boatWidth * (boatTexture.height / boatTexture.width);
+      boatSprite.alpha = participant.action === "Falling" ? 0.32 : 0.92;
+      boatSprite.rotation = reducedMotion ? 0 : Math.sin(actionPhase * Math.PI * 2) * 0.025;
+      boatSprite.zIndex = sprite.zIndex - 1;
+      boatSprite.visible = true;
+    }
   }
 
   for (const [actorId, sprite] of sprites) {
     sprite.visible = visibleActorIds.has(actorId);
   }
+
+  removeStaleSprites(layer, boatSprites, visibleBoatActorIds);
+}
+
+function syncPlacedItemSprites(
+  layer: Container,
+  bombSprites: Map<string, Sprite>,
+  soapSprites: Map<string, Sprite>,
+  frame: RenderFrameV1,
+  projection: ArenaProjection,
+  reducedMotion: boolean,
+  assets: ArenaVisualAssets,
+): void {
+  const itemTextures = assets.itemTextures;
+
+  if (itemTextures === null) {
+    removeStaleSprites(layer, bombSprites, new Set<string>());
+    removeStaleSprites(layer, soapSprites, new Set<string>());
+    return;
+  }
+
+  const visibleBombIds = new Set<string>();
+
+  for (const bomb of frame.bombs) {
+    const bombKey = `${bomb.ownerActorId}:${bomb.placedTick}`;
+    visibleBombIds.add(bombKey);
+    let sprite = bombSprites.get(bombKey);
+
+    if (sprite === undefined) {
+      sprite = new Sprite(itemTextures.bomb);
+      sprite.anchor.set(0.5, 0.82);
+      bombSprites.set(bombKey, sprite);
+      layer.addChild(sprite);
+    }
+
+    const point = projectArenaPoint(bomb.position, projection);
+    const remainingTicks = Math.max(0, bomb.detonateTick - frame.tick);
+    const urgency = 1 - Math.min(1, remainingTicks / (5 * 60));
+    const pulse = reducedMotion ? 1 : 1 + Math.sin(frame.tick * 0.42) * 0.06 * urgency;
+    const height = clamp(projection.tileWidth * 0.92 * pulse, 30, 68);
+    sprite.position.set(point.x, point.y + projection.tileDepth * 0.28);
+    sprite.height = height;
+    sprite.width = height * (sprite.texture.width / sprite.texture.height);
+    sprite.rotation = reducedMotion ? 0 : Math.sin(frame.tick * 0.34) * 0.035 * urgency;
+    sprite.alpha = 1;
+    sprite.visible = true;
+  }
+
+  const visibleSoapIds = new Set<string>();
+
+  for (const patch of frame.soapPatches) {
+    visibleSoapIds.add(patch.tileId);
+    let sprite = soapSprites.get(patch.tileId);
+
+    if (sprite === undefined) {
+      sprite = new Sprite(itemTextures.soap);
+      sprite.anchor.set(0.5, 0.62);
+      soapSprites.set(patch.tileId, sprite);
+      layer.addChild(sprite);
+    }
+
+    const point = projectArenaPoint({ x: patch.column + 0.5, y: patch.row + 0.5 }, projection);
+    const width = clamp(projection.tileWidth * 0.62, 22, 52);
+    sprite.position.set(point.x, point.y + projection.tileDepth * 0.12);
+    sprite.width = width;
+    sprite.height = width * (sprite.texture.height / sprite.texture.width);
+    sprite.rotation = reducedMotion ? 0 : Math.sin((frame.tick + patch.column * 7) * 0.08) * 0.035;
+    sprite.alpha = 0.96;
+    sprite.visible = true;
+  }
+
+  removeStaleSprites(layer, bombSprites, visibleBombIds);
+  removeStaleSprites(layer, soapSprites, visibleSoapIds);
 }
 
 function drawBrickWall(
@@ -1334,10 +1506,13 @@ export async function createArenaRenderer(
     artilleryLabels,
   );
   const itemSpritesById = new Map<number, Sprite>();
+  const bombSpritesByKey = new Map<string, Sprite>();
+  const soapSpritesByTileId = new Map<string, Sprite>();
   const pirateShipSpritesById = new Map<number, Sprite>();
   const cannonSpritesByShotId = new Map<number, Sprite>();
   const rockSpritesByShotId = new Map<number, Sprite>();
   const participantSpritesByActorId = new Map<number, Sprite>();
+  const boatSpritesByActorId = new Map<number, Sprite>();
   const impactSpritesByEffectKey = new Map<string, Sprite>();
   const eventLedger = new SimulationEventLedger();
   const motionPreference = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -1362,30 +1537,27 @@ export async function createArenaRenderer(
       latestHumanActorId,
       latestInterpolationAlpha,
     );
-    tiles.x = camera.x;
-    tiles.y = camera.y;
-    artillery.x = camera.x;
-    artillery.y = camera.y;
-    pirateShipSprites.x = camera.x;
-    pirateShipSprites.y = camera.y;
-    projectileSprites.x = camera.x;
-    projectileSprites.y = camera.y;
-    items.x = camera.x;
-    items.y = camera.y;
-    itemSprites.x = camera.x;
-    itemSprites.y = camera.y;
-    participants.x = camera.x;
-    participants.y = camera.y;
-    participantSprites.x = camera.x;
-    participantSprites.y = camera.y;
-    effectLayer.x = camera.x;
-    effectLayer.y = camera.y;
-    impactSprites.x = camera.x;
-    impactSprites.y = camera.y;
-    artilleryLabels.x = camera.x;
-    artilleryLabels.y = camera.y;
+    const shake = createCameraShake(visualEffects, latestFrame.tick, reducedMotion);
+    const presentationCamera = { x: camera.x + shake.x, y: camera.y + shake.y };
+
+    for (const layer of [
+      tiles,
+      artillery,
+      pirateShipSprites,
+      projectileSprites,
+      items,
+      itemSprites,
+      participants,
+      participantSprites,
+      effectLayer,
+      impactSprites,
+      artilleryLabels,
+    ]) {
+      layer.position.set(presentationCamera.x, presentationCamera.y);
+    }
     host.dataset.cameraX = camera.x.toFixed(2);
     host.dataset.cameraY = camera.y.toFixed(2);
+    host.dataset.cameraShake = Math.hypot(shake.x, shake.y).toFixed(2);
     host.dataset.projectionAngle = ARENA_CAMERA_ELEVATION_DEGREES.toString();
     host.dataset.projectionScaleY = ARENA_DEPTH_SCALE.toFixed(4);
     host.dataset.cliffDepth = projection.cliffDepth.toFixed(2);
@@ -1495,6 +1667,18 @@ export async function createArenaRenderer(
       drawSoapPatch(items, patch, projection);
     }
 
+    if (visualAssets !== null) {
+      syncPlacedItemSprites(
+        itemSprites,
+        bombSpritesByKey,
+        soapSpritesByTileId,
+        latestFrame,
+        projection,
+        reducedMotion,
+        visualAssets,
+      );
+    }
+
     const depthEntries = [
       ...latestFrame.participants.map((participant) => ({
         kind: "participant" as const,
@@ -1535,9 +1719,11 @@ export async function createArenaRenderer(
       syncParticipantSprites(
         participantSprites,
         participantSpritesByActorId,
+        boatSpritesByActorId,
         latestFrame,
         projection,
         latestInterpolationAlpha,
+        reducedMotion,
         visualAssets,
       );
     }
