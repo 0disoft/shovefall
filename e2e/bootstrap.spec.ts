@@ -439,20 +439,31 @@ test("equips Brick Bag in a live production round", async ({ page }) => {
   await expect(page.locator("#app")).toHaveAttribute("data-round", "active", { timeout: 5_000 });
   const telemetry = page.locator("#game-telemetry");
   const arena = page.locator("#arena-host");
+  const shoveStatus = page.locator("#shove-status-value");
   await expect
     .poll(
       async () => {
-        if ((await telemetry.getAttribute("data-action")) === "Ready") {
+        const action = await telemetry.getAttribute("data-action");
+        const status = await shoveStatus.getAttribute("data-state");
+
+        if (action === "Ready" && status === "ready") {
           await arena.focus();
           await page.keyboard.press("Space");
           await page.waitForTimeout(80);
         }
 
-        return telemetry.getAttribute("data-action");
+        const nextAction = await telemetry.getAttribute("data-action");
+        const nextStatus = await shoveStatus.getAttribute("data-state");
+        return (
+          nextAction === "ShoveWindup" ||
+          nextAction === "ShoveActive" ||
+          nextAction === "ShoveRecovery" ||
+          nextStatus === "cooldown"
+        );
       },
       { timeout: 15_000 },
     )
-    .toMatch(/ShoveWindup|ShoveActive|ShoveRecovery/u);
+    .toBe(true);
   await expect(page.locator("#stat-status")).toBeVisible();
   await expect(page.locator("#next-upgrade-value")).toHaveText("힘");
   await expect(page.locator("#shove-status-value")).toContainText("Space · 밀치기");
