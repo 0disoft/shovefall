@@ -99,6 +99,8 @@ The protected-core pressure candidate completed [CI run 30052278919](https://git
 
 The current `0.34.0` runtime candidate completed [CI run 30055148110](https://github.com/0disoft/shovefall/actions/runs/30055148110) for exact SHA `c0ddda93e1d75520909c79888c342f4b57747d7f`. `Validate` passed all 173 tests and thirteen production Chrome paths, uploaded the exact tested artifact, and the dependent Pages job deployed it. A fresh cache-busted public session separately confirmed the menu, active fixed-50 Hard-AI WebGL arena, changing tick and survivor state, one canvas, and no browser warnings or errors.
 
+Follow-up validation-only SHA `3863e3f1ac4f6f5f9ef539d1eb23e569543de145` completed [CI run 30056108194](https://github.com/0disoft/shovefall/actions/runs/30056108194). `Validate` passed 176 tests including the new host-preflight contract, all thirteen production Chrome paths, tested-artifact upload, and the dependent Pages deployment. The application bundle remained unchanged. A cache-busted public session then confirmed the `v0.34.0` version record and zero browser warnings or errors.
+
 ## Owners and Failure Handling
 
 - Primary owner: Repository owner

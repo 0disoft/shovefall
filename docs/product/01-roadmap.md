@@ -88,7 +88,7 @@ Exit conditions:
 - Screenshot, short gameplay capture, tool list, asset provenance, and development notes are ready
   in [05-submission-package.md](05-submission-package.md) for the contest post.
 
-Current status: `IN_PROGRESS`. Product `0.34.0` runtime SHA `c0ddda93e1d75520909c79888c342f4b57747d7f` is the newest accepted hosted, Pages, and public functional candidate with sharded deterministic balance evidence. [CI run 30055148110](https://github.com/0disoft/shovefall/actions/runs/30055148110) passed all 173 tests and thirteen production Chrome paths before deploying the tested artifact. Host-qualified browser performance, named physical-browser coverage, final captures, and human-play evidence remain open.
+Current status: `IN_PROGRESS`. Product `0.34.0` runtime SHA `c0ddda93e1d75520909c79888c342f4b57747d7f` is the newest accepted hosted, Pages, and public functional candidate with sharded deterministic balance evidence. [CI run 30055148110](https://github.com/0disoft/shovefall/actions/runs/30055148110) passed all 173 product tests and thirteen production Chrome paths before deploying the tested artifact. Follow-up validation SHA `3863e3f1ac4f6f5f9ef539d1eb23e569543de145` added three host-preflight tests; [CI run 30056108194](https://github.com/0disoft/shovefall/actions/runs/30056108194) passed all 176 tests, the same production Chrome paths, and the dependent Pages deployment. A cache-busted public session showed `v0.34.0` with no browser warning or error. Host-qualified browser performance, named physical-browser coverage, final captures, and human-play evidence remain open.
 
 ## Deferred Beyond the Submission
 
