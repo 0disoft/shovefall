@@ -351,6 +351,28 @@ async function waitForInventorySlotReady(page: Page, selector: string): Promise<
   );
 }
 
+async function clickInventorySlotWhenReady(page: Page, selector: string): Promise<void> {
+  await page.waitForFunction(
+    ({ slotSelector }) => {
+      const slot = document.querySelector(slotSelector);
+      const telemetry = document.querySelector("#game-telemetry");
+
+      if (
+        !(slot instanceof HTMLButtonElement) ||
+        slot.disabled ||
+        telemetry?.getAttribute("data-action") !== "Ready"
+      ) {
+        return false;
+      }
+
+      slot.click();
+      return true;
+    },
+    { slotSelector: selector },
+    { timeout: BROWSER_STEP_TIMEOUT_MS },
+  );
+}
+
 async function useGrapplingHookForCapture(page: Page, directionIndex = 0): Promise<void> {
   const hookSlot = page.locator("#use-item-slot-1");
   const direction = GRAPPLING_CAPTURE_DIRECTIONS[directionIndex];
@@ -362,9 +384,8 @@ async function useGrapplingHookForCapture(page: Page, directionIndex = 0): Promi
   reportPhase(`gameplay-use-hook-${direction}`);
   await waitForInventorySlotReady(page, "#use-item-slot-1");
   await faceDirectionForCapture(page, direction);
-  await waitForInventorySlotReady(page, "#use-item-slot-1");
   const attemptTick = await readSimulationTick(page);
-  await hookSlot.click();
+  await clickInventorySlotWhenReady(page, "#use-item-slot-1");
   await waitForTickDelta(page, attemptTick, 2);
 
   if ((await hookSlot.textContent())?.includes("1회") === true) {
@@ -389,9 +410,7 @@ async function createGameplayScene(page: Page): Promise<void> {
   await useGrapplingHookForCapture(page);
 
   reportPhase("gameplay-use-bomb");
-  const bombSlot = page.locator("#use-item-slot-0");
-  await waitForInventorySlotReady(page, "#use-item-slot-0");
-  await bombSlot.click();
+  await clickInventorySlotWhenReady(page, "#use-item-slot-0");
   await page.getByText("폭탄을 놨어. 5초 뒤 터져.", { exact: true }).waitFor({ state: "visible" });
   reportPhase("gameplay-move-right");
   const movementStart = await readSimulationTick(page);
