@@ -106,6 +106,12 @@ Follow-up validation-only SHA `3863e3f1ac4f6f5f9ef539d1eb23e569543de145` complet
 
 The production-cleanup candidate completed [CI run 30061893140](https://github.com/0disoft/shovefall/actions/runs/30061893140) for exact runtime SHA `354a602392cccb453ebb1a4ac1fd52c5a39fac6c`. `Validate` passed 179 tests and all thirteen production Chrome paths, including the zero-node debug-tuning assertion, then uploaded both the tested Pages artifact and `shovefall-submission-capture-354a602392cccb453ebb1a4ac1fd52c5a39fac6c`. The dependent Pages job completed without rebuilding. A fresh cache-busted session confirmed `v0.34.1`, no `실험실` or `DEBUG` label, zero debug-tuning nodes, and no browser warnings or errors.
 
+The exact-SHA submission upload uses `actions/upload-artifact` `v7.0.1` pinned to
+`043fb46d1a93c77aae656e7c1c64a875d1fc6a0a`. This replaces the Node 20-based `v4.6.2`
+pin with the current Node 24 action while retaining the existing artifact name, directory upload,
+missing-file failure, and 30-day retention inputs. Rollback is the previous immutable `v4.6.2` pin;
+the workflow contract rejects floating `main`, `v4`, and `v7` references.
+
 ## Owners and Failure Handling
 
 - Primary owner: Repository owner
