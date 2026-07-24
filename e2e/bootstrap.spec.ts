@@ -185,6 +185,19 @@ async function readSimulationTick(page: Page): Promise<number> {
   return Number(await page.locator("#game-telemetry").getAttribute("data-tick"));
 }
 
+async function clickInventorySlotAfterActiveTick(page: Page, selector: string): Promise<void> {
+  const slot = page.locator(selector);
+  await expect(slot).toBeEnabled();
+  const tickBeforeClick = await readSimulationTick(page);
+  await slot.click();
+  await expect
+    .poll(() => readSimulationTick(page), {
+      message: "inventory input should be consumed by a later simulation tick",
+      timeout: 15_000,
+    })
+    .toBeGreaterThan(tickBeforeClick);
+}
+
 async function readCameraPosition(page: Page): Promise<string> {
   const arena = page.locator("#arena-host");
   const [x, y] = await Promise.all([
@@ -414,7 +427,7 @@ test("equips and launches a Boat in a fresh round", async ({ page }) => {
   await startGame(page);
   await expect(page.locator("#app")).toHaveAttribute("data-round", "active", { timeout: 5_000 });
   await expect(page.locator("#use-item-slot-1")).toContainText("배 · 1회");
-  await page.locator("#use-item-slot-1").click();
+  await clickInventorySlotAfterActiveTick(page, "#use-item-slot-1");
   await expect(page.locator("#use-item-slot-1")).toContainText("배 · 0회");
   await expect(page.locator("#effect-value")).toContainText(/배 [1-5]초/u);
   await expect(page.getByText("배를 띄웠어. 5초 동안 물을 건널 수 있어.")).toBeVisible();
