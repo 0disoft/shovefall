@@ -91,7 +91,7 @@ Exit conditions:
 - Screenshot, short gameplay capture, tool list, asset provenance, and development notes are ready
   in [05-submission-package.md](05-submission-package.md) for the contest post.
 
-Current status: `IN_PROGRESS`. Product `0.36.0`, simulation `18.0.0`, and content `12.0.0` are the current local rules. Seven accepted generated assets total about 1.33 MB after downsampling and retain independent procedural fallbacks; Bomb, Soap, and Boat props now reuse the accepted item atlas. Product `0.35.0` passed its local 184-test and thirteen-path production browser batch before the bot-item policy changed. That evidence does not transfer to `0.36.0`; grouped local validation, exact-SHA capture, hosted CI, Pages, cache-busted public proof, active-item balance, terrain/action art, named physical-browser coverage, and human-play evidence remain open.
+Current status: `IN_PROGRESS`. Product `0.36.0`, simulation `18.0.0`, and content `12.0.0` are the current local rules. Seven accepted generated assets total about 1.33 MB after downsampling and retain independent procedural fallbacks; Bomb, Soap, and Boat props reuse the accepted item atlas. Local formatting, lint, TypeScript, 187 tests, and all thirteen production Chrome paths pass. Production audit shard zero passes all eight 50-participant seeds with one survivor and no time limit, while the optimized public-scale bot screen is roughly twice as fast as the pre-cache local run. Shard one and merged balance, exact-SHA capture, hosted CI, Pages, cache-busted public proof, terrain/action art, named physical-browser coverage, and human-play evidence remain open.
 
 ## Deferred Beyond the Submission
 

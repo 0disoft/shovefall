@@ -10,6 +10,7 @@ import {
   type RenderItemV1,
   type RenderParticipantV1,
   type TileId,
+  type TileState,
   type UpgradeStatId,
 } from "../simulation/contracts";
 import {
@@ -61,7 +62,9 @@ interface ArenaBounds {
   readonly columns: number;
   readonly rows: number;
   readonly center: Vector2;
+  readonly stableTiles: readonly TileState[];
   readonly stableTileDepths: ReadonlyMap<string, number>;
+  readonly tilesById: ReadonlyMap<TileId, TileState>;
 }
 
 interface BotDecision {
@@ -130,6 +133,7 @@ function createArenaBounds(frame: RenderFrameV1): ArenaBounds {
     { columns: 1, rows: 1 },
   );
   const stableTiles = frame.tiles.filter(({ state }) => state === "Stable");
+  const tilesById = new Map(frame.tiles.map((tile) => [tile.tileId, tile] as const));
   const stableTileIds = new Set(stableTiles.map(({ tileId }) => tileId));
   const stableTilesById = new Map(stableTiles.map((tile) => [tile.tileId, tile] as const));
   const stableTileDepths = new Map<TileId, number>();
@@ -186,7 +190,13 @@ function createArenaBounds(frame: RenderFrameV1): ArenaBounds {
   center.x /= Math.max(1, stableTiles.length);
   center.y /= Math.max(1, stableTiles.length);
 
-  return Object.freeze({ ...dimensions, center: Object.freeze(center), stableTileDepths });
+  return Object.freeze({
+    ...dimensions,
+    center: Object.freeze(center),
+    stableTiles: Object.freeze(stableTiles),
+    stableTileDepths,
+    tilesById,
+  });
 }
 
 function getEdgeDistance(participant: RenderParticipantV1, bounds: ArenaBounds): number {
@@ -196,27 +206,22 @@ function getEdgeDistance(participant: RenderParticipantV1, bounds: ArenaBounds):
 }
 
 function getImmediateTileEscape(
-  frame: RenderFrameV1,
   participant: RenderParticipantV1,
   bounds: ArenaBounds,
 ): Vector2 | undefined {
   const column = Math.floor(participant.position.x);
   const row = Math.floor(participant.position.y);
-  const currentTile = frame.tiles.find((tile) => tile.column === column && tile.row === row);
+  const currentTile = bounds.tilesById.get(`${column}:${row}`);
 
   if (currentTile?.state === "Stable" && getEdgeDistance(participant, bounds) > 0.5) {
     return undefined;
   }
 
   const currentIsStable = currentTile?.state === "Stable";
-  let safeTile: (typeof frame.tiles)[number] | undefined;
+  let safeTile: TileState | undefined;
   let bestScore = Number.NEGATIVE_INFINITY;
 
-  for (const tile of frame.tiles) {
-    if (tile.state !== "Stable") {
-      continue;
-    }
-
+  for (const tile of bounds.stableTiles) {
     const position = Object.freeze({ x: tile.column + 0.5, y: tile.row + 0.5 });
     const distance = vectorLength(subtractVectors(position, participant.position));
     const depth = bounds.stableTileDepths.get(tile.tileId) ?? 0;
@@ -414,7 +419,7 @@ export class BotDirector {
       let useItemSlot: InventorySlotIndex | null = null;
       const upgradeStat = this.#chooseUpgrade(memory.personality, current);
       const edgeDistance = getEdgeDistance(current, bounds);
-      const tileEscape = getImmediateTileEscape(currentFrame, current, bounds);
+      const tileEscape = getImmediateTileEscape(current, bounds);
       const escapingOwnBomb =
         memory.bombEscapePosition !== null && tick < memory.bombEscapeUntilTick;
 
@@ -553,9 +558,15 @@ export class BotDirector {
   ): BotDecision {
     const personality = BOT_PERSONALITIES[memory.personality];
     const perceivedItems: readonly RenderItemV1[] = perceptionFrame.items;
+    const canUseActiveItem =
+      current.action === "Ready" &&
+      tick - memory.lastItemUseTick >= ACTIVE_ITEM_DECISION_COOLDOWN_TICKS;
+    const windBlastReady = canUseActiveItem && getChargedItemSlot(current, "wind-blast") !== null;
     const perceivedParticipants = perceivedSpatialHash.queryNearby(
       perceived.position,
-      Math.ceil(SIMULATION_TUNING.windBlast.range / SIMULATION_TUNING.spatialHash.cellSize),
+      windBlastReady
+        ? Math.ceil(SIMULATION_TUNING.windBlast.range / SIMULATION_TUNING.spatialHash.cellSize)
+        : 2,
     );
     const threats = perceivedParticipants
       .filter(
@@ -647,10 +658,6 @@ export class BotDirector {
     const jitter = (memory.jitter.nextFloat() * 2 - 1) * personality.jitterRadians;
     const move = normalizeVector(rotateVector(direct, jitter));
     const safetyPressure = Math.max(0, 1.45 - getEdgeDistance(current, bounds));
-    const canUseActiveItem =
-      current.action === "Ready" &&
-      tick - memory.lastItemUseTick >= ACTIVE_ITEM_DECISION_COOLDOWN_TICKS;
-
     if (canUseActiveItem) {
       const closeOpponents = nearby.filter(
         ({ distance }) => distance <= SIMULATION_TUNING.bomb.blastRadius * 0.9,
