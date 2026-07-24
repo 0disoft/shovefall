@@ -392,15 +392,17 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await expect(page.locator("#use-item-slot-0")).toContainText("철 장화 · 상시");
   await expect(page.locator("#use-item-slot-0")).toBeDisabled();
   await expect(page.locator("#use-item-slot-1")).toContainText("장풍 · 2회");
+  expect(["ShoveWindup", "ShoveActive"]).toContain(await triggerShoveAfterReady(page));
+  const activeCanvas = await captureArenaCanvas(page);
+  expect(activeCanvas.summary.uniqueColorBuckets).toBeGreaterThan(4);
+  expect(activeCanvas.summary.luminanceRange).toBeGreaterThan(20);
+  await fastForwardUntilAttribute(page, "#game-telemetry", "data-action", "Ready");
+  await expect(page.locator("#game-telemetry")).toHaveAttribute("data-action", "Ready");
   const tickBeforeItem = await readSimulationTick(page);
   await page.keyboard.press("KeyE");
   await page.clock.fastForward(20);
   await expect.poll(() => readSimulationTick(page)).toBeGreaterThan(tickBeforeItem);
   await expect(page.locator("#use-item-slot-1")).toContainText("장풍 · 1회");
-  expect(["ShoveWindup", "ShoveActive"]).toContain(await triggerShoveAfterReady(page));
-  const activeCanvas = await captureArenaCanvas(page);
-  expect(activeCanvas.summary.uniqueColorBuckets).toBeGreaterThan(4);
-  expect(activeCanvas.summary.luminanceRange).toBeGreaterThan(20);
 
   const positionBefore = await readCameraPosition(page);
   await faceArenaDirection(page, "d");
