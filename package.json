@@ -23,6 +23,7 @@
     "audit:strategy": "bun tools/audit-strategies.ts",
     "profile:browser": "bun tools/run-browser-profile.ts",
     "profile:browser:execute": "playwright test --config=playwright.scale.config.ts --grep @profile",
+    "capture:submission": "bun tools/capture-submission.ts",
     "profile:seeds": "bun tools/select-browser-profile-seeds.ts",
     "test": "vitest run",
     "docs": "bun tools/check-doc-links.ts",

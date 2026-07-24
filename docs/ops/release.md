@@ -73,8 +73,11 @@ serves the intended SHA.
 3. Run configured `shovefall_check`, `shovefall_smoke_dist`, `shovefall_audit_rounds`,
    `shovefall_profile_scale`, `shovefall_profile_browser`, and
    `ssealed_shovefall_doctor_strict` intents against that SHA.
-4. Confirm replay fixtures and evidence documents name the current versions.
-5. Freeze game rules and content. A later behavior, content, asset, or build change creates a new
+4. Run `shovefall_capture_submission` from the clean exact-HEAD worktree, or inspect the matching
+   successful `main` CI artifact. Confirm `manifest.json`, both PNG hashes, the WebM hash, and empty
+   browser-error arrays before using the media in the contest post.
+5. Confirm replay fixtures and evidence documents name the current versions.
+6. Freeze game rules and content. A later behavior, content, asset, or build change creates a new
    candidate and invalidates affected evidence.
 
 ## External Gates

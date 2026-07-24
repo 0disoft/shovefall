@@ -52,6 +52,23 @@ const CLARISSIMI_FORBIDDEN_FRAGMENTS = [
   "CLARISSIMI_PROVIDER_TOKEN",
 ] as const;
 
+const CI_SUBMISSION_CAPTURE_REQUIRED_FRAGMENTS = [
+  "name: Capture exact-SHA submission media",
+  "run: bun run capture:submission",
+  "name: Upload exact-SHA submission media",
+  "uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2",
+  "name: shovefall-submission-capture-${{ github.sha }}",
+  "path: ./.cache/submission-captures/${{ github.sha }}",
+  "if-no-files-found: error",
+  "retention-days: 30",
+] as const;
+
+const CI_SUBMISSION_CAPTURE_FORBIDDEN_FRAGMENTS = [
+  "actions/upload-artifact@main",
+  "actions/upload-artifact@v4",
+  "continue-on-error: true",
+] as const;
+
 const PUBLIC_HTML_FORBIDDEN_DEVELOPER_IDS = [
   "developer-telemetry",
   "tick-value",
@@ -192,6 +209,38 @@ async function checkClarissimiWorkflow(root: string): Promise<readonly string[]>
   return violations;
 }
 
+async function checkCiSubmissionCapture(root: string): Promise<readonly string[]> {
+  const workflowPath = join(root, ".github", "workflows", "ci.yml");
+  const source = await readFile(workflowPath, "utf8");
+  const violations: string[] = [];
+
+  for (const fragment of CI_SUBMISSION_CAPTURE_REQUIRED_FRAGMENTS) {
+    if (!source.includes(fragment)) {
+      violations.push(`.github/workflows/ci.yml is missing capture contract fragment: ${fragment}`);
+    }
+  }
+
+  for (const fragment of CI_SUBMISSION_CAPTURE_FORBIDDEN_FRAGMENTS) {
+    if (source.includes(fragment)) {
+      violations.push(`.github/workflows/ci.yml contains forbidden capture fragment: ${fragment}`);
+    }
+  }
+
+  const captureStart = source.indexOf("      - name: Capture exact-SHA submission media");
+  const pagesStart = source.indexOf("      - name: Configure GitHub Pages");
+  if (captureStart < 0 || pagesStart < 0 || captureStart >= pagesStart) {
+    violations.push("Exact-SHA capture and upload must complete before the Pages artifact handoff");
+  } else {
+    const captureBlock = source.slice(captureStart, pagesStart);
+    const nonPullRequestGuards = captureBlock.match(/if: github\.event_name != 'pull_request'/gu);
+    if (nonPullRequestGuards?.length !== 2) {
+      violations.push("Capture and upload steps must both skip pull-request merge refs");
+    }
+  }
+
+  return violations;
+}
+
 async function checkPublicHtml(root: string): Promise<readonly string[]> {
   const source = await readFile(join(root, "index.html"), "utf8");
   return PUBLIC_HTML_FORBIDDEN_DEVELOPER_IDS.filter((id) => source.includes(`id="${id}"`)).map(
@@ -239,6 +288,7 @@ async function main(): Promise<void> {
   );
   violations.push(...headlessViolations.flat());
   violations.push(...(await checkClarissimiWorkflow(root)));
+  violations.push(...(await checkCiSubmissionCapture(root)));
   violations.push(...(await checkPublicHtml(root)));
 
   if (violations.length > 0) {
@@ -252,6 +302,7 @@ async function main(): Promise<void> {
       {
         ok: true,
         checkedDependencies: [...dependencyNames].toSorted(),
+        ciSubmissionCapture: ".github/workflows/ci.yml",
         clarissimiWorkflow: ".github/workflows/clarissimi.yml",
         headlessBoundaries: ["src/ai", "src/simulation"],
         publicHtmlBoundary: "index.html excludes development-only telemetry markup",
