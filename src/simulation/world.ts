@@ -14,6 +14,7 @@ import {
   type ParticipantActionKind,
   type ParticipantState,
   type RenderFrameV1,
+  type RockShotState,
   type RoundId,
   type RoundStateV1,
   type SimulationEventKind,
@@ -21,6 +22,7 @@ import {
   type SoapPatchState,
   type TileId,
   type TileState,
+  type Tick,
   type UpgradeStatId,
 } from "./contracts";
 import { advanceCollapse, createCollapsePlan, type CollapseWave } from "./collapse";
@@ -43,6 +45,14 @@ import {
   ZERO_VECTOR,
 } from "./math";
 import { RandomStreamSet, type SeedInput } from "./random";
+import {
+  createArtilleryPlan,
+  createRockShot,
+  getActiveCannonShots,
+  getPirateShipStates,
+  getRockIntervalTicks,
+  type ArtilleryPlan,
+} from "./artillery";
 import { ParticipantSpatialHash, type ActorPair } from "./spatial-hash";
 import {
   advanceItemSpawns,
@@ -78,7 +88,6 @@ import {
   type GameplayTuningInput,
   type GameplayTuningV1,
 } from "./tuning";
-import { createSuddenDeathPlan, getSuddenDeathPulse, type SuddenDeathPlan } from "./sudden-death";
 import { SYSTEM_ORDER } from "./versions";
 import {
   createArenaTiles,
@@ -128,6 +137,8 @@ interface EventDetails {
   readonly position?: Vector2;
   readonly reason?: SimulationEventV1["reason"];
   readonly upgradeStat?: UpgradeStatId;
+  readonly shipId?: number;
+  readonly projectileId?: number;
 }
 
 interface SweptCircleContact {
@@ -182,6 +193,18 @@ function createReadyAction(tick: number): ActionState {
     hitActorIds: Object.freeze([]),
     resolvedActorIds: Object.freeze([]),
     lockedDirection: null,
+    springBoosted: false,
+  });
+}
+
+function createAnchoredAction(tick: number, direction: Vector2): ActionState {
+  return Object.freeze({
+    kind: "Anchored",
+    startedTick: tick,
+    endsTick: null,
+    hitActorIds: Object.freeze([]),
+    resolvedActorIds: Object.freeze([]),
+    lockedDirection: direction,
     springBoosted: false,
   });
 }
@@ -615,16 +638,20 @@ export class SimulationWorld {
   readonly #roundId: RoundId;
   readonly #collapsePlan: readonly CollapseWave[];
   readonly #collapseTransitionTicks: ReadonlySet<number>;
-  readonly #suddenDeathPlan: SuddenDeathPlan | undefined;
+  readonly #artilleryPlan: ArtilleryPlan;
   readonly #gameplayTuning: GameplayTuningV1;
   readonly #itemRandom;
   readonly #tieBreakRandom;
+  readonly #artilleryRandom;
   readonly #arenaTileIds: ReadonlySet<TileId>;
   #tiles: readonly TileState[];
   #participants: readonly ParticipantState[];
   #brickWalls: readonly BrickWallState[] = Object.freeze([]);
   #bombs: readonly BombState[] = Object.freeze([]);
   #soapPatches: readonly SoapPatchState[] = Object.freeze([]);
+  #rockShots: readonly RockShotState[] = Object.freeze([]);
+  #nextRockLaunchTick: Tick;
+  #nextRockShotId = 1;
   #itemState: ItemSystemState;
   #round: RoundStateV1 = Object.freeze({
     status: "Active",
@@ -680,7 +707,13 @@ export class SimulationWorld {
         voidTick,
       ]),
     );
-    this.#suddenDeathPlan = createSuddenDeathPlan(this.#tiles, this.#collapsePlan);
+    this.#artilleryPlan = createArtilleryPlan(
+      this.#tiles,
+      this.#collapsePlan,
+      config.arenaColumns,
+      config.arenaRows,
+    );
+    this.#nextRockLaunchTick = this.#artilleryPlan.rockPhaseStartTick;
     this.#participants = createParticipants(
       config,
       this.#tiles,
@@ -690,6 +723,7 @@ export class SimulationWorld {
     );
     this.#itemRandom = streams.get("items");
     this.#tieBreakRandom = streams.get("tie-break");
+    this.#artilleryRandom = streams.get("artillery");
     this.#itemState = createItemSystem(
       config,
       this.#tiles,
@@ -739,8 +773,8 @@ export class SimulationWorld {
       events,
     );
     participants = this.#applyMovementIntent(participants, commandsByActor);
-    participants = this.#applySuddenDeathPressure(participants, events);
     participants = this.#integratePositions(participants);
+    participants = this.#advanceRockArtillery(participants, events);
     participants = this.#resolveBrickWallContacts(participants);
     const collidableParticipants = participants.filter(isCollidable).map((participant) =>
       Object.freeze({
@@ -808,6 +842,9 @@ export class SimulationWorld {
       brickWalls: this.#brickWalls,
       bombs: this.#bombs,
       soapPatches: this.#soapPatches,
+      rockShots: this.#rockShots,
+      nextRockLaunchTick: this.#nextRockLaunchTick,
+      nextRockShotId: this.#nextRockShotId,
       nextItemId: this.#itemState.nextItemId,
       nextItemSpawnTick: this.#itemState.nextSpawnTick,
       tiles: this.#tiles,
@@ -847,6 +884,9 @@ export class SimulationWorld {
       brickWalls: this.#brickWalls,
       bombs: this.#bombs,
       soapPatches: this.#soapPatches,
+      pirateShips: getPirateShipStates(this.#artilleryPlan, this.#tick),
+      cannonShots: getActiveCannonShots(this.#artilleryPlan, this.#tick),
+      rockShots: this.#rockShots,
       tiles: this.#tiles,
       round: this.#round,
     });
@@ -924,6 +964,20 @@ export class SimulationWorld {
   ): readonly ParticipantState[] {
     return participants.map((participant) => {
       const { action } = participant;
+
+      if (
+        action.kind === "Anchored" &&
+        !this.#brickWalls.some(
+          ({ tileId }) =>
+            tileId ===
+            createTileId(
+              Math.floor(participant.body.position.x),
+              Math.floor(participant.body.position.y),
+            ),
+        )
+      ) {
+        return Object.freeze({ ...participant, action: createReadyAction(this.#tick) });
+      }
 
       if (action.endsTick === null || this.#tick < action.endsTick) {
         return participant;
@@ -1023,6 +1077,32 @@ export class SimulationWorld {
         return participant;
       }
 
+      if (participant.action.kind === "Anchored") {
+        const direction = normalizeVector(command.move);
+
+        if (isZeroVector(direction)) {
+          return participant;
+        }
+
+        const dismountPosition = this.#getBrickDismountPosition(participant, direction);
+
+        if (dismountPosition === undefined) {
+          return participant;
+        }
+
+        return Object.freeze({
+          ...participant,
+          body: Object.freeze({
+            ...participant.body,
+            position: dismountPosition,
+            previousPosition: dismountPosition,
+            velocity: ZERO_VECTOR,
+            facing: direction,
+          }),
+          action: createReadyAction(this.#tick),
+        });
+      }
+
       if (participant.action.kind !== "Ready") {
         return participant;
       }
@@ -1030,12 +1110,40 @@ export class SimulationWorld {
       const direction = normalizeDirectionOrFallback(command.move, participant.body.facing);
 
       if (command.dodgePressed && this.#tick >= participant.cooldowns.dodgeReadyTick) {
+        const landingWall = this.#getDodgeLandingWall(participant, direction, participants);
         events.push(
           this.#createEvent("dodge-started", {
             actorId: participant.actorId,
             vector: direction,
           }),
         );
+        const dodgeReadyTick =
+          this.#tick +
+          Math.max(
+            30,
+            SIMULATION_TUNING.dodge.cooldownTicks -
+              getReflexCooldownReduction(participant.progression.stats),
+          );
+
+        if (landingWall !== undefined) {
+          const landingPosition = Object.freeze({
+            x: landingWall.column + 0.5,
+            y: landingWall.row + 0.5,
+          });
+          return Object.freeze({
+            ...participant,
+            body: Object.freeze({
+              ...participant.body,
+              position: landingPosition,
+              previousPosition: landingPosition,
+              velocity: ZERO_VECTOR,
+              facing: direction,
+            }),
+            action: createAnchoredAction(this.#tick, direction),
+            cooldowns: Object.freeze({ ...participant.cooldowns, dodgeReadyTick }),
+          });
+        }
+
         return Object.freeze({
           ...participant,
           body: Object.freeze({ ...participant.body, facing: direction }),
@@ -1047,13 +1155,7 @@ export class SimulationWorld {
           ),
           cooldowns: Object.freeze({
             ...participant.cooldowns,
-            dodgeReadyTick:
-              this.#tick +
-              Math.max(
-                30,
-                SIMULATION_TUNING.dodge.cooldownTicks -
-                  getReflexCooldownReduction(participant.progression.stats),
-              ),
+            dodgeReadyTick,
           }),
         });
       }
@@ -1130,6 +1232,84 @@ export class SimulationWorld {
     });
   }
 
+  #getDodgeLandingWall(
+    participant: ParticipantState,
+    direction: Vector2,
+    participants: readonly ParticipantState[],
+  ): BrickWallState | undefined {
+    const distance = this.#gameplayTuning.dodgeSpeed * this.#gameplayTuning.dodgeActiveTicks;
+    const destination = addVectors(participant.body.position, scaleVector(direction, distance));
+    const wall = this.#brickWalls
+      .map((candidate) => ({
+        candidate,
+        contact: findSweptPointBoundsContact(
+          participant.body.position,
+          destination,
+          getTileBounds(candidate.column, candidate.row, participant.body.radius),
+        ),
+      }))
+      .filter(
+        (entry): entry is { candidate: BrickWallState; contact: SweptWallContact } =>
+          entry.contact !== undefined,
+      )
+      .toSorted(
+        (left, right) =>
+          left.contact.time - right.contact.time ||
+          left.candidate.tileId.localeCompare(right.candidate.tileId),
+      )[0]?.candidate;
+
+    if (wall === undefined) {
+      return undefined;
+    }
+
+    const wallCenter = Object.freeze({ x: wall.column + 0.5, y: wall.row + 0.5 });
+    const occupied = participants.some(
+      (candidate) =>
+        candidate.actorId !== participant.actorId &&
+        isCollidable(candidate) &&
+        vectorLength(subtractVectors(candidate.body.position, wallCenter)) <
+          candidate.body.radius + participant.body.radius,
+    );
+    return occupied ? undefined : wall;
+  }
+
+  #getBrickDismountPosition(
+    participant: ParticipantState,
+    direction: Vector2,
+  ): Vector2 | undefined {
+    const wall = this.#brickWalls.find(
+      ({ tileId }) =>
+        tileId ===
+        createTileId(
+          Math.floor(participant.body.position.x),
+          Math.floor(participant.body.position.y),
+        ),
+    );
+
+    if (wall === undefined) {
+      return participant.body.position;
+    }
+
+    const distance = 0.5 + participant.body.radius + 0.02;
+    const position = Object.freeze({
+      x: wall.column + 0.5 + direction.x * distance,
+      y: wall.row + 0.5 + direction.y * distance,
+    });
+    const supportedTileIds = new Set(
+      this.#tiles.filter(({ state }) => state !== "Void").map(({ tileId }) => tileId),
+    );
+    const destinationTileId = createTileId(Math.floor(position.x), Math.floor(position.y));
+
+    if (
+      !hasTileSupport(position, supportedTileIds) ||
+      this.#brickWalls.some(({ tileId }) => tileId === destinationTileId)
+    ) {
+      return undefined;
+    }
+
+    return position;
+  }
+
   #resolveActiveItems(
     participants: readonly ParticipantState[],
     activeItemSlots: ReadonlyMap<ActorId, InventorySlotIndex>,
@@ -1143,8 +1323,8 @@ export class SimulationWorld {
       return participants;
     }
 
-    const ordered = participants.toSorted((left, right) => left.actorId - right.actorId);
-    const updatedById = new Map(ordered.map((participant) => [participant.actorId, participant]));
+    let ordered = participants.toSorted((left, right) => left.actorId - right.actorId);
+    let updatedById = new Map(ordered.map((participant) => [participant.actorId, participant]));
     const impulses = new Map<ActorId, Vector2>();
     const credits = new Map<
       ActorId,
@@ -1169,6 +1349,11 @@ export class SimulationWorld {
         ),
       );
 
+      const victims = new Map<
+        ActorId,
+        { readonly attackerActorId: ActorId | null; readonly distance: number }
+      >();
+
       for (const bomb of dueBombs) {
         events.push(
           this.#createEvent("bomb-detonated", {
@@ -1177,9 +1362,6 @@ export class SimulationWorld {
             position: bomb.position,
           }),
         );
-
-        const owner = ordered.find(({ actorId }) => actorId === bomb.ownerActorId);
-        const ownerPower = owner?.progression.stats;
 
         for (const target of ordered) {
           if (!isCollidable(target)) {
@@ -1193,56 +1375,29 @@ export class SimulationWorld {
             continue;
           }
 
-          const targetIsEvading =
-            target.action.kind === "DodgeActive" &&
-            this.#tick - target.action.startedTick < SIMULATION_TUNING.dodge.evasionTicks;
-
-          if (targetIsEvading) {
-            events.push(
-              this.#createEvent("dodge-succeeded", {
-                actorId: target.actorId,
-                targetActorId: bomb.ownerActorId,
-                vector: target.action.lockedDirection ?? target.body.facing,
-              }),
-            );
-            continue;
-          }
-
-          const distanceRatio = edgeDistance / SIMULATION_TUNING.bomb.blastRadius;
-          const baseImpulse =
-            SIMULATION_TUNING.bomb.centerImpulse -
-            (SIMULATION_TUNING.bomb.centerImpulse - SIMULATION_TUNING.bomb.edgeImpulse) *
-              distanceRatio;
-          const rawImpulse =
-            (baseImpulse / Math.sqrt(target.body.massFactor)) *
-            (ownerPower === undefined ? 1 : getPowerMultiplier(ownerPower)) *
-            getStabilityMultiplier(target.progression.stats);
-          const direction = normalizeDirectionOrFallback(offset, bomb.fallbackDirection);
-          const impulse = scaleVector(
-            direction,
-            Math.min(rawImpulse, SIMULATION_TUNING.bomb.maximumImpulse),
-          );
-          impulses.set(
-            target.actorId,
-            addVectors(impulses.get(target.actorId) ?? ZERO_VECTOR, impulse),
-          );
-          const strength = vectorLength(impulse);
-          const previousCredit = credits.get(target.actorId);
+          const previous = victims.get(target.actorId);
+          const attackerActorId = target.actorId === bomb.ownerActorId ? null : bomb.ownerActorId;
 
           if (
-            target.actorId !== bomb.ownerActorId &&
-            (previousCredit === undefined ||
-              strength > previousCredit.strength ||
-              (strength === previousCredit.strength &&
-                bomb.ownerActorId < previousCredit.attackerActorId))
+            previous === undefined ||
+            edgeDistance < previous.distance ||
+            (edgeDistance === previous.distance &&
+              attackerActorId !== null &&
+              (previous.attackerActorId === null || attackerActorId < previous.attackerActorId))
           ) {
-            credits.set(
-              target.actorId,
-              Object.freeze({ attackerActorId: bomb.ownerActorId, strength }),
-            );
+            victims.set(target.actorId, Object.freeze({ attackerActorId, distance: edgeDistance }));
           }
         }
       }
+
+      ordered = this.#applyDirectEliminations(
+        ordered,
+        new Map(
+          [...victims].map(([actorId, { attackerActorId }]) => [actorId, attackerActorId] as const),
+        ),
+        events,
+      ).toSorted((left, right) => left.actorId - right.actorId);
+      updatedById = new Map(ordered.map((participant) => [participant.actorId, participant]));
     }
 
     for (const attacker of ordered) {
@@ -1873,57 +2028,28 @@ export class SimulationWorld {
 
       switch (participant.action.kind) {
         case "Ready": {
-          const targetVelocity = scaleVector(
-            inputDirection,
-            profile.maximumSpeed * mobilityMultiplier,
-          );
-          velocity = moveVectorToward(
-            velocity,
-            targetVelocity,
-            profile.acceleration * mobilityMultiplier,
-          );
-          velocity = isZeroVector(inputDirection)
-            ? scaleVector(velocity, SIMULATION_TUNING.movement.passiveDrag)
-            : velocity;
+          velocity = scaleVector(inputDirection, profile.maximumSpeed * mobilityMultiplier);
           facing = isZeroVector(inputDirection) ? facing : inputDirection;
           break;
         }
         case "ShoveWindup": {
-          const targetVelocity = scaleVector(
+          velocity = scaleVector(
             inputDirection,
             profile.maximumSpeed * SIMULATION_TUNING.movement.windupControl,
-          );
-          velocity = moveVectorToward(
-            velocity,
-            targetVelocity,
-            profile.acceleration * SIMULATION_TUNING.movement.windupControl,
           );
           facing = participant.action.lockedDirection ?? facing;
           break;
         }
         case "ShoveActive": {
           const direction = participant.action.lockedDirection ?? facing;
-          const targetVelocity = scaleVector(
-            inputDirection,
-            profile.maximumSpeed * mobilityMultiplier * 0.18,
-          );
-          velocity = moveVectorToward(
-            scaleVector(velocity, SIMULATION_TUNING.movement.passiveDrag),
-            targetVelocity,
-            profile.acceleration * 0.18,
-          );
+          velocity = scaleVector(inputDirection, profile.maximumSpeed * mobilityMultiplier * 0.18);
           facing = direction;
           break;
         }
         case "ShoveRecovery": {
-          const targetVelocity = scaleVector(
+          velocity = scaleVector(
             inputDirection,
             profile.maximumSpeed * SIMULATION_TUNING.movement.recoveryControl,
-          );
-          velocity = moveVectorToward(
-            scaleVector(velocity, SIMULATION_TUNING.movement.passiveDrag),
-            targetVelocity,
-            profile.acceleration * SIMULATION_TUNING.movement.recoveryControl,
           );
           break;
         }
@@ -1992,53 +2118,97 @@ export class SimulationWorld {
     });
   }
 
-  #applySuddenDeathPressure(
+  #advanceRockArtillery(
     participants: readonly ParticipantState[],
     events: SimulationEventV1[],
   ): readonly ParticipantState[] {
-    const pulse = getSuddenDeathPulse(this.#suddenDeathPlan, this.#tick);
+    const dueShots = this.#rockShots
+      .filter(({ impactTick }) => impactTick <= this.#tick)
+      .toSorted((left, right) => left.impactTick - right.impactTick || left.shotId - right.shotId);
+    this.#rockShots = Object.freeze(
+      this.#rockShots.filter(({ impactTick }) => impactTick > this.#tick),
+    );
+    let resolved = participants;
 
-    if (pulse === undefined) {
-      return participants;
-    }
+    if (dueShots.length > 0) {
+      const victims = new Map<ActorId, ActorId | null>();
 
-    events.push(this.#createEvent("sudden-death-pulse", { position: pulse.center }));
+      for (const shot of dueShots) {
+        events.push(
+          this.#createEvent("rock-impact", {
+            actorId: shot.targetActorId,
+            shipId: shot.shipId,
+            projectileId: shot.shotId,
+            position: shot.target,
+          }),
+        );
 
-    return participants.map((participant) => {
-      if (!isCollidable(participant)) {
-        return participant;
+        for (const participant of resolved) {
+          if (!isCollidable(participant)) {
+            continue;
+          }
+
+          const edgeDistance = Math.max(
+            0,
+            vectorLength(subtractVectors(participant.body.position, shot.target)) -
+              participant.body.radius,
+          );
+
+          if (edgeDistance > shot.blastRadius) {
+            continue;
+          }
+
+          const { attackerActorId, hitTick } = participant.shoveCredit;
+          const creditedAttacker =
+            attackerActorId !== null &&
+            attackerActorId !== participant.actorId &&
+            hitTick !== null &&
+            this.#tick - hitTick <= SIMULATION_TUNING.shove.eliminationCreditTicks
+              ? attackerActorId
+              : null;
+          victims.set(participant.actorId, creditedAttacker);
+        }
       }
 
-      const centerOffset = subtractVectors(participant.body.position, pulse.center);
-      const fallbackAngle = participant.actorId * 2.399_963_229_728_653;
-      const direction = getUnitDirectionOrFallback(centerOffset, {
-        x: Math.cos(fallbackAngle),
-        y: Math.sin(fallbackAngle),
-      });
-      const impulseStrength =
-        (pulse.strength / Math.sqrt(participant.body.massFactor)) *
-        getStabilityMultiplier(participant.progression.stats);
-      const impulse = scaleVector(direction, impulseStrength);
-      const velocity = clampVectorLength(
-        addVectors(participant.body.velocity, impulse),
-        SIMULATION_TUNING.body.maximumLaunchSpeed,
-      );
-      const action =
-        impulseStrength >= SIMULATION_TUNING.suddenDeath.stumbleImpulseThreshold
-          ? createTimedAction(
-              "Stumbling",
-              this.#tick,
-              SIMULATION_TUNING.suddenDeath.stumbleTicks,
-              direction,
-            )
-          : participant.action;
+      resolved = this.#applyDirectEliminations(resolved, victims, events);
+    }
 
-      return Object.freeze({
-        ...participant,
-        action,
-        body: Object.freeze({ ...participant.body, velocity }),
-      });
-    });
+    const standing = resolved
+      .filter(isCollidable)
+      .toSorted((left, right) => left.actorId - right.actorId);
+
+    if (
+      standing.length > 1 &&
+      this.#tick >= this.#nextRockLaunchTick &&
+      this.#tick >= this.#artilleryPlan.rockPhaseStartTick
+    ) {
+      const target = standing[this.#artilleryRandom.nextUint32() % standing.length];
+      const ship =
+        this.#artilleryPlan.ships[(this.#nextRockShotId - 1) % this.#artilleryPlan.ships.length];
+
+      if (target !== undefined && ship !== undefined) {
+        const shot = createRockShot(
+          this.#nextRockShotId,
+          ship,
+          target.actorId,
+          target.body.position,
+          this.#tick,
+        );
+        this.#rockShots = Object.freeze([...this.#rockShots, shot]);
+        this.#nextRockShotId += 1;
+        this.#nextRockLaunchTick = this.#tick + getRockIntervalTicks(standing.length);
+        events.push(
+          this.#createEvent("rock-fired", {
+            actorId: target.actorId,
+            shipId: shot.shipId,
+            projectileId: shot.shotId,
+            position: shot.target,
+          }),
+        );
+      }
+    }
+
+    return resolved;
   }
 
   #resolveBrickWallContacts(
@@ -2050,7 +2220,7 @@ export class SimulationWorld {
     }
 
     return participants.map((participant) => {
-      if (!isCollidable(participant)) {
+      if (!isCollidable(participant) || participant.action.kind === "Anchored") {
         return participant;
       }
 
@@ -2152,9 +2322,13 @@ export class SimulationWorld {
           (distance === 0
             ? Object.freeze({ x: left.actorId < right.actorId ? 1 : -1, y: 0 })
             : scaleVector(delta, 1 / distance));
-        const leftInverseMass = 1 / left.body.massFactor;
-        const rightInverseMass = 1 / right.body.massFactor;
+        const leftInverseMass = left.action.kind === "Anchored" ? 0 : 1 / left.body.massFactor;
+        const rightInverseMass = right.action.kind === "Anchored" ? 0 : 1 / right.body.massFactor;
         const inverseMassTotal = leftInverseMass + rightInverseMass;
+
+        if (inverseMassTotal === 0) {
+          continue;
+        }
         const leftVelocity = velocities[leftIndex] ?? left.body.velocity;
         const rightVelocity = velocities[rightIndex] ?? right.body.velocity;
         const relativeNormalSpeed = dotVectors(
@@ -2628,6 +2802,65 @@ export class SimulationWorld {
     });
   }
 
+  #applyDirectEliminations(
+    participants: readonly ParticipantState[],
+    victims: ReadonlyMap<ActorId, ActorId | null>,
+    events: SimulationEventV1[],
+  ): readonly ParticipantState[] {
+    if (victims.size === 0) {
+      return participants;
+    }
+
+    const creditsByActor = new Map<ActorId, ActorId[]>();
+
+    for (const [targetActorId, attackerActorId] of [...victims].toSorted(
+      ([left], [right]) => left - right,
+    )) {
+      events.push(this.#createEvent("eliminated", { actorId: targetActorId }));
+
+      if (attackerActorId === null || attackerActorId === targetActorId) {
+        continue;
+      }
+
+      const targets = creditsByActor.get(attackerActorId) ?? [];
+      targets.push(targetActorId);
+      creditsByActor.set(attackerActorId, targets);
+      events.push(
+        this.#createEvent("stat-point-earned", {
+          actorId: attackerActorId,
+          targetActorId,
+        }),
+      );
+    }
+
+    return participants.map((participant) => {
+      const isVictim = victims.has(participant.actorId);
+      const credits = creditsByActor.get(participant.actorId)?.length ?? 0;
+      let progression = participant.progression;
+
+      for (let index = 0; index < credits; index += 1) {
+        progression = awardStatPoint(progression);
+      }
+
+      if (!isVictim) {
+        return credits === 0 ? participant : Object.freeze({ ...participant, progression });
+      }
+
+      const eliminated = clearEffects(participant);
+      return Object.freeze({
+        ...eliminated,
+        active: false,
+        progression,
+        body: Object.freeze({
+          ...eliminated.body,
+          velocity: ZERO_VECTOR,
+          unsupportedTicks: 0,
+        }),
+        action: createTimedAction("Eliminated", this.#tick, 0, null),
+      });
+    });
+  }
+
   #advanceCollapse(events: SimulationEventV1[]): boolean {
     if (!this.#collapseTransitionTicks.has(this.#tick)) {
       return false;
@@ -2745,6 +2978,8 @@ export class SimulationWorld {
       ...(details.position === undefined ? {} : { position: details.position }),
       ...(details.reason === undefined ? {} : { reason: details.reason }),
       ...(details.upgradeStat === undefined ? {} : { upgradeStat: details.upgradeStat }),
+      ...(details.shipId === undefined ? {} : { shipId: details.shipId }),
+      ...(details.projectileId === undefined ? {} : { projectileId: details.projectileId }),
     });
     this.#eventSequence += 1;
     return event;

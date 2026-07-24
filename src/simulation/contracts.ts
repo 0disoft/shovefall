@@ -176,6 +176,36 @@ export interface SoapPatchState {
   readonly placedTick: Tick;
 }
 
+export interface PirateShipState {
+  readonly shipId: number;
+  readonly position: Vector2;
+  readonly initialCannonAmmo: number;
+  readonly cannonAmmoRemaining: number;
+}
+
+export interface CannonShotState {
+  readonly shotId: number;
+  readonly shipId: number;
+  readonly targetTileId: TileId;
+  readonly origin: Vector2;
+  readonly target: Vector2;
+  readonly launchTick: Tick;
+  readonly warningTick: Tick;
+  readonly dangerTick: Tick;
+  readonly impactTick: Tick;
+}
+
+export interface RockShotState {
+  readonly shotId: number;
+  readonly shipId: number;
+  readonly targetActorId: ActorId;
+  readonly origin: Vector2;
+  readonly target: Vector2;
+  readonly launchTick: Tick;
+  readonly impactTick: Tick;
+  readonly blastRadius: number;
+}
+
 export interface TileState {
   readonly tileId: TileId;
   readonly column: number;
@@ -226,6 +256,9 @@ export interface RenderFrameV1 {
   readonly brickWalls: readonly BrickWallState[];
   readonly bombs: readonly BombState[];
   readonly soapPatches: readonly SoapPatchState[];
+  readonly pirateShips: readonly PirateShipState[];
+  readonly cannonShots: readonly CannonShotState[];
+  readonly rockShots: readonly RockShotState[];
   readonly tiles: readonly TileState[];
   readonly round: RoundStateV1;
 }
@@ -255,7 +288,8 @@ export type SimulationEventKind =
   | "tile-warning"
   | "tile-collapsing"
   | "tile-void"
-  | "sudden-death-pulse"
+  | "rock-fired"
+  | "rock-impact"
   | "round-completed";
 
 export interface SimulationEventV1 {
@@ -270,6 +304,8 @@ export interface SimulationEventV1 {
   readonly itemId?: ItemId;
   readonly itemDefinitionId?: ItemDefinitionId;
   readonly upgradeStat?: UpgradeStatId;
+  readonly shipId?: number;
+  readonly projectileId?: number;
   readonly winnerActorId?: ActorId;
   readonly vector?: Vector2;
   readonly position?: Vector2;

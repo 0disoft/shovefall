@@ -71,8 +71,6 @@ describe("gray-box movement and action timing", () => {
 
     expect(light.maximumSpeed).toBeGreaterThan(normal.maximumSpeed);
     expect(normal.maximumSpeed).toBeGreaterThan(heavy.maximumSpeed);
-    expect(light.acceleration).toBeGreaterThan(normal.acceleration);
-    expect(normal.acceleration).toBeGreaterThan(heavy.acceleration);
     expect(light.maximumSpeed / normal.maximumSpeed).toBeCloseTo(
       DEFAULT_GAMEPLAY_TUNING.lightweightSpeedMultiplier,
       10,
@@ -86,10 +84,32 @@ describe("gray-box movement and action timing", () => {
   });
 
   it("keeps the default hand reach and dodge travel compact", () => {
-    expect(DEFAULT_GAMEPLAY_TUNING.shoveReach).toBeLessThanOrEqual(0.3);
+    expect(DEFAULT_GAMEPLAY_TUNING.shoveReach).toBeLessThanOrEqual(0.35);
     expect(
       DEFAULT_GAMEPLAY_TUNING.dodgeSpeed * DEFAULT_GAMEPLAY_TUNING.dodgeActiveTicks,
     ).toBeLessThan(0.6);
+  });
+
+  it("starts, turns, and stops locomotion on the sampled input tick", () => {
+    const world = new SimulationWorld(CONFIG, "direct-locomotion", {
+      participantOverrides: createSeparatedOverrides({
+        actorId: 1,
+        position: { x: 4.5, y: 4.5 },
+      }),
+    });
+
+    stepWithMovement(world, 1, 1, 0);
+    expect(getActor(world, 1).velocity).toEqual({
+      x: DEFAULT_GAMEPLAY_TUNING.movementMaximumSpeed,
+      y: 0,
+    });
+    stepWithMovement(world, 1, 0, -1);
+    expect(getActor(world, 1).velocity).toEqual({
+      x: 0,
+      y: -DEFAULT_GAMEPLAY_TUNING.movementMaximumSpeed,
+    });
+    world.step([createNeutralCommand(world.tick, 1)]);
+    expect(getActor(world, 1).velocity).toEqual({ x: 0, y: 0 });
   });
 
   it("applies a normalized per-world dodge tuning without mutating the default", () => {
@@ -126,8 +146,8 @@ describe("gray-box movement and action timing", () => {
 
     expect(lastActivePosition).toBeDefined();
     expect((lastActivePosition?.x ?? start.x) - start.x).toBeCloseTo(0.21, 10);
-    expect(DEFAULT_GAMEPLAY_TUNING.dodgeSpeed).toBe(0.105);
-    expect(DEFAULT_GAMEPLAY_TUNING.dodgeActiveTicks).toBe(5);
+    expect(DEFAULT_GAMEPLAY_TUNING.dodgeSpeed).toBe(0.08);
+    expect(DEFAULT_GAMEPLAY_TUNING.dodgeActiveTicks).toBe(4);
   });
 
   it("moves a light body farther than a heavy body under identical input", () => {
@@ -300,7 +320,7 @@ describe("weak-contact containment", () => {
     }
   });
 
-  it("detects maximum-speed grazing crossings across a deterministic geometry matrix", () => {
+  it("detects direct-speed grazing crossings across a deterministic geometry matrix", () => {
     const cases = [0.22, 0.25, 0.28].flatMap((horizontalGap) =>
       Array.from({ length: 7 }, (_, index) => ({
         horizontalGap,
@@ -314,24 +334,26 @@ describe("weak-contact containment", () => {
           {
             actorId: 1,
             position: { x: 4, y: 4.5 - verticalGap / 2 },
-            velocity: { x: SIMULATION_TUNING.body.maximumSpeed, y: 0 },
           },
           {
             actorId: 2,
             position: { x: 4 + horizontalGap, y: 4.5 + verticalGap / 2 },
-            velocity: { x: -SIMULATION_TUNING.body.maximumSpeed, y: 0 },
           },
         ),
         `grazing-crossing-${horizontalGap}-${verticalGap}`,
       );
 
-      world.step();
+      world.step([
+        { ...createNeutralCommand(world.tick, 1), move: { x: 1, y: 0 } },
+        { ...createNeutralCommand(world.tick, 2), move: { x: -1, y: 0 } },
+      ]);
       const left = getActor(world, 1);
       const right = getActor(world, 2);
+      const minimumDistance = left.radius + right.radius;
 
-      expect(Math.abs(left.velocity.y)).toBeGreaterThan(0.000_001);
-      expect(Math.abs(right.velocity.y)).toBeGreaterThan(0.000_001);
-      expect(Math.sign(left.velocity.y)).toBe(-Math.sign(right.velocity.y));
+      expect(
+        Math.hypot(right.position.x - left.position.x, right.position.y - left.position.y),
+      ).toBeGreaterThanOrEqual(minimumDistance);
     }
   });
 });
@@ -437,18 +459,16 @@ describe("gray-box shove resolution", () => {
   it("records a geometric dodge during the evasion window instead of a shove hit", () => {
     const world = createWorld(duelOverrides());
     beginShove(world, [1]);
-    world.step();
-    world.step();
-    world.step();
-    world.step([
+    while (world.tick < SIMULATION_TUNING.shove.windupTicks) {
+      world.step();
+    }
+    const result = world.step([
       {
         ...createNeutralCommand(world.tick, 2),
         dodgePressed: true,
         move: { x: 0, y: 1 },
       },
     ]);
-    world.step();
-    const result = world.step();
 
     expect(result.events.map(({ kind }) => kind)).toContain("dodge-succeeded");
     expect(result.events.map(({ kind }) => kind)).not.toContain("shove-hit");

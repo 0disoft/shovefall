@@ -3,7 +3,6 @@ import { clamp } from "./math";
 export interface GameplayTuningV1 {
   readonly tuningVersion: 1;
   readonly movementMaximumSpeed: number;
-  readonly movementAcceleration: number;
   readonly lightweightSpeedMultiplier: number;
   readonly heavyweightSpeedMultiplier: number;
   readonly shoveActiveTicks: number;
@@ -39,7 +38,6 @@ export const SIMULATION_TUNING = Object.freeze({
   }),
   movement: Object.freeze({
     baseMaximumSpeed: 0.055,
-    baseAcceleration: 0.006,
     lightweightSpeedMultiplier: 1.35,
     heavyweightSpeedMultiplier: 0.82,
     windupControl: 0.35,
@@ -48,26 +46,26 @@ export const SIMULATION_TUNING = Object.freeze({
     stumbleDrag: 0.965,
   }),
   shove: Object.freeze({
-    windupTicks: 6,
-    activeTicks: 5,
-    recoveryTicks: 15,
-    cooldownTicks: 66,
-    reach: 0.28,
+    windupTicks: 8,
+    activeTicks: 4,
+    recoveryTicks: 20,
+    cooldownTicks: 84,
+    reach: 0.32,
     coneCosine: 0.15,
-    baseImpulse: 0.105,
-    velocityImpulseScale: 0.72,
-    maximumImpulse: 0.24,
-    stumbleImpulseThreshold: 0.095,
-    missedStumbleBaseTicks: 12,
-    missedStumbleSpeedTicks: 38,
-    hitStumbleTicks: 18,
+    baseImpulse: 0.16,
+    velocityImpulseScale: 0.4,
+    maximumImpulse: 0.34,
+    stumbleImpulseThreshold: 0.12,
+    missedStumbleBaseTicks: 30,
+    missedStumbleSpeedTicks: 52,
+    hitStumbleTicks: 22,
     eliminationCreditTicks: 180,
   }),
   windBlast: Object.freeze({
     range: 6.5,
-    baseImpulse: 0.315,
-    maximumImpulse: 0.42,
-    stumbleTicks: 24,
+    baseImpulse: 0.52,
+    maximumImpulse: 0.64,
+    stumbleTicks: 30,
   }),
   grapplingHook: Object.freeze({
     range: 4.5,
@@ -90,19 +88,10 @@ export const SIMULATION_TUNING = Object.freeze({
     stumbleTicks: 24,
   }),
   dodge: Object.freeze({
-    activeTicks: 5,
-    evasionTicks: 5,
+    activeTicks: 4,
+    evasionTicks: 4,
     cooldownTicks: 108,
-    speed: 0.105,
-  }),
-  suddenDeath: Object.freeze({
-    startDelayTicks: 60,
-    intervalTicks: 120,
-    baseImpulse: 0.075,
-    impulseGrowth: 0.025,
-    maximumImpulse: 0.225,
-    stumbleImpulseThreshold: 0.09,
-    stumbleTicks: 18,
+    speed: 0.08,
   }),
   support: Object.freeze({
     graceTicks: 9,
@@ -114,7 +103,6 @@ export const GAMEPLAY_TUNING_LIMITS: Readonly<
   Record<keyof GameplayTuningInput, NumericTuningLimit>
 > = Object.freeze({
   movementMaximumSpeed: Object.freeze({ minimum: 0.035, maximum: 0.09, step: 0.001 }),
-  movementAcceleration: Object.freeze({ minimum: 0.002, maximum: 0.015, step: 0.001 }),
   lightweightSpeedMultiplier: Object.freeze({ minimum: 1, maximum: 1.6, step: 0.05 }),
   heavyweightSpeedMultiplier: Object.freeze({ minimum: 0.6, maximum: 1, step: 0.05 }),
   shoveActiveTicks: Object.freeze({ minimum: 3, maximum: 9, step: 1 }),
@@ -126,7 +114,6 @@ export const GAMEPLAY_TUNING_LIMITS: Readonly<
 export const DEFAULT_GAMEPLAY_TUNING: GameplayTuningV1 = Object.freeze({
   tuningVersion: 1,
   movementMaximumSpeed: SIMULATION_TUNING.movement.baseMaximumSpeed,
-  movementAcceleration: SIMULATION_TUNING.movement.baseAcceleration,
   lightweightSpeedMultiplier: SIMULATION_TUNING.movement.lightweightSpeedMultiplier,
   heavyweightSpeedMultiplier: SIMULATION_TUNING.movement.heavyweightSpeedMultiplier,
   shoveActiveTicks: SIMULATION_TUNING.shove.activeTicks,
@@ -137,7 +124,6 @@ export const DEFAULT_GAMEPLAY_TUNING: GameplayTuningV1 = Object.freeze({
 
 export interface MovementProfile {
   readonly maximumSpeed: number;
-  readonly acceleration: number;
 }
 
 function normalizeNumber(
@@ -167,11 +153,6 @@ export function normalizeGameplayTuning(input: GameplayTuningInput = {}): Gamepl
       input.movementMaximumSpeed,
       DEFAULT_GAMEPLAY_TUNING.movementMaximumSpeed,
       GAMEPLAY_TUNING_LIMITS.movementMaximumSpeed,
-    ),
-    movementAcceleration: normalizeNumber(
-      input.movementAcceleration,
-      DEFAULT_GAMEPLAY_TUNING.movementAcceleration,
-      GAMEPLAY_TUNING_LIMITS.movementAcceleration,
     ),
     lightweightSpeedMultiplier: normalizeNumber(
       input.lightweightSpeedMultiplier,
@@ -228,6 +209,5 @@ export function getMovementProfile(
 
   return Object.freeze({
     maximumSpeed: tuning.movementMaximumSpeed * maximumSpeedScale,
-    acceleration: tuning.movementAcceleration / mass,
   });
 }

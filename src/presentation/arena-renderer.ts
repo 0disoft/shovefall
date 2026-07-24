@@ -1,15 +1,18 @@
-import { Application, Graphics } from "pixi.js";
+import { Application, Container, Graphics, Text } from "pixi.js";
 import type {
   BombState,
   BrickWallState,
+  CannonShotState,
   ItemDefinitionId,
   ParticipantActionKind,
   RenderFrameV1,
   RenderItemV1,
   RenderParticipantV1,
+  RockShotState,
   SimulationEventV1,
   SoapPatchState,
   TileState,
+  PirateShipState,
 } from "../simulation/contracts";
 import { clamp, type Vector2 } from "../simulation/math";
 import {
@@ -47,7 +50,8 @@ type VisualEffectKind =
   | "soap-placed"
   | "soap-triggered"
   | "grappling-hook-hit"
-  | "sudden-death-pulse";
+  | "rock-impact"
+  | "tile-void";
 
 interface VisualEffect {
   readonly key: string;
@@ -121,7 +125,7 @@ function createCameraOffset(
         (human.position.y - human.previousPosition.y) * interpolationAlpha;
   const worldSize = getProjectedArenaSize(columns, rows, projection);
   const focus = projectArenaPoint({ x: focusX, y: focusY }, projection);
-  const oceanMargin = projection.tileWidth * 1.35;
+  const oceanMargin = projection.tileWidth * 4.25;
   const unclampedX = width / 2 - focus.x;
   const unclampedY = height / 2 - focus.y;
   const minimumX = width - worldSize.width - oceanMargin;
@@ -141,7 +145,7 @@ function getActionColor(action: ParticipantActionKind): number {
 }
 
 function getTileFillColor(tile: TileState): number {
-  return tile.state === "Stable" ? 0x2c3431 : tile.state === "Warning" ? 0x8a5a1e : 0x6b2a24;
+  return tile.state === "Stable" ? 0x2c3431 : tile.state === "Warning" ? 0x303a36 : 0x25302c;
 }
 
 function drawTileCliff(
@@ -206,7 +210,7 @@ function drawTile(graphics: Graphics, tile: TileState, projection: ArenaProjecti
     graphics
       .moveTo(x + insetX, y + projection.tileDepth - insetY)
       .lineTo(x + projection.tileWidth - insetX, y + insetY)
-      .stroke({ color: 0x2d2111, width: Math.max(2, projection.tileWidth * 0.055) });
+      .stroke({ color: 0x8a5a1e, width: Math.max(2, projection.tileWidth * 0.045), alpha: 0.5 });
   }
 
   if (tile.state === "Collapsing") {
@@ -217,8 +221,126 @@ function drawTile(graphics: Graphics, tile: TileState, projection: ArenaProjecti
       .lineTo(x + projection.tileWidth - insetX, y + projection.tileDepth - insetY)
       .moveTo(x + projection.tileWidth - insetX, y + insetY)
       .lineTo(x + insetX, y + projection.tileDepth - insetY)
-      .stroke({ color: 0x251414, width: Math.max(2, projection.tileWidth * 0.07) });
+      .stroke({ color: 0x6b2a24, width: Math.max(2, projection.tileWidth * 0.055), alpha: 0.58 });
   }
+}
+
+function getShotProgress(tick: number, launchTick: number, impactTick: number): number {
+  return clamp((tick - launchTick) / Math.max(1, impactTick - launchTick), 0, 1);
+}
+
+function drawTargetWarning(
+  graphics: Graphics,
+  target: Vector2,
+  critical: boolean,
+  projection: ArenaProjection,
+): void {
+  const { x, y } = projectArenaPoint(target, projection);
+  const radius = Math.max(8, projection.tileWidth * 0.2);
+  const color = critical ? 0xff5c4d : 0xffc857;
+  graphics.circle(x, y, radius).stroke({ color, width: 3, alpha: 0.94 });
+
+  if (critical) {
+    graphics
+      .circle(x, y - radius * 0.12, radius * 0.42)
+      .moveTo(x - radius * 0.2, y - radius * 0.15)
+      .lineTo(x + radius * 0.2, y + radius * 0.18)
+      .moveTo(x + radius * 0.2, y - radius * 0.15)
+      .lineTo(x - radius * 0.2, y + radius * 0.18)
+      .stroke({ color, width: 2.5, alpha: 0.96 });
+  } else {
+    graphics
+      .moveTo(x, y - radius * 0.55)
+      .lineTo(x, y + radius * 0.14)
+      .circle(x, y + radius * 0.48, Math.max(1.8, radius * 0.1))
+      .stroke({ color, width: 3, alpha: 0.96, cap: "round" });
+  }
+}
+
+function drawCannonShot(
+  graphics: Graphics,
+  shot: CannonShotState,
+  tick: number,
+  projection: ArenaProjection,
+  reducedMotion: boolean,
+): void {
+  const progress = getShotProgress(tick, shot.launchTick, shot.impactTick);
+  const worldPosition = Object.freeze({
+    x: shot.origin.x + (shot.target.x - shot.origin.x) * progress,
+    y: shot.origin.y + (shot.target.y - shot.origin.y) * progress,
+  });
+  const projected = projectArenaPoint(worldPosition, projection);
+  const arc = reducedMotion ? 0 : Math.sin(Math.PI * progress) * projection.tileWidth * 1.35;
+  const radius = Math.max(3, projection.tileWidth * (0.07 + progress * 0.04));
+  graphics
+    .circle(projected.x, projected.y - arc, radius)
+    .fill({ color: 0x252b29 })
+    .stroke({ color: 0xff8f5c, width: 2 });
+
+  if (tick >= shot.warningTick) {
+    drawTargetWarning(graphics, shot.target, tick >= shot.dangerTick, projection);
+  }
+}
+
+function drawRockShot(
+  graphics: Graphics,
+  shot: RockShotState,
+  tick: number,
+  projection: ArenaProjection,
+  reducedMotion: boolean,
+): void {
+  const progress = getShotProgress(tick, shot.launchTick, shot.impactTick);
+  const worldPosition = Object.freeze({
+    x: shot.origin.x + (shot.target.x - shot.origin.x) * progress,
+    y: shot.origin.y + (shot.target.y - shot.origin.y) * progress,
+  });
+  const projected = projectArenaPoint(worldPosition, projection);
+  const target = projectArenaPoint(shot.target, projection);
+  const arc = reducedMotion ? 0 : Math.sin(Math.PI * progress) * projection.tileWidth * 1.8;
+  const radius = Math.max(5, projection.tileWidth * (0.12 + progress * 0.08));
+  graphics
+    .ellipse(
+      target.x,
+      target.y,
+      projection.pitch * shot.blastRadius,
+      projection.depthPitch * shot.blastRadius,
+    )
+    .fill({ color: 0x160f0e, alpha: 0.28 + progress * 0.3 })
+    .stroke({ color: 0xff5c4d, width: 3, alpha: 0.72 + progress * 0.28 })
+    .circle(projected.x, projected.y - arc, radius)
+    .fill({ color: 0x3b3733 })
+    .stroke({ color: 0xb56f3f, width: 2 });
+  drawTargetWarning(graphics, shot.target, true, projection);
+}
+
+function drawPirateShip(
+  graphics: Graphics,
+  ship: PirateShipState,
+  projection: ArenaProjection,
+): void {
+  const { x, y } = projectArenaPoint(ship.position, projection);
+  const width = projection.tileWidth * 1.05;
+  const height = projection.tileDepth * 1.7;
+  graphics
+    .poly([
+      x,
+      y - height * 0.68,
+      x + width * 0.5,
+      y + height * 0.22,
+      x,
+      y + height * 0.58,
+      x - width * 0.5,
+      y + height * 0.22,
+    ])
+    .fill({ color: 0x51362c })
+    .stroke({ color: 0xb56f3f, width: 2 })
+    .moveTo(x, y - height * 0.5)
+    .lineTo(x, y + height * 0.1)
+    .moveTo(x, y - height * 0.42)
+    .lineTo(x + width * 0.38, y - height * 0.18)
+    .lineTo(x, y + height * 0.02)
+    .closePath()
+    .fill({ color: 0x242a28, alpha: 0.94 });
 }
 
 function drawDirection(
@@ -641,7 +763,9 @@ function getEffectPosition(event: SimulationEventV1, frame: RenderFrameV1): Vect
   }
 
   if (
-    (event.kind === "soap-placed" || event.kind === "soap-triggered") &&
+    (event.kind === "soap-placed" ||
+      event.kind === "soap-triggered" ||
+      event.kind === "tile-void") &&
     event.tileId !== undefined
   ) {
     const tile = frame.tiles.find(({ tileId }) => tileId === event.tileId);
@@ -671,7 +795,8 @@ function isVisualEffectKind(kind: SimulationEventV1["kind"]): kind is VisualEffe
     kind === "soap-placed" ||
     kind === "soap-triggered" ||
     kind === "grappling-hook-hit" ||
-    kind === "sudden-death-pulse"
+    kind === "rock-impact" ||
+    kind === "tile-void"
   );
 }
 
@@ -689,14 +814,18 @@ function drawWorldEffect(
   const expansion = reducedMotion ? 1 : 1 + progress * 1.8;
   const alpha = Math.max(0, 1 - progress);
 
-  if (effect.kind === "sudden-death-pulse") {
-    const waveScale = reducedMotion ? 1.8 : 1.2 + progress * 7.5;
+  if (effect.kind === "tile-void") {
+    const waveScale = reducedMotion ? 0.9 : 0.65 + progress * 1.25;
     graphics
       .ellipse(x, y, projection.pitch * waveScale, projection.depthPitch * waveScale)
-      .stroke({ color: 0x72d8ff, width: 5, alpha });
+      .stroke({ color: 0x72d8ff, width: 4, alpha });
     graphics
       .ellipse(x, y, projection.pitch * waveScale * 0.72, projection.depthPitch * waveScale * 0.72)
       .stroke({ color: 0xdaf7ff, width: 2, alpha: alpha * 0.8 });
+  } else if (effect.kind === "rock-impact") {
+    const burst = baseRadius * (reducedMotion ? 2.4 : 1.4 + progress * 4.8);
+    graphics.circle(x, y, burst).stroke({ color: 0xff5c4d, width: 5, alpha });
+    graphics.circle(x, y, burst * 0.65).fill({ color: 0x4b2f27, alpha: alpha * 0.42 });
   } else if (effect.kind === "grappling-hook-hit") {
     const cableAlpha = alpha;
     const anchorVector = effect.vector ?? { x: 0, y: 0 };
@@ -821,10 +950,13 @@ export async function createArenaRenderer(
   host.dataset.renderer = "ready";
 
   const tiles = new Graphics();
+  const artillery = new Graphics();
   const items = new Graphics();
   const participants = new Graphics();
   const effectLayer = new Graphics();
-  application.stage.addChild(tiles, items, participants, effectLayer);
+  const artilleryLabels = new Container();
+  const artilleryLabelsByShip = new Map<number, Text>();
+  application.stage.addChild(tiles, artillery, items, participants, effectLayer, artilleryLabels);
   const eventLedger = new SimulationEventLedger();
   const motionPreference = window.matchMedia("(prefers-reduced-motion: reduce)");
   let reducedMotion = motionPreference.matches;
@@ -850,18 +982,23 @@ export async function createArenaRenderer(
     );
     tiles.x = camera.x;
     tiles.y = camera.y;
+    artillery.x = camera.x;
+    artillery.y = camera.y;
     items.x = camera.x;
     items.y = camera.y;
     participants.x = camera.x;
     participants.y = camera.y;
     effectLayer.x = camera.x;
     effectLayer.y = camera.y;
+    artilleryLabels.x = camera.x;
+    artilleryLabels.y = camera.y;
     host.dataset.cameraX = camera.x.toFixed(2);
     host.dataset.cameraY = camera.y.toFixed(2);
     host.dataset.projectionAngle = ARENA_CAMERA_ELEVATION_DEGREES.toString();
     host.dataset.projectionScaleY = ARENA_DEPTH_SCALE.toFixed(4);
     host.dataset.cliffDepth = projection.cliffDepth.toFixed(2);
     items.clear();
+    artillery.clear();
     participants.clear();
     effectLayer.clear();
     const mayhem = latestFrame.participants.length >= 25;
@@ -888,6 +1025,41 @@ export async function createArenaRenderer(
       tileLayerDirty = false;
     }
 
+    for (const ship of latestFrame.pirateShips) {
+      drawPirateShip(artillery, ship, projection);
+      const point = projectArenaPoint(ship.position, projection);
+      let label = artilleryLabelsByShip.get(ship.shipId);
+
+      if (label === undefined) {
+        label = new Text({
+          text: "",
+          style: {
+            fill: 0xffc857,
+            fontFamily: "system-ui, sans-serif",
+            fontSize: Math.max(12, projection.tileWidth * 0.22),
+            fontWeight: "800",
+            stroke: { color: 0x0f0c0e, width: 4 },
+          },
+        });
+        label.anchor.set(0.5, 1);
+        artilleryLabelsByShip.set(ship.shipId, label);
+        artilleryLabels.addChild(label);
+      }
+
+      label.text = ship.cannonAmmoRemaining > 0 ? `탄 ${ship.cannonAmmoRemaining}` : "돌탄";
+      label.style.fill = ship.cannonAmmoRemaining > 0 ? 0xffc857 : 0xff8f5c;
+      label.style.fontSize = Math.max(12, projection.tileWidth * 0.22);
+      label.position.set(point.x, point.y - projection.tileDepth * 1.25);
+    }
+
+    for (const shot of latestFrame.cannonShots) {
+      drawCannonShot(artillery, shot, latestFrame.tick, projection, reducedMotion);
+    }
+
+    for (const shot of latestFrame.rockShots) {
+      drawRockShot(artillery, shot, latestFrame.tick, projection, reducedMotion);
+    }
+
     for (const item of latestFrame.items) {
       drawItem(items, item, projection);
     }
@@ -905,7 +1077,8 @@ export async function createArenaRenderer(
         kind: "participant" as const,
         depth:
           participant.previousPosition.y +
-          (participant.position.y - participant.previousPosition.y) * latestInterpolationAlpha,
+          (participant.position.y - participant.previousPosition.y) * latestInterpolationAlpha +
+          (participant.action === "Anchored" ? 0.45 : 0),
         sortKey: `participant:${participant.actorId.toString().padStart(4, "0")}`,
         participant,
       })),
@@ -1008,10 +1181,10 @@ export async function createArenaRenderer(
             startTick: event.tick,
             endTick:
               event.tick +
-              (event.kind === "sudden-death-pulse"
+              (event.kind === "tile-void" || event.kind === "rock-impact"
                 ? reducedMotion
                   ? 5
-                  : 24
+                  : 18
                 : event.kind === "grappling-hook-hit"
                   ? 10
                   : durationTicks),

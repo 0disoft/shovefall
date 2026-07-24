@@ -204,7 +204,9 @@ describe("deterministic item effects", () => {
         },
       ],
     });
-    const result = world.step([{ ...createNeutralCommand(world.tick, 1), useItemSlot: 0 }]);
+    const result = world.step([
+      { ...createNeutralCommand(world.tick, 1), move: { x: -1, y: 0 }, useItemSlot: 0 },
+    ]);
 
     expect(result.events).toContainEqual(
       expect.objectContaining({ kind: "item-used", actorId: 1, itemDefinitionId: "boat" }),
@@ -301,13 +303,11 @@ describe("deterministic item effects", () => {
       detonation.events
         .filter(({ kind }) => kind === "bomb-detonated" || kind === "item-used")
         .map(({ kind }) => kind),
-    ).toEqual(["bomb-detonated", "item-used"]);
-    expect(detonation.frame.bombs).toEqual([
-      expect.objectContaining({ ownerActorId: 1, placedTick: 300, detonateTick: 600 }),
-    ]);
-    expect(getActor(world, 1).inventory[0]?.charges).toBe(0);
-    expect(getActor(world, 1).action).toBe("Stumbling");
-    expect(getActor(world, 1).velocity.x).toBeGreaterThan(0);
+    ).toEqual(["bomb-detonated"]);
+    expect(detonation.frame.bombs).toEqual([]);
+    expect(getActor(world, 1).inventory[0]?.charges).toBe(1);
+    expect(getActor(world, 1).action).toBe("Eliminated");
+    expect(getActor(world, 1).velocity).toEqual({ x: 0, y: 0 });
   });
 
   it("resolves competing Bomb placements by actor id without spending the loser charge", () => {
@@ -360,7 +360,7 @@ describe("deterministic item effects", () => {
     expect(forward.charges).toEqual([1, 2]);
   });
 
-  it("lets a same-tick dodge evade a Bomb while the owner remains vulnerable", () => {
+  it("kills every actor in the Bomb radius even during a same-tick dodge", () => {
     const world = new SimulationWorld(createItemConfig(), "bomb-dodge", {
       arenaLayout: "rectangular-fixture",
       participantOverrides: [
@@ -383,11 +383,11 @@ describe("deterministic item effects", () => {
 
     const result = world.step([{ ...createNeutralCommand(world.tick, 2), dodgePressed: true }]);
 
-    expect(result.events).toContainEqual(
+    expect(result.events).not.toContainEqual(
       expect.objectContaining({ kind: "dodge-succeeded", actorId: 2, targetActorId: 1 }),
     );
-    expect(getActor(world, 2).action).toBe("DodgeActive");
-    expect(getActor(world, 1).action).toBe("Stumbling");
+    expect(getActor(world, 2).action).toBe("Eliminated");
+    expect(getActor(world, 1).action).toBe("Eliminated");
   });
 
   it("batches due Bomb, Boat, and Wind Blast independently of command order", () => {
@@ -444,14 +444,9 @@ describe("deterministic item effects", () => {
     const reverse = run([3, 2]);
 
     expect(reverse).toEqual(forward);
-    expect(forward.eventOrder).toEqual([
-      "bomb-detonated:bomb",
-      "item-used:boat",
-      "item-used:wind-blast",
-      "wind-blast-hit:wind-blast",
-    ]);
-    expect(forward.target.effects[0]?.definitionId).toBe("boat");
-    expect(forward.target.action).toBe("Stumbling");
+    expect(forward.eventOrder).toEqual(["bomb-detonated:bomb", "item-used:wind-blast"]);
+    expect(forward.target.effects).toEqual([]);
+    expect(forward.target.action).toBe("Eliminated");
   });
 
   it("keeps an armed Bomb through flooding and owner elimination", () => {
@@ -957,9 +952,9 @@ describe("deterministic item effects", () => {
     const result = world.step([{ ...createNeutralCommand(world.tick, 1), useItemSlot: 1 }]);
 
     expect(result.events.some(({ kind }) => kind === "bomb-detonated")).toBe(true);
-    expect(result.events.some(({ kind }) => kind === "grappling-hook-hit")).toBe(true);
-    expect(getActor(world, 1).action).toBe("Stumbling");
-    expect(getActor(world, 1).inventory[1]?.charges).toBe(1);
+    expect(result.events.some(({ kind }) => kind === "grappling-hook-hit")).toBe(false);
+    expect(getActor(world, 1).action).toBe("Eliminated");
+    expect(getActor(world, 1).inventory[1]?.charges).toBe(2);
   });
 
   it("keeps stronger Wind Blast elimination credit over a weaker same-tick shove", () => {
@@ -1561,10 +1556,22 @@ describe("deterministic item effects", () => {
       ],
     });
     world.step([{ ...createNeutralCommand(world.tick, 4), useItemSlot: 0 }]);
-    const result = world.step();
+    let result: ReturnType<SimulationWorld["step"]> | undefined;
 
-    expect(result.frame.soapPatches).toHaveLength(0);
-    expect(result.events).toContainEqual(
+    for (let tick = 0; tick < 12 && result === undefined; tick += 1) {
+      const step = world.step([
+        { ...createNeutralCommand(world.tick, 1), move: { x: -1, y: 0 } },
+        { ...createNeutralCommand(world.tick, 2), move: { x: -1, y: 0 } },
+      ]);
+
+      if (step.events.some(({ kind }) => kind === "soap-triggered")) {
+        result = step;
+      }
+    }
+
+    expect(result).toBeDefined();
+    expect(result?.frame.soapPatches).toHaveLength(0);
+    expect(result?.events).toContainEqual(
       expect.objectContaining({
         kind: "soap-triggered",
         actorId: 4,
@@ -1598,11 +1605,19 @@ describe("deterministic item effects", () => {
         useItemSlot: 0,
       },
     ]);
-    const result = world.step();
+    let result: ReturnType<SimulationWorld["step"]> | undefined;
+
+    for (let tick = 0; tick < 12 && result === undefined; tick += 1) {
+      const step = world.step([{ ...createNeutralCommand(world.tick, 1), move: { x: 1, y: 0 } }]);
+
+      if (step.events.some(({ kind }) => kind === "soap-triggered")) {
+        result = step;
+      }
+    }
     const actor = getActor(world, 1);
 
     expect(placement.events.some(({ kind }) => kind === "soap-placed")).toBe(true);
-    expect(result.events).toContainEqual(
+    expect(result?.events).toContainEqual(
       expect.objectContaining({ kind: "soap-triggered", actorId: 1, targetActorId: 1 }),
     );
     expect(actor.action).toBe("Stumbling");
@@ -1637,7 +1652,9 @@ describe("deterministic item effects", () => {
     let triggerResult: ReturnType<SimulationWorld["step"]> | undefined;
 
     for (let tick = 0; tick < 6 && triggerResult === undefined; tick += 1) {
-      const result = world.step();
+      const result = world.step([
+        { ...createNeutralCommand(world.tick, 1), move: { x: -1, y: 0 } },
+      ]);
 
       if (result.events.some(({ kind }) => kind === "soap-triggered")) {
         triggerResult = result;
@@ -1685,8 +1702,10 @@ describe("deterministic item effects", () => {
     world.step([{ ...createNeutralCommand(world.tick, 1), useItemSlot: 0 }]);
     let trigger: ReturnType<SimulationWorld["step"]> | undefined;
 
-    for (let tick = 0; tick < 6 && trigger === undefined; tick += 1) {
-      const result = world.step();
+    for (let tick = 0; tick < 10 && trigger === undefined; tick += 1) {
+      const result = world.step([
+        { ...createNeutralCommand(world.tick, 2), move: { x: -1, y: 0 } },
+      ]);
 
       if (result.events.some(({ kind }) => kind === "soap-triggered")) {
         trigger = result;

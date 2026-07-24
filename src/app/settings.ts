@@ -1,5 +1,6 @@
 import { ITEM_DEFINITION_IDS } from "../content/items";
-import type { BotDifficulty, ItemDefinitionId } from "../simulation/contracts";
+import type { BotDifficulty, ItemDefinitionId, UpgradeStatId } from "../simulation/contracts";
+import { normalizeUpgradePlan } from "../simulation/progression";
 import { SIMULATION_TUNING } from "../simulation/tuning";
 
 export const FORCED_PLAYER_COUNT = 50;
@@ -28,6 +29,7 @@ export interface GameSettings {
   readonly botDifficulty: typeof FORCED_BOT_DIFFICULTY;
   readonly startingWeight: number;
   readonly startingItems: readonly ItemDefinitionId[];
+  readonly upgradePlan: readonly UpgradeStatId[];
 }
 
 export interface ArenaSize {
@@ -142,6 +144,7 @@ export function normalizeSettings(
     readonly collapseSpeed?: string;
     readonly startingWeight?: number;
     readonly startingItems?: readonly string[];
+    readonly upgradePlan?: readonly unknown[];
     readonly playerCount?: number;
     readonly preset?: string;
     readonly botDifficulty?: string;
@@ -166,6 +169,7 @@ export function normalizeSettings(
     botDifficulty: FORCED_BOT_DIFFICULTY,
     startingWeight: normalizeStartingWeight(input.startingWeight ?? Number.NaN),
     startingItems: normalizeStartingItems(input.startingItems),
+    upgradePlan: normalizeUpgradePlan(input.upgradePlan),
   });
 }
 

@@ -8,8 +8,8 @@ import {
   SIMULATION_VERSION,
 } from "../simulation/versions";
 
-export interface PlaytestRoundReportV4 {
-  readonly schemaVersion: "shovefall-playtest-round/v4";
+export interface PlaytestRoundReportV5 {
+  readonly schemaVersion: "shovefall-playtest-round/v5";
   readonly versions: {
     readonly product: string;
     readonly simulation: string;
@@ -27,6 +27,7 @@ export interface PlaytestRoundReportV4 {
     readonly itemRespawnSeconds: number;
     readonly startingWeight: GameSettings["startingWeight"];
     readonly startingItems: GameSettings["startingItems"];
+    readonly upgradePlan: GameSettings["upgradePlan"];
   };
   readonly gameplayTuning: GameplayTuningV1;
   readonly result: {
@@ -44,7 +45,7 @@ export function createPlaytestRoundReport(
   seed: string,
   frame: RenderFrameV1,
   gameplayTuning: GameplayTuningV1,
-): PlaytestRoundReportV4 {
+): PlaytestRoundReportV5 {
   const { round } = frame;
 
   if (round.status !== "Completed" || round.completedTick === null || round.reason === null) {
@@ -64,7 +65,7 @@ export function createPlaytestRoundReport(
   }
 
   return Object.freeze({
-    schemaVersion: "shovefall-playtest-round/v4",
+    schemaVersion: "shovefall-playtest-round/v5",
     versions: Object.freeze({
       product: PRODUCT_VERSION,
       simulation: SIMULATION_VERSION,
@@ -82,6 +83,7 @@ export function createPlaytestRoundReport(
       itemRespawnSeconds: settings.itemRespawnSeconds,
       startingWeight: settings.startingWeight,
       startingItems: settings.startingItems,
+      upgradePlan: settings.upgradePlan,
     }),
     gameplayTuning,
     result: Object.freeze({
@@ -95,6 +97,6 @@ export function createPlaytestRoundReport(
   });
 }
 
-export function serializePlaytestRoundReport(report: PlaytestRoundReportV4): string {
+export function serializePlaytestRoundReport(report: PlaytestRoundReportV5): string {
   return JSON.stringify(report, null, 2);
 }

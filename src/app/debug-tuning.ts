@@ -11,7 +11,6 @@ type TuningKey = keyof GameplayTuningInput;
 
 const TUNING_INPUT_IDS: Readonly<Record<TuningKey, string>> = Object.freeze({
   movementMaximumSpeed: "debug-movement-speed",
-  movementAcceleration: "debug-movement-acceleration",
   lightweightSpeedMultiplier: "debug-lightweight-speed",
   heavyweightSpeedMultiplier: "debug-heavyweight-speed",
   shoveActiveTicks: "debug-shove-ticks",
@@ -22,7 +21,6 @@ const TUNING_INPUT_IDS: Readonly<Record<TuningKey, string>> = Object.freeze({
 
 const TUNING_OUTPUT_IDS: Readonly<Record<TuningKey, string>> = Object.freeze({
   movementMaximumSpeed: "debug-movement-speed-value",
-  movementAcceleration: "debug-movement-acceleration-value",
   lightweightSpeedMultiplier: "debug-lightweight-speed-value",
   heavyweightSpeedMultiplier: "debug-heavyweight-speed-value",
   shoveActiveTicks: "debug-shove-ticks-value",
@@ -33,7 +31,6 @@ const TUNING_OUTPUT_IDS: Readonly<Record<TuningKey, string>> = Object.freeze({
 
 const TUNING_KEYS: readonly TuningKey[] = Object.freeze([
   "movementMaximumSpeed",
-  "movementAcceleration",
   "lightweightSpeedMultiplier",
   "heavyweightSpeedMultiplier",
   "shoveActiveTicks",
@@ -76,10 +73,6 @@ function formatValue(key: TuningKey, tuning: GameplayTuningV1): string {
   switch (key) {
     case "movementMaximumSpeed":
       return `${(tuning.movementMaximumSpeed * 60).toFixed(1)}칸/초`;
-    case "movementAcceleration": {
-      const seconds = tuning.movementMaximumSpeed / tuning.movementAcceleration / 60;
-      return `${tuning.movementAcceleration.toFixed(3)} · ${seconds.toFixed(2)}초`;
-    }
     case "lightweightSpeedMultiplier":
       return `${tuning.lightweightSpeedMultiplier.toFixed(2)}×`;
     case "heavyweightSpeedMultiplier":

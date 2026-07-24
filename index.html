@@ -45,8 +45,6 @@
           </div>
 
           <form id="game-settings" class="settings-form">
-            <p class="settings-summary">50명 · AI 어려움</p>
-
             <div class="player-control">
               <div class="player-control__label">
                 <label for="starting-weight">몸무게</label>
@@ -72,15 +70,15 @@
               <legend>시작 아이템 <span>2개 선택</span></legend>
               <label class="preset-card">
                 <input type="checkbox" name="startingItem" value="iron-boots" checked />
-                <span><strong>철 장화</strong><small>더 묵직하게 버텨</small></span>
+                <span><strong>철 장화</strong><small>패시브 · 더 묵직하게 버텨</small></span>
               </label>
               <label class="preset-card">
                 <input type="checkbox" name="startingItem" value="feather" />
-                <span><strong>깃털</strong><small>더 빠르게 빠져나가</small></span>
+                <span><strong>깃털</strong><small>패시브 · 더 빠르게 빠져나가</small></span>
               </label>
               <label class="preset-card">
                 <input type="checkbox" name="startingItem" value="spring-glove" checked />
-                <span><strong>스프링 장갑</strong><small>첫 밀치기를 더 멀리</small></span>
+                <span><strong>스프링 장갑</strong><small>패시브 · 첫 밀치기를 더 멀리</small></span>
               </label>
               <label class="preset-card">
                 <input type="checkbox" name="startingItem" value="wind-blast" />
@@ -96,7 +94,7 @@
               </label>
               <label class="preset-card">
                 <input type="checkbox" name="startingItem" value="bomb" />
-                <span><strong>시한폭탄</strong><small>2개 · 5초 뒤 주변을 날려</small></span>
+                <span><strong>시한폭탄</strong><small>2개 · 5초 뒤 반경 즉사</small></span>
               </label>
               <label class="preset-card">
                 <input type="checkbox" name="startingItem" value="soap" />
@@ -109,6 +107,38 @@
               <p id="starting-items-help" class="fieldset-help" aria-live="polite">
                 라운드를 시작할 때 들고 갈 두 개를 골라.
               </p>
+            </fieldset>
+
+            <fieldset id="upgrade-plan" class="upgrade-plan-fieldset">
+              <legend>자동 성장 순서</legend>
+              <p class="fieldset-help">처치 포인트가 생기면 왼쪽부터 자동으로 찍어.</p>
+              <div class="upgrade-plan__choices" aria-label="성장 단계 추가">
+                <button type="button" data-add-upgrade="power">
+                  <strong>힘</strong><small>밀치기 +8%</small>
+                </button>
+                <button type="button" data-add-upgrade="stability">
+                  <strong>중심</strong><small>받는 밀침 -12%</small>
+                </button>
+                <button type="button" data-add-upgrade="mobility">
+                  <strong>발놀림</strong><small>이동 +5%</small>
+                </button>
+                <button type="button" data-add-upgrade="reflex">
+                  <strong>반사신경</strong><small>재사용 대기 감소</small>
+                </button>
+              </div>
+              <ol id="upgrade-plan-list" class="upgrade-plan__list" aria-live="polite"></ol>
+              <div class="upgrade-plan__actions">
+                <button id="clear-upgrade-plan" class="secondary-action" type="button">
+                  새로 짜기
+                </button>
+                <button id="undo-upgrade-plan" class="secondary-action" type="button">
+                  마지막 지우기
+                </button>
+                <button id="reset-upgrade-plan" class="secondary-action" type="button">
+                  균형 순서
+                </button>
+              </div>
+              <p id="upgrade-plan-help" class="fieldset-help" aria-live="polite"></p>
             </fieldset>
 
             <fieldset class="preset-fieldset">
@@ -199,18 +229,6 @@
                       >
                     </div>
                     <input id="debug-movement-speed" type="range" value="0.055" />
-                  </div>
-
-                  <div class="player-control">
-                    <div class="player-control__label">
-                      <label for="debug-movement-acceleration">이동 가속도</label>
-                      <output
-                        id="debug-movement-acceleration-value"
-                        for="debug-movement-acceleration"
-                        >0.006 · 0.15초</output
-                      >
-                    </div>
-                    <input id="debug-movement-acceleration" type="range" value="0.006" />
                   </div>
 
                   <div class="player-control">
@@ -324,7 +342,41 @@
             >
               <button id="use-item-slot-0" type="button" disabled>Q · 슬롯 1</button>
               <button id="use-item-slot-1" type="button" disabled>E · 슬롯 2</button>
+              <div id="combat-status" class="combat-status" aria-label="전투 행동 상태">
+                <output id="shove-status-value" data-state="blocked"
+                  >Space · 밀치기 · 행동 불가</output
+                >
+                <output id="dodge-status-value" data-state="blocked"
+                  >Shift · 회피 · 행동 불가</output
+                >
+              </div>
             </div>
+            <dl id="stat-status" class="stat-status" aria-label="자동 성장 상태" hidden>
+              <div>
+                <dt>힘</dt>
+                <dd><output id="power-level">0</output></dd>
+              </div>
+              <div>
+                <dt>중심</dt>
+                <dd><output id="stability-level">0</output></dd>
+              </div>
+              <div>
+                <dt>발놀림</dt>
+                <dd><output id="mobility-level">0</output></dd>
+              </div>
+              <div>
+                <dt>반사</dt>
+                <dd><output id="reflex-level">0</output></dd>
+              </div>
+              <div class="stat-status__next">
+                <dt>다음</dt>
+                <dd><output id="next-upgrade-value">힘</output></dd>
+              </div>
+              <div class="stat-status__points">
+                <dt>대기</dt>
+                <dd><output id="stat-points-value">0</output></dd>
+              </div>
+            </dl>
           </div>
           <dl id="game-telemetry" class="game-telemetry" aria-label="현재 라운드 상태" hidden>
             <div>
@@ -368,29 +420,6 @@
           </dl>
           <div id="arena-actions" class="arena-actions" hidden>
             <p id="round-message" class="ready-message" role="status">준비</p>
-            <section id="stat-upgrades" class="stat-upgrades" aria-labelledby="stat-upgrades-title">
-              <div class="stat-upgrades__heading">
-                <strong id="stat-upgrades-title">처치 성장</strong>
-                <span>남은 포인트 <output id="stat-points-value">0</output></span>
-              </div>
-              <div class="stat-upgrades__grid">
-                <button type="button" data-upgrade-stat="power" disabled>
-                  <span>1 · 힘</span><small>밀치기 +8%</small><output id="power-level">0</output>
-                </button>
-                <button type="button" data-upgrade-stat="stability" disabled>
-                  <span>2 · 중심</span><small>받는 밀침 -12%</small
-                  ><output id="stability-level">0</output>
-                </button>
-                <button type="button" data-upgrade-stat="mobility" disabled>
-                  <span>3 · 발놀림</span><small>이동 +5%</small
-                  ><output id="mobility-level">0</output>
-                </button>
-                <button type="button" data-upgrade-stat="reflex" disabled>
-                  <span>4 · 반사신경</span><small>재사용 대기 감소</small
-                  ><output id="reflex-level">0</output>
-                </button>
-              </div>
-            </section>
             <div class="arena-actions__buttons">
               <button id="restart-round" class="primary-action" type="button">다시 시작</button>
               <button id="back-to-settings" class="secondary-action" type="button">메뉴로</button>

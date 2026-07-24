@@ -56,7 +56,7 @@ describe("human input state", () => {
     expect(isGameplayCode("Space")).toBe(true);
     expect(isGameplayCode("KeyQ")).toBe(true);
     expect(isGameplayCode("KeyE")).toBe(true);
-    expect(isGameplayCode("Digit1")).toBe(true);
+    expect(isGameplayCode("Digit1")).toBe(false);
     expect(isGameplayCode("Enter")).toBe(false);
   });
 
@@ -138,12 +138,10 @@ describe("human input state", () => {
     expect(input.consumeCommand(2, 1).useItemSlot).toBeNull();
   });
 
-  it("queues one stat upgrade from number keys or the UI bridge", () => {
+  it("leaves stat allocation to the pre-round automatic plan", () => {
     const input = new InputState();
-    input.press("Digit3");
-    expect(input.consumeCommand(0, 1).upgradeStat).toBe("mobility");
+    input.press("Space");
+    expect(input.consumeCommand(0, 1).upgradeStat).toBeNull();
     expect(input.consumeCommand(1, 1).upgradeStat).toBeNull();
-    input.queueUpgrade("stability");
-    expect(input.consumeCommand(2, 1).upgradeStat).toBe("stability");
   });
 });

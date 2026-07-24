@@ -141,16 +141,16 @@ describe("optional Web Audio feedback", () => {
     expect(context.oscillators[0]?.type).toBe("sawtooth");
   });
 
-  it("plays a low surge when the protected core starts pushing outward", async () => {
+  it("plays distinct cues when a lethal rock is fired and lands", async () => {
     const context = new FakeAudioContext();
     const audio = createAudioFeedback(() => context);
     await audio.unlock();
 
-    audio.consumeEvents([createEvent(1, 0, 0, "sudden-death-pulse")]);
+    audio.consumeEvents([createEvent(1, 0, 0, "rock-fired"), createEvent(1, 90, 1, "rock-impact")]);
 
-    expect(context.oscillators).toHaveLength(1);
-    expect(context.oscillators[0]?.type).toBe("sawtooth");
-    expect(context.oscillators[0]?.frequency.values).toEqual([84, 38]);
+    expect(context.oscillators).toHaveLength(2);
+    expect(context.oscillators.map(({ type }) => type)).toEqual(["triangle", "sawtooth"]);
+    expect(context.oscillators[1]?.frequency.values).toEqual([72, 28]);
   });
 
   it("uses distinct procedural cues for Bomb placement and detonation", async () => {

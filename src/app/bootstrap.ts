@@ -1,6 +1,5 @@
 import {
   FORCED_BOT_DIFFICULTY,
-  FORCED_PLAYER_COUNT,
   getArenaSize,
   getStartingMassFactor,
   isCollapseSpeed,
@@ -15,7 +14,15 @@ import { VERSION_HISTORY } from "./version-history";
 import type { SimulationEventV1, UpgradeStatId } from "../simulation/contracts";
 import { normalizeGameConfig } from "../simulation/contracts";
 import { DEFAULT_GAMEPLAY_TUNING, type GameplayTuningV1 } from "../simulation/tuning";
-import { isUpgradeStatId, UPGRADE_STAT_IDS } from "../simulation/progression";
+import {
+  DEFAULT_UPGRADE_PLAN,
+  getNextPlannedUpgrade,
+  isUpgradeStatId,
+  MAX_UPGRADE_LEVEL,
+  MAX_UPGRADE_PLAN_STEPS,
+  normalizeUpgradePlan,
+  UPGRADE_STAT_IDS,
+} from "../simulation/progression";
 import { createArenaRenderer, type ArenaRenderer } from "../presentation/arena-renderer";
 import {
   createAudioFeedback,
@@ -65,6 +72,13 @@ const ITEM_LABELS = Object.freeze({
   soap: "비누",
   "grappling-hook": "구조 갈고리",
 } as const);
+
+const UPGRADE_LABELS: Readonly<Record<UpgradeStatId, string>> = Object.freeze({
+  power: "힘",
+  stability: "중심",
+  mobility: "발놀림",
+  reflex: "반사신경",
+});
 
 function requireElement<T extends Element>(
   root: ParentNode,
@@ -217,8 +231,10 @@ function getEventMessage(event: SimulationEventV1): string | undefined {
       return event.actorId === 1 ? "처치 인정! 스탯 포인트를 얻었어." : undefined;
     case "stat-upgraded":
       return event.actorId === 1 ? "스탯을 올렸어." : undefined;
-    case "sudden-death-pulse":
-      return "해일이 밀려와!";
+    case "rock-fired":
+      return event.actorId === 1 ? "돌탄 표적이 됐어. 움직여!" : undefined;
+    case "rock-impact":
+      return event.actorId === 1 ? "돌탄이 떨어졌어!" : undefined;
     default:
       return undefined;
   }
@@ -251,6 +267,12 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   const itemRespawnValue = requireElement(root, "#item-respawn-value", HTMLOutputElement);
   const setupSummary = requireElement(root, "#setup-summary", HTMLElement);
   const startingItemsHelp = requireElement(root, "#starting-items-help", HTMLElement);
+  const upgradePlanList = requireElement(root, "#upgrade-plan-list", HTMLOListElement);
+  const upgradePlanHelp = requireElement(root, "#upgrade-plan-help", HTMLElement);
+  const addUpgradeButtons = [...root.querySelectorAll<HTMLButtonElement>("[data-add-upgrade]")];
+  const clearUpgradePlanButton = requireElement(root, "#clear-upgrade-plan", HTMLButtonElement);
+  const undoUpgradePlanButton = requireElement(root, "#undo-upgrade-plan", HTMLButtonElement);
+  const resetUpgradePlanButton = requireElement(root, "#reset-upgrade-plan", HTMLButtonElement);
   const debugTuningPanel = requireElement(root, "#debug-tuning", HTMLDetailsElement);
   const startingItemInputs = [
     ...form.querySelectorAll<HTMLInputElement>('input[name="startingItem"]'),
@@ -267,6 +289,9 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   const touchShoveButton = requireElement(root, "#touch-shove", HTMLButtonElement);
   const touchDodgeButton = requireElement(root, "#touch-dodge", HTMLButtonElement);
   const inventoryActions = requireElement(root, "#inventory-actions", HTMLElement);
+  const shoveStatusValue = requireElement(root, "#shove-status-value", HTMLOutputElement);
+  const dodgeStatusValue = requireElement(root, "#dodge-status-value", HTMLOutputElement);
+  const statStatus = requireElement(root, "#stat-status", HTMLElement);
   const itemSlotButtons = Object.freeze([
     requireElement(root, "#use-item-slot-0", HTMLButtonElement),
     requireElement(root, "#use-item-slot-1", HTMLButtonElement),
@@ -280,7 +305,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   const itemValue = requireElement(root, "#item-value", HTMLOutputElement);
   const survivorValue = requireElement(root, "#survivor-value", HTMLOutputElement);
   const statPointsValue = requireElement(root, "#stat-points-value", HTMLOutputElement);
-  const upgradeButtons = [...root.querySelectorAll<HTMLButtonElement>("[data-upgrade-stat]")];
+  const nextUpgradeValue = requireElement(root, "#next-upgrade-value", HTMLOutputElement);
   const statLevelOutputs: Readonly<Record<UpgradeStatId, HTMLOutputElement>> = Object.freeze({
     power: requireElement(root, "#power-level", HTMLOutputElement),
     stability: requireElement(root, "#stability-level", HTMLOutputElement),
@@ -298,6 +323,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   let latestDebugTuningEnabled = false;
   let latestMasterSeed: string | undefined;
   let latestRoundReport: string | undefined;
+  let draftUpgradePlan: UpgradeStatId[] = [...DEFAULT_UPGRADE_PLAN];
 
   const setScreen = (screen: "menu" | "settings" | "history" | "arena"): void => {
     root.dataset.screen = screen;
@@ -341,9 +367,9 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
       version.textContent = `v${entry.version}`;
       version.className = "version-history__version";
       title.textContent = entry.title;
-      reasonLabel.textContent = "왜 바꿨냐면";
+      reasonLabel.textContent = "왜 바꿨냐면요";
       reason.textContent = entry.reason;
-      changeLabel.textContent = "이렇게 바뀌었어";
+      changeLabel.textContent = "이렇게 바뀌었다요";
       change.textContent = entry.change;
       header.append(version, title);
       reasonRow.append(reasonLabel, reason);
@@ -387,7 +413,37 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
       startingItems: data
         .getAll("startingItem")
         .filter((value): value is string => typeof value === "string"),
+      upgradePlan: draftUpgradePlan,
     });
+  };
+
+  const renderUpgradePlan = (): void => {
+    const fragment = document.createDocumentFragment();
+    const counts = new Map<UpgradeStatId, number>();
+
+    for (const [index, stat] of draftUpgradePlan.entries()) {
+      counts.set(stat, (counts.get(stat) ?? 0) + 1);
+      const item = document.createElement("li");
+      item.dataset.step = String(index + 1);
+      item.textContent = UPGRADE_LABELS[stat];
+      fragment.append(item);
+    }
+
+    upgradePlanList.replaceChildren(fragment);
+    const full = draftUpgradePlan.length >= MAX_UPGRADE_PLAN_STEPS;
+
+    for (const button of addUpgradeButtons) {
+      const stat = button.dataset.addUpgrade;
+      button.disabled =
+        !isUpgradeStatId(stat) || full || (counts.get(stat) ?? 0) >= MAX_UPGRADE_LEVEL;
+    }
+
+    undoUpgradePlanButton.disabled = draftUpgradePlan.length === 0;
+    clearUpgradePlanButton.disabled = draftUpgradePlan.length === 0;
+    upgradePlanHelp.textContent =
+      draftUpgradePlan.length === 0
+        ? "성장 단계를 하나 이상 골라. 비어 있으면 균형 순서가 적용돼."
+        : `${draftUpgradePlan.length}/${MAX_UPGRADE_PLAN_STEPS}단계 · 처치할 때마다 다음 단계가 자동 적용돼.`;
   };
 
   const renderStartingItemSelection = (): void => {
@@ -418,7 +474,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     startingWeight.value = String(settings.startingWeight);
     startingWeightValue.value = String(settings.startingWeight);
     const loadoutLabel = settings.startingItems.map((item) => ITEM_LABELS[item]).join(" + ");
-    setupSummary.textContent = `${FORCED_PLAYER_COUNT}명 · AI 어려움 · ${collapseLabel} · 몸무게 ${settings.startingWeight} · ${loadoutLabel} · 맵 아이템 ${settings.initialItemCount}개 · ${
+    setupSummary.textContent = `${collapseLabel} · 몸무게 ${settings.startingWeight} · ${loadoutLabel} · 자동 성장 ${settings.upgradePlan.length}단계 · 맵 아이템 ${settings.initialItemCount}개 · ${
       settings.itemRespawnSeconds === 0
         ? "추가 생성 없음"
         : `${settings.itemRespawnSeconds}초마다 1개`
@@ -445,8 +501,11 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
       input.checked = latestSettings.startingItems.some((item) => item === input.value);
     }
 
+    draftUpgradePlan = [...latestSettings.upgradePlan];
+
     debugTuning?.load(latestGameplayTuning, latestDebugTuningEnabled);
     renderStartingItemSelection();
+    renderUpgradePlan();
     renderSettingsSummary();
   };
 
@@ -464,6 +523,37 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     telemetry.dataset.countdown = current.countdown === null ? "" : String(current.countdown);
     telemetry.dataset.roundId = String(current.frame.roundId);
     actionValue.value = ACTION_LABELS[human.action];
+    const renderActionStatus = (
+      output: HTMLOutputElement,
+      key: string,
+      label: string,
+      readyTick: number,
+    ): void => {
+      const cooldownTicks = Math.max(0, readyTick - current.frame.tick);
+      const unavailableReason =
+        current.countdown !== null
+          ? "준비 중"
+          : !human.active || human.action === "Falling" || human.action === "Eliminated"
+            ? "탈락"
+            : human.action === "Anchored"
+              ? "벽돌 위"
+              : human.action !== "Ready"
+                ? "행동 중"
+                : null;
+
+      if (unavailableReason !== null) {
+        output.dataset.state = "blocked";
+        output.value = `${key} · ${label} · ${unavailableReason}`;
+      } else if (cooldownTicks > 0) {
+        output.dataset.state = "cooldown";
+        output.value = `${key} · ${label} · ${(cooldownTicks / 60).toFixed(1)}초`;
+      } else {
+        output.dataset.state = "ready";
+        output.value = `${key} · ${label} · 사용 가능`;
+      }
+    };
+    renderActionStatus(shoveStatusValue, "Space", "밀치기", human.shoveReadyTick);
+    renderActionStatus(dodgeStatusValue, "Shift", "회피", human.dodgeReadyTick);
     massValue.value =
       human.massFactor < 0.9 ? "가벼움" : human.massFactor > 1.1 ? "무거움" : "보통";
     const inventoryLabel = human.inventory
@@ -532,14 +622,14 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     for (const stat of UPGRADE_STAT_IDS) {
       statLevelOutputs[stat].value = String(human.progression.stats[stat]);
     }
-
-    for (const button of upgradeButtons) {
-      const stat = button.dataset.upgradeStat;
-      button.disabled =
-        !isUpgradeStatId(stat) ||
-        human.progression.statPoints < 1 ||
-        human.progression.stats[stat] >= 5;
-    }
+    const nextUpgrade = getNextPlannedUpgrade(
+      Object.freeze({
+        ...human.progression,
+        statPoints: Math.max(1, human.progression.statPoints),
+      }),
+      latestSettings.upgradePlan,
+    );
+    nextUpgradeValue.value = nextUpgrade === null ? "완료" : UPGRADE_LABELS[nextUpgrade];
     if (current.countdown !== null) {
       root.dataset.round = "countdown";
       readyMessage.textContent = String(current.countdown);
@@ -688,6 +778,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     root.dataset.gameplayTuning = latestDebugTuningEnabled ? "debug" : "default";
     arenaActions.hidden = false;
     inventoryActions.hidden = false;
+    statStatus.hidden = false;
     telemetry.hidden = false;
     developerTelemetry?.setVisible(true);
     readyMessage.textContent = "3";
@@ -698,6 +789,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     session.start(createConfig(settings), latestMasterSeed, latestGameplayTuning, {
       massFactor: getStartingMassFactor(settings.startingWeight),
       startingItems: settings.startingItems,
+      upgradePlan: settings.upgradePlan,
     });
     arenaHost.focus();
   };
@@ -768,16 +860,37 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
 
   restartButton.addEventListener("click", () => startRound(latestSettings));
 
-  for (const button of upgradeButtons) {
+  for (const button of addUpgradeButtons) {
     button.addEventListener("click", () => {
-      const stat = button.dataset.upgradeStat;
+      const stat = button.dataset.addUpgrade;
 
-      if (isUpgradeStatId(stat)) {
-        session?.chooseUpgrade(stat);
-        arenaHost.focus();
+      if (!isUpgradeStatId(stat)) {
+        return;
       }
+
+      draftUpgradePlan = [...normalizeUpgradePlan([...draftUpgradePlan, stat])];
+      renderUpgradePlan();
+      renderSettingsSummary();
     });
   }
+
+  clearUpgradePlanButton.addEventListener("click", () => {
+    draftUpgradePlan = [];
+    renderUpgradePlan();
+    renderSettingsSummary();
+  });
+
+  undoUpgradePlanButton.addEventListener("click", () => {
+    draftUpgradePlan = draftUpgradePlan.slice(0, -1);
+    renderUpgradePlan();
+    renderSettingsSummary();
+  });
+
+  resetUpgradePlanButton.addEventListener("click", () => {
+    draftUpgradePlan = [...DEFAULT_UPGRADE_PLAN];
+    renderUpgradePlan();
+    renderSettingsSummary();
+  });
 
   for (const [slotIndex, button] of itemSlotButtons.entries()) {
     button.addEventListener("click", () => {

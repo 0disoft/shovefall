@@ -6,6 +6,7 @@ import type {
   ParticipantState,
   RoundId,
   RoundStateV1,
+  RockShotState,
   SoapPatchState,
   Tick,
   TileState,
@@ -19,6 +20,9 @@ export interface HashableWorldState {
   readonly brickWalls: readonly BrickWallState[];
   readonly bombs: readonly BombState[];
   readonly soapPatches: readonly SoapPatchState[];
+  readonly rockShots: readonly RockShotState[];
+  readonly nextRockLaunchTick: Tick;
+  readonly nextRockShotId: number;
   readonly nextItemId: number;
   readonly nextItemSpawnTick: Tick | null;
   readonly tiles: readonly TileState[];
@@ -132,6 +136,12 @@ export function hashWorldState(state: HashableWorldState): string {
       (patch) =>
         `${patch.ownerActorId}:${patch.tileId}:${patch.column}:${patch.row}:${patch.placedTick}`,
     );
+  const rockShotParts = state.rockShots
+    .toSorted((left, right) => left.shotId - right.shotId)
+    .map(
+      (shot) =>
+        `${shot.shotId}:${shot.shipId}:${shot.targetActorId}:${quantize(shot.origin.x)}:${quantize(shot.origin.y)}:${quantize(shot.target.x)}:${quantize(shot.target.y)}:${shot.launchTick}:${shot.impactTick}:${quantize(shot.blastRadius)}`,
+    );
   const tileCanonical = getCanonicalTiles(state.tiles);
   const canonical = [
     `round:${state.roundId}`,
@@ -141,6 +151,8 @@ export function hashWorldState(state: HashableWorldState): string {
     `brick-walls:${brickWallParts.join("|")}`,
     `bombs:${bombParts.join("|")}`,
     `soap-patches:${soapPatchParts.join("|")}`,
+    `rock-shots:${rockShotParts.join("|")}`,
+    `rock-cursor:${state.nextRockShotId}:${state.nextRockLaunchTick}`,
     `item-cursor:${state.nextItemId}:${state.nextItemSpawnTick ?? "none"}`,
     `tiles:${tileCanonical}`,
     `result:${state.round.status}:${state.round.winnerActorId ?? "none"}:${state.round.reason ?? "none"}:${state.round.completedTick ?? -1}`,

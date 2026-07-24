@@ -2,6 +2,10 @@ import type { ParticipantProgression, ParticipantStats, UpgradeStatId } from "./
 
 export const UPGRADE_STAT_IDS = ["power", "stability", "mobility", "reflex"] as const;
 export const MAX_UPGRADE_LEVEL = 5;
+export const MAX_UPGRADE_PLAN_STEPS = UPGRADE_STAT_IDS.length * MAX_UPGRADE_LEVEL;
+export const DEFAULT_UPGRADE_PLAN: readonly UpgradeStatId[] = Object.freeze(
+  Array.from({ length: MAX_UPGRADE_LEVEL }, () => UPGRADE_STAT_IDS).flat(),
+);
 
 export const UPGRADE_EFFECTS = Object.freeze({
   powerImpulsePerLevel: 0.08,
@@ -27,6 +31,55 @@ export function createParticipantProgression(): ParticipantProgression {
 
 export function isUpgradeStatId(value: unknown): value is UpgradeStatId {
   return typeof value === "string" && UPGRADE_STAT_IDS.some((stat) => stat === value);
+}
+
+export function normalizeUpgradePlan(
+  values: readonly unknown[] | undefined,
+): readonly UpgradeStatId[] {
+  if (values === undefined) {
+    return DEFAULT_UPGRADE_PLAN;
+  }
+
+  const counts = new Map<UpgradeStatId, number>();
+  const normalized: UpgradeStatId[] = [];
+
+  for (const value of values ?? []) {
+    if (!isUpgradeStatId(value) || normalized.length >= MAX_UPGRADE_PLAN_STEPS) {
+      continue;
+    }
+
+    const count = counts.get(value) ?? 0;
+
+    if (count >= MAX_UPGRADE_LEVEL) {
+      continue;
+    }
+
+    counts.set(value, count + 1);
+    normalized.push(value);
+  }
+
+  return Object.freeze(normalized);
+}
+
+export function getNextPlannedUpgrade(
+  progression: ParticipantProgression,
+  plan: readonly UpgradeStatId[],
+): UpgradeStatId | null {
+  if (progression.statPoints < 1) {
+    return null;
+  }
+
+  const spentLevels = UPGRADE_STAT_IDS.reduce((total, stat) => total + progression.stats[stat], 0);
+
+  for (let index = spentLevels; index < plan.length; index += 1) {
+    const stat = plan[index];
+
+    if (stat !== undefined && progression.stats[stat] < MAX_UPGRADE_LEVEL) {
+      return stat;
+    }
+  }
+
+  return null;
 }
 
 export function awardStatPoint(progression: ParticipantProgression): ParticipantProgression {

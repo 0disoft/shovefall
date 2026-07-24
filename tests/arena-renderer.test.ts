@@ -32,6 +32,10 @@ vi.mock("pixi.js", () => {
       return this;
     }
 
+    public closePath(): this {
+      return this;
+    }
+
     public fill(options?: { readonly color?: number; readonly alpha?: number }): this {
       graphicsFill(options);
       return this;
@@ -101,9 +105,42 @@ vi.mock("pixi.js", () => {
     }
   }
 
+  class FakeContainer {
+    public x = 0;
+    public y = 0;
+    readonly #children: Array<{ destroy(): void }> = [];
+
+    public addChild(...children: Array<{ destroy(): void }>): void {
+      this.#children.push(...children);
+    }
+
+    public removeChildren(): Array<{ destroy(): void }> {
+      return this.#children.splice(0);
+    }
+  }
+
+  class FakeText {
+    public readonly anchor = { set(): void {} };
+    public readonly position = { set(): void {} };
+    public readonly style: { fill?: number; fontSize?: number };
+    public text: string;
+
+    public constructor(options: {
+      readonly text: string;
+      readonly style: { readonly fill?: number; readonly fontSize?: number };
+    }) {
+      this.text = options.text;
+      this.style = { ...options.style };
+    }
+
+    public destroy(): void {}
+  }
+
   return {
     Application: FakeApplication,
+    Container: FakeContainer,
     Graphics: FakeGraphics,
+    Text: FakeText,
   };
 });
 

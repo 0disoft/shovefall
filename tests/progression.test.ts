@@ -3,9 +3,11 @@ import { createNeutralCommand, normalizeGameConfig } from "../src/simulation/con
 import {
   awardStatPoint,
   createParticipantProgression,
+  getNextPlannedUpgrade,
   getMobilityMultiplier,
   getPowerMultiplier,
   getStabilityMultiplier,
+  normalizeUpgradePlan,
   spendStatPoint,
 } from "../src/simulation/progression";
 import { SimulationWorld } from "../src/simulation/world";
@@ -49,6 +51,27 @@ describe("elimination progression", () => {
       capped = spendStatPoint(awardStatPoint(capped), "power") ?? capped;
     }
     expect(spendStatPoint(awardStatPoint(capped), "power")).toBeUndefined();
+  });
+
+  it("normalizes and follows a bounded pre-round automatic upgrade order", () => {
+    const plan = normalizeUpgradePlan([
+      "mobility",
+      "power",
+      "mobility",
+      "mobility",
+      "mobility",
+      "mobility",
+      "mobility",
+      "unknown",
+    ]);
+    const earned = awardStatPoint(createParticipantProgression());
+
+    expect(plan).toEqual(["mobility", "power", "mobility", "mobility", "mobility", "mobility"]);
+    expect(getNextPlannedUpgrade(earned, plan)).toBe("mobility");
+    const upgraded = spendStatPoint(earned, "mobility");
+    expect(getNextPlannedUpgrade(awardStatPoint(upgraded ?? earned), plan)).toBe("power");
+    expect(normalizeUpgradePlan([])).toEqual([]);
+    expect(normalizeUpgradePlan(undefined)).toHaveLength(20);
   });
 
   it("credits the last shove when its target enters irreversible falling", () => {
