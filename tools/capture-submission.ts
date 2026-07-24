@@ -12,6 +12,7 @@ const CAPTURE_ORIGIN = `http://127.0.0.1:${CAPTURE_PORT}`;
 const CAPTURE_VIEWPORT = Object.freeze({ width: 1_920, height: 1_080 });
 const SHA_PATTERN = /^[0-9a-f]{40}$/u;
 const SERVER_READY_TIMEOUT_MS = 30_000;
+const BROWSER_STEP_TIMEOUT_MS = 15_000;
 
 interface CommandResult {
   readonly exitCode: number;
@@ -72,6 +73,31 @@ export function normalizeCandidateSha(value: string): string {
 
 function wait(milliseconds: number): Promise<void> {
   return new Promise((resolveWait) => setTimeout(resolveWait, milliseconds));
+}
+
+function reportPhase(phase: string): void {
+  process.stdout.write(`${JSON.stringify({ phase, at: new Date().toISOString() })}\n`);
+}
+
+async function withTimeout<T>(
+  operation: Promise<T>,
+  timeoutMilliseconds: number,
+  label: string,
+): Promise<T> {
+  let timeout: NodeJS.Timeout | undefined;
+  const timeoutPromise = new Promise<never>((_resolve, reject) => {
+    timeout = setTimeout(
+      () => reject(new Error(`${label} exceeded ${timeoutMilliseconds} ms.`)),
+      timeoutMilliseconds,
+    );
+  });
+  try {
+    return await Promise.race([operation, timeoutPromise]);
+  } finally {
+    if (timeout !== undefined) {
+      clearTimeout(timeout);
+    }
+  }
 }
 
 async function runCommand(command: string, args: readonly string[]): Promise<CommandResult> {
@@ -260,10 +286,10 @@ async function createGameplayScene(page: Page): Promise<void> {
   const arena = page.locator("#arena-host");
   await arena.focus();
 
-  const movementStart = await readSimulationTick(page);
+  const facingStart = await readSimulationTick(page);
   await page.keyboard.down("ArrowRight");
   try {
-    await waitForTickDelta(page, movementStart, 45);
+    await waitForTickDelta(page, facingStart, 2);
   } finally {
     await page.keyboard.up("ArrowRight");
   }
@@ -272,11 +298,18 @@ async function createGameplayScene(page: Page): Promise<void> {
   await hookSlot.click();
   await page.getByText("갈고리가 걸렸어.", { exact: true }).waitFor({ state: "visible" });
 
-  await page.keyboard.press("Shift");
-  await page.keyboard.press("Space");
   const bombSlot = page.locator("#use-item-slot-0");
   await bombSlot.click();
   await page.getByText("폭탄을 놨어. 5초 뒤 터져.", { exact: true }).waitFor({ state: "visible" });
+  const movementStart = await readSimulationTick(page);
+  await page.keyboard.down("ArrowRight");
+  try {
+    await waitForTickDelta(page, movementStart, 45);
+  } finally {
+    await page.keyboard.up("ArrowRight");
+  }
+  await page.keyboard.press("Shift");
+  await page.keyboard.press("Space");
   const actionStart = await readSimulationTick(page);
   await waitForTickDelta(page, actionStart, 45);
 }
@@ -305,7 +338,12 @@ async function captureMedia(
   const gameplayVideoPath = join(captureDirectory, "gameplay.webm");
 
   try {
-    browser = await chromium.launch({ channel: "chrome", headless: true });
+    reportPhase("launch-browser");
+    browser = await withTimeout(
+      chromium.launch({ channel: "chrome", headless: true }),
+      BROWSER_STEP_TIMEOUT_MS,
+      "Chrome launch",
+    );
     context = await browser.newContext({
       colorScheme: "dark",
       locale: "ko-KR",
@@ -315,6 +353,8 @@ async function captureMedia(
       viewport: CAPTURE_VIEWPORT,
     });
     page = await context.newPage();
+    page.setDefaultNavigationTimeout(BROWSER_STEP_TIMEOUT_MS);
+    page.setDefaultTimeout(BROWSER_STEP_TIMEOUT_MS);
     page.on("console", (message) => {
       if (message.type() === "error") {
         consoleErrors.push(message.text());
@@ -324,6 +364,7 @@ async function captureMedia(
     });
     page.on("pageerror", (error) => pageErrors.push(error.message));
     await installFixedRoundSeed(page);
+    reportPhase("load-menu");
     const response = await page.goto(CAPTURE_ORIGIN, { waitUntil: "domcontentloaded" });
     if (response === null || !response.ok()) {
       throw new Error(`Capture page failed to load: ${response?.status() ?? "no response"}.`);
@@ -332,17 +373,38 @@ async function captureMedia(
       throw new Error(`Unexpected capture page title: ${await page.title()}`);
     }
 
-    await chooseCaptureLoadout(page);
-    await page.screenshot({ animations: "disabled", path: menuScreenshotPath });
-    await createGameplayScene(page);
-    await page.screenshot({ animations: "disabled", path: gameplayScreenshotPath });
+    reportPhase("save-loadout");
+    await withTimeout(chooseCaptureLoadout(page), BROWSER_STEP_TIMEOUT_MS, "Capture loadout setup");
+    reportPhase("capture-menu");
+    await page.screenshot({
+      animations: "disabled",
+      path: menuScreenshotPath,
+      timeout: BROWSER_STEP_TIMEOUT_MS,
+    });
+    reportPhase("play-gameplay-scene");
+    await withTimeout(
+      createGameplayScene(page),
+      BROWSER_STEP_TIMEOUT_MS * 2,
+      "Gameplay capture scene",
+    );
+    reportPhase("capture-gameplay");
+    await page.screenshot({
+      animations: "disabled",
+      path: gameplayScreenshotPath,
+      timeout: BROWSER_STEP_TIMEOUT_MS,
+    });
     const video = page.video();
     if (video === null) {
       throw new Error("Playwright did not create the requested gameplay video.");
     }
-    await context.close();
+    reportPhase("finalize-video");
+    await withTimeout(context.close(), BROWSER_STEP_TIMEOUT_MS, "Browser context close");
     context = undefined;
-    const recordedVideoPath = await video.path();
+    const recordedVideoPath = await withTimeout(
+      video.path(),
+      BROWSER_STEP_TIMEOUT_MS,
+      "Recorded video path",
+    );
     await rm(gameplayVideoPath, { force: true });
     await rename(recordedVideoPath, gameplayVideoPath);
 
@@ -387,13 +449,20 @@ async function captureMedia(
   } catch (error) {
     if (page !== undefined && !page.isClosed()) {
       await page
-        .screenshot({ path: join(captureDirectory, "capture-failure.png") })
+        .screenshot({
+          path: join(captureDirectory, "capture-failure.png"),
+          timeout: 5_000,
+        })
         .catch(() => undefined);
     }
     throw error;
   } finally {
-    await context?.close().catch(() => undefined);
-    await browser?.close().catch(() => undefined);
+    if (context !== undefined) {
+      await withTimeout(context.close(), 5_000, "Failure context close").catch(() => undefined);
+    }
+    if (browser !== undefined) {
+      await withTimeout(browser.close(), 5_000, "Browser close").catch(() => undefined);
+    }
   }
 }
 
@@ -403,7 +472,9 @@ async function main(): Promise<void> {
   const captureDirectory = join(projectRoot, ".cache", "submission-captures", candidateSha);
   await rm(captureDirectory, { force: true, recursive: true });
   await mkdir(captureDirectory, { recursive: true });
+  reportPhase("build-production-artifact");
   await buildProductionArtifact();
+  reportPhase("start-preview-server");
   const server = startPreviewServer();
   try {
     await waitForPreviewServer(server);
