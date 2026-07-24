@@ -198,30 +198,40 @@ async function clickInventorySlotAfterActiveTick(page: Page, selector: string): 
     .toBeGreaterThan(tickBeforeClick);
 }
 
-async function triggerShoveAfterReady(page: Page): Promise<"ShoveWindup" | "ShoveActive"> {
-  const telemetry = page.locator("#game-telemetry");
-
-  for (let attempt = 0; attempt < 40; attempt += 1) {
-    if ((await telemetry.getAttribute("data-action")) !== "Ready") {
-      await page.clock.fastForward(34);
-      continue;
-    }
-
-    const tickBeforeShove = await readSimulationTick(page);
-    await page.keyboard.down("Space");
-    await page.clock.fastForward(20);
-    await page.keyboard.up("Space");
-    const action = await telemetry.getAttribute("data-action");
-
-    if (
-      (await readSimulationTick(page)) > tickBeforeShove &&
-      (action === "ShoveWindup" || action === "ShoveActive")
-    ) {
-      return action;
-    }
+async function triggerShoveAfterReady(
+  page: Page,
+  remainingAttempts = 40,
+): Promise<"ShoveWindup" | "ShoveActive"> {
+  if (remainingAttempts <= 0) {
+    throw new Error("human actor never entered a shove action during the bounded ready window");
   }
 
-  throw new Error("human actor never entered a shove action during the bounded ready window");
+  const telemetry = page.locator("#game-telemetry");
+
+  if ((await telemetry.getAttribute("data-action")) !== "Ready") {
+    await page.clock.fastForward(34);
+    return triggerShoveAfterReady(page, remainingAttempts - 1);
+  }
+
+  const tickBeforeShove = await readSimulationTick(page);
+  await page.keyboard.down("Space");
+
+  try {
+    await page.clock.fastForward(20);
+  } finally {
+    await page.keyboard.up("Space");
+  }
+
+  const action = await telemetry.getAttribute("data-action");
+
+  if (
+    (await readSimulationTick(page)) > tickBeforeShove &&
+    (action === "ShoveWindup" || action === "ShoveActive")
+  ) {
+    return action;
+  }
+
+  return triggerShoveAfterReady(page, remainingAttempts - 1);
 }
 
 async function readCameraPosition(page: Page): Promise<string> {
