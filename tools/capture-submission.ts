@@ -15,6 +15,12 @@ const SERVER_READY_TIMEOUT_MS = 30_000;
 const BROWSER_STEP_TIMEOUT_MS = 15_000;
 const GAMEPLAY_SCENE_TIMEOUT_MS = 45_000;
 const POST_ACTION_CAPTURE_TICKS = 45;
+const GRAPPLING_CAPTURE_DIRECTIONS = Object.freeze([
+  "ArrowRight",
+  "ArrowDown",
+  "ArrowLeft",
+  "ArrowUp",
+] as const);
 const MISSING_RESOURCE_MESSAGE =
   "Failed to load resource: the server responded with a status of 404 (Not Found)";
 
@@ -318,6 +324,39 @@ async function chooseCaptureLoadout(page: Page): Promise<void> {
   await waitForAttribute(page, "#app", "data-screen", "menu");
 }
 
+async function faceDirectionForCapture(page: Page, direction: string): Promise<void> {
+  await page.locator("#arena-host").focus();
+  const startingTick = await readSimulationTick(page);
+  await page.keyboard.down(direction);
+  try {
+    await waitForTickDelta(page, startingTick, 2);
+  } finally {
+    await page.keyboard.up(direction);
+  }
+}
+
+async function useGrapplingHookForCapture(page: Page, directionIndex = 0): Promise<void> {
+  const hookSlot = page.locator("#use-item-slot-1");
+  const direction = GRAPPLING_CAPTURE_DIRECTIONS[directionIndex];
+
+  if (direction === undefined) {
+    throw new Error("The fixed capture seed exposed no cardinal Grappling Hook anchor.");
+  }
+
+  reportPhase(`gameplay-use-hook-${direction}`);
+  await faceDirectionForCapture(page, direction);
+  const attemptTick = await readSimulationTick(page);
+  await hookSlot.click();
+  await waitForTickDelta(page, attemptTick, 2);
+
+  if ((await hookSlot.textContent())?.includes("1회") === true) {
+    await page.getByText("갈고리가 걸렸어.", { exact: true }).waitFor({ state: "visible" });
+    return;
+  }
+
+  return useGrapplingHookForCapture(page, directionIndex + 1);
+}
+
 async function createGameplayScene(page: Page): Promise<void> {
   reportPhase("gameplay-start-round");
   await page.getByRole("button", { name: "게임 시작" }).click();
@@ -328,19 +367,8 @@ async function createGameplayScene(page: Page): Promise<void> {
   reportPhase("gameplay-start-recording");
   await startCanvasRecording(page);
 
-  reportPhase("gameplay-face-right");
-  const facingStart = await readSimulationTick(page);
-  await page.keyboard.down("ArrowRight");
-  try {
-    await waitForTickDelta(page, facingStart, 2);
-  } finally {
-    await page.keyboard.up("ArrowRight");
-  }
-
   reportPhase("gameplay-use-hook");
-  const hookSlot = page.locator("#use-item-slot-1");
-  await hookSlot.click();
-  await page.getByText("갈고리가 걸렸어.", { exact: true }).waitFor({ state: "visible" });
+  await useGrapplingHookForCapture(page);
 
   reportPhase("gameplay-use-bomb");
   const bombSlot = page.locator("#use-item-slot-0");
