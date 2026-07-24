@@ -19,6 +19,10 @@ const TERRAIN_ATLAS_URL = new URL("../assets/generated/island-terrain-atlas.png"
 type AtlasFrame = readonly [x: number, y: number, width: number, height: number];
 const ATLAS_SOURCE_SCALE = 0.5;
 
+function createAtlasFrame(x: number, y: number, width: number, height: number): AtlasFrame {
+  return Object.freeze([x, y, width, height]);
+}
+
 const CHARACTER_ATLAS_FRAMES: readonly AtlasFrame[] = Object.freeze([
   [80, 47, 167, 203],
   [309, 47, 169, 202],
@@ -53,7 +57,7 @@ const ITEM_ATLAS_FRAMES: Readonly<Record<ItemDefinitionId, AtlasFrame>> = Object
 const TERRAIN_ATLAS_FRAMES: readonly AtlasFrame[] = Object.freeze(
   [65, 345, 620, 895].flatMap((y, row) =>
     [55, 345, 615, 890].map((x, column) =>
-      Object.freeze([x, y, [300, 290, 290, 300][column] ?? 290, [280, 270, 280, 285][row] ?? 280]),
+      createAtlasFrame(x, y, [300, 290, 290, 300][column] ?? 290, [280, 270, 280, 285][row] ?? 280),
     ),
   ),
 );
