@@ -532,7 +532,7 @@ export class BotDirector {
     const perceivedItems: readonly RenderItemV1[] = perceptionFrame.items;
     const perceivedParticipants = perceivedSpatialHash.queryNearby(
       perceived.position,
-      SIMULATION_TUNING.windBlast.range,
+      Math.ceil(SIMULATION_TUNING.windBlast.range / SIMULATION_TUNING.spatialHash.cellSize),
     );
     const threats = perceivedParticipants
       .filter(

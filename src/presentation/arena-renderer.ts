@@ -1553,7 +1553,8 @@ export async function createArenaRenderer(
       impactSprites,
       artilleryLabels,
     ]) {
-      layer.position.set(presentationCamera.x, presentationCamera.y);
+      layer.x = presentationCamera.x;
+      layer.y = presentationCamera.y;
     }
     host.dataset.cameraX = camera.x.toFixed(2);
     host.dataset.cameraY = camera.y.toFixed(2);
