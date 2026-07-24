@@ -43,7 +43,7 @@ assets, not dependency license inventory.
 | Attribution decision | No attribution requirement was identified in the cited ownership clause; voluntary generator provenance remains in this ledger |
 | Prompt/source record | `docs/assets/prompts/character-variants.txt` |
 | Modifications | Renamed; no pixel edits or recompression; sixteen measured alpha bounds become PixiJS texture frames |
-| Technical contract | 1024×1024 RGBA PNG, 1,758,793 bytes, SHA-256 `d0bf8770a78c6758f865dfa5029e6bb901976215563ff07d6ae1a4a25d28a2ca`; asynchronous same-origin load; procedural participant geometry remains the failure fallback |
+| Technical contract | 512×512 RGBA PNG, 251,392 bytes, SHA-256 `078523241d2bd0cf389fb63eeaf646930913d8a1e8cdba26d07df8bd404e4524`; Lanczos-downsampled from the accepted source; asynchronous same-origin load; procedural participant geometry remains the failure fallback |
 | Reviewer decision | Accepted 2026-07-24; final 50-player readability remains subject to browser capture and human review |
 
 ### `generated-item-icons`
@@ -59,7 +59,7 @@ assets, not dependency license inventory.
 | Attribution decision | No attribution requirement was identified in the cited ownership clause; voluntary generator provenance remains in this ledger |
 | Prompt/source record | `docs/assets/prompts/item-icons.txt` |
 | Modifications | Renamed; no pixel edits or recompression; CSS background windows and PixiJS texture frames isolate the nine selected icons |
-| Technical contract | 1024×1024 RGBA PNG, 1,929,395 bytes, SHA-256 `1fa86a2fa329b9b992e01c9722b402ec25d8c30a70ca480060e7194f6dd46ba8`; text labels remain usable if CSS art fails, and procedural pickup symbols remain the canvas fallback |
+| Technical contract | 512×512 RGBA PNG, 288,460 bytes, SHA-256 `e33ed70348e83616ea28e5bcf5b9096a359678fb09a68a8962aea738b9274782`; Lanczos-downsampled from the accepted source; text labels remain usable if CSS art fails, and procedural pickup symbols remain the canvas fallback |
 | Reviewer decision | Accepted 2026-07-24; compression and physical-device readability remain pending |
 
 ### `generated-pirate-galleon`
@@ -75,17 +75,17 @@ assets, not dependency license inventory.
 | Attribution decision | No attribution requirement was identified in the cited ownership clause; voluntary generator provenance remains in this ledger |
 | Prompt/source record | `docs/assets/prompts/pirate-ship-galleon-chroma.txt` |
 | Modifications | Built-in output used a flat green background; the installed image-generation helper sampled border key `#03f804`, applied soft matte and despill, and wrote alpha PNG; no manual repainting |
-| Technical contract | 1254×1254 RGBA PNG, 1,323,961 bytes, SHA-256 `5b59d0f3701738d0aca1eabe9ed995fa62572102e0c8a6ba8fc7c51e13b32b8b`; all four corner alpha values are zero; 984,556 pixels are fully transparent and 13,864 partially transparent; asynchronous same-origin load with procedural ship fallback |
+| Technical contract | 512×512 RGBA PNG, 247,227 bytes, SHA-256 `4f16e0b4dfe8c469835121a81d766deb31a0a94fca78cdcd4c03732e4265425b`; Lanczos-downsampled after alpha extraction; all four corner alpha values remain zero; asynchronous same-origin load with procedural ship fallback |
 | Reviewer decision | Accepted 2026-07-24 after alpha and visual-edge inspection; final on-canvas scale, rotation, payload, and human readability remain pending |
 
 ### Projectile sprites
 
 | Asset | Prompt | Processing and technical contract | Decision |
 |---|---|---|---|
-| `src/assets/generated/cannonball-projectile.png` | `docs/assets/prompts/cannonball-projectile-chroma.txt` | Built-in generation; border key `#04f90b`; soft matte and despill; 1254×1254 RGBA, 432,427 bytes, SHA-256 `85178b76c572821e907c654190e14d541ced4e2e0ed55141f3d248403e9a3b04`; transparent corners | Accepted 2026-07-24; rotated and scaled over the procedural trajectory and warning fallback |
-| `src/assets/generated/lethal-boulder.png` | `docs/assets/prompts/lethal-boulder-chroma.txt` | Built-in generation; border key `#03f903`; soft matte and despill; 1254×1254 RGBA, 1,173,264 bytes, SHA-256 `8d2829c42c8f6a8ee1e95830296f2e11abdca82cecd38823c606501b23cbe48f`; transparent corners | Accepted 2026-07-24; rotated and scaled over the procedural lethal-rock fallback |
-| `src/assets/generated/impact-explosion.png` | `docs/assets/prompts/impact-explosion-chroma.txt` | Built-in generation; border key `#03f905`; soft matte and despill; 1254×1254 RGBA, 620,682 bytes, SHA-256 `0b8827457b113de2d54ea62839215e9d6871319e95e9fff22ddccf486064d3a0`; transparent corners | Accepted 2026-07-24; fades over Bomb and rock-impact geometry |
-| `src/assets/generated/seawater-impact.png` | `docs/assets/prompts/seawater-impact-chroma.txt` | Built-in generation; border key `#fc03fa`; soft matte and despill; 1254×1254 RGBA, 574,632 bytes, SHA-256 `df72967ccbc2d7c3d3b655cc8b6d8be511127a3d9ebc1a6c9988b9328d141022`; transparent corners | Accepted 2026-07-24; fades over tile-flood geometry |
+| `src/assets/generated/cannonball-projectile.png` | `docs/assets/prompts/cannonball-projectile-chroma.txt` | Built-in generation; border key `#04f90b`; soft matte, despill, and Lanczos downsample; 512×512 RGBA, 84,195 bytes, SHA-256 `158614de423742297b90fd82e9c970efdcdc02cd10f56e571c572fac2062cdc9`; transparent corners | Accepted 2026-07-24; rotated and scaled over the procedural trajectory and warning fallback |
+| `src/assets/generated/lethal-boulder.png` | `docs/assets/prompts/lethal-boulder-chroma.txt` | Built-in generation; border key `#03f903`; soft matte, despill, and Lanczos downsample; 512×512 RGBA, 206,011 bytes, SHA-256 `878a37f2d3e8ae9a21c83af05b9782ef0e812caaedc0c745fa0c85cf24624199`; transparent corners | Accepted 2026-07-24; rotated and scaled over the procedural lethal-rock fallback |
+| `src/assets/generated/impact-explosion.png` | `docs/assets/prompts/impact-explosion-chroma.txt` | Built-in generation; border key `#03f905`; soft matte, despill, and Lanczos downsample; 512×512 RGBA, 132,099 bytes, SHA-256 `43c108796a0a098107e3c401439954563c8f2f86cb22c86c45a5327a38ebf213`; transparent corners | Accepted 2026-07-24; fades over Bomb and rock-impact geometry |
+| `src/assets/generated/seawater-impact.png` | `docs/assets/prompts/seawater-impact-chroma.txt` | Built-in generation; border key `#fc03fa`; soft matte, despill, and Lanczos downsample; 512×512 RGBA, 121,260 bytes, SHA-256 `8bfe7107ecab16ed5ac81b1ff1a58da5b3651cc339b9b68194546f6ddbacd41e`; transparent corners | Accepted 2026-07-24; fades over tile-flood geometry |
 
 The selected images contain no visible trademark, signature, watermark, named copyrighted
 character, or named living-artist imitation. A metadata probe reported no container tags. This is a
