@@ -1,14 +1,14 @@
 # Asset Provenance Ledger
 
-- Status: Active; three generated PNG assets ship with procedural fallbacks
+- Status: Active; five generated PNG assets ship with procedural fallbacks
 - Owner: Repository owner
 - Visual gate: [../product/01-roadmap.md](../product/01-roadmap.md)
 - Frontend boundary: [../frontend/FRONTEND_DESIGN.md](../frontend/FRONTEND_DESIGN.md)
 
 ## Current Inventory
 
-Repository inspection on 2026-07-24 found two accepted owner-generated PNG atlases and one
-Codex-generated single-ship sprite. Six other
+Repository inspection on 2026-07-24 found two accepted owner-generated PNG atlases and three
+Codex-generated single sprites. Six earlier multi-asset outputs
 generated outputs were rejected before intake because their visible checkerboard was baked into
 opaque RGB pixels rather than represented by alpha transparency.
 
@@ -20,6 +20,8 @@ opaque RGB pixels rather than represented by alpha transparency.
 | `generated-character-variants` | Arena participants | `src/assets/generated/character-variants.png` | Owner-generated with ChatGPT image generation | OpenAI Terms of Use output-ownership clause; user remains responsible for the output | No service attribution requirement identified; generator is recorded here |
 | `generated-item-icons` | Settings cards and map pickups | `src/assets/generated/item-icons.png` | Owner-generated with ChatGPT image generation | OpenAI Terms of Use output-ownership clause; user remains responsible for the output | No service attribution requirement identified; generator is recorded here |
 | `generated-pirate-galleon` | Eight offshore pirate-ship positions | `src/assets/generated/pirate-ship-galleon.png` | Codex built-in image generation plus local chroma-key removal | OpenAI Terms of Use output-ownership clause; user remains responsible for the output | No service attribution requirement identified; generator and processing are recorded here |
+| `generated-cannonball-projectile` | Cannon trajectories | `src/assets/generated/cannonball-projectile.png` | Codex built-in image generation plus local chroma-key removal | Same output-ownership evidence | Generator and processing recorded here |
+| `generated-lethal-boulder` | Protected-core rock trajectories | `src/assets/generated/lethal-boulder.png` | Codex built-in image generation plus local chroma-key removal | Same output-ownership evidence | Generator and processing recorded here |
 
 Dependencies are tracked by `package.json` and `bun.lock`; this ledger owns media and creative
 assets, not dependency license inventory.
@@ -73,6 +75,13 @@ assets, not dependency license inventory.
 | Modifications | Built-in output used a flat green background; the installed image-generation helper sampled border key `#03f804`, applied soft matte and despill, and wrote alpha PNG; no manual repainting |
 | Technical contract | 1254×1254 RGBA PNG, 1,323,961 bytes, SHA-256 `5b59d0f3701738d0aca1eabe9ed995fa62572102e0c8a6ba8fc7c51e13b32b8b`; all four corner alpha values are zero; 984,556 pixels are fully transparent and 13,864 partially transparent; asynchronous same-origin load with procedural ship fallback |
 | Reviewer decision | Accepted 2026-07-24 after alpha and visual-edge inspection; final on-canvas scale, rotation, payload, and human readability remain pending |
+
+### Projectile sprites
+
+| Asset | Prompt | Processing and technical contract | Decision |
+|---|---|---|---|
+| `src/assets/generated/cannonball-projectile.png` | `docs/assets/prompts/cannonball-projectile-chroma.txt` | Built-in generation; border key `#04f90b`; soft matte and despill; 1254×1254 RGBA, 432,427 bytes, SHA-256 `85178b76c572821e907c654190e14d541ced4e2e0ed55141f3d248403e9a3b04`; transparent corners | Accepted 2026-07-24; rotated and scaled over the procedural trajectory and warning fallback |
+| `src/assets/generated/lethal-boulder.png` | `docs/assets/prompts/lethal-boulder-chroma.txt` | Built-in generation; border key `#03f903`; soft matte and despill; 1254×1254 RGBA, 1,173,264 bytes, SHA-256 `8d2829c42c8f6a8ee1e95830296f2e11abdca82cecd38823c606501b23cbe48f`; transparent corners | Accepted 2026-07-24; rotated and scaled over the procedural lethal-rock fallback |
 
 The selected images contain no visible trademark, signature, watermark, named copyrighted
 character, or named living-artist imitation. A metadata probe reported no container tags. This is a

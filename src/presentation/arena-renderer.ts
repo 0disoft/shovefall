@@ -524,6 +524,87 @@ function syncPirateShipSprites(
   }
 }
 
+function syncProjectileSprites(
+  layer: Container,
+  cannonSprites: Map<number, Sprite>,
+  rockSprites: Map<number, Sprite>,
+  frame: RenderFrameV1,
+  projection: ArenaProjection,
+  reducedMotion: boolean,
+  assets: ArenaVisualAssets,
+): void {
+  const visibleCannonShotIds = new Set<number>();
+  const visibleRockShotIds = new Set<number>();
+
+  for (const shot of frame.cannonShots) {
+    visibleCannonShotIds.add(shot.shotId);
+    let sprite = cannonSprites.get(shot.shotId);
+
+    if (sprite === undefined) {
+      sprite = new Sprite(assets.cannonballTexture);
+      sprite.anchor.set(0.5, 0.5);
+      cannonSprites.set(shot.shotId, sprite);
+      layer.addChild(sprite);
+    }
+
+    const progress = getShotProgress(frame.tick, shot.launchTick, shot.impactTick);
+    const projected = projectArenaPoint(
+      {
+        x: shot.origin.x + (shot.target.x - shot.origin.x) * progress,
+        y: shot.origin.y + (shot.target.y - shot.origin.y) * progress,
+      },
+      projection,
+    );
+    const direction = projectArenaVector({
+      x: shot.target.x - shot.origin.x,
+      y: shot.target.y - shot.origin.y,
+    });
+    const arc = reducedMotion ? 0 : Math.sin(Math.PI * progress) * projection.tileWidth * 1.35;
+    const size = clamp(projection.tileWidth * (0.9 + progress * 0.48), 34, 88);
+    sprite.position.set(projected.x, projected.y - arc);
+    sprite.width = size;
+    sprite.height = size;
+    sprite.rotation = Math.atan2(direction.y, direction.x) - Math.PI / 4;
+    sprite.visible = true;
+  }
+
+  for (const shot of frame.rockShots) {
+    visibleRockShotIds.add(shot.shotId);
+    let sprite = rockSprites.get(shot.shotId);
+
+    if (sprite === undefined) {
+      sprite = new Sprite(assets.lethalBoulderTexture);
+      sprite.anchor.set(0.5, 0.5);
+      rockSprites.set(shot.shotId, sprite);
+      layer.addChild(sprite);
+    }
+
+    const progress = getShotProgress(frame.tick, shot.launchTick, shot.impactTick);
+    const projected = projectArenaPoint(
+      {
+        x: shot.origin.x + (shot.target.x - shot.origin.x) * progress,
+        y: shot.origin.y + (shot.target.y - shot.origin.y) * progress,
+      },
+      projection,
+    );
+    const arc = reducedMotion ? 0 : Math.sin(Math.PI * progress) * projection.tileWidth * 1.8;
+    const size = clamp(projection.tileWidth * (1 + progress * 0.62), 42, 108);
+    sprite.position.set(projected.x, projected.y - arc);
+    sprite.width = size;
+    sprite.height = size;
+    sprite.rotation = progress * Math.PI * 1.5 + shot.shotId * 0.37;
+    sprite.visible = true;
+  }
+
+  for (const [shotId, sprite] of cannonSprites) {
+    sprite.visible = visibleCannonShotIds.has(shotId);
+  }
+
+  for (const [shotId, sprite] of rockSprites) {
+    sprite.visible = visibleRockShotIds.has(shotId);
+  }
+}
+
 function syncParticipantSprites(
   layer: Container,
   sprites: Map<number, Sprite>,
@@ -1091,6 +1172,7 @@ export async function createArenaRenderer(
   const tiles = new Graphics();
   const artillery = new Graphics();
   const pirateShipSprites = new Container();
+  const projectileSprites = new Container();
   const items = new Graphics();
   const itemSprites = new Container();
   const participants = new Graphics();
@@ -1103,6 +1185,7 @@ export async function createArenaRenderer(
     tiles,
     artillery,
     pirateShipSprites,
+    projectileSprites,
     items,
     itemSprites,
     participants,
@@ -1112,6 +1195,8 @@ export async function createArenaRenderer(
   );
   const itemSpritesById = new Map<number, Sprite>();
   const pirateShipSpritesById = new Map<number, Sprite>();
+  const cannonSpritesByShotId = new Map<number, Sprite>();
+  const rockSpritesByShotId = new Map<number, Sprite>();
   const participantSpritesByActorId = new Map<number, Sprite>();
   const eventLedger = new SimulationEventLedger();
   const motionPreference = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -1142,6 +1227,8 @@ export async function createArenaRenderer(
     artillery.y = camera.y;
     pirateShipSprites.x = camera.x;
     pirateShipSprites.y = camera.y;
+    projectileSprites.x = camera.x;
+    projectileSprites.y = camera.y;
     items.x = camera.x;
     items.y = camera.y;
     itemSprites.x = camera.x;
@@ -1230,6 +1317,18 @@ export async function createArenaRenderer(
 
     for (const shot of latestFrame.rockShots) {
       drawRockShot(artillery, shot, latestFrame.tick, projection, reducedMotion);
+    }
+
+    if (visualAssets !== null) {
+      syncProjectileSprites(
+        projectileSprites,
+        cannonSpritesByShotId,
+        rockSpritesByShotId,
+        latestFrame,
+        projection,
+        reducedMotion,
+        visualAssets,
+      );
     }
 
     for (const item of latestFrame.items) {

@@ -1,0 +1,8 @@
+Use case: stylized-concept
+Asset type: single production lethal boulder projectile sprite for a PixiJS browser party game
+Primary request: Create exactly one massive rough boulder used as a lethal projectile in a final showdown, seen from a fixed elevated 58-degree three-quarter top-down camera. This is one isolated sprite, not a sprite sheet and not a scene.
+Scene/backdrop: perfectly flat uniform solid #00ff00 chroma-key background from edge to edge. No checkerboard, texture, gradient, floor, ocean, lighting variation, shadow, or reflection in the background.
+Subject: one heavy irregular charcoal volcanic boulder, broad cracked silhouette, a few embedded warm-brown mineral planes, tiny stone chips kept close to the body. It must feel heavier and less fiery than a cannonball and remain readable at 40–90 CSS pixels.
+Style/medium: polished playful hand-painted 2D party-game art, chunky shape, subtle dark outline, restrained coal-twilight palette, upper-left light confined to the boulder, not photorealistic and not a 3D render.
+Composition/framing: exactly one boulder, centered, generous empty green padding on all sides, no long trail.
+Constraints: do not use vivid green anywhere in the boulder or chips. No cast shadow, no dust cloud, no target marker, no impact, no ship, no character, no island, no water, no fire, no text, no letters, no numbers, no UI, no border, no mockup, no watermark, no signature, no cropped chips, no extra objects.

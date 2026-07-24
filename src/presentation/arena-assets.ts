@@ -6,6 +6,9 @@ const CHARACTER_ATLAS_URL = new URL("../assets/generated/character-variants.png"
 const ITEM_ATLAS_URL = new URL("../assets/generated/item-icons.png", import.meta.url).href;
 const PIRATE_SHIP_URL = new URL("../assets/generated/pirate-ship-galleon.png", import.meta.url)
   .href;
+const CANNONBALL_URL = new URL("../assets/generated/cannonball-projectile.png", import.meta.url)
+  .href;
+const LETHAL_BOULDER_URL = new URL("../assets/generated/lethal-boulder.png", import.meta.url).href;
 
 type AtlasFrame = readonly [x: number, y: number, width: number, height: number];
 
@@ -44,6 +47,8 @@ export interface ArenaVisualAssets {
   readonly characterTextures: readonly Texture[];
   readonly itemTextures: Readonly<Record<ItemDefinitionId, Texture>>;
   readonly pirateShipTexture: Texture;
+  readonly cannonballTexture: Texture;
+  readonly lethalBoulderTexture: Texture;
 }
 
 function createAtlasTexture(atlas: Texture, frame: AtlasFrame, label: string): Texture {
@@ -98,16 +103,21 @@ function createItemTextures(atlas: Texture): Readonly<Record<ItemDefinitionId, T
 
 export async function loadArenaVisualAssets(): Promise<ArenaVisualAssets | null> {
   try {
-    const [characterAtlas, itemAtlas, pirateShipTexture] = await Promise.all([
-      Assets.load<Texture>(CHARACTER_ATLAS_URL),
-      Assets.load<Texture>(ITEM_ATLAS_URL),
-      Assets.load<Texture>(PIRATE_SHIP_URL),
-    ]);
+    const [characterAtlas, itemAtlas, pirateShipTexture, cannonballTexture, lethalBoulderTexture] =
+      await Promise.all([
+        Assets.load<Texture>(CHARACTER_ATLAS_URL),
+        Assets.load<Texture>(ITEM_ATLAS_URL),
+        Assets.load<Texture>(PIRATE_SHIP_URL),
+        Assets.load<Texture>(CANNONBALL_URL),
+        Assets.load<Texture>(LETHAL_BOULDER_URL),
+      ]);
 
     return Object.freeze({
       characterTextures: createCharacterTextures(characterAtlas),
       itemTextures: createItemTextures(itemAtlas),
       pirateShipTexture,
+      cannonballTexture,
+      lethalBoulderTexture,
     });
   } catch {
     return null;

@@ -1,0 +1,8 @@
+Use case: stylized-concept
+Asset type: single production cannonball projectile sprite for a PixiJS browser party game
+Primary request: Create exactly one incoming pirate cannonball with a short curved ember-and-smoke trail, seen from a fixed elevated 58-degree three-quarter top-down camera. This is one isolated sprite, not a sprite sheet and not a scene.
+Scene/backdrop: perfectly flat uniform solid #00ff00 chroma-key background from edge to edge. No checkerboard, texture, gradient, floor, ocean, lighting variation, shadow, or reflection in the background.
+Subject: one dark iron cannonball, chunky round silhouette, bright orange heated rim on the front edge, compact curved trail of amber sparks and dark smoke attached behind it. Keep the projectile readable at 32–72 CSS pixels. The trail must stay compact and fully inside the canvas.
+Style/medium: polished playful hand-painted 2D party-game VFX, strong silhouette, restrained coal-twilight palette, not photorealistic, not a 3D render.
+Composition/framing: one projectile only, centered with generous empty green padding, traveling diagonally from upper-left toward lower-right.
+Constraints: do not use vivid green anywhere in the projectile, sparks, or smoke. No cast shadow, no target marker, no explosion, no ship, no island, no water, no text, no letters, no numbers, no UI, no border, no mockup, no watermark, no signature, no cropped trail, no extra objects.
