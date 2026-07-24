@@ -115,6 +115,8 @@ Easy, Slow round reached active play; a held `D` input changed the reported posi
 deployment and critical-path browser evidence, not human fun, balance, physical-device matrix, or
 cross-browser evidence.
 
+On 2026-07-24, [CI run 30056501932](https://github.com/0disoft/shovefall/actions/runs/30056501932) validated repository SHA `fc347488e2446d16dd52e341b4dd6ab28d1c8aab`, exercised thirteen production Chrome paths, and deployed the unchanged `0.34.0` application bundle. A cache-busted Pages session saved the fixed-50 Hard-AI setup with Bomb and Grappling Hook, entered active play, produced the missed-shove feedback, spent Hook and Bomb from two charges to one with their dedicated feedback, and reported no browser warning or error. Browser-automation backlog contaminated the attempted live movement/dodge observation, and screenshot capture timed out twice, so neither is promoted as current manual evidence.
+
 ## Post-deploy Verification
 
 Against the final HTTPS URL and candidate SHA:
@@ -122,7 +124,7 @@ Against the final HTTPS URL and candidate SHA:
 1. Hard refresh and verify the title, setup, and canvas render without console-fatal errors.
 2. Run `게임 시작` through countdown, movement, shove, dodge, collapse, result, and restart.
 3. Verify `기록 복사` succeeds in the secure context and denial leaves visible failure and retry guidance.
-4. Test one 16-participant normal round and one 32-participant Mayhem boot.
+4. Test one fixed 50-participant Normal round. When collapse pacing changed, repeat the same loadout with Slow and Fast rather than inventing removed participant modes.
 5. Confirm optional audio can fail without blocking play.
 6. Inspect network activity for unexpected origins, runtime API calls, mixed content, and missing
    assets.

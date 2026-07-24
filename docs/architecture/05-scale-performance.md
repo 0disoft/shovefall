@@ -11,6 +11,8 @@ One earlier `0.34.0` observation ran before that gate existed. Brick/Bomb and Gr
 
 The first qualified attempt then rejected host samples `60.9 / 87.4 / 80.6 / 48.6 / 39.8%`, averaging `63.5%` with an `87.4%` maximum, before Chrome launched. The fixed `25 ms` frame p95, eight-tick backlog, 45 delivered-tick, one-long-frame, DPR, and 15 MiB restart-heap gates remain unchanged. A clean qualified rerun is still required; physical-device, cross-browser, and field performance remain separate evidence boundaries.
 
+A second independent attempt on 2026-07-24 again stopped at preflight with host samples `50.6 / 45.2 / 79.9 / 84.3 / 60.7%`, averaging `64.1%` and peaking at `84.3%`. Chrome did not start, no product-performance result was produced, and repeated retries on the same contended workstation are not an admissible substitute for a qualified run.
+
 ## 0.33.0 Widened Island Profile
 
 On 2026-07-24, the 48×40 public island with exactly eight 6–10-tile lakes completed the 7,200-tick fixed-50 workload in `69,437.294 ms`, or `1.73×` real time. AI p95 was `15.425 ms` with a `35.067 ms` maximum, simulation p95 was `6.823 ms` with a `51.648 ms` maximum, the spatial candidate/full-pair ratio was `0.1024`, and no combined step exceeded 100 ms. The run observed one Brick wall, two simultaneous Bomb detonations, six Soap triggers, and four Grappling Hook hits. The `23,898,755`-byte heap delta remains observational because the harness does not force garbage collection.

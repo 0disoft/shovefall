@@ -30,7 +30,7 @@ people, then publishing the exact candidate without burying combat telegraphs.
 - [x] Human Wind Blast, Brick Bag, Boat, Bomb, Soap, and static-anchor Grappling Hook activation through the shared two-slot input contract.
 - [x] Sharded deterministic `0.34.0` round, mass, item-grant, and collapse-pacing evidence with no sampled time-limit draws.
 - [x] Widened-island fixed-50 headless scale evidence at simulation p95 `6.823 ms` with no 100 ms step.
-- [ ] Host-qualified production-Chrome performance evidence. The configured five-sample preflight now blocks contaminated runs; its first `0.34.0` attempt rejected `63.5%` average and `87.4%` maximum host CPU before Chrome started.
+- [ ] Host-qualified production-Chrome performance evidence. The configured five-sample preflight blocks contaminated runs; two independent `0.34.0` attempts rejected `63.5 / 64.1%` average and `87.4 / 84.3%` maximum host CPU before Chrome started.
 - [x] Local aggregate validation and thirteen production-artifact Chrome paths on `0.34.0`.
 - [x] Exact-SHA hosted validation, tested-artifact Pages deployment, and cache-busted public 50-participant WebGL smoke on `0.34.0`.
 

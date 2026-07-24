@@ -37,6 +37,14 @@ const SCAFFOLD_MARKERS = [
   "intentionally a scaffold",
 ] as const;
 
+const CURRENT_PRODUCT_CONTRACTS = [
+  {
+    path: "docs/ops/release.md",
+    required: ["fixed 50-participant Normal round"],
+    forbidden: ["16-participant normal round", "32-participant Mayhem boot"],
+  },
+] as const;
+
 async function listMarkdownFiles(directory: string): Promise<readonly string[]> {
   const entries = await readdir(directory, { withFileTypes: true });
   const files = await Promise.all(
@@ -128,9 +136,26 @@ async function main(): Promise<void> {
       }),
     )
   ).flat();
+  const productContractDrift = (
+    await Promise.all(
+      CURRENT_PRODUCT_CONTRACTS.map(async ({ path, required, forbidden }) => {
+        const markdown = await readFile(join(root, path), "utf8");
+        return [
+          ...required
+            .filter((value) => !markdown.includes(value))
+            .map((value) => `${path} -> missing current contract: ${value}`),
+          ...forbidden
+            .filter((value) => markdown.includes(value))
+            .map((value) => `${path} -> removed public mode: ${value}`),
+        ];
+      }),
+    )
+  ).flat();
 
-  if (missing.length > 0 || scaffoldMarkers.length > 0) {
-    process.stderr.write(`${JSON.stringify({ ok: false, missing, scaffoldMarkers }, null, 2)}\n`);
+  if (missing.length > 0 || scaffoldMarkers.length > 0 || productContractDrift.length > 0) {
+    process.stderr.write(
+      `${JSON.stringify({ ok: false, missing, scaffoldMarkers, productContractDrift }, null, 2)}\n`,
+    );
     process.exitCode = 1;
     return;
   }
@@ -141,6 +166,7 @@ async function main(): Promise<void> {
         ok: true,
         checkedDocuments: markdownFiles.length,
         checkedCustomDocuments: REQUIRED_CUSTOM_DOCUMENTS.length,
+        checkedProductContracts: CURRENT_PRODUCT_CONTRACTS.length,
       },
       null,
       2,
