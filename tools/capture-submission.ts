@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { spawn, type ChildProcess } from "node:child_process";
-import { mkdir, readFile, rename, rm } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { type Browser, type BrowserContext, type Page } from "@playwright/test";
@@ -322,6 +322,7 @@ async function createGameplayScene(page: Page): Promise<void> {
   await waitForAttribute(page, "#app", "data-round", "active");
   const arena = page.locator("#arena-host");
   await arena.focus();
+  await startCanvasRecording(page);
 
   const facingStart = await readSimulationTick(page);
   await page.keyboard.down("ArrowRight");
@@ -348,7 +349,94 @@ async function createGameplayScene(page: Page): Promise<void> {
   await page.keyboard.press("Shift");
   await page.keyboard.press("Space");
   const actionStart = await readSimulationTick(page);
-  await waitForTickDelta(page, actionStart, 45);
+  await waitForTickDelta(page, actionStart, 180);
+}
+
+async function startCanvasRecording(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const canvas = document.querySelector<HTMLCanvasElement>("#arena-host canvas");
+    if (canvas === null) {
+      throw new Error("Arena canvas is unavailable for gameplay recording.");
+    }
+    if (typeof canvas.captureStream !== "function" || typeof MediaRecorder === "undefined") {
+      throw new Error("This Chrome build does not support canvas MediaRecorder capture.");
+    }
+    const mimeTypes = ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"];
+    const mimeType = mimeTypes.find((candidate) => MediaRecorder.isTypeSupported(candidate));
+    if (mimeType === undefined) {
+      throw new Error("This Chrome build exposes no supported WebM recording codec.");
+    }
+    const stream = canvas.captureStream(30);
+    const chunks: Blob[] = [];
+    const recorder = new MediaRecorder(stream, {
+      mimeType,
+      videoBitsPerSecond: 3_000_000,
+    });
+    recorder.addEventListener("dataavailable", (event) => {
+      if (event.data.size > 0) {
+        chunks.push(event.data);
+      }
+    });
+    (
+      window as Window & {
+        shovefallCaptureRecorder?: {
+          readonly chunks: Blob[];
+          readonly mimeType: string;
+          readonly recorder: MediaRecorder;
+          readonly stream: MediaStream;
+        };
+      }
+    ).shovefallCaptureRecorder = { chunks, mimeType, recorder, stream };
+    recorder.start(250);
+  });
+}
+
+async function stopCanvasRecording(page: Page): Promise<Buffer> {
+  const dataUrl = await page.evaluate(async () => {
+    const captureWindow = window as Window & {
+      shovefallCaptureRecorder?: {
+        readonly chunks: Blob[];
+        readonly mimeType: string;
+        readonly recorder: MediaRecorder;
+        readonly stream: MediaStream;
+      };
+    };
+    const state = captureWindow.shovefallCaptureRecorder;
+    if (state === undefined) {
+      throw new Error("Gameplay recording state is missing.");
+    }
+    if (state.recorder.state !== "inactive") {
+      await new Promise<void>((resolveStop) => {
+        state.recorder.addEventListener("stop", () => resolveStop(), { once: true });
+        state.recorder.stop();
+      });
+    }
+    for (const track of state.stream.getTracks()) {
+      track.stop();
+    }
+    delete captureWindow.shovefallCaptureRecorder;
+    const blob = new Blob(state.chunks, { type: state.mimeType });
+    if (blob.size === 0) {
+      throw new Error("Chrome produced an empty gameplay recording.");
+    }
+    return new Promise<string>((resolveRead, rejectRead) => {
+      const reader = new FileReader();
+      reader.addEventListener("load", () => {
+        if (typeof reader.result !== "string") {
+          rejectRead(new Error("Gameplay recording did not produce a data URL."));
+          return;
+        }
+        resolveRead(reader.result);
+      });
+      reader.addEventListener("error", () => rejectRead(reader.error ?? new Error("Read failed.")));
+      reader.readAsDataURL(blob);
+    });
+  });
+  const separator = dataUrl.indexOf(",");
+  if (separator < 0) {
+    throw new Error("Gameplay recording data URL is malformed.");
+  }
+  return Buffer.from(dataUrl.slice(separator + 1), "base64");
 }
 
 async function readArtifactMetadata(file: string): Promise<ArtifactMetadata> {
@@ -380,7 +468,6 @@ export async function captureMedia(
     context = await browser.newContext({
       colorScheme: "dark",
       locale: "ko-KR",
-      recordVideo: { dir: captureDirectory, size: CAPTURE_VIEWPORT },
       reducedMotion: "no-preference",
       timezoneId: "Asia/Seoul",
       viewport: CAPTURE_VIEWPORT,
@@ -432,20 +519,15 @@ export async function captureMedia(
       path: gameplayScreenshotPath,
       timeout: BROWSER_STEP_TIMEOUT_MS,
     });
-    const video = page.video();
-    if (video === null) {
-      throw new Error("Playwright did not create the requested gameplay video.");
-    }
     reportPhase("finalize-video");
+    const gameplayVideoBytes = await withTimeout(
+      stopCanvasRecording(page),
+      BROWSER_STEP_TIMEOUT_MS,
+      "Canvas gameplay recording",
+    );
+    await writeFile(gameplayVideoPath, gameplayVideoBytes);
     await withTimeout(context.close(), BROWSER_STEP_TIMEOUT_MS, "Browser context close");
     context = undefined;
-    const recordedVideoPath = await withTimeout(
-      video.path(),
-      BROWSER_STEP_TIMEOUT_MS,
-      "Recorded video path",
-    );
-    await rm(gameplayVideoPath, { force: true });
-    await rename(recordedVideoPath, gameplayVideoPath);
 
     if (consoleErrors.length > 0 || pageErrors.length > 0) {
       throw new Error(
