@@ -92,7 +92,7 @@ Exit conditions:
 - Screenshot, short gameplay capture, tool list, asset provenance, and development notes are ready
   in [05-submission-package.md](05-submission-package.md) for the contest post.
 
-Current status: `IN_PROGRESS`. Product `0.37.0`, simulation `19.0.0`, and content `13.0.0` are the current local rules. Eight accepted generated assets total about 3.15 MiB and retain independent procedural fallbacks; the new alpha terrain atlas covers grass, sand, coast, corner, water, and warning states. The prior `0.36.0` local validation and audit evidence is historical only because Bomb outcomes and replay hashes changed. Fresh grouped checks, 50-participant balance, exact-SHA capture, hosted CI, Pages, cache-busted public proof, action art, named physical-browser coverage, and human-play evidence remain open.
+Current status: `IN_PROGRESS`. Product `0.37.0`, simulation `19.0.0`, and content `13.0.0` are the current local rules. Eight accepted generated assets total about 3.15 MiB and retain independent procedural fallbacks; the new alpha terrain atlas covers grass, sand, coast, corner, water, and warning states while camera culling bounds its live sprite count. Local TypeScript, lint, 187 tests, and thirteen production Chrome paths pass. Production audit shard zero completes all eight 50-player seeds with no time limit and a `50.381` second mean; shard one and merged balance, exact-SHA capture, hosted CI, Pages, cache-busted public proof, action art, named physical-browser coverage, and human-play evidence remain open.
 
 ## Deferred Beyond the Submission
 

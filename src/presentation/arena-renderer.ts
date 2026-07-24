@@ -576,18 +576,23 @@ function syncTerrainSprites(
   frame: RenderFrameV1,
   projection: ArenaProjection,
   assets: ArenaVisualAssets,
-): void {
+  camera: Vector2,
+  viewportWidth: number,
+  viewportHeight: number,
+): number {
   const textures = assets.terrainTextures;
 
   if (textures === null || textures.length < 16) {
     removeStaleSprites(layer, sprites, new Set<string>());
-    return;
+    return 0;
   }
 
   const supportedTileIds = new Set(
     frame.tiles.filter(({ state }) => state !== "Void").map(({ tileId }) => tileId),
   );
   const visibleTileIds = new Set<string>();
+  const cullMarginX = projection.pitch * 2;
+  const cullMarginY = (projection.tileDepth + projection.cliffDepth) * 2;
 
   for (const tile of frame.tiles) {
     if (tile.state === "Void") {
@@ -597,6 +602,20 @@ function syncTerrainSprites(
     const texture = textures[getTerrainTextureIndex(tile, supportedTileIds)];
 
     if (texture === undefined) {
+      continue;
+    }
+
+    const x = projection.originX + tile.column * projection.pitch;
+    const y = projection.originY + tile.row * projection.depthPitch;
+    const screenX = x + projection.tileWidth * 0.5 + camera.x;
+    const screenY = y + (projection.tileDepth + projection.cliffDepth) * 0.5 + camera.y;
+
+    if (
+      screenX < -cullMarginX ||
+      screenX > viewportWidth + cullMarginX ||
+      screenY < -cullMarginY ||
+      screenY > viewportHeight + cullMarginY
+    ) {
       continue;
     }
 
@@ -610,8 +629,6 @@ function syncTerrainSprites(
       layer.addChild(sprite);
     }
 
-    const x = projection.originX + tile.column * projection.pitch;
-    const y = projection.originY + tile.row * projection.depthPitch;
     sprite.texture = texture;
     sprite.position.set(
       x + projection.tileWidth * 0.5,
@@ -626,6 +643,7 @@ function syncTerrainSprites(
   }
 
   removeStaleSprites(layer, sprites, visibleTileIds);
+  return sprites.size;
 }
 
 function syncItemSprites(
@@ -1676,17 +1694,20 @@ export async function createArenaRenderer(
         drawTile(tiles, tile, projection, isShore);
       }
 
-      if (visualAssets !== null) {
-        syncTerrainSprites(
-          terrainSprites,
-          terrainSpritesByTileId,
-          latestFrame,
-          projection,
-          visualAssets,
-        );
-      }
-
       tileLayerDirty = false;
+    }
+
+    if (visualAssets !== null) {
+      host.dataset.terrainSprites = syncTerrainSprites(
+        terrainSprites,
+        terrainSpritesByTileId,
+        latestFrame,
+        projection,
+        visualAssets,
+        presentationCamera,
+        application.screen.width,
+        application.screen.height,
+      ).toString();
     }
 
     for (const ship of latestFrame.pirateShips) {

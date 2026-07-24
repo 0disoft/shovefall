@@ -102,7 +102,7 @@ assets, not dependency license inventory.
 | Prompt/source record | `docs/assets/prompts/island-terrain-atlas-magenta.txt` |
 | Modifications | Built-in output used a flat magenta background; the installed image-generation helper sampled border key `#fb02fa`, applied soft matte and despill, and wrote alpha PNG |
 | Technical contract | 1254×1254 RGBA PNG, 1,977,027 bytes, SHA-256 `6b8832ed16393d654895ff6e3fc45a166192215271ae9eae44629ab66c4a2bc9`; transparent corners; asynchronous same-origin load; procedural tile geometry remains beneath the atlas fallback |
-| Reviewer decision | Accepted 2026-07-24 after alpha and visual-edge inspection; public 50-player frame cost and final coast alignment remain pending browser evidence |
+| Reviewer decision | Accepted 2026-07-24 after alpha and visual-edge inspection; thirteen local production Chrome paths pass with camera-space terrain culling below 500 live sprites, while final coast alignment remains pending human capture review |
 
 The selected images contain no visible trademark, signature, watermark, named copyrighted
 character, or named living-artist imitation. A metadata probe reported no container tags. This is a

@@ -319,6 +319,16 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await expect(page.locator("#app")).toHaveAttribute("data-screen", "arena");
   await expect(page.locator("#app")).toHaveAttribute("data-round", "countdown");
   await expect(page.locator("#arena-host")).toHaveAttribute("data-visual-assets", "generated");
+  await expect
+    .poll(async () =>
+      Number(await page.locator("#arena-host").getAttribute("data-terrain-sprites")),
+    )
+    .toBeGreaterThan(0);
+  await expect
+    .poll(async () =>
+      Number(await page.locator("#arena-host").getAttribute("data-terrain-sprites")),
+    )
+    .toBeLessThan(500);
   await expect(page.locator("#game-telemetry")).toHaveAttribute("data-tick", "0");
   await expect(page.locator("#game-telemetry")).toBeVisible();
   const developerTelemetry = page.locator("#developer-telemetry");
