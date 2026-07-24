@@ -12,17 +12,17 @@ The job performs these stages in order:
 2. Install the exact Bun version and locked dependency graph without dependency lifecycle scripts.
 3. Run `check`, the same aggregate merge-blocking command defined in `package.json` and `VALIDATION.md`.
 4. Build and exercise the generated production artifact through `smoke-dist` in the runner's stable Chrome channel.
-5. On `main` pushes and manual runs only, capture and upload a clean exact-SHA submission-media
-   bundle with two PNGs, one WebM, and its provenance manifest.
+5. On `main` pushes and manual runs only, attempt a clean exact-SHA submission-media bundle with
+   two PNGs, one WebM, and its provenance manifest; upload it only when capture succeeds.
 6. Configure Pages and upload the already-tested `dist` directory as a 30-day artifact.
 
 The dependent `Deploy GitHub Pages` job runs only after `Validate` succeeds and never runs for a
 pull request. It deploys the uploaded artifact to the `github-pages` environment and publishes the
 provider-returned URL as the environment URL.
 
-A failed install, check, build, browser launch, smoke assertion, artifact upload, or Pages deployment fails the workflow. No `continue-on-error`, retry loop, package publication, cache restore, or repository secret is present. Pull-request runs may be cancelled when superseded. Main-branch runs are not cancelled in progress so a deployment is not cut off halfway; GitHub concurrency retains at most the newest pending run for the same workflow and ref.
+A failed install, check, build, browser launch, smoke assertion, Pages artifact upload, or Pages deployment fails the workflow. Exact-SHA media capture is the sole `continue-on-error` step because it is a contest-submission convenience artifact rather than deployment input; failure remains visible and skips its upload. No retry loop, package publication, cache restore, or repository secret is present. Pull-request runs may be cancelled when superseded. Main-branch runs are not cancelled in progress so a deployment is not cut off halfway; GitHub concurrency retains at most the newest pending run for the same workflow and ref.
 
-`capture:submission` runs only after the production browser smoke and before the Pages handoff. It refuses tracked worktree drift, writes only ignored local capture output, and binds its 1920×1080 images, short video, browser diagnostics, versions, and file checksums to the full `GITHUB_SHA`. CI uploads the result as `shovefall-submission-capture-<sha>` for 30 days with missing files treated as failure. Pull-request merge refs skip both capture and upload, so they cannot be mistaken for submission-candidate media.
+`capture:submission` runs only after the production browser smoke and before the Pages handoff. It refuses tracked worktree drift, writes only ignored local capture output, and binds its 1920×1080 images, short video, browser diagnostics, versions, and file checksums to the full `GITHUB_SHA`. CI uploads the result as `shovefall-submission-capture-<sha>` for 30 days only when capture succeeds. Capture failure skips that upload without blocking the separately tested Pages artifact. Pull-request merge refs skip both capture and upload, so they cannot be mistaken for submission-candidate media.
 
 The `Validate` job grants only `contents: read`. The deployment job grants `contents: read`,
 `pages: write`, and `id-token: write`; every unspecified permission is `none`. No long-lived hosting

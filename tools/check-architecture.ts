@@ -54,8 +54,11 @@ const CLARISSIMI_FORBIDDEN_FRAGMENTS = [
 
 const CI_SUBMISSION_CAPTURE_REQUIRED_FRAGMENTS = [
   "name: Capture exact-SHA submission media",
+  "id: submission-capture",
+  "continue-on-error: true",
   "run: bun run capture:submission",
   "name: Upload exact-SHA submission media",
+  "steps.submission-capture.outcome == 'success'",
   "uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1",
   "name: shovefall-submission-capture-${{ github.sha }}",
   "path: ./.cache/submission-captures/${{ github.sha }}",
@@ -67,7 +70,6 @@ const CI_SUBMISSION_CAPTURE_FORBIDDEN_FRAGMENTS = [
   "actions/upload-artifact@main",
   "actions/upload-artifact@v4",
   "actions/upload-artifact@v7",
-  "continue-on-error: true",
 ] as const;
 
 const PUBLIC_HTML_FORBIDDEN_DEVELOPER_IDS = [
@@ -230,7 +232,9 @@ async function checkCiSubmissionCapture(root: string): Promise<readonly string[]
   const captureStart = source.indexOf("      - name: Capture exact-SHA submission media");
   const pagesStart = source.indexOf("      - name: Configure GitHub Pages");
   if (captureStart < 0 || pagesStart < 0 || captureStart >= pagesStart) {
-    violations.push("Exact-SHA capture and upload must complete before the Pages artifact handoff");
+    violations.push(
+      "Exact-SHA capture and optional upload must precede the Pages artifact handoff",
+    );
   } else {
     const captureBlock = source.slice(captureStart, pagesStart);
     const nonPullRequestGuards = captureBlock.match(/if: github\.event_name != 'pull_request'/gu);
