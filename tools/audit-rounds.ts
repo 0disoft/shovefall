@@ -2,7 +2,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import { BotDirector } from "../src/ai/bot-director";
-import { createBotLoadoutAssignments } from "../src/ai/bot-loadouts";
+import { BOT_ACTIVE_ITEM_IDS, createBotLoadoutAssignments } from "../src/ai/bot-loadouts";
 import { BOT_PERSONALITY_KINDS, type BotPersonalityKind } from "../src/ai/personalities";
 import { ITEM_DEFINITION_IDS, MAP_ITEM_DEFINITION_IDS } from "../src/content/items";
 import {
@@ -116,22 +116,26 @@ interface RoundObservation {
 }
 
 interface RoundAuditResult {
+  readonly activeItemUses: Readonly<Record<ItemDefinitionId, number>>;
   readonly round: RoundObservation;
   readonly actors: ReadonlyMap<ActorId, ActorBalanceObservation>;
+  readonly bombSelfDeaths: number;
   readonly itemSpawnBands: Readonly<Record<ItemSpawnBand, number>>;
   readonly personalities: ReadonlyMap<ActorId, BotPersonalityKind>;
 }
 
 interface SerializedRoundAuditResult {
+  readonly activeItemUses: Readonly<Record<ItemDefinitionId, number>>;
   readonly round: RoundObservation;
   readonly actors: readonly (readonly [ActorId, ActorBalanceObservation])[];
+  readonly bombSelfDeaths: number;
   readonly itemSpawnBands: Readonly<Record<ItemSpawnBand, number>>;
   readonly personalities: readonly (readonly [ActorId, BotPersonalityKind])[];
 }
 
 interface ProductionShardArtifact {
   readonly schemaVersion: typeof PRODUCTION_SHARD_SCHEMA_VERSION;
-  readonly auditVersion: 10;
+  readonly auditVersion: 11;
   readonly productVersion: string;
   readonly simulationVersion: string;
   readonly participantCount: 50;
@@ -314,8 +318,10 @@ function parseSerializedRoundAuditResult(value: unknown, path: string): Serializ
   );
 
   return Object.freeze({
+    activeItemUses: Object.freeze(parseItemCounts(record.activeItemUses, `${path}.activeItemUses`)),
     round: parseRoundObservation(record.round, `${path}.round`),
     actors: Object.freeze(actors),
+    bombSelfDeaths: requireNonNegativeInteger(record.bombSelfDeaths, `${path}.bombSelfDeaths`),
     itemSpawnBands: Object.freeze(
       parseSpawnBandCounts(record.itemSpawnBands, `${path}.itemSpawnBands`),
     ),
@@ -482,15 +488,31 @@ function auditRound(config: GameConfigV1, seed: string): RoundAuditResult {
   });
   const bots = new BotDirector(seed, null, { difficulty: "hard" });
   const actors = createActorObservations(config.participantCount);
+  const activeItemUses = createItemCounts();
+  let bombSelfDeaths = 0;
   const seenItemIds = new Set<number>();
   const itemSpawnBands = createSpawnBandCounts();
   let frame = world.createRenderFrame();
   recordItemSpawns(frame, seenItemIds, itemSpawnBands);
 
   while (frame.round.status === "Active") {
+    const previousParticipants = new Map(
+      frame.participants.map((participant) => [participant.actorId, participant] as const),
+    );
     const result = world.step(bots.createCommands(world.tick, frame));
     frame = result.frame;
     recordItemSpawns(frame, seenItemIds, itemSpawnBands);
+    const detonatedBombsByOwner = new Map<ActorId, { readonly x: number; readonly y: number }>();
+
+    for (const event of result.events) {
+      if (
+        event.kind === "bomb-detonated" &&
+        event.actorId !== undefined &&
+        event.position !== undefined
+      ) {
+        detonatedBombsByOwner.set(event.actorId, event.position);
+      }
+    }
 
     for (const event of result.events) {
       if (event.kind === "stat-point-earned" && event.actorId !== undefined) {
@@ -498,6 +520,24 @@ function auditRound(config: GameConfigV1, seed: string): RoundAuditResult {
 
         if (actor !== undefined) {
           actor.creditedEliminations += 1;
+        }
+      }
+
+      if (event.kind === "item-used" && event.itemDefinitionId !== undefined) {
+        activeItemUses[event.itemDefinitionId] += 1;
+      }
+
+      if (event.kind === "eliminated" && event.actorId !== undefined) {
+        const bombPosition = detonatedBombsByOwner.get(event.actorId);
+        const previous = previousParticipants.get(event.actorId);
+
+        if (
+          bombPosition !== undefined &&
+          previous !== undefined &&
+          Math.hypot(previous.position.x - bombPosition.x, previous.position.y - bombPosition.y) <=
+            SIMULATION_TUNING.bomb.blastRadius
+        ) {
+          bombSelfDeaths += 1;
         }
       }
 
@@ -538,8 +578,10 @@ function auditRound(config: GameConfigV1, seed: string): RoundAuditResult {
   const round = createRoundObservation(frame, seed, config.roundLimitTicks);
 
   return Object.freeze({
+    activeItemUses: Object.freeze(activeItemUses),
     round,
     actors,
+    bombSelfDeaths,
     itemSpawnBands: Object.freeze({ ...itemSpawnBands }),
     personalities: new Map(
       bots.getAssignments().map(({ actorId, personality }) => [actorId, personality] as const),
@@ -855,8 +897,10 @@ function serializePersonalityEntry(
 
 function serializeRoundAuditResult(result: RoundAuditResult): SerializedRoundAuditResult {
   return Object.freeze({
+    activeItemUses: result.activeItemUses,
     round: result.round,
     actors: Object.freeze(Array.from(result.actors.entries(), serializeActorEntry)),
+    bombSelfDeaths: result.bombSelfDeaths,
     itemSpawnBands: result.itemSpawnBands,
     personalities: Object.freeze(
       Array.from(result.personalities.entries(), serializePersonalityEntry),
@@ -881,8 +925,10 @@ function deserializeRoundAuditResult(result: SerializedRoundAuditResult): RoundA
   }
 
   return Object.freeze({
+    activeItemUses: result.activeItemUses,
     round: result.round,
     actors,
+    bombSelfDeaths: result.bombSelfDeaths,
     itemSpawnBands: result.itemSpawnBands,
     personalities,
   });
@@ -922,7 +968,7 @@ function parseProductionShardArtifact(
     throw new Error(`${path} has an unsupported schema version`);
   }
 
-  if (requireNonNegativeInteger(record.auditVersion, `${path}.auditVersion`) !== 10) {
+  if (requireNonNegativeInteger(record.auditVersion, `${path}.auditVersion`) !== 11) {
     throw new Error(`${path} has an incompatible audit version`);
   }
 
@@ -977,7 +1023,7 @@ function parseProductionShardArtifact(
 
   return Object.freeze({
     schemaVersion: PRODUCTION_SHARD_SCHEMA_VERSION,
-    auditVersion: 10,
+    auditVersion: 11,
     productVersion: PRODUCT_VERSION,
     simulationVersion: SIMULATION_VERSION,
     participantCount: 50,
@@ -999,7 +1045,7 @@ async function runProductionShard(shardIndex: number) {
   });
   const artifact: ProductionShardArtifact = Object.freeze({
     schemaVersion: PRODUCTION_SHARD_SCHEMA_VERSION,
-    auditVersion: 10,
+    auditVersion: 11,
     productVersion: PRODUCT_VERSION,
     simulationVersion: SIMULATION_VERSION,
     participantCount,
@@ -1023,6 +1069,20 @@ async function runProductionShard(shardIndex: number) {
   for (const round of rounds) {
     reasonCounts[round.reason] += 1;
   }
+  const activeItemUses = createItemCounts();
+  let bombSelfDeaths = 0;
+
+  for (const result of results) {
+    bombSelfDeaths += result.bombSelfDeaths;
+
+    for (const item of BOT_ACTIVE_ITEM_IDS) {
+      activeItemUses[item] += result.activeItemUses[item];
+    }
+  }
+  const totalActiveItemUses = BOT_ACTIVE_ITEM_IDS.reduce(
+    (sum, item) => sum + activeItemUses[item],
+    0,
+  );
 
   return Object.freeze({
     ok:
@@ -1031,7 +1091,7 @@ async function runProductionShard(shardIndex: number) {
       rounds.every(({ completedTick }) => completedTick > 0),
     kind: "deterministic-round-audit-production-shard",
     section: "production-shard",
-    auditVersion: 10,
+    auditVersion: 11,
     productVersion: PRODUCT_VERSION,
     simulationVersion: SIMULATION_VERSION,
     fixedTicksPerSecond: FIXED_TICKS_PER_SECOND,
@@ -1042,6 +1102,14 @@ async function runProductionShard(shardIndex: number) {
     artifactPath,
     durationSeconds: summarizeRoundDurations(rounds),
     reasonCounts: Object.freeze(reasonCounts),
+    activeItemUse: Object.freeze(
+      Object.fromEntries(BOT_ACTIVE_ITEM_IDS.map((item) => [item, activeItemUses[item]])),
+    ),
+    activeItemSummary: Object.freeze({
+      totalUses: totalActiveItemUses,
+      bombSelfDeaths,
+      bombSelfDeathRate: roundRatio(bombSelfDeaths, activeItemUses.bomb),
+    }),
     rounds: Object.freeze(rounds),
     limitations: Object.freeze([
       "A production shard proves terminal structure for its eight seeds but does not independently apply the sixteen-seed strategy or item-spawn distribution gates.",
@@ -1571,7 +1639,7 @@ function controlledCollapseAuditPasses(controlledCollapse: ControlledCollapseAud
 
 const requestedSection = parseAuditSection(process.argv[2]);
 const commonReport = Object.freeze({
-  auditVersion: 10,
+  auditVersion: 11,
   productVersion: PRODUCT_VERSION,
   simulationVersion: SIMULATION_VERSION,
   fixedTicksPerSecond: FIXED_TICKS_PER_SECOND,

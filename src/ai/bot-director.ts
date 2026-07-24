@@ -50,6 +50,8 @@ interface BotMemory {
   readonly actorId: ActorId;
   readonly personality: BotPersonalityKind;
   readonly jitter: XorShift32;
+  bombEscapePosition: Vector2 | null;
+  bombEscapeUntilTick: number;
   intent: Vector2;
   lastItemUseTick: number;
   nextDecisionTick: number;
@@ -94,6 +96,8 @@ const EDGE_EMERGENCY_DISTANCE = 0.82;
 const THREAT_DISTANCE = 1.65;
 const THREAT_FACING_DOT = 0.55;
 const ACTIVE_ITEM_DECISION_COOLDOWN_TICKS = 75;
+const BOMB_ESCAPE_TICKS = 120;
+const MINIMUM_BOMB_LOBBY_SURVIVORS = 10;
 
 const ACTIVE_ITEM_IDS = Object.freeze([
   "wind-blast",
@@ -411,6 +415,8 @@ export class BotDirector {
       const upgradeStat = this.#chooseUpgrade(memory.personality, current);
       const edgeDistance = getEdgeDistance(current, bounds);
       const tileEscape = getImmediateTileEscape(currentFrame, current, bounds);
+      const escapingOwnBomb =
+        memory.bombEscapePosition !== null && tick < memory.bombEscapeUntilTick;
 
       if (tileEscape !== undefined || edgeDistance < EDGE_EMERGENCY_DISTANCE) {
         memory.intent =
@@ -424,6 +430,15 @@ export class BotDirector {
         if (useItemSlot !== null) {
           memory.lastItemUseTick = tick;
         }
+        memory.nextDecisionTick = Math.min(memory.nextDecisionTick, tick + 1);
+      } else if (escapingOwnBomb) {
+        const awayFromBomb = normalizeVector(
+          subtractVectors(current.position, memory.bombEscapePosition ?? current.position),
+        );
+        memory.intent =
+          vectorLength(awayFromBomb) > 0
+            ? awayFromBomb
+            : normalizeVector(subtractVectors(bounds.center, current.position));
         memory.nextDecisionTick = Math.min(memory.nextDecisionTick, tick + 1);
       } else if (tick >= memory.nextDecisionTick) {
         const decision = this.#decide(
@@ -442,6 +457,12 @@ export class BotDirector {
 
         if (useItemSlot !== null) {
           memory.lastItemUseTick = tick;
+          const usedSlot = current.inventory.find(({ slotIndex }) => slotIndex === useItemSlot);
+
+          if (usedSlot?.definitionId === "bomb") {
+            memory.bombEscapePosition = current.position;
+            memory.bombEscapeUntilTick = tick + BOMB_ESCAPE_TICKS;
+          }
         }
         memory.nextDecisionTick = tick + this.#decisionIntervalTicks;
       }
@@ -477,6 +498,8 @@ export class BotDirector {
       actorId,
       personality,
       jitter: this.#streams.get(`bot-jitter:${actorId}`),
+      bombEscapePosition: null,
+      bombEscapeUntilTick: Number.NEGATIVE_INFINITY,
       intent: ZERO_VECTOR,
       lastItemUseTick: Number.NEGATIVE_INFINITY,
       nextDecisionTick: (actorId * 3) % this.#decisionIntervalTicks,
@@ -641,6 +664,8 @@ export class BotDirector {
 
       if (
         bombSlot !== null &&
+        perceptionFrame.participants.filter(isControllable).length >=
+          MINIMUM_BOMB_LOBBY_SURVIVORS &&
         closeOpponents.length >= 3 &&
         !nearbyBomb &&
         getEdgeDistance(current, bounds) >= 3.25 &&
