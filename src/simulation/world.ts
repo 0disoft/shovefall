@@ -82,6 +82,9 @@ import {
 import { getItemDefinition } from "../content/items";
 import {
   getMovementProfile,
+  getMassDodgeSpeedMultiplier,
+  getIncomingMassImpulseMultiplier,
+  getShoveMassImpulseMultiplier,
   normalizeGameplayTuning,
   normalizeMassFactor,
   SIMULATION_TUNING,
@@ -1237,7 +1240,11 @@ export class SimulationWorld {
     direction: Vector2,
     participants: readonly ParticipantState[],
   ): BrickWallState | undefined {
-    const distance = this.#gameplayTuning.dodgeSpeed * this.#gameplayTuning.dodgeActiveTicks;
+    const distance =
+      this.#gameplayTuning.dodgeSpeed *
+      getDodgeSpeedMultiplier(participant) *
+      getMassDodgeSpeedMultiplier(participant.body.massFactor) *
+      this.#gameplayTuning.dodgeActiveTicks;
     const destination = addVectors(participant.body.position, scaleVector(direction, distance));
     const wall = this.#brickWalls
       .map((candidate) => ({
@@ -1773,7 +1780,8 @@ export class SimulationWorld {
       }
 
       const rawImpulse =
-        (SIMULATION_TUNING.windBlast.baseImpulse / Math.sqrt(target.body.massFactor)) *
+        SIMULATION_TUNING.windBlast.baseImpulse *
+        getIncomingMassImpulseMultiplier(target.body.massFactor) *
         getPowerMultiplier(attacker.progression.stats) *
         getStabilityMultiplier(target.progression.stats);
       const impulse = scaleVector(
@@ -1822,7 +1830,7 @@ export class SimulationWorld {
         action: createTimedAction(
           "Stumbling",
           this.#tick,
-          SIMULATION_TUNING.bomb.stumbleTicks,
+          SIMULATION_TUNING.windBlast.stumbleTicks,
           normalizeDirectionOrFallback(impulse, current.body.facing),
         ),
         shoveCredit: chooseOffensiveCredit(current.shoveCredit, credit, this.#tick),
@@ -2057,7 +2065,9 @@ export class SimulationWorld {
           const direction = participant.action.lockedDirection ?? facing;
           velocity = scaleVector(
             direction,
-            this.#gameplayTuning.dodgeSpeed * getDodgeSpeedMultiplier(participant),
+            this.#gameplayTuning.dodgeSpeed *
+              getDodgeSpeedMultiplier(participant) *
+              getMassDodgeSpeedMultiplier(participant.body.massFactor),
           );
           facing = direction;
           break;
@@ -2598,7 +2608,7 @@ export class SimulationWorld {
         const rawImpulse =
           (SIMULATION_TUNING.shove.baseImpulse +
             forwardSpeed * SIMULATION_TUNING.shove.velocityImpulseScale) *
-          Math.sqrt(attacker.body.massFactor / target.body.massFactor) *
+          getShoveMassImpulseMultiplier(attacker.body.massFactor, target.body.massFactor) *
           getPowerMultiplier(attacker.progression.stats) *
           getStabilityMultiplier(target.progression.stats) *
           (attacker.action.springBoosted

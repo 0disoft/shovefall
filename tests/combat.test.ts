@@ -3,7 +3,10 @@ import { createNeutralCommand, normalizeGameConfig } from "../src/simulation/con
 import { vectorLength } from "../src/simulation/math";
 import {
   DEFAULT_GAMEPLAY_TUNING,
+  getIncomingMassImpulseMultiplier,
+  getMassDodgeSpeedMultiplier,
   getMovementProfile,
+  getShoveMassImpulseMultiplier,
   SIMULATION_TUNING,
   type GameplayTuningInput,
 } from "../src/simulation/tuning";
@@ -88,6 +91,30 @@ describe("gray-box movement and action timing", () => {
     expect(
       DEFAULT_GAMEPLAY_TUNING.dodgeSpeed * DEFAULT_GAMEPLAY_TUNING.dodgeActiveTicks,
     ).toBeLessThan(0.6);
+  });
+
+  it("gives lightweight bodies a longer dodge and heavyweight bodies a shorter one", () => {
+    const lightMultiplier = getMassDodgeSpeedMultiplier(SIMULATION_TUNING.mass.minimum);
+    const normalMultiplier = getMassDodgeSpeedMultiplier(SIMULATION_TUNING.mass.default);
+    const heavyMultiplier = getMassDodgeSpeedMultiplier(SIMULATION_TUNING.mass.maximum);
+
+    expect(lightMultiplier).toBeGreaterThan(normalMultiplier);
+    expect(normalMultiplier).toBeGreaterThan(heavyMultiplier);
+    expect(lightMultiplier).toBeCloseTo(1 / SIMULATION_TUNING.mass.minimum, 10);
+    expect(heavyMultiplier).toBeCloseTo(1 / SIMULATION_TUNING.mass.maximum, 10);
+  });
+
+  it("keeps mass meaningful without letting its impulse ratio dominate a collision", () => {
+    const light = SIMULATION_TUNING.mass.minimum;
+    const heavy = SIMULATION_TUNING.mass.maximum;
+    const heavyAgainstLight = getShoveMassImpulseMultiplier(heavy, light);
+    const lightAgainstHeavy = getShoveMassImpulseMultiplier(light, heavy);
+
+    expect(heavyAgainstLight).toBeGreaterThan(1);
+    expect(lightAgainstHeavy).toBeLessThan(1);
+    expect(heavyAgainstLight).toBeLessThan(Math.sqrt(heavy / light));
+    expect(getIncomingMassImpulseMultiplier(light)).toBeGreaterThan(1);
+    expect(getIncomingMassImpulseMultiplier(heavy)).toBeLessThan(1);
   });
 
   it("starts, turns, and stops locomotion on the sampled input tick", () => {

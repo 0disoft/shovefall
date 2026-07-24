@@ -38,7 +38,7 @@ export const SIMULATION_TUNING = Object.freeze({
   }),
   movement: Object.freeze({
     baseMaximumSpeed: 0.055,
-    lightweightSpeedMultiplier: 1.35,
+    lightweightSpeedMultiplier: 1.5,
     heavyweightSpeedMultiplier: 0.82,
     windupControl: 0.35,
     recoveryControl: 0.22,
@@ -77,10 +77,6 @@ export const SIMULATION_TUNING = Object.freeze({
   bomb: Object.freeze({
     fuseTicks: 300,
     blastRadius: 3,
-    edgeImpulse: 0.105,
-    centerImpulse: 0.42,
-    maximumImpulse: 0.42,
-    stumbleTicks: 24,
   }),
   soap: Object.freeze({
     minimumSpeed: 0.105,
@@ -98,6 +94,8 @@ export const SIMULATION_TUNING = Object.freeze({
     fallingTicks: 24,
   }),
 });
+
+export const MASS_IMPULSE_EXPONENT = 0.35;
 
 export const GAMEPLAY_TUNING_LIMITS: Readonly<
   Record<keyof GameplayTuningInput, NumericTuningLimit>
@@ -189,6 +187,27 @@ export function normalizeGameplayTuning(input: GameplayTuningInput = {}): Gamepl
 
 export function normalizeMassFactor(value: number): number {
   return clamp(value, SIMULATION_TUNING.mass.minimum, SIMULATION_TUNING.mass.maximum);
+}
+
+export function getMassDodgeSpeedMultiplier(massFactor: number): number {
+  return SIMULATION_TUNING.mass.default / normalizeMassFactor(massFactor);
+}
+
+export function getIncomingMassImpulseMultiplier(massFactor: number): number {
+  return Math.pow(
+    SIMULATION_TUNING.mass.default / normalizeMassFactor(massFactor),
+    MASS_IMPULSE_EXPONENT,
+  );
+}
+
+export function getShoveMassImpulseMultiplier(
+  attackerMassFactor: number,
+  targetMassFactor: number,
+): number {
+  return Math.pow(
+    normalizeMassFactor(attackerMassFactor) / normalizeMassFactor(targetMassFactor),
+    MASS_IMPULSE_EXPONENT,
+  );
 }
 
 export function getMovementProfile(

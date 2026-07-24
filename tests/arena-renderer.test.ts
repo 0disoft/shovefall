@@ -108,6 +108,7 @@ vi.mock("pixi.js", () => {
   class FakeContainer {
     public x = 0;
     public y = 0;
+    public sortableChildren = false;
     readonly #children: Array<{ destroy(): void }> = [];
 
     public addChild(...children: Array<{ destroy(): void }>): void {
@@ -117,6 +118,47 @@ vi.mock("pixi.js", () => {
     public removeChildren(): Array<{ destroy(): void }> {
       return this.#children.splice(0);
     }
+  }
+
+  class FakeRectangle {
+    public constructor(
+      public readonly x: number,
+      public readonly y: number,
+      public readonly width: number,
+      public readonly height: number,
+    ) {}
+  }
+
+  class FakeTexture {
+    public readonly source: object;
+    public readonly width: number;
+    public readonly height: number;
+
+    public constructor(options?: {
+      readonly source?: object;
+      readonly frame?: { readonly width: number; readonly height: number };
+    }) {
+      this.source = options?.source ?? {};
+      this.width = options?.frame?.width ?? 1024;
+      this.height = options?.frame?.height ?? 1024;
+    }
+  }
+
+  class FakeSprite {
+    public readonly anchor = { set(): void {} };
+    public readonly position = { set(): void {} };
+    public alpha = 1;
+    public height = 0;
+    public texture: FakeTexture;
+    public visible = true;
+    public width = 0;
+    public zIndex = 0;
+
+    public constructor(texture: FakeTexture) {
+      this.texture = texture;
+    }
+
+    public destroy(): void {}
   }
 
   class FakeText {
@@ -138,9 +180,17 @@ vi.mock("pixi.js", () => {
 
   return {
     Application: FakeApplication,
+    Assets: {
+      async load(): Promise<FakeTexture> {
+        return new FakeTexture();
+      },
+    },
     Container: FakeContainer,
     Graphics: FakeGraphics,
+    Rectangle: FakeRectangle,
+    Sprite: FakeSprite,
     Text: FakeText,
+    Texture: FakeTexture,
   };
 });
 

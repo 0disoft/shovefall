@@ -1,0 +1,14 @@
+Create a transparent-background 2D icon and pickup sprite sheet for nine starting items in a Korean browser party game. The game uses a fixed elevated 58-degree three-quarter top-down view and a dark coal-twilight palette.
+
+Canvas: 2048×2048 PNG with full alpha transparency. Arrange nine large isolated item sprites in a precise 3×3 grid with generous padding and consistent visual scale. Include exactly these items, one per cell:
+1) Iron Boots — heavy dark-steel boots with a squat weighted silhouette;
+2) Feather — one pale wind-swept feather with a light cyan rim;
+3) Spring Glove — a chunky coral glove with a visible compressed spring cuff;
+4) Wind Blast — a compact turquoise air orb with two curved gust trails;
+5) Brick Bag — a rugged canvas sack holding exactly four visible red-brown bricks;
+6) Boat — a tiny blue wooden rowboat suitable for one character;
+7) Timed Bomb — a round dark bomb with a clear five-second clock face but no written number;
+8) Soap — a glossy lavender soap bar with two bubbles;
+9) Grappling Hook — a golden three-prong hook with a short coiled rope.
+
+Art direction: playful hand-painted game icons, chunky silhouettes, subtle dark outline, consistent upper-left lighting, and strong shape differences so color is not the only identifier. Each icon must work both as a 28–40 CSS pixel HUD icon and a 40–64 CSS pixel world pickup. Keep the background fully transparent and do not add rarity frames, glow boxes, labels, letters, numbers, hands holding the item, characters, terrain, ocean, UI panels, watermark, mockup, photorealism, or 3D render styling.

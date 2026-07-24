@@ -1,4 +1,4 @@
-import { Application, Container, Graphics, Text } from "pixi.js";
+import { Application, Container, Graphics, Sprite, Text } from "pixi.js";
 import type {
   BombState,
   BrickWallState,
@@ -26,6 +26,7 @@ import {
   type ArenaProjection,
 } from "./arena-projection";
 import { SimulationEventLedger } from "./event-ledger";
+import { loadArenaVisualAssets, type ArenaVisualAssets } from "./arena-assets";
 
 export interface ArenaRenderer {
   consumeEvents(events: readonly SimulationEventV1[], frame: RenderFrameV1): void;
@@ -442,6 +443,141 @@ function drawItem(graphics: Graphics, item: RenderItemV1, projection: ArenaProje
       .stroke({ color, width: Math.max(2, radius * 0.3) })
       .circle(x, y, radius * 0.25)
       .fill({ color: 0xffd166 });
+  }
+}
+
+function syncItemSprites(
+  layer: Container,
+  sprites: Map<number, Sprite>,
+  frame: RenderFrameV1,
+  projection: ArenaProjection,
+  assets: ArenaVisualAssets,
+): void {
+  const visibleItemIds = new Set<number>();
+
+  for (const item of frame.items) {
+    visibleItemIds.add(item.itemId);
+    let sprite = sprites.get(item.itemId);
+
+    if (sprite === undefined) {
+      sprite = new Sprite(assets.itemTextures[item.definitionId]);
+      sprite.anchor.set(0.5, 0.9);
+      sprites.set(item.itemId, sprite);
+      layer.addChild(sprite);
+    } else if (sprite.texture !== assets.itemTextures[item.definitionId]) {
+      sprite.texture = assets.itemTextures[item.definitionId];
+    }
+
+    const point = projectArenaPoint(item.position, projection);
+    const targetHeight = Math.max(24, projection.tileWidth * 0.72);
+    sprite.position.set(point.x, point.y + projection.tileDepth * 0.34);
+    sprite.height = targetHeight;
+    sprite.width = targetHeight * (sprite.texture.width / sprite.texture.height);
+    sprite.visible = true;
+  }
+
+  for (const [itemId, sprite] of sprites) {
+    sprite.visible = visibleItemIds.has(itemId);
+  }
+}
+
+function syncPirateShipSprites(
+  layer: Container,
+  sprites: Map<number, Sprite>,
+  frame: RenderFrameV1,
+  projection: ArenaProjection,
+  assets: ArenaVisualAssets,
+): void {
+  const { columns, rows } = getArenaDimensions(frame);
+  const arenaCenter = { x: columns / 2, y: rows / 2 };
+  const visibleShipIds = new Set<number>();
+
+  for (const ship of frame.pirateShips) {
+    visibleShipIds.add(ship.shipId);
+    let sprite = sprites.get(ship.shipId);
+
+    if (sprite === undefined) {
+      sprite = new Sprite(assets.pirateShipTexture);
+      sprite.anchor.set(0.5, 0.78);
+      sprites.set(ship.shipId, sprite);
+      layer.addChild(sprite);
+    }
+
+    const point = projectArenaPoint(ship.position, projection);
+    const towardCenter = projectArenaVector({
+      x: arenaCenter.x - ship.position.x,
+      y: arenaCenter.y - ship.position.y,
+    });
+    const variantScale = 0.9 + (ship.shipId % 4) * 0.035;
+    const targetHeight = clamp(projection.tileWidth * 3.2 * variantScale, 86, 154);
+    sprite.position.set(point.x, point.y + projection.tileDepth * 0.45);
+    sprite.height = targetHeight;
+    sprite.width =
+      targetHeight * (assets.pirateShipTexture.width / assets.pirateShipTexture.height);
+    sprite.rotation = Math.atan2(towardCenter.y, towardCenter.x) - (3 * Math.PI) / 4;
+    sprite.alpha = ship.cannonAmmoRemaining > 0 ? 1 : 0.84;
+    sprite.visible = true;
+  }
+
+  for (const [shipId, sprite] of sprites) {
+    sprite.visible = visibleShipIds.has(shipId);
+  }
+}
+
+function syncParticipantSprites(
+  layer: Container,
+  sprites: Map<number, Sprite>,
+  frame: RenderFrameV1,
+  projection: ArenaProjection,
+  interpolationAlpha: number,
+  assets: ArenaVisualAssets,
+): void {
+  const visibleActorIds = new Set<number>();
+
+  for (const participant of frame.participants) {
+    if (!participant.active && participant.action === "Eliminated") {
+      continue;
+    }
+
+    visibleActorIds.add(participant.actorId);
+    const texture =
+      assets.characterTextures[(participant.actorId - 1) % assets.characterTextures.length];
+
+    if (texture === undefined) {
+      continue;
+    }
+
+    let sprite = sprites.get(participant.actorId);
+
+    if (sprite === undefined) {
+      sprite = new Sprite(texture);
+      sprite.anchor.set(0.5, 0.96);
+      sprites.set(participant.actorId, sprite);
+      layer.addChild(sprite);
+    } else if (sprite.texture !== texture) {
+      sprite.texture = texture;
+    }
+
+    const worldX =
+      participant.previousPosition.x +
+      (participant.position.x - participant.previousPosition.x) * interpolationAlpha;
+    const worldY =
+      participant.previousPosition.y +
+      (participant.position.y - participant.previousPosition.y) * interpolationAlpha;
+    const point = projectArenaPoint({ x: worldX, y: worldY }, projection);
+    const collisionRadius = participant.radius * projection.pitch;
+    const visualScale = 1 + (participant.massFactor - 1) * 0.16;
+    const targetHeight = Math.max(28, collisionRadius * visualScale * 3.45);
+    sprite.position.set(point.x, point.y + collisionRadius * 0.82);
+    sprite.height = targetHeight;
+    sprite.width = targetHeight * (texture.width / texture.height);
+    sprite.alpha = participant.action === "Falling" ? 0.42 : 1;
+    sprite.zIndex = Math.round(worldY * 1_000) + participant.actorId;
+    sprite.visible = true;
+  }
+
+  for (const [actorId, sprite] of sprites) {
+    sprite.visible = visibleActorIds.has(actorId);
   }
 }
 
@@ -949,14 +1085,34 @@ export async function createArenaRenderer(
   host.replaceChildren(application.canvas);
   host.dataset.renderer = "ready";
 
+  let visualAssets: ArenaVisualAssets | null = null;
+  host.dataset.visualAssets = "loading";
+
   const tiles = new Graphics();
   const artillery = new Graphics();
+  const pirateShipSprites = new Container();
   const items = new Graphics();
+  const itemSprites = new Container();
   const participants = new Graphics();
+  const participantSprites = new Container();
   const effectLayer = new Graphics();
   const artilleryLabels = new Container();
   const artilleryLabelsByShip = new Map<number, Text>();
-  application.stage.addChild(tiles, artillery, items, participants, effectLayer, artilleryLabels);
+  participantSprites.sortableChildren = true;
+  application.stage.addChild(
+    tiles,
+    artillery,
+    pirateShipSprites,
+    items,
+    itemSprites,
+    participants,
+    participantSprites,
+    effectLayer,
+    artilleryLabels,
+  );
+  const itemSpritesById = new Map<number, Sprite>();
+  const pirateShipSpritesById = new Map<number, Sprite>();
+  const participantSpritesByActorId = new Map<number, Sprite>();
   const eventLedger = new SimulationEventLedger();
   const motionPreference = window.matchMedia("(prefers-reduced-motion: reduce)");
   let reducedMotion = motionPreference.matches;
@@ -984,10 +1140,16 @@ export async function createArenaRenderer(
     tiles.y = camera.y;
     artillery.x = camera.x;
     artillery.y = camera.y;
+    pirateShipSprites.x = camera.x;
+    pirateShipSprites.y = camera.y;
     items.x = camera.x;
     items.y = camera.y;
+    itemSprites.x = camera.x;
+    itemSprites.y = camera.y;
     participants.x = camera.x;
     participants.y = camera.y;
+    participantSprites.x = camera.x;
+    participantSprites.y = camera.y;
     effectLayer.x = camera.x;
     effectLayer.y = camera.y;
     artilleryLabels.x = camera.x;
@@ -1052,6 +1214,16 @@ export async function createArenaRenderer(
       label.position.set(point.x, point.y - projection.tileDepth * 1.25);
     }
 
+    if (visualAssets !== null) {
+      syncPirateShipSprites(
+        pirateShipSprites,
+        pirateShipSpritesById,
+        latestFrame,
+        projection,
+        visualAssets,
+      );
+    }
+
     for (const shot of latestFrame.cannonShots) {
       drawCannonShot(artillery, shot, latestFrame.tick, projection, reducedMotion);
     }
@@ -1062,6 +1234,10 @@ export async function createArenaRenderer(
 
     for (const item of latestFrame.items) {
       drawItem(items, item, projection);
+    }
+
+    if (visualAssets !== null) {
+      syncItemSprites(itemSprites, itemSpritesById, latestFrame, projection, visualAssets);
     }
 
     for (const bomb of latestFrame.bombs) {
@@ -1108,6 +1284,17 @@ export async function createArenaRenderer(
       }
     }
 
+    if (visualAssets !== null) {
+      syncParticipantSprites(
+        participantSprites,
+        participantSpritesByActorId,
+        latestFrame,
+        projection,
+        latestInterpolationAlpha,
+        visualAssets,
+      );
+    }
+
     visualEffects = Object.freeze(
       visualEffects.filter(
         (effect) => effect.roundId === latestFrame?.roundId && effect.endTick >= latestFrame.tick,
@@ -1123,6 +1310,17 @@ export async function createArenaRenderer(
     draw();
     application.render();
   };
+
+  void loadArenaVisualAssets().then((loadedAssets) => {
+    visualAssets = loadedAssets;
+    host.dataset.visualAssets = loadedAssets === null ? "procedural-fallback" : "generated";
+
+    if (latestFrame !== undefined) {
+      present();
+    }
+
+    return undefined;
+  });
 
   const handleMotionPreference = (event: MediaQueryListEvent): void => {
     reducedMotion = event.matches;

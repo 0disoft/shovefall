@@ -55,9 +55,10 @@ physical-device support, cross-browser behavior, hosted CI, or deployment. Human
 
 ## Current State
 
-The gray-box game, fixed 50-participant Hard-AI mode, selectable collapse speed, three map items,
-nine starting-item definitions, Wind Blast, Brick Bag, procedural feedback, local production smoke,
-balance screens, and 50-participant performance profiles are implemented. The other four active
-mechanics, bot active-item policy and balance evidence, human playtest evidence,
-approved asset inventory, named device/browser coverage, refreshed exact-SHA hosted checks, and the
-final HTTPS candidate remain open release work.
+The gray-box game, fixed 50-participant Hard-AI mode, selectable collapse speed, immediate movement,
+automatic growth planning, three map items, all nine starting-item definitions and six active
+mechanics, Brick dodge mounting, direct-kill Bombs, pirate cannon collapse, protected-core rock
+pressure, procedural feedback, local production smoke, balance screens, and 50-participant
+performance harnesses are implemented. Fresh `0.35.0` browser, audit, performance, capture, hosted,
+and public evidence; bot active-item policy and balance evidence; human playtest evidence; generated
+asset intake; and named device/browser coverage remain open release work.

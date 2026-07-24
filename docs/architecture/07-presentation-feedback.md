@@ -12,7 +12,7 @@ The deterministic simulation emits ordered `SimulationEventV1` values and never 
 
 ## Visual Feedback
 
-The PixiJS renderer derives short-lived shove, dodge, fall, item, and result effects from accepted events. It also derives mass, timed-effect, and Spring Glove markers from the current render frame. Normal rounds cap transient effects at 36. Mayhem caps them at 14 and removes nonessential bot dodge trails while keeping human feedback and gameplay telegraphs.
+The PixiJS renderer derives short-lived shove, dodge, fall, item, water-impact, rock-impact, and result effects from accepted events. It also derives mass, timed-effect, Spring Glove, mounted-wall, offshore ship, ammunition-label, cannon-arc, orange exclamation, red skull, and lethal-rock markers from the current render frame. Sixteen measured character frames and nine measured item frames are cut from two owner-generated transparent atlases, cached as PixiJS textures, and layered over the procedural collision/status shapes. Loading is asynchronous and does not delay countdown or simulation; a rejected load leaves the procedural world intact. Normal rounds cap transient effects at 36. The fixed 50-participant mode caps them at 14 and removes nonessential bot dodge trails while keeping human feedback and authoritative artillery telegraphs. Eight ship labels and generated sprites are cached and updated instead of recreated every frame.
 
 The browser reduced-motion preference removes nonessential movement and flash amplitude without changing simulation timing, collision windows, cooldowns, or event delivery. Reduced motion is presentation policy, not a lower game-speed mode.
 
@@ -30,6 +30,6 @@ An uncaught round-loop failure stops scheduling and enters the existing DOM fata
 
 ## Evidence and Limits
 
-Vitest proves event deduplication, new-round acceptance, silent fallback, unlock, mute, and voice priority. Playwright proves mute semantics, unavailable audio, reduced motion, deterministic human defeat and immediate restart, fatal recovery, context-loss pause, and restoration. The production Chrome profile covers the added presentation layer at 16, 24, and 32 participants.
+Vitest proves event deduplication, new-round acceptance, artillery rendering calls, atlas integration under a mocked PixiJS boundary, silent fallback, unlock, mute, and voice priority. Playwright proves menu/history/settings/HUD state, generated item-card art and arena-asset loading, mute semantics, unavailable audio, reduced motion, deterministic human defeat and immediate restart, fatal recovery, context-loss pause, and restoration. The production Chrome profile targets the public fixed-50 presentation.
 
 This evidence does not establish audio-device quality, final-art readability, photosensitivity approval, physical-GPU performance, cross-browser support, or external playtest acceptance.

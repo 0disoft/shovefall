@@ -1,0 +1,7 @@
+Create a transparent-background 2D character-variant sprite sheet for a 50-player browser party game. Use the exact same elevated 58-degree three-quarter top-down perspective, body proportions, lighting, and playful hand-painted style across every character.
+
+Canvas: 2048×2048 PNG with full alpha transparency. Arrange sixteen isolated idle characters in a clean 4×4 grid with generous padding. All characters use the same compact round island-survivor silhouette so collision size remains visually honest, but vary their color identity and small accessories: blue scarf, coral scarf, amber hat, lavender hood, teal bandana, white sunhat, patched cap, leafy crown, round glasses, eye patch, tiny moustache, braided hair, rain hood, striped shirt, explorer vest, and plain neutral outfit.
+
+Keep every accessory small enough that no character appears to have a larger collision body. Use muted but distinct colors that remain readable over dark moss, sand, brick, and deep teal water. Lighting comes from the upper left. Each character faces slightly toward the lower-right camera direction and must remain recognizable at 32–56 CSS pixels.
+
+Do not include weapons, item effects, action poses, names, numbers, letters, UI badges, terrain, ocean, floor shadows, borders, mockups, text, watermark, photorealism, or 3D render styling. Isolated sprites only, no overlap, no cropped hats or limbs.

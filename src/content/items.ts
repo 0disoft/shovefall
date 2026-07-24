@@ -72,7 +72,7 @@ export const ITEM_DEFINITIONS: Readonly<Record<ItemDefinitionId, ItemDefinition>
     consumePolicy: "timed",
     stackingPolicy: "refresh",
     massMultiplier: 0.85,
-    dodgeSpeedMultiplier: 1.28,
+    dodgeSpeedMultiplier: 1.45,
     shoveImpulseMultiplier: 1,
     shoveReachMultiplier: 1,
     aiTags: Object.freeze(["mobility"] as const),

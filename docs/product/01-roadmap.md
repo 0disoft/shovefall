@@ -28,6 +28,7 @@ people, then publishing the exact candidate without burying combat telegraphs.
 - [x] Slow, Normal, and Fast collapse controls with deterministic warning and collapse schedules.
 - [x] Iron Boots, Feather, and Spring Glove with a bounded 3/2/1 outer-ring placement preference.
 - [x] Human Wind Blast, Brick Bag, Boat, Bomb, Soap, and static-anchor Grappling Hook activation through the shared two-slot input contract.
+- [x] Immediate locomotion, saved automatic growth planning, Brick dodge mounting, direct-kill Bombs, exact-ammunition pirate cannon collapse, and protected-core lethal rocks in the local `0.35.0` ruleset.
 - [x] Sharded deterministic `0.34.0` round, mass, item-grant, and collapse-pacing evidence with no sampled time-limit draws.
 - [x] Widened-island fixed-50 headless scale evidence at simulation p95 `6.823 ms` with no 100 ms step.
 - [ ] Host-qualified production-Chrome performance evidence. The configured five-sample preflight blocks contaminated runs; two independent `0.34.0` attempts rejected `63.5 / 64.1%` average and `87.4 / 84.3%` maximum host CPU before Chrome started.
@@ -68,9 +69,10 @@ Exit conditions:
 - Optional image failure leaves the game playable; art never changes simulation timing or hit
   windows.
 
-Current status: `IMPLEMENTED_PENDING_HUMAN_READABILITY`. Umans GLM 5.2 selected Coal-Twilight,
-the repository implements it with procedural CSS and PixiJS geometry, and no external raster asset
-is required. Automated browser smoke passed; the human readability conditions above remain open.
+Current status: `PARTIALLY_IMPLEMENTED_PENDING_HUMAN_READABILITY`. Umans GLM 5.2 selected
+Coal-Twilight. Procedural CSS and PixiJS geometry remain the failure-safe baseline; accepted
+character-variant and item-icon atlases now layer over it. Six opaque-checkerboard outputs were
+rejected and await real-alpha replacements. The human readability conditions above remain open.
 
 ## Gate 3: Submission Hardening
 
@@ -88,7 +90,7 @@ Exit conditions:
 - Screenshot, short gameplay capture, tool list, asset provenance, and development notes are ready
   in [05-submission-package.md](05-submission-package.md) for the contest post.
 
-Current status: `IN_PROGRESS`. Product `0.34.1` runtime SHA `354a602392cccb453ebb1a4ac1fd52c5a39fac6c` is the newest accepted hosted, Pages, public functional, and submission-capture candidate. Its simulation `17.0.0` and content `10.0.0` are unchanged from the accepted `0.34.0` deterministic audits. [CI run 30061893140](https://github.com/0disoft/shovefall/actions/runs/30061893140) passed all 179 tests and thirteen production Chrome paths, uploaded the exact-SHA media bundle, and deployed the tested artifact. A cache-busted public session showed `v0.34.1`, no production tuning-lab UI, and no browser warning or error. Host-qualified browser performance, named physical-browser coverage, and human-play evidence remain open.
+Current status: `IN_PROGRESS`. Product `0.35.0`, simulation `18.0.0`, and content `11.0.0` are the current local rules and require fresh browser, deterministic audit, performance, capture, hosted, and public evidence. Product `0.34.1` runtime SHA `354a602392cccb453ebb1a4ac1fd52c5a39fac6c` remains the newest accepted hosted, Pages, public functional, and submission-capture proof. [CI run 30061893140](https://github.com/0disoft/shovefall/actions/runs/30061893140) passed 179 tests and thirteen production Chrome paths, uploaded the exact-SHA media bundle, and deployed that older artifact. A cache-busted public session showed `v0.34.1`, no production tuning-lab UI, and no browser warning or error. That evidence does not transfer to `0.35.0`; two generated atlases have passed provenance and alpha intake, while compression, six replacement packs, host-qualified browser performance, named physical-browser coverage, and human-play evidence remain open.
 
 ## Deferred Beyond the Submission
 

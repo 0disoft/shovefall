@@ -382,11 +382,61 @@ button:disabled {
 }
 
 .loadout-fieldset .preset-card {
-  flex-direction: column;
-  align-items: flex-start;
+  display: grid;
+  grid-template-columns: auto 56px minmax(0, 1fr);
+  align-items: center;
   min-width: 0;
-  min-height: 92px;
+  min-height: 88px;
   padding: 10px;
+}
+
+.loadout-fieldset .preset-card > input {
+  align-self: center;
+}
+
+.item-art {
+  width: 56px;
+  height: 56px;
+  background-image: url("./assets/generated/item-icons.png");
+  background-repeat: no-repeat;
+  background-size: 409.6% 409.6%;
+  filter: drop-shadow(0 5px 5px rgb(0 0 0 / 42%));
+}
+
+.item-art--iron-boots {
+  background-position: 3.88% 1.29%;
+}
+
+.item-art--feather {
+  background-position: 34.88% 1.29%;
+}
+
+.item-art--spring-glove {
+  background-position: 66.54% 1.29%;
+}
+
+.item-art--brick-bag {
+  background-position: 98.19% 1.29%;
+}
+
+.item-art--wind-blast {
+  background-position: 3.88% 36.82%;
+}
+
+.item-art--boat {
+  background-position: 98.19% 36.82%;
+}
+
+.item-art--bomb {
+  background-position: 3.88% 66.54%;
+}
+
+.item-art--soap {
+  background-position: 34.88% 66.54%;
+}
+
+.item-art--grappling-hook {
+  background-position: 98.19% 66.54%;
 }
 
 .loadout-fieldset .preset-card:has(input:disabled) {
@@ -1203,9 +1253,13 @@ button:disabled {
   }
 
   .loadout-fieldset .preset-card {
-    flex-direction: row;
-    align-items: center;
+    grid-template-columns: auto 52px minmax(0, 1fr);
     min-height: 62px;
+  }
+
+  .item-art {
+    width: 52px;
+    height: 52px;
   }
 }
 
