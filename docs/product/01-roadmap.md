@@ -31,6 +31,7 @@ people, then publishing the exact candidate without burying combat telegraphs.
 - [x] Immediate locomotion, saved automatic growth planning, Brick dodge mounting, direct-kill Bombs, exact-ammunition pirate cannon collapse, and protected-core lethal rocks in the local `0.35.0` ruleset.
 - [x] Hard bots receive balanced passive-plus-active loadouts and spend charges through delayed perception and bounded deterministic utility rules in `0.36.0`.
 - [x] Bomb owners survive their own blast with dangerous launch and stumble, and the alpha terrain atlas replaces flat island tiles in `0.37.0`.
+- [x] Nearby combat gains shove windup fans, hand trajectories, dodge wedges, launch trails, and falling marks without changing simulation rules in `0.38.0`.
 - [x] Sharded deterministic `0.34.0` round, mass, item-grant, and collapse-pacing evidence with no sampled time-limit draws.
 - [x] Widened-island fixed-50 headless scale evidence at simulation p95 `6.823 ms` with no 100 ms step.
 - [ ] Host-qualified production-Chrome performance evidence. The configured five-sample preflight blocks contaminated runs; two independent `0.34.0` attempts rejected `63.5 / 64.1%` average and `87.4 / 84.3%` maximum host CPU before Chrome started.
@@ -73,8 +74,9 @@ Exit conditions:
 
 Current status: `PARTIALLY_IMPLEMENTED_PENDING_HUMAN_READABILITY`. Umans GLM 5.2 selected
 Coal-Twilight. Procedural CSS and PixiJS geometry remain the failure-safe baseline; accepted
-character-variant and item-icon atlases now layer over it. Six opaque-checkerboard outputs were
-rejected and await real-alpha replacements. The human readability conditions above remain open.
+character, item, artillery, impact, and terrain art now layers over it. Product `0.38.0` prioritizes
+detailed action geometry around the human while distant bots retain cheaper direction cues. The
+human readability conditions above remain open.
 
 ## Gate 3: Submission Hardening
 
@@ -92,7 +94,7 @@ Exit conditions:
 - Screenshot, short gameplay capture, tool list, asset provenance, and development notes are ready
   in [05-submission-package.md](05-submission-package.md) for the contest post.
 
-Current status: `IN_PROGRESS`. Product `0.37.0`, simulation `19.0.0`, and content `13.0.0` are the current local rules. Eight accepted generated assets total about 3.15 MiB and retain independent procedural fallbacks; the new alpha terrain atlas covers grass, sand, coast, corner, water, and warning states while camera culling bounds its live sprite count. Local TypeScript, lint, 187 tests, and thirteen production Chrome paths pass. Production audit shard zero completes all eight 50-player seeds with no time limit and a `50.381` second mean; shard one and merged balance, exact-SHA capture, hosted CI, Pages, cache-busted public proof, action art, named physical-browser coverage, and human-play evidence remain open.
+Current status: `IN_PROGRESS`. Product `0.38.0`, simulation `19.0.0`, and content `13.0.0` are the current local rules. Eight accepted generated asset groups retain independent procedural fallbacks. The deployed `0.37.0` SHA `7386349b43a6e83bd0071873184f70e303c92ef0` passed hosted checks, thirteen production Chrome paths, Pages deployment, and a cache-busted public HTTP check in [CI run 30087368621](https://github.com/0disoft/shovefall/actions/runs/30087368621); optional hosted media capture remained non-blocking. Its merged sixteen-seed production audit completed without time-limit draws, averaged `50.215` seconds, placed `83.57%` of items in the outer two risk bands, and recorded zero Bomb-owner direct self-deaths across 58 uses. The new `0.38.0` action-feedback candidate passes 194 local unit/scenario checks and thirteen production Chrome paths; exact-SHA hosted proof, named physical-browser coverage, and human-play evidence remain open.
 
 ## Deferred Beyond the Submission
 

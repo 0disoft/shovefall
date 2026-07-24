@@ -27,6 +27,7 @@ import {
 } from "./arena-projection";
 import { SimulationEventLedger } from "./event-ledger";
 import { loadArenaVisualAssets, type ArenaVisualAssets } from "./arena-assets";
+import { createActionFeedbackGeometry } from "./action-feedback";
 
 export interface ArenaRenderer {
   consumeEvents(events: readonly SimulationEventV1[], frame: RenderFrameV1): void;
@@ -431,36 +432,63 @@ function drawPirateShip(
     .fill({ color: 0x242a28, alpha: 0.94 });
 }
 
-function drawDirection(
+function drawActionFeedback(
   graphics: Graphics,
   participant: RenderParticipantV1,
   x: number,
   y: number,
   radius: number,
+  projection: ArenaProjection,
+  reducedMotion: boolean,
+  detailed: boolean,
+  frameTick: number,
 ): void {
-  const direction = projectArenaVector(participant.facing);
-  const length =
-    participant.action === "ShoveActive"
-      ? radius * 2.05
-      : participant.action === "ShoveWindup"
-        ? radius * 1.18
-        : radius * 1.45;
-  const endX = x + direction.x * length;
-  const endY = y + direction.y * length;
-  graphics
-    .moveTo(x, y)
-    .lineTo(endX, endY)
-    .stroke({
-      color: getActionColor(participant.action),
-      width: participant.action === "ShoveActive" ? Math.max(4, radius * 0.35) : 2,
-      cap: "round",
-    });
+  const previousCenter = projectArenaPoint(participant.previousPosition, projection);
+  const geometry = createActionFeedbackGeometry({
+    action: participant.action,
+    actorId: participant.actorId,
+    center: Object.freeze({ x, y }),
+    previousCenter,
+    direction: projectArenaVector(participant.facing),
+    velocity: projectArenaVector(participant.velocity),
+    radius,
+    frameTick,
+    reducedMotion,
+    detailed,
+  });
 
-  if (participant.action === "ShoveActive") {
-    graphics
-      .circle(endX, endY, Math.max(3, radius * 0.2))
-      .fill({ color: getActionColor(participant.action) })
-      .stroke({ color: 0xf6f5ef, width: 1 });
+  for (const feedbackCircle of geometry.circles) {
+    graphics.circle(feedbackCircle.center.x, feedbackCircle.center.y, feedbackCircle.radius);
+    graphics.fill({ color: feedbackCircle.color, alpha: feedbackCircle.alpha });
+
+    if (feedbackCircle.outlineColor !== undefined && feedbackCircle.outlineWidth !== undefined) {
+      graphics.stroke({
+        color: feedbackCircle.outlineColor,
+        width: feedbackCircle.outlineWidth,
+      });
+    }
+  }
+
+  for (const feedbackStroke of geometry.strokes) {
+    const firstPoint = feedbackStroke.points[0];
+
+    if (firstPoint === undefined) {
+      continue;
+    }
+
+    graphics.moveTo(firstPoint.x, firstPoint.y);
+
+    for (const point of feedbackStroke.points.slice(1)) {
+      graphics.lineTo(point.x, point.y);
+    }
+
+    graphics.stroke({
+      color: feedbackStroke.color,
+      width: feedbackStroke.width,
+      alpha: feedbackStroke.alpha,
+      cap: "round",
+      join: "round",
+    });
   }
 }
 
@@ -1258,8 +1286,6 @@ function drawParticipant(
         color: actionColor,
         width: Math.max(1.5, participant.massFactor * 1.4),
       });
-    drawDirection(graphics, participant, x, y, visualRadius);
-
     if (participant.action === "Stumbling" || participant.action === "Falling") {
       const markerSize = visualRadius * 0.48;
       graphics
@@ -1283,17 +1309,6 @@ function drawParticipant(
   const hasSpringGlove = equippedAndActiveEffects.some(
     ({ definitionId }) => definitionId === "spring-glove",
   );
-
-  if (participant.action === "DodgeActive" && !reducedMotion && (!mayhem || isHuman)) {
-    const { x: previousX, y: previousY } = projectArenaPoint(
-      participant.previousPosition,
-      projection,
-    );
-    graphics.circle(previousX, previousY, visualRadius * 0.88).fill({
-      color: actionColor,
-      alpha: 0.2,
-    });
-  }
 
   graphics
     .ellipse(
@@ -1339,7 +1354,6 @@ function drawParticipant(
     alpha: 0.78,
   });
 
-  drawDirection(graphics, participant, x, y, visualRadius);
   drawMassMarker(graphics, participant, x, y, visualRadius);
 
   if (hasSpringGlove || participant.springBoosted) {
@@ -1586,6 +1600,7 @@ export async function createArenaRenderer(
   const itemSprites = new Container();
   const participants = new Graphics();
   const participantSprites = new Container();
+  const actionFeedback = new Graphics();
   const effectLayer = new Graphics();
   const impactSprites = new Container();
   const artilleryLabels = new Container();
@@ -1601,6 +1616,7 @@ export async function createArenaRenderer(
     itemSprites,
     participants,
     participantSprites,
+    actionFeedback,
     effectLayer,
     impactSprites,
     artilleryLabels,
@@ -1651,6 +1667,7 @@ export async function createArenaRenderer(
       itemSprites,
       participants,
       participantSprites,
+      actionFeedback,
       effectLayer,
       impactSprites,
       artilleryLabels,
@@ -1667,6 +1684,7 @@ export async function createArenaRenderer(
     items.clear();
     artillery.clear();
     participants.clear();
+    actionFeedback.clear();
     effectLayer.clear();
     const mayhem = latestFrame.participants.length >= 25;
 
@@ -1814,6 +1832,9 @@ export async function createArenaRenderer(
     ].toSorted(
       (left, right) => left.depth - right.depth || left.sortKey.localeCompare(right.sortKey),
     );
+    const humanParticipant = latestFrame.participants.find(
+      ({ actorId }) => actorId === latestHumanActorId,
+    );
 
     for (const entry of depthEntries) {
       if (entry.kind === "brick-wall") {
@@ -1841,6 +1862,40 @@ export async function createArenaRenderer(
         latestInterpolationAlpha,
         reducedMotion,
         visualAssets,
+      );
+    }
+
+    for (const participant of latestFrame.participants) {
+      if (!participant.active && participant.action === "Eliminated") {
+        continue;
+      }
+
+      const worldX =
+        participant.previousPosition.x +
+        (participant.position.x - participant.previousPosition.x) * latestInterpolationAlpha;
+      const worldY =
+        participant.previousPosition.y +
+        (participant.position.y - participant.previousPosition.y) * latestInterpolationAlpha;
+      const point = projectArenaPoint({ x: worldX, y: worldY }, projection);
+      const collisionRadius = participant.radius * projection.pitch;
+      const visualRadius = collisionRadius * (1 + (participant.massFactor - 1) * 0.16);
+      const distanceFromHuman =
+        humanParticipant === undefined
+          ? Number.POSITIVE_INFINITY
+          : Math.hypot(
+              participant.position.x - humanParticipant.position.x,
+              participant.position.y - humanParticipant.position.y,
+            );
+      drawActionFeedback(
+        actionFeedback,
+        participant,
+        point.x,
+        point.y,
+        visualRadius,
+        projection,
+        reducedMotion,
+        !mayhem || participant.actorId === latestHumanActorId || distanceFromHuman <= 8,
+        latestFrame.tick,
       );
     }
 

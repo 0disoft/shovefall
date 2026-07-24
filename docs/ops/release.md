@@ -1,8 +1,8 @@
 # Static Release Procedure
 
-- Status: `0.37.0` local implementation batch; grouped validation and hosted proof pending
+- Status: `0.38.0` presentation candidate; grouped local validation passed, hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.37.0`
+- Current product version: `0.38.0`
 - Validation source: [../../VALIDATION.md](../../VALIDATION.md)
 - Submission package: [../product/05-submission-package.md](../product/05-submission-package.md)
 - Asset ledger: [../assets/README.md](../assets/README.md)
@@ -45,9 +45,11 @@ Product `0.35.0`, simulation `18.0.0`, and content `11.0.0` replace delayed loco
 
 Product `0.36.0` keeps simulation `18.0.0` and advances content to `12.0.0`. Forty-nine public bots receive a seed-derived balanced passive-plus-active loadout, then request charged items through the existing command contract after delayed perception, context-specific utility checks, and a deterministic decision cooldown. Bomb users retain a two-second escape intent and stop planting new Bombs below ten survivors. Generated character motion, placed Bomb and Soap props, Boat presentation, and bounded camera kick remain presentation-only. Formatting, lint, TypeScript, 187 unit/scenario checks, and all thirteen production Chrome paths pass. Production audit shard zero passes eight fixed 50-participant seeds with no time-limit or no-survivor result, `43.050..56.617` second duration, 365 active uses, and nine Bomb-owner deaths across 29 Bomb uses. Shard one, merged strategy gates, profile, capture, hosted CI, Pages, and public functional evidence remain promotion gates.
 
-Product `0.37.0` advances simulation to `19.0.0` and content to `13.0.0`. A Bomb owner survives the direct-kill portion of that owner's blast but receives a strong outward launch and 42-tick stumble before any same-tick new item command. Opponents remain directly eliminated. A new sixteen-frame true-alpha terrain atlas adds grass, sand, cardinal coast, corner, water, and warning art over the procedural fallback; camera-space culling keeps the live terrain-sprite set below 500 in the production smoke viewport. Replay fixtures regenerate because Bomb outcomes change. All 187 unit/scenario checks and thirteen production Chrome paths pass locally. Production audit shard zero completes all eight fixed 50-player seeds in `43.050..53.900` seconds with mean `50.381`, no time-limit result, 368 active uses, and zero self-deaths across 32 Bomb uses. Shard one, merged strategy gates, profile, capture, hosted CI, Pages, and public proof remain fresh promotion gates.
+Product `0.37.0` advances simulation to `19.0.0` and content to `13.0.0`. A Bomb owner survives the direct-kill portion of that owner's blast but receives a strong outward launch and 42-tick stumble before any same-tick new item command. Opponents remain directly eliminated. A new sixteen-frame true-alpha terrain atlas adds grass, sand, cardinal coast, corner, water, and warning art over the procedural fallback; camera-space culling keeps the live terrain-sprite set below 500 in the production smoke viewport. Replay fixtures regenerate because Bomb outcomes change. The merged sixteen-seed production audit reports a `50.215` second mean, no time-limit result, `83.57%` of item spawns in the outer two risk bands, and zero Bomb-owner direct self-deaths across 58 uses. [CI run 30087368621](https://github.com/0disoft/shovefall/actions/runs/30087368621) validated and deployed exact SHA `7386349b43a6e83bd0071873184f70e303c92ef0`; optional media capture did not produce promoted evidence.
 
-Older exact-SHA hosted, Pages, public functional, and submission-capture evidence does not prove `0.37.0`. The browser profile rejects a host above its five-sample CPU qualification before Chrome starts; the first qualified attempt was rejected at `63.5%` average and `87.4%` maximum host CPU. Contest-release promotion still requires grouped checks, a passing host-qualified production-browser profile, active-item balance evidence, and human playtest.
+Product `0.38.0` keeps simulation `19.0.0` and content `13.0.0`. It adds presentation-only windup fans, hand trajectories, dodge wedges, velocity trails, and falling rings in a dedicated overlay above character sprites. Public-scale detail is limited to the human and actors within eight world units; distant bots retain one cheap direction cue. Reduced-motion keeps static information shapes. Replay fixtures refresh only for the product envelope; deterministic hashes and rules remain unchanged. All 194 unit/scenario checks and thirteen production Chrome paths pass locally.
+
+The browser profile rejects a host above its five-sample CPU qualification before Chrome starts; the first qualified attempt was rejected at `63.5%` average and `87.4%` maximum host CPU. Contest-release promotion still requires `0.38.0` hosted proof, a passing host-qualified production-browser profile, active-item balance evidence, and human playtest.
 
 ## Release Types
 
@@ -127,6 +129,8 @@ deployment and critical-path browser evidence, not human fun, balance, physical-
 cross-browser evidence.
 
 On 2026-07-24, [CI run 30056501932](https://github.com/0disoft/shovefall/actions/runs/30056501932) validated repository SHA `fc347488e2446d16dd52e341b4dd6ab28d1c8aab`, exercised thirteen production Chrome paths, and deployed the unchanged `0.34.0` application bundle. A cache-busted Pages session saved the fixed-50 Hard-AI setup with Bomb and Grappling Hook, entered active play, produced the missed-shove feedback, spent Hook and Bomb from two charges to one with their dedicated feedback, and reported no browser warning or error. Browser-automation backlog contaminated the attempted live movement/dodge observation, and screenshot capture timed out twice, so neither is promoted as current manual evidence.
+
+Later on 2026-07-24, [CI run 30087368621](https://github.com/0disoft/shovefall/actions/runs/30087368621) validated exact `0.37.0` SHA `7386349b43a6e83bd0071873184f70e303c92ef0`, exercised thirteen production Chrome paths, uploaded the tested Pages artifact, and completed the dependent deployment. Optional exact-SHA media capture remained a visible non-blocking warning and produced no promoted capture bundle. A cache-busted public request returned HTTP 200 with the current application script. This proves hosted validation and delivery for `0.37.0`, not physical-device behavior, human readability, or the local `0.38.0` presentation candidate.
 
 ## Post-deploy Verification
 

@@ -59,6 +59,6 @@ The gray-box game, fixed 50-participant Hard-AI mode, selectable collapse speed,
 automatic growth planning, three map items, all nine starting-item definitions and six active
 mechanics, Brick dodge mounting, opponent-lethal and owner-launching Bombs, pirate cannon collapse,
 protected-core rock pressure, generated terrain and action feedback, local production smoke,
-balance screens, and 50-participant performance harnesses are implemented. Fresh `0.37.0` browser,
-audit, performance, capture, hosted, and public evidence; active-item balance; human playtest
+balance screens, and 50-participant performance harnesses are implemented. Hosted `0.37.0` and its
+sixteen-seed audit are current; fresh `0.38.0` browser, performance, capture, hosted, and public evidence; active-item balance; human playtest
 evidence; and named device/browser coverage remain open release work.
