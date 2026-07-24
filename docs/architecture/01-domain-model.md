@@ -96,6 +96,8 @@ Product `0.33.0` and simulation `16.0.0` widen the public island to 48×40, requ
 
 Product `0.34.0`, simulation `17.0.0`, and content `10.0.0` add protected-core sudden-death pressure, narrow the hidden mass contract to `0.85..1.25`, use square-root mass scaling for offensive and environmental impulses, and retune the three map passives. Pressure timing is derived from the final collapse wave and tick, so no mutable pulse counter enters the hash. The new event kind, changed system order, participant trajectories, item definitions, and state hashes require regenerated replay fixtures; replay remains v2 and reports remain v4 because their existing event, setup, and version envelopes carry the change.
 
+Product `0.34.1` changes only the browser presentation envelope. The debug tuning controller remains a DEV-only local tool, while production removes its initially hidden markup before the settings screen is exposed. Simulation remains `17.0.0`, content remains `10.0.0`, replay remains v2, reports remain v4, and existing deterministic state hashes remain valid.
+
 ## Version Ownership
 
 - Product version: `package.json` and `PRODUCT_VERSION`.

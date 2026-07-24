@@ -251,6 +251,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   const itemRespawnValue = requireElement(root, "#item-respawn-value", HTMLOutputElement);
   const setupSummary = requireElement(root, "#setup-summary", HTMLElement);
   const startingItemsHelp = requireElement(root, "#starting-items-help", HTMLElement);
+  const debugTuningPanel = requireElement(root, "#debug-tuning", HTMLDetailsElement);
   const startingItemInputs = [
     ...form.querySelectorAll<HTMLInputElement>('input[name="startingItem"]'),
   ];
@@ -425,7 +426,12 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     root.dataset.scale = "mayhem";
   };
 
-  debugTuning = createDebugTuningController(root, { onChange(): void {} });
+  if (import.meta.env.DEV) {
+    debugTuningPanel.hidden = false;
+    debugTuning = createDebugTuningController(root, { onChange(): void {} });
+  } else {
+    debugTuningPanel.remove();
+  }
 
   const hydrateSettingsForm = (): void => {
     setSelectedCollapseSpeed(form, latestSettings.collapseSpeed);

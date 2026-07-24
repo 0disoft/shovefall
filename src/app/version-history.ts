@@ -9,6 +9,12 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.34.1",
+    title: "공개판은 게임만",
+    reason: "밸런스 조정용 실험실은 개발자에게만 필요하고 참가자에겐 메뉴 잡음이었어.",
+    change: "공개 설정에서 실험실과 DEBUG 표시를 뺐어. 개발 빌드에서는 그대로 조정할 수 있어.",
+  }),
+  Object.freeze({
     version: "0.34.0",
     title: "마지막 땅에도 해일은 온다",
     reason: "넓어진 섬에서 20%의 안전한 땅만 차지한 채 버티면 판이 너무 오래 늘어졌어.",

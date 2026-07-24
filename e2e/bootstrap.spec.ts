@@ -243,9 +243,9 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await versionHistoryButton.click();
   await expect(page.locator("#app")).toHaveAttribute("data-screen", "history");
   await expect(page.getByRole("heading", { level: 2, name: "버전 기록" })).toBeFocused();
-  await expect(page.locator("#current-version")).toHaveText("v0.34.0");
-  await expect(page.locator("#version-history-list > li")).toHaveCount(16);
-  await expect(page.getByText("왜 바꿨냐면")).toHaveCount(16);
+  await expect(page.locator("#current-version")).toHaveText("v0.34.1");
+  await expect(page.locator("#version-history-list > li")).toHaveCount(17);
+  await expect(page.getByText("왜 바꿨냐면")).toHaveCount(17);
   await expect(page.locator("#arena-host canvas")).toBeHidden();
   await page.keyboard.press("Escape");
   await expect(page.locator("#app")).toHaveAttribute("data-screen", "menu");
@@ -557,12 +557,21 @@ test("offers a working touch joystick and action buttons on a narrow viewport", 
   );
 });
 
-test("applies and copies bounded debug tuning for the next round", async ({ page }) => {
+test("keeps bounded debug tuning in development and removes it from production", async ({
+  page,
+}) => {
   await installClipboardCapture(page);
   await page.goto("/");
   await openSettings(page);
 
   const debugPanel = page.locator("#debug-tuning");
+  const productionArtifact = new URL(page.url()).port === "4175";
+  if (productionArtifact) {
+    await expect(debugPanel).toHaveCount(0);
+    return;
+  }
+
+  await expect(debugPanel).toBeVisible();
   const movementSpeed = page.locator("#debug-movement-speed");
   await expect(movementSpeed).toBeDisabled();
   await debugPanel.locator("summary").click();
