@@ -186,10 +186,31 @@ async function readSimulationTick(page: Page): Promise<number> {
 }
 
 async function clickInventorySlotAfterActiveTick(page: Page, selector: string): Promise<void> {
-  const slot = page.locator(selector);
-  await expect(slot).toBeEnabled();
-  const tickBeforeClick = await readSimulationTick(page);
-  await slot.click();
+  const clickResult = await page.waitForFunction(
+    ({ slotSelector }) => {
+      const slot = document.querySelector(slotSelector);
+      const telemetry = document.querySelector("#game-telemetry");
+
+      if (
+        !(slot instanceof HTMLButtonElement) ||
+        slot.disabled ||
+        telemetry?.getAttribute("data-action") !== "Ready"
+      ) {
+        return null;
+      }
+
+      const tick = Number(telemetry.getAttribute("data-tick"));
+      slot.click();
+      return { tick };
+    },
+    { slotSelector: selector },
+    { timeout: 15_000 },
+  );
+  const consumedClick = await clickResult.jsonValue();
+  if (consumedClick === null) {
+    throw new Error("inventory slot click did not produce a simulation tick");
+  }
+  const tickBeforeClick = consumedClick.tick;
   await expect
     .poll(() => readSimulationTick(page), {
       message: "inventory input should be consumed by a later simulation tick",
