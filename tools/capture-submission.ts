@@ -389,7 +389,6 @@ async function useGrapplingHookForCapture(page: Page, directionIndex = 0): Promi
   await waitForTickDelta(page, attemptTick, 2);
 
   if ((await hookSlot.textContent())?.includes("1회") === true) {
-    await page.getByText("갈고리가 걸렸어.", { exact: true }).waitFor({ state: "visible" });
     return;
   }
 
