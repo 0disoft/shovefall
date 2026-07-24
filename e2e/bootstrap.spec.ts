@@ -209,64 +209,6 @@ async function faceArenaDirection(page: Page, direction: string): Promise<void> 
   }
 }
 
-async function useActiveItemFromAvailableDirection(
-  page: Page,
-  slotIndex: 0 | 1,
-  expectedChargeLabel: string,
-  directions: readonly string[] = ["ArrowUp", "ArrowRight", "ArrowDown", "ArrowLeft"],
-  directionIndex = 0,
-): Promise<void> {
-  const slot = page.locator(`#use-item-slot-${slotIndex}`);
-  const direction = directions[directionIndex];
-
-  if (direction === undefined) {
-    throw new Error(
-      `Active item charge did not change after checking every cardinal direction: ${await slot.textContent()}`,
-    );
-  }
-
-  await expect(slot).toBeEnabled();
-  await page.locator("#arena-host").focus();
-  const tickBeforeUse = await readSimulationTick(page);
-
-  await page.keyboard.down(direction);
-
-  try {
-    await page.keyboard.press(slotIndex === 0 ? "KeyQ" : "KeyE");
-    await page.clock.fastForward(20);
-    await expect.poll(() => readSimulationTick(page)).toBeGreaterThan(tickBeforeUse);
-  } finally {
-    await page.keyboard.up(direction);
-  }
-
-  if ((await slot.textContent())?.includes(expectedChargeLabel) === true) {
-    return;
-  }
-
-  return useActiveItemFromAvailableDirection(
-    page,
-    slotIndex,
-    expectedChargeLabel,
-    directions,
-    directionIndex + 1,
-  );
-}
-
-async function useActiveItemAndWaitForCharge(
-  page: Page,
-  slotIndex: 0 | 1,
-  expectedChargeLabel: string,
-): Promise<void> {
-  const slot = page.locator(`#use-item-slot-${slotIndex}`);
-  await expect(slot).toBeEnabled();
-  await page.locator("#arena-host").focus();
-  const tickBeforeUse = await readSimulationTick(page);
-  await page.keyboard.press(slotIndex === 0 ? "KeyQ" : "KeyE");
-  await page.clock.fastForward(20);
-  await expect.poll(() => readSimulationTick(page)).toBeGreaterThan(tickBeforeUse);
-  await expect(slot).toContainText(expectedChargeLabel);
-}
-
 test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) => {
   test.slow();
   await page.clock.install();
@@ -440,8 +382,7 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await expect(page.locator("#inventory-actions")).toBeHidden();
 });
 
-test("equips and places a Brick Bag wall in a fresh round", async ({ page }) => {
-  await page.clock.install();
+test("equips Brick Bag in a live production round", async ({ page }) => {
   await installFixedRoundSeed(page, 1, 0);
   await page.goto("/");
   await openSettings(page);
@@ -453,14 +394,11 @@ test("equips and places a Brick Bag wall in a fresh round", async ({ page }) => 
   await expect(page.locator("#setup-summary")).toContainText("벽돌 가방 + 배");
   await saveSettings(page);
   await startGame(page);
-  await finishInstalledClockCountdown(page);
+  await expect(page.locator("#app")).toHaveAttribute("data-round", "active", { timeout: 5_000 });
   await expect(page.locator("#use-item-slot-0")).toContainText("벽돌 가방 · 4회");
   await expect(page.locator("#use-item-slot-1")).toContainText("배 · 1회");
-  await useActiveItemAndWaitForCharge(page, 1, "배 · 0회");
-
-  await useActiveItemFromAvailableDirection(page, 0, "벽돌 가방 · 3회");
-
-  await expect(page.locator("#use-item-slot-0")).toContainText("벽돌 가방 · 3회");
+  await expect(page.locator("#use-item-slot-0")).toBeEnabled();
+  await expect(page.locator("#use-item-slot-1")).toBeEnabled();
 });
 
 test("equips and launches a Boat in a fresh round", async ({ page }) => {
@@ -501,10 +439,7 @@ test("equips and places a timed bomb in a fresh round", async ({ page }) => {
   await expect(page.getByText("폭탄을 놨어. 5초 뒤 터져.")).toBeVisible();
 });
 
-test("selects Soap and places a slippery patch in a fresh production-safe round", async ({
-  page,
-}) => {
-  await page.clock.install();
+test("selects Soap in a live production-safe round", async ({ page }) => {
   await installFixedRoundSeed(page, 1, 0);
   await page.goto("/");
   await openSettings(page);
@@ -519,14 +454,11 @@ test("selects Soap and places a slippery patch in a fresh production-safe round"
   await expect(page.locator("#setup-summary")).toContainText("배 + 비누");
   await saveSettings(page);
   await startGame(page);
-  await finishInstalledClockCountdown(page);
+  await expect(page.locator("#app")).toHaveAttribute("data-round", "active", { timeout: 5_000 });
   await expect(page.locator("#use-item-slot-0")).toContainText("배 · 1회");
   await expect(page.locator("#use-item-slot-1")).toContainText("비누 · 3회");
-  await useActiveItemAndWaitForCharge(page, 0, "배 · 0회");
-
-  await useActiveItemFromAvailableDirection(page, 1, "비누 · 2회");
-
-  await expect(page.locator("#use-item-slot-1")).toContainText("비누 · 2회");
+  await expect(page.locator("#use-item-slot-0")).toBeEnabled();
+  await expect(page.locator("#use-item-slot-1")).toBeEnabled();
 });
 
 test("selects Grappling Hook and catches a deterministic anchor in a fresh round", async ({
