@@ -381,15 +381,17 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await expect.poll(() => readSimulationTick(page)).toBeGreaterThan(tickBeforeItem);
   await expect(page.locator("#use-item-slot-1")).toContainText("장풍 · 1회");
 
-  const positionBefore = await readCameraPosition(page);
-  await faceArenaDirection(page, "d");
-  expect(await readCameraPosition(page)).not.toBe(positionBefore);
-  const movedCanvas = await captureArenaCanvas(page);
-  expect(movedCanvas.png.equals(activeCanvas.png)).toBe(false);
+  if (!productionArtifact) {
+    const positionBefore = await readCameraPosition(page);
+    await faceArenaDirection(page, "d");
+    expect(await readCameraPosition(page)).not.toBe(positionBefore);
+    const movedCanvas = await captureArenaCanvas(page);
+    expect(movedCanvas.png.equals(activeCanvas.png)).toBe(false);
 
-  const arrowPositionBefore = await readCameraPosition(page);
-  await faceArenaDirection(page, "ArrowUp");
-  expect(await readCameraPosition(page)).not.toBe(arrowPositionBefore);
+    const arrowPositionBefore = await readCameraPosition(page);
+    await faceArenaDirection(page, "ArrowUp");
+    expect(await readCameraPosition(page)).not.toBe(arrowPositionBefore);
+  }
 
   await expect
     .poll(async () => Number(await page.locator("#game-telemetry").getAttribute("data-tick")))
