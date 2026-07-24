@@ -23,10 +23,7 @@
   "humanActorId": 1,
   "humanSetup": {
     "baseMassFactor": 1,
-    "startingItems": [
-      "wind-blast",
-      "iron-boots"
-    ]
+    "startingItems": ["wind-blast", "iron-boots"]
   },
   "endTick": 180,
   "commands": [
