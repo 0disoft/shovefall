@@ -1,13 +1,13 @@
 # Asset Provenance Ledger
 
-- Status: Active; five generated PNG assets ship with procedural fallbacks
+- Status: Active; seven generated PNG assets ship with procedural fallbacks
 - Owner: Repository owner
 - Visual gate: [../product/01-roadmap.md](../product/01-roadmap.md)
 - Frontend boundary: [../frontend/FRONTEND_DESIGN.md](../frontend/FRONTEND_DESIGN.md)
 
 ## Current Inventory
 
-Repository inspection on 2026-07-24 found two accepted owner-generated PNG atlases and three
+Repository inspection on 2026-07-24 found two accepted owner-generated PNG atlases and five
 Codex-generated single sprites. Six earlier multi-asset outputs
 generated outputs were rejected before intake because their visible checkerboard was baked into
 opaque RGB pixels rather than represented by alpha transparency.
@@ -22,6 +22,8 @@ opaque RGB pixels rather than represented by alpha transparency.
 | `generated-pirate-galleon` | Eight offshore pirate-ship positions | `src/assets/generated/pirate-ship-galleon.png` | Codex built-in image generation plus local chroma-key removal | OpenAI Terms of Use output-ownership clause; user remains responsible for the output | No service attribution requirement identified; generator and processing are recorded here |
 | `generated-cannonball-projectile` | Cannon trajectories | `src/assets/generated/cannonball-projectile.png` | Codex built-in image generation plus local chroma-key removal | Same output-ownership evidence | Generator and processing recorded here |
 | `generated-lethal-boulder` | Protected-core rock trajectories | `src/assets/generated/lethal-boulder.png` | Codex built-in image generation plus local chroma-key removal | Same output-ownership evidence | Generator and processing recorded here |
+| `generated-impact-explosion` | Bomb and rock impacts | `src/assets/generated/impact-explosion.png` | Codex built-in image generation plus local chroma-key removal | Same output-ownership evidence | Generator and processing recorded here |
+| `generated-seawater-impact` | Flooded-tile impacts | `src/assets/generated/seawater-impact.png` | Codex built-in image generation plus local chroma-key removal | Same output-ownership evidence | Generator and processing recorded here |
 
 Dependencies are tracked by `package.json` and `bun.lock`; this ledger owns media and creative
 assets, not dependency license inventory.
@@ -82,6 +84,8 @@ assets, not dependency license inventory.
 |---|---|---|---|
 | `src/assets/generated/cannonball-projectile.png` | `docs/assets/prompts/cannonball-projectile-chroma.txt` | Built-in generation; border key `#04f90b`; soft matte and despill; 1254×1254 RGBA, 432,427 bytes, SHA-256 `85178b76c572821e907c654190e14d541ced4e2e0ed55141f3d248403e9a3b04`; transparent corners | Accepted 2026-07-24; rotated and scaled over the procedural trajectory and warning fallback |
 | `src/assets/generated/lethal-boulder.png` | `docs/assets/prompts/lethal-boulder-chroma.txt` | Built-in generation; border key `#03f903`; soft matte and despill; 1254×1254 RGBA, 1,173,264 bytes, SHA-256 `8d2829c42c8f6a8ee1e95830296f2e11abdca82cecd38823c606501b23cbe48f`; transparent corners | Accepted 2026-07-24; rotated and scaled over the procedural lethal-rock fallback |
+| `src/assets/generated/impact-explosion.png` | `docs/assets/prompts/impact-explosion-chroma.txt` | Built-in generation; border key `#03f905`; soft matte and despill; 1254×1254 RGBA, 620,682 bytes, SHA-256 `0b8827457b113de2d54ea62839215e9d6871319e95e9fff22ddccf486064d3a0`; transparent corners | Accepted 2026-07-24; fades over Bomb and rock-impact geometry |
+| `src/assets/generated/seawater-impact.png` | `docs/assets/prompts/seawater-impact-chroma.txt` | Built-in generation; border key `#fc03fa`; soft matte and despill; 1254×1254 RGBA, 574,632 bytes, SHA-256 `df72967ccbc2d7c3d3b655cc8b6d8be511127a3d9ebc1a6c9988b9328d141022`; transparent corners | Accepted 2026-07-24; fades over tile-flood geometry |
 
 The selected images contain no visible trademark, signature, watermark, named copyrighted
 character, or named living-artist imitation. A metadata probe reported no container tags. This is a

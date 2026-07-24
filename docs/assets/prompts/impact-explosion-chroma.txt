@@ -1,0 +1,7 @@
+Use case: stylized-concept
+Asset type: single production impact explosion sprite for a PixiJS browser party game
+Primary request: Create exactly one compact pirate-cannon impact explosion viewed from a fixed elevated 58-degree three-quarter top-down camera. This is one isolated impact sprite, not a sprite sheet and not a scene.
+Scene/backdrop: perfectly flat uniform solid #00ff00 chroma-key background from edge to edge, with no checkerboard, texture, gradient, floor, ocean, lighting variation, shadow, or reflection.
+Subject: one dense orange-white center flash, chunky dark smoke lobes, a few small brown stone fragments, restrained sparks, and a circular readable burst silhouette at 48–110 CSS pixels.
+Style/medium: polished playful hand-painted 2D party-game VFX, bold coal-twilight silhouette, not photorealistic and not a 3D render.
+Constraints: exactly one centered explosion with generous padding; no vivid green, cast shadow, cannonball, ship, target marker, island tile, water splash, character, text, UI, border, watermark, signature, cropped smoke, or extra objects.

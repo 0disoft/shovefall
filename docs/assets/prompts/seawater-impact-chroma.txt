@@ -1,0 +1,7 @@
+Use case: stylized-concept
+Asset type: single production seawater impact sprite for a PixiJS browser party game
+Primary request: Create exactly one circular seawater splash caused by a cannon impact flooding an island tile, viewed from a fixed elevated 58-degree three-quarter top-down camera. This is one isolated effect, not a sprite sheet and not a scene.
+Scene/backdrop: perfectly flat uniform solid #ff00ff chroma-key background from edge to edge, with no checkerboard, texture, gradient, floor, ocean plane, lighting variation, shadow, or reflection.
+Subject: one compact circular deep-teal water crater and outward splash crown, pale desaturated foam, several short nearby droplets, and a strong readable silhouette at 48–110 CSS pixels.
+Style/medium: polished playful hand-painted 2D party-game VFX, chunky coal-twilight shapes, not photorealistic and not a 3D render.
+Constraints: exactly one centered splash with generous padding; no vivid magenta, cast shadow, cannonball, fire explosion, ship, island tile, character, target marker, text, UI, border, watermark, signature, cropped droplets, or extra objects.

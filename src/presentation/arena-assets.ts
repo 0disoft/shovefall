@@ -9,6 +9,10 @@ const PIRATE_SHIP_URL = new URL("../assets/generated/pirate-ship-galleon.png", i
 const CANNONBALL_URL = new URL("../assets/generated/cannonball-projectile.png", import.meta.url)
   .href;
 const LETHAL_BOULDER_URL = new URL("../assets/generated/lethal-boulder.png", import.meta.url).href;
+const IMPACT_EXPLOSION_URL = new URL("../assets/generated/impact-explosion.png", import.meta.url)
+  .href;
+const SEAWATER_IMPACT_URL = new URL("../assets/generated/seawater-impact.png", import.meta.url)
+  .href;
 
 type AtlasFrame = readonly [x: number, y: number, width: number, height: number];
 
@@ -49,6 +53,8 @@ export interface ArenaVisualAssets {
   readonly pirateShipTexture: Texture;
   readonly cannonballTexture: Texture;
   readonly lethalBoulderTexture: Texture;
+  readonly impactExplosionTexture: Texture;
+  readonly seawaterImpactTexture: Texture;
 }
 
 function createAtlasTexture(atlas: Texture, frame: AtlasFrame, label: string): Texture {
@@ -103,14 +109,23 @@ function createItemTextures(atlas: Texture): Readonly<Record<ItemDefinitionId, T
 
 export async function loadArenaVisualAssets(): Promise<ArenaVisualAssets | null> {
   try {
-    const [characterAtlas, itemAtlas, pirateShipTexture, cannonballTexture, lethalBoulderTexture] =
-      await Promise.all([
-        Assets.load<Texture>(CHARACTER_ATLAS_URL),
-        Assets.load<Texture>(ITEM_ATLAS_URL),
-        Assets.load<Texture>(PIRATE_SHIP_URL),
-        Assets.load<Texture>(CANNONBALL_URL),
-        Assets.load<Texture>(LETHAL_BOULDER_URL),
-      ]);
+    const [
+      characterAtlas,
+      itemAtlas,
+      pirateShipTexture,
+      cannonballTexture,
+      lethalBoulderTexture,
+      impactExplosionTexture,
+      seawaterImpactTexture,
+    ] = await Promise.all([
+      Assets.load<Texture>(CHARACTER_ATLAS_URL),
+      Assets.load<Texture>(ITEM_ATLAS_URL),
+      Assets.load<Texture>(PIRATE_SHIP_URL),
+      Assets.load<Texture>(CANNONBALL_URL),
+      Assets.load<Texture>(LETHAL_BOULDER_URL),
+      Assets.load<Texture>(IMPACT_EXPLOSION_URL),
+      Assets.load<Texture>(SEAWATER_IMPACT_URL),
+    ]);
 
     return Object.freeze({
       characterTextures: createCharacterTextures(characterAtlas),
@@ -118,6 +133,8 @@ export async function loadArenaVisualAssets(): Promise<ArenaVisualAssets | null>
       pirateShipTexture,
       cannonballTexture,
       lethalBoulderTexture,
+      impactExplosionTexture,
+      seawaterImpactTexture,
     });
   } catch {
     return null;

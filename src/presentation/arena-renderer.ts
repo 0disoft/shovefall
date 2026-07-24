@@ -605,6 +605,56 @@ function syncProjectileSprites(
   }
 }
 
+function syncImpactSprites(
+  layer: Container,
+  sprites: Map<string, Sprite>,
+  effects: readonly VisualEffect[],
+  frameTick: number,
+  projection: ArenaProjection,
+  reducedMotion: boolean,
+  assets: ArenaVisualAssets,
+): void {
+  const visibleEffectKeys = new Set<string>();
+
+  for (const effect of effects) {
+    const isWaterImpact = effect.kind === "tile-void";
+    const isExplosion = effect.kind === "rock-impact" || effect.kind === "bomb-detonated";
+
+    if (!isWaterImpact && !isExplosion) {
+      continue;
+    }
+
+    visibleEffectKeys.add(effect.key);
+    const texture = isWaterImpact ? assets.seawaterImpactTexture : assets.impactExplosionTexture;
+    let sprite = sprites.get(effect.key);
+
+    if (sprite === undefined) {
+      sprite = new Sprite(texture);
+      sprite.anchor.set(0.5, 0.5);
+      sprites.set(effect.key, sprite);
+      layer.addChild(sprite);
+    } else if (sprite.texture !== texture) {
+      sprite.texture = texture;
+    }
+
+    const duration = Math.max(1, effect.endTick - effect.startTick);
+    const progress = clamp((frameTick - effect.startTick) / duration, 0, 1);
+    const point = projectArenaPoint(effect.position, projection);
+    const baseSize = projection.tileWidth * (isWaterImpact ? 2.25 : 2.85);
+    const scale = reducedMotion ? 1 : 0.72 + progress * 0.48;
+    const size = clamp(baseSize * scale, isWaterImpact ? 54 : 68, isWaterImpact ? 142 : 176);
+    sprite.position.set(point.x, point.y);
+    sprite.width = size;
+    sprite.height = size;
+    sprite.alpha = Math.max(0, 1 - progress * (isWaterImpact ? 0.7 : 0.9));
+    sprite.visible = true;
+  }
+
+  for (const [effectKey, sprite] of sprites) {
+    sprite.visible = visibleEffectKeys.has(effectKey);
+  }
+}
+
 function syncParticipantSprites(
   layer: Container,
   sprites: Map<number, Sprite>,
@@ -1178,6 +1228,7 @@ export async function createArenaRenderer(
   const participants = new Graphics();
   const participantSprites = new Container();
   const effectLayer = new Graphics();
+  const impactSprites = new Container();
   const artilleryLabels = new Container();
   const artilleryLabelsByShip = new Map<number, Text>();
   participantSprites.sortableChildren = true;
@@ -1191,6 +1242,7 @@ export async function createArenaRenderer(
     participants,
     participantSprites,
     effectLayer,
+    impactSprites,
     artilleryLabels,
   );
   const itemSpritesById = new Map<number, Sprite>();
@@ -1198,6 +1250,7 @@ export async function createArenaRenderer(
   const cannonSpritesByShotId = new Map<number, Sprite>();
   const rockSpritesByShotId = new Map<number, Sprite>();
   const participantSpritesByActorId = new Map<number, Sprite>();
+  const impactSpritesByEffectKey = new Map<string, Sprite>();
   const eventLedger = new SimulationEventLedger();
   const motionPreference = window.matchMedia("(prefers-reduced-motion: reduce)");
   let reducedMotion = motionPreference.matches;
@@ -1239,6 +1292,8 @@ export async function createArenaRenderer(
     participantSprites.y = camera.y;
     effectLayer.x = camera.x;
     effectLayer.y = camera.y;
+    impactSprites.x = camera.x;
+    impactSprites.y = camera.y;
     artilleryLabels.x = camera.x;
     artilleryLabels.y = camera.y;
     host.dataset.cameraX = camera.x.toFixed(2);
@@ -1402,6 +1457,18 @@ export async function createArenaRenderer(
 
     for (const effect of visualEffects) {
       drawWorldEffect(effectLayer, effect, latestFrame.tick, projection, reducedMotion);
+    }
+
+    if (visualAssets !== null) {
+      syncImpactSprites(
+        impactSprites,
+        impactSpritesByEffectKey,
+        visualEffects,
+        latestFrame.tick,
+        projection,
+        reducedMotion,
+        visualAssets,
+      );
     }
   };
 
