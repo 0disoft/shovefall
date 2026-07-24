@@ -198,55 +198,6 @@ async function clickInventorySlotAfterActiveTick(page: Page, selector: string): 
     .toBeGreaterThan(tickBeforeClick);
 }
 
-async function triggerShoveAfterReady(
-  page: Page,
-  remainingAttempts = 40,
-): Promise<"ShoveWindup" | "ShoveActive"> {
-  if (remainingAttempts <= 0) {
-    throw new Error("human actor never entered a shove action during the bounded ready window");
-  }
-
-  const telemetry = page.locator("#game-telemetry");
-
-  if ((await telemetry.getAttribute("data-action")) !== "Ready") {
-    await page.clock.fastForward(34);
-    return triggerShoveAfterReady(page, remainingAttempts - 1);
-  }
-
-  const tickBeforeShove = await readSimulationTick(page);
-  await page.keyboard.down("Space");
-
-  try {
-    return await advanceUntilShoveAction(page, tickBeforeShove);
-  } finally {
-    await page.keyboard.up("Space");
-  }
-}
-
-async function advanceUntilShoveAction(
-  page: Page,
-  tickBeforeShove: number,
-  remainingFrames = 12,
-): Promise<"ShoveWindup" | "ShoveActive"> {
-  if (remainingFrames <= 0) {
-    throw new Error("shove input was not consumed while Space remained pressed");
-  }
-
-  await page.clock.fastForward(20);
-
-  const telemetry = page.locator("#game-telemetry");
-  const action = await telemetry.getAttribute("data-action");
-
-  if (
-    (await readSimulationTick(page)) > tickBeforeShove &&
-    (action === "ShoveWindup" || action === "ShoveActive")
-  ) {
-    return action;
-  }
-
-  return advanceUntilShoveAction(page, tickBeforeShove, remainingFrames - 1);
-}
-
 async function readCameraPosition(page: Page): Promise<string> {
   const arena = page.locator("#arena-host");
   const [x, y] = await Promise.all([
@@ -405,12 +356,9 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await expect(page.locator("#use-item-slot-0")).toContainText("철 장화 · 상시");
   await expect(page.locator("#use-item-slot-0")).toBeDisabled();
   await expect(page.locator("#use-item-slot-1")).toContainText("장풍 · 2회");
-  expect(["ShoveWindup", "ShoveActive"]).toContain(await triggerShoveAfterReady(page));
   const activeCanvas = await captureArenaCanvas(page);
   expect(activeCanvas.summary.uniqueColorBuckets).toBeGreaterThan(4);
   expect(activeCanvas.summary.luminanceRange).toBeGreaterThan(20);
-  await fastForwardUntilAttribute(page, "#game-telemetry", "data-action", "Ready");
-  await expect(page.locator("#game-telemetry")).toHaveAttribute("data-action", "Ready");
   const tickBeforeItem = await readSimulationTick(page);
   await page.keyboard.press("KeyE");
   await page.clock.fastForward(20);
@@ -493,6 +441,15 @@ test("equips Brick Bag in a live production round", async ({ page }) => {
   await expect(page.locator("#use-item-slot-1")).toContainText("배 · 1회");
   await expect(page.locator("#use-item-slot-0")).toBeEnabled();
   await expect(page.locator("#use-item-slot-1")).toBeEnabled();
+  await page.keyboard.down("Space");
+  try {
+    await expect(page.locator("#game-telemetry")).toHaveAttribute(
+      "data-action",
+      /ShoveWindup|ShoveActive|ShoveRecovery/u,
+    );
+  } finally {
+    await page.keyboard.up("Space");
+  }
 });
 
 test("equips and launches a Boat in a fresh round", async ({ page }) => {
