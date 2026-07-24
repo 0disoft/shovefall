@@ -52,14 +52,8 @@ const ITEM_ATLAS_FRAMES: Readonly<Record<ItemDefinitionId, AtlasFrame>> = Object
 
 const TERRAIN_ATLAS_FRAMES: readonly AtlasFrame[] = Object.freeze(
   [65, 345, 620, 895].flatMap((y, row) =>
-    [55, 345, 615, 890].map(
-      (x, column) =>
-        Object.freeze([
-          x,
-          y,
-          [300, 290, 290, 300][column] ?? 290,
-          [280, 270, 280, 285][row] ?? 280,
-        ]),
+    [55, 345, 615, 890].map((x, column) =>
+      Object.freeze([x, y, [300, 290, 290, 300][column] ?? 290, [280, 270, 280, 285][row] ?? 280]),
     ),
   ),
 );
