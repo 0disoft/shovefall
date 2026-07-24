@@ -217,11 +217,24 @@ async function triggerShoveAfterReady(
   await page.keyboard.down("Space");
 
   try {
-    await page.clock.fastForward(20);
+    return await advanceUntilShoveAction(page, tickBeforeShove);
   } finally {
     await page.keyboard.up("Space");
   }
+}
 
+async function advanceUntilShoveAction(
+  page: Page,
+  tickBeforeShove: number,
+  remainingFrames = 12,
+): Promise<"ShoveWindup" | "ShoveActive"> {
+  if (remainingFrames <= 0) {
+    throw new Error("shove input was not consumed while Space remained pressed");
+  }
+
+  await page.clock.fastForward(20);
+
+  const telemetry = page.locator("#game-telemetry");
   const action = await telemetry.getAttribute("data-action");
 
   if (
@@ -231,7 +244,7 @@ async function triggerShoveAfterReady(
     return action;
   }
 
-  return triggerShoveAfterReady(page, remainingAttempts - 1);
+  return advanceUntilShoveAction(page, tickBeforeShove, remainingFrames - 1);
 }
 
 async function readCameraPosition(page: Page): Promise<string> {
@@ -595,6 +608,23 @@ test("offers a working touch joystick and action buttons on a narrow viewport", 
   await startGame(page);
   await expect(page.locator("#app")).toHaveAttribute("data-round", "active");
 
+  await page.locator("#touch-shove").dispatchEvent("pointerdown", {
+    button: 0,
+    isPrimary: true,
+    pointerId: 99,
+    pointerType: "touch",
+  });
+  await expect(page.locator("#game-telemetry")).toHaveAttribute(
+    "data-action",
+    /ShoveWindup|ShoveActive|ShoveRecovery|Stumbling/u,
+  );
+  await page.locator("#touch-shove").dispatchEvent("pointerup", {
+    button: 0,
+    isPrimary: true,
+    pointerId: 99,
+    pointerType: "touch",
+  });
+
   const joystick = page.locator("#pointer-joystick");
   await expect(joystick).toBeVisible();
   const positionBefore = await readCameraPosition(page);
@@ -612,17 +642,6 @@ test("offers a working touch joystick and action buttons on a narrow viewport", 
   }
   await expect.poll(() => readCameraPosition(page)).not.toBe(positionBefore);
   await expect(joystick).not.toHaveAttribute("data-active", "true");
-
-  await page.locator("#touch-shove").dispatchEvent("pointerdown", {
-    button: 0,
-    isPrimary: true,
-    pointerId: 99,
-    pointerType: "touch",
-  });
-  await expect(page.locator("#game-telemetry")).toHaveAttribute(
-    "data-action",
-    /ShoveWindup|ShoveActive|ShoveRecovery|Stumbling/u,
-  );
 });
 
 test("keeps bounded debug tuning in development and removes it from production", async ({
