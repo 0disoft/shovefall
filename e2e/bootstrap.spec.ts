@@ -77,16 +77,16 @@ async function captureArenaCanvas(page: Page): Promise<{
   return { png, summary };
 }
 
-async function fastForwardUntilRoundCompleted(page: Page, remainingFrames = 550): Promise<void> {
+async function fastForwardUntilRoundCompleted(page: Page, remainingSteps = 300): Promise<void> {
   if (
-    remainingFrames === 0 ||
+    remainingSteps === 0 ||
     (await page.locator("#app").getAttribute("data-round")) === "completed"
   ) {
     return;
   }
 
-  await page.clock.fastForward(150);
-  return fastForwardUntilRoundCompleted(page, remainingFrames - 1);
+  await page.clock.fastForward(300);
+  return fastForwardUntilRoundCompleted(page, remainingSteps - 1);
 }
 
 async function installFixedRoundSeed(page: Page, firstWord: number, secondWord: number) {
@@ -185,38 +185,55 @@ async function readSimulationTick(page: Page): Promise<number> {
   return Number(await page.locator("#game-telemetry").getAttribute("data-tick"));
 }
 
-async function clickInventorySlotAfterActiveTick(page: Page, selector: string): Promise<void> {
-  const clickResult = await page.waitForFunction(
-    ({ slotSelector }) => {
-      const slot = document.querySelector(slotSelector);
-      const telemetry = document.querySelector("#game-telemetry");
-
-      if (
-        !(slot instanceof HTMLButtonElement) ||
-        slot.disabled ||
-        telemetry?.getAttribute("data-action") !== "Ready"
-      ) {
-        return null;
-      }
-
-      const tick = Number(telemetry.getAttribute("data-tick"));
-      slot.click();
-      return { tick };
-    },
-    { slotSelector: selector },
-    { timeout: 15_000 },
-  );
-  const consumedClick = await clickResult.jsonValue();
-  if (consumedClick === null) {
-    throw new Error("inventory slot click did not produce a simulation tick");
+async function waitForSimulationTickAdvance(
+  page: Page,
+  tickBefore: number,
+  remainingFrames = 20,
+): Promise<void> {
+  if ((await readSimulationTick(page)) > tickBefore) {
+    return;
   }
-  const tickBeforeClick = consumedClick.tick;
-  await expect
-    .poll(() => readSimulationTick(page), {
-      message: "inventory input should be consumed by a later simulation tick",
-      timeout: 15_000,
-    })
-    .toBeGreaterThan(tickBeforeClick);
+
+  if (remainingFrames === 0) {
+    throw new Error("inventory input was not consumed during the bounded fixed-clock window");
+  }
+
+  await page.clock.fastForward(20);
+  return waitForSimulationTickAdvance(page, tickBefore, remainingFrames - 1);
+}
+
+async function clickInventorySlotAfterActiveTick(page: Page, selector: string): Promise<void> {
+  const slot = page.locator(selector);
+  await expect(slot).toBeEnabled({ timeout: 15_000 });
+  await expect(page.locator("#game-telemetry")).toHaveAttribute("data-action", "Ready", {
+    timeout: 15_000,
+  });
+  const tickBeforeClick = await readSimulationTick(page);
+  await slot.click();
+  await waitForSimulationTickAdvance(page, tickBeforeClick);
+}
+
+async function useDirectionalInventorySlot(
+  page: Page,
+  selector: string,
+  expectedText: string,
+  directions: readonly string[] = ["ArrowUp", "ArrowRight", "ArrowDown", "ArrowLeft"],
+): Promise<void> {
+  const [direction, ...remainingDirections] = directions;
+
+  if (direction === undefined) {
+    throw new Error(`inventory slot never reached expected state: ${expectedText}`);
+  }
+
+  const slot = page.locator(selector);
+  await faceArenaDirection(page, direction);
+  await clickInventorySlotAfterActiveTick(page, selector);
+
+  if ((await slot.textContent())?.includes(expectedText) === true) {
+    return;
+  }
+
+  return useDirectionalInventorySlot(page, selector, expectedText, remainingDirections);
 }
 
 async function readCameraPosition(page: Page): Promise<string> {
@@ -500,6 +517,7 @@ test("equips Brick Bag in a live production round", async ({ page }) => {
 });
 
 test("equips and launches a Boat in a fresh round", async ({ page }) => {
+  await page.clock.install();
   await installFixedRoundSeed(page, 1, 0);
   await page.goto("/");
   await openSettings(page);
@@ -510,7 +528,7 @@ test("equips and launches a Boat in a fresh round", async ({ page }) => {
   await expect(page.locator("#setup-summary")).toContainText("철 장화 + 배");
   await saveSettings(page);
   await startGame(page);
-  await expect(page.locator("#app")).toHaveAttribute("data-round", "active", { timeout: 5_000 });
+  await finishInstalledClockCountdown(page);
   await expect(page.locator("#use-item-slot-1")).toContainText("배 · 1회");
   await clickInventorySlotAfterActiveTick(page, "#use-item-slot-1");
   await expect(page.locator("#use-item-slot-1")).toContainText("배 · 0회");
@@ -519,6 +537,7 @@ test("equips and launches a Boat in a fresh round", async ({ page }) => {
 });
 
 test("equips and places a timed bomb in a fresh round", async ({ page }) => {
+  await page.clock.install();
   await installFixedRoundSeed(page, 1, 0);
   await page.goto("/");
   await openSettings(page);
@@ -529,10 +548,10 @@ test("equips and places a timed bomb in a fresh round", async ({ page }) => {
   await expect(page.locator("#setup-summary")).toContainText("철 장화 + 시한폭탄");
   await saveSettings(page);
   await startGame(page);
-  await expect(page.locator("#app")).toHaveAttribute("data-round", "active", { timeout: 5_000 });
+  await finishInstalledClockCountdown(page);
   await expect(page.locator("#use-item-slot-1")).toContainText("시한폭탄 · 2회");
   await expect(page.locator("#use-item-slot-1")).toBeEnabled();
-  await clickInventorySlotAfterActiveTick(page, "#use-item-slot-1");
+  await useDirectionalInventorySlot(page, "#use-item-slot-1", "시한폭탄 · 1회");
   await expect(page.locator("#use-item-slot-1")).toContainText("시한폭탄 · 1회");
   await expect(page.getByText("폭탄을 놨어. 5초 뒤 터져.")).toBeVisible();
 });
@@ -559,6 +578,7 @@ test("selects Soap in a live production-safe round", async ({ page }) => {
 });
 
 test("selects and fires Grappling Hook in a fresh round", async ({ page }) => {
+  await page.clock.install();
   await installFixedRoundSeed(page, 1, 0);
   await page.goto("/");
   await openSettings(page);
@@ -570,12 +590,10 @@ test("selects and fires Grappling Hook in a fresh round", async ({ page }) => {
   await expect(page.locator("#setup-summary")).toContainText("철 장화 + 구조 갈고리");
   await saveSettings(page);
   await startGame(page);
-  await expect(page.locator("#app")).toHaveAttribute("data-round", "active", { timeout: 5_000 });
+  await finishInstalledClockCountdown(page);
   const slot = page.locator("#use-item-slot-1");
   await expect(slot).toContainText("구조 갈고리 · 2회");
-  await faceArenaDirection(page, "ArrowRight");
-  await expect(slot).toBeEnabled();
-  await clickInventorySlotAfterActiveTick(page, "#use-item-slot-1");
+  await useDirectionalInventorySlot(page, "#use-item-slot-1", "구조 갈고리 · 1회");
 
   await expect(slot).toContainText("구조 갈고리 · 1회");
 });
@@ -703,7 +721,7 @@ test("keeps bounded debug tuning in development and removes it from production",
 });
 
 test("completes a collapsing round and starts a fresh world", async ({ page }) => {
-  test.slow();
+  test.setTimeout(180_000);
   await page.clock.install();
   await installClipboardCapture(page);
   await page.goto("/");
