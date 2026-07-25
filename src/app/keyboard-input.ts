@@ -1,8 +1,13 @@
-import { InputState, isGameplayCode } from "./input-state";
+import { InputState, isGameplayCode, isMovementCode } from "./input-state";
 
 export interface KeyboardInput {
   readonly state: InputState;
   destroy(): void;
+}
+
+export interface KeyboardInputActivity {
+  isCommandActive(): boolean;
+  isMovementWarmupActive(): boolean;
 }
 
 function isInteractiveTarget(target: EventTarget | null): boolean {
@@ -16,11 +21,18 @@ function isInteractiveTarget(target: EventTarget | null): boolean {
   );
 }
 
-export function createKeyboardInput(isActive: () => boolean): KeyboardInput {
+export function createKeyboardInput(activity: KeyboardInputActivity): KeyboardInput {
   const state = new InputState();
 
   const handleKeyDown = (event: KeyboardEvent): void => {
-    if (!isActive() || !isGameplayCode(event.code) || isInteractiveTarget(event.target)) {
+    if (!isGameplayCode(event.code) || isInteractiveTarget(event.target)) {
+      return;
+    }
+
+    const commandActive = activity.isCommandActive();
+    const movementWarmupActive = activity.isMovementWarmupActive() && isMovementCode(event.code);
+
+    if (!commandActive && !movementWarmupActive) {
       return;
     }
 

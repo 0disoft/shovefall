@@ -142,9 +142,10 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
   let countdownElapsedMilliseconds = 0;
   let awaitingHumanUpgrade = false;
   let pendingHumanUpgrade: UpgradeStatId | null = null;
-  const keyboard: KeyboardInput = createKeyboardInput(
-    () => active && !paused && countdown === null && !humanEliminated,
-  );
+  const keyboard: KeyboardInput = createKeyboardInput({
+    isCommandActive: () => active && !paused && countdown === null && !humanEliminated,
+    isMovementWarmupActive: () => active && !paused && countdown !== null && !humanEliminated,
+  });
   const gamepad: GamepadInput = createGamepadInput();
 
   const publishFrame = (): void => {

@@ -9,6 +9,12 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.39.1",
+    title: "출발 신호부터 바로 달린다요 ㅇㅅㅇ",
+    reason: "카운트다운 중에 방향키를 누르고 있으면 시작 뒤에 키를 다시 눌러야 했다요.",
+    change: "미리 누른 이동키는 기억하고 밀치기와 아이템은 시작 신호 뒤에만 받는다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.39.0",
     title: "섬이 천천히 포위된다요 ㅇㅅㅇ",
     reason: "포탄이 온 섬을 가로질러 우르르 날아오니 정신없고 땅도 너무 빨리 없어졌다요.",

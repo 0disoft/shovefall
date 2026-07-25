@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { InputState, isGameplayCode } from "../src/app/input-state";
+import { InputState, isGameplayCode, isMovementCode } from "../src/app/input-state";
 
 describe("human input state", () => {
   it("tracks held movement and consumes action edges once", () => {
@@ -58,6 +58,9 @@ describe("human input state", () => {
     expect(isGameplayCode("KeyE")).toBe(true);
     expect(isGameplayCode("Digit1")).toBe(false);
     expect(isGameplayCode("Enter")).toBe(false);
+    expect(isMovementCode("KeyW")).toBe(true);
+    expect(isMovementCode("ArrowRight")).toBe(true);
+    expect(isMovementCode("Space")).toBe(false);
   });
 
   it("maps arrow keys to the same movement contract as WASD", () => {

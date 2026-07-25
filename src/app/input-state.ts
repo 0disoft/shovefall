@@ -1,6 +1,6 @@
 import { createNeutralCommand, type ActorCommandV1 } from "../simulation/contracts";
 
-export const GAMEPLAY_CODES = Object.freeze([
+export const MOVEMENT_CODES = Object.freeze([
   "KeyW",
   "KeyA",
   "KeyS",
@@ -9,6 +9,10 @@ export const GAMEPLAY_CODES = Object.freeze([
   "ArrowLeft",
   "ArrowDown",
   "ArrowRight",
+] as const);
+
+export const GAMEPLAY_CODES = Object.freeze([
+  ...MOVEMENT_CODES,
   "Space",
   "ShiftLeft",
   "ShiftRight",
@@ -19,9 +23,14 @@ export const GAMEPLAY_CODES = Object.freeze([
 type GameplayCode = (typeof GAMEPLAY_CODES)[number];
 
 const GAMEPLAY_CODE_SET: ReadonlySet<string> = new Set(GAMEPLAY_CODES);
+const MOVEMENT_CODE_SET: ReadonlySet<string> = new Set(MOVEMENT_CODES);
 
 export function isGameplayCode(code: string): code is GameplayCode {
   return GAMEPLAY_CODE_SET.has(code);
+}
+
+export function isMovementCode(code: string): code is GameplayCode {
+  return MOVEMENT_CODE_SET.has(code);
 }
 
 export class InputState {

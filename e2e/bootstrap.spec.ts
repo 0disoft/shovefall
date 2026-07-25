@@ -280,9 +280,9 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await versionHistoryButton.click();
   await expect(page.locator("#app")).toHaveAttribute("data-screen", "history");
   await expect(page.getByRole("heading", { level: 2, name: "버전 기록" })).toBeFocused();
-  await expect(page.locator("#current-version")).toHaveText("v0.39.0");
-  await expect(page.locator("#version-history-list > li")).toHaveCount(22);
-  await expect(page.getByText("왜 바꿨냐면요")).toHaveCount(22);
+  await expect(page.locator("#current-version")).toHaveText("v0.39.1");
+  await expect(page.locator("#version-history-list > li")).toHaveCount(23);
+  await expect(page.getByText("왜 바꿨냐면요")).toHaveCount(23);
   await expect(page.locator("#arena-host canvas")).toBeHidden();
   await page.keyboard.press("Escape");
   await expect(page.locator("#app")).toHaveAttribute("data-screen", "menu");
@@ -373,7 +373,14 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
     countdownPauseSnapshot.countdown ?? "",
   );
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
-  await finishInstalledClockCountdown(page);
+  const heldMovementStart = await readCameraPosition(page);
+  await page.keyboard.down("w");
+  try {
+    await finishInstalledClockCountdown(page);
+    await fastForwardUntilCameraMoved(page, heldMovementStart);
+  } finally {
+    await page.keyboard.up("w");
+  }
   await expect(page.getByText("시작!", { exact: true })).toBeVisible();
   await expect(page.locator("#game-telemetry")).toHaveAttribute("data-action", "Ready");
   await expect(page.locator("#inventory-actions")).toBeVisible();

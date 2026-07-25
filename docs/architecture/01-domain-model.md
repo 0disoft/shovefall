@@ -114,6 +114,8 @@ The `0.37.0` browser scheduler caps accumulated wall-clock debt at sixteen fixed
 
 Product `0.39.0`, simulation `20.0.0`, and content `14.0.0` replace the browser-owned automatic plan with an explicit paused stat-command boundary. Post-step disposition orders completed round, human terminal state, and then eligible upgrade request; a dead participant cannot spend or repeatedly request points. Public configuration constants own the 120-second limit, fixed Slow collapse, 8 initial items, and 4-second respawn. The arena owns a 12-lake 5–9-tile contract under a 96-tile budget. Collapse owns spatial six-tile waves, while artillery owns one closest-ship shot per wave. Reports advance to v6 with applied human selections; replay remains v2 and fixtures regenerate for the deterministic map and schedule changes.
 
+Product `0.39.1` keeps simulation `20.0.0` and content `14.0.0`. The keyboard adapter may retain held movement during the browser countdown, but the application session still gates shove, dodge, and item edges until the active phase. Simulation ticks, replay commands, and deterministic hashes remain unchanged.
+
 ## Version Ownership
 
 - Product version: `package.json` and `PRODUCT_VERSION`.

@@ -1,8 +1,8 @@
 # Static Release Procedure
 
-- Status: `0.39.0` rules candidate; grouped local validation passed, hosted proof pending
+- Status: `0.39.1` input-fix candidate; grouped local validation passed, hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.39.0`
+- Current product version: `0.39.1`
 - Validation source: [../../VALIDATION.md](../../VALIDATION.md)
 - Submission package: [../product/05-submission-package.md](../product/05-submission-package.md)
 - Asset ledger: [../assets/README.md](../assets/README.md)
@@ -49,9 +49,9 @@ Product `0.37.0` advances simulation to `19.0.0` and content to `13.0.0`. A Bomb
 
 Product `0.38.0` keeps simulation `19.0.0` and content `13.0.0`. It adds presentation-only windup fans, hand trajectories, dodge wedges, velocity trails, and falling rings in a dedicated overlay above character sprites. Public-scale detail is limited to the human and actors within eight world units; distant bots retain one cheap direction cue. Reduced-motion keeps static information shapes. Replay fixtures refresh only for the product envelope; deterministic hashes and rules remain unchanged. All 194 unit/scenario checks and thirteen production Chrome paths pass locally.
 
-Product `0.39.0`, simulation `20.0.0`, and content `14.0.0` fix public play to Slow collapse, eight initial items, four-second item respawns, and a 120-second limit. The 48×40 island now requires 12 separated 5–9-tile lakes under a 96-tile budget. Six spatially adjacent shore tiles form each collapse wave, and only the closest ship fires one visible cannonball for that wave, bounding simultaneous trajectories instead of sending one projectile per doomed tile across the map. Terrain corner atlas indices are corrected, unsupported multi-side shores keep procedural geometry, camera shake is disabled, nearby procedural face marks follow facing, and the shove endpoint shows a hand. Pre-round growth planning is removed: a credited human elimination pauses for one explicit stat choice, but completion, Falling, and elimination states have higher priority. Local reports advance to v6 with the 120-second rule and applied human choice history. Replay remains v2 and fixtures regenerate for the new simulation envelope. Aggregate local validation passes 195 unit/scenario checks and the production artifact passes all 13 Chrome paths. Strategy audit, host-qualified profile, capture, hosted CI, Pages, and public URL evidence remain fresh gates.
+Product `0.39.1`, simulation `20.0.0`, and content `14.0.0` preserve the Slow-collapse 50-player rules, including 12 separated 5–9-tile lakes under the 96-tile budget, and fix keyboard movement held during the countdown. The application remembers movement through the transition but still rejects pre-start shove, dodge, and item edges; reports advance to v6 for the current public rules. Replay remains v2 because simulation state and hashes are unchanged. All 195 unit/scenario checks, fourteen development Chrome paths, and thirteen production-artifact Chrome paths pass locally. Strategy audit, host-qualified profile, capture, hosted CI, Pages, and public URL evidence remain gates for this candidate.
 
-The browser profile rejects a host above its five-sample CPU qualification before Chrome starts. Contest-release promotion still requires `0.39.0` production Chrome, strategy audit, hosted proof, a passing host-qualified production-browser profile, active-item balance evidence, and human playtest.
+The browser profile rejects a host above its five-sample CPU qualification before Chrome starts. Contest-release promotion still requires `0.39.1` production Chrome, strategy audit, hosted proof, a passing host-qualified production-browser profile, active-item balance evidence, and human playtest.
 
 ## Release Types
 

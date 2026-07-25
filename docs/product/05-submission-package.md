@@ -1,7 +1,7 @@
 # Contest Submission Package
 
-- Status: `0.39.0` rules candidate; grouped local validation passed, exact-SHA proof pending
-- Candidate version: `0.39.0`
+- Status: `0.39.1` input-fix candidate; grouped local validation passed, exact-SHA proof pending
+- Candidate version: `0.39.1`
 - Candidate runtime SHA: pending final clean validation commit
 - Release gate: [../ops/release.md](../ops/release.md)
 - Asset ledger: [../assets/README.md](../assets/README.md)
@@ -112,8 +112,8 @@ AI 도구 이름과 역할은 실제 사용 기록만 남긴다. 사용하지 �
 
 ## 공개 전 체크
 
-- [x] `0.39.0`의 195개 unit/scenario 검사와 13개 production Chrome 경로가 로컬에서 통과했다.
-- [ ] `0.39.0`의 exact-SHA hosted CI, Pages, cache-busted 공개 브라우저 확인을 새로 확보한다. `0.37.0` 근거는 새 지도·포격·성장 규칙을 증명하지 않는다.
+- [x] `0.39.1`의 195개 unit/scenario 검사와 13개 production Chrome 경로가 로컬에서 통과했다.
+- [ ] `0.39.1`의 exact-SHA hosted CI, Pages, cache-busted 공개 브라우저 확인을 새로 확보한다. `0.37.0` 근거는 새 지도·포격·성장 규칙을 증명하지 않는다.
 - [x] `0.37.0`의 16시드 생산 감사는 시간초과 0회, 평균 `50.215`초, 외곽 두 위험 띠 생성 `83.57%`, 58회 폭탄 사용 중 설치자 직접 자폭 0회를 기록했다.
 - [x] `0.37.0` SHA `7386349b43a6e83bd0071873184f70e303c92ef0`은 [CI run 30087368621](https://github.com/0disoft/shovefall/actions/runs/30087368621)에서 merge checks, 13개 production Chrome 경로, Pages 업로드와 배포를 통과했다. 선택적 hosted 캡처 경고는 배포를 막지 않았고 새 캡처 아티팩트 근거로 쓰지 않는다.
 - [x] `0.34.1` 런타임 SHA `354a602392cccb453ebb1a4ac1fd52c5a39fac6c`을 원격 main에서 검증·캡처·배포했다. [CI run 30061893140](https://github.com/0disoft/shovefall/actions/runs/30061893140)은 179개 테스트, 13개 production Chrome 경로, exact-SHA 미디어 업로드, Pages 배포를 통과했다.

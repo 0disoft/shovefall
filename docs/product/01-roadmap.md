@@ -94,7 +94,7 @@ Exit conditions:
 - Screenshot, short gameplay capture, tool list, asset provenance, and development notes are ready
   in [05-submission-package.md](05-submission-package.md) for the contest post.
 
-Current status: `IN_PROGRESS`. Product `0.39.0`, simulation `20.0.0`, and content `14.0.0` are the current local rules. Public play fixes 50 Hard bots, Slow collapse, eight initial map items, four-second respawns, a 120-second limit, twelve lakes, nearby-wave artillery, and manual kill-reward stat choices. Eight accepted generated asset groups retain independent procedural fallbacks. The deployed `0.37.0` SHA `7386349b43a6e83bd0071873184f70e303c92ef0` remains the last hosted proof. The `0.39.0` candidate has current unit evidence, while production Chrome, strategy audit, capture, exact-SHA hosted proof, named physical-browser coverage, and human-play evidence must be refreshed after the final commit.
+Current status: `IN_PROGRESS`. Product `0.39.1`, simulation `20.0.0`, and content `14.0.0` are the current local rules. Public play fixes 50 Hard bots, Slow collapse, eight initial map items, four-second respawns, a 120-second limit, twelve lakes, nearby-wave artillery, manual kill-reward stat choices, and countdown-held keyboard movement. Eight accepted generated asset groups retain independent procedural fallbacks. The deployed `0.37.0` SHA `7386349b43a6e83bd0071873184f70e303c92ef0` remains the last hosted proof. The `0.39.1` candidate has current unit and production Chrome evidence; strategy audit, capture, exact-SHA hosted proof, named physical-browser coverage, and human-play evidence remain pending after the final commit.
 
 ## Deferred Beyond the Submission
 
