@@ -1,5 +1,6 @@
 import type { GameSettings } from "./settings";
-import type { RenderFrameV1 } from "../simulation/contracts";
+import type { RenderFrameV1, UpgradeStatId } from "../simulation/contracts";
+import { PUBLIC_ROUND_LIMIT_SECONDS } from "./settings";
 import type { GameplayTuningV1 } from "../simulation/tuning";
 import {
   CONTENT_VERSION,
@@ -8,8 +9,13 @@ import {
   SIMULATION_VERSION,
 } from "../simulation/versions";
 
-export interface PlaytestRoundReportV5 {
-  readonly schemaVersion: "shovefall-playtest-round/v5";
+export interface HumanUpgradeSelection {
+  readonly tick: number;
+  readonly stat: UpgradeStatId;
+}
+
+export interface PlaytestRoundReportV6 {
+  readonly schemaVersion: "shovefall-playtest-round/v6";
   readonly versions: {
     readonly product: string;
     readonly simulation: string;
@@ -27,7 +33,7 @@ export interface PlaytestRoundReportV5 {
     readonly itemRespawnSeconds: number;
     readonly startingWeight: GameSettings["startingWeight"];
     readonly startingItems: GameSettings["startingItems"];
-    readonly upgradePlan: GameSettings["upgradePlan"];
+    readonly roundLimitSeconds: number;
   };
   readonly gameplayTuning: GameplayTuningV1;
   readonly result: {
@@ -37,6 +43,7 @@ export interface PlaytestRoundReportV5 {
     readonly completedTick: number;
     readonly durationSeconds: number;
     readonly humanProgression: RenderFrameV1["participants"][number]["progression"];
+    readonly humanUpgradeSelections: readonly HumanUpgradeSelection[];
   };
 }
 
@@ -45,7 +52,8 @@ export function createPlaytestRoundReport(
   seed: string,
   frame: RenderFrameV1,
   gameplayTuning: GameplayTuningV1,
-): PlaytestRoundReportV5 {
+  humanUpgradeSelections: readonly HumanUpgradeSelection[] = Object.freeze([]),
+): PlaytestRoundReportV6 {
   const { round } = frame;
 
   if (round.status !== "Completed" || round.completedTick === null || round.reason === null) {
@@ -65,7 +73,7 @@ export function createPlaytestRoundReport(
   }
 
   return Object.freeze({
-    schemaVersion: "shovefall-playtest-round/v5",
+    schemaVersion: "shovefall-playtest-round/v6",
     versions: Object.freeze({
       product: PRODUCT_VERSION,
       simulation: SIMULATION_VERSION,
@@ -83,7 +91,7 @@ export function createPlaytestRoundReport(
       itemRespawnSeconds: settings.itemRespawnSeconds,
       startingWeight: settings.startingWeight,
       startingItems: settings.startingItems,
-      upgradePlan: settings.upgradePlan,
+      roundLimitSeconds: PUBLIC_ROUND_LIMIT_SECONDS,
     }),
     gameplayTuning,
     result: Object.freeze({
@@ -93,10 +101,13 @@ export function createPlaytestRoundReport(
       completedTick: round.completedTick,
       durationSeconds: round.completedTick / FIXED_TICKS_PER_SECOND,
       humanProgression: human.progression,
+      humanUpgradeSelections: Object.freeze(
+        humanUpgradeSelections.map((selection) => Object.freeze({ ...selection })),
+      ),
     }),
   });
 }
 
-export function serializePlaytestRoundReport(report: PlaytestRoundReportV5): string {
+export function serializePlaytestRoundReport(report: PlaytestRoundReportV6): string {
   return JSON.stringify(report, null, 2);
 }

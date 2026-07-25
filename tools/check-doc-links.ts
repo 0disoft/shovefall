@@ -1,5 +1,18 @@
 import { readdir, readFile, stat } from "node:fs/promises";
 import { dirname, extname, join, normalize, relative, resolve } from "node:path";
+import {
+  FIXED_COLLAPSE_SPEED,
+  FIXED_INITIAL_ITEM_COUNT,
+  FIXED_ITEM_RESPAWN_SECONDS,
+  PUBLIC_ROUND_LIMIT_SECONDS,
+} from "../src/app/settings";
+import {
+  PUBLIC_LAKE_COUNT,
+  PUBLIC_MAXIMUM_LAKE_SIZE,
+  PUBLIC_MINIMUM_LAKE_SIZE,
+  PUBLIC_TOTAL_LAKE_BUDGET,
+} from "../src/simulation/arena";
+import { CONTENT_VERSION, PRODUCT_VERSION, SIMULATION_VERSION } from "../src/simulation/versions";
 
 const ROOT_DOCUMENTS = [
   "AGENTS.md",
@@ -40,8 +53,27 @@ const SCAFFOLD_MARKERS = [
 const CURRENT_PRODUCT_CONTRACTS = [
   {
     path: "docs/ops/release.md",
-    required: ["fixed 50-participant Normal round"],
+    required: [
+      `Current product version: \`${PRODUCT_VERSION}\``,
+      `Product \`${PRODUCT_VERSION}\`, simulation \`${SIMULATION_VERSION}\`, and content \`${CONTENT_VERSION}\``,
+      `${PUBLIC_LAKE_COUNT} separated ${PUBLIC_MINIMUM_LAKE_SIZE}–${PUBLIC_MAXIMUM_LAKE_SIZE}-tile lakes`,
+      `${PUBLIC_TOTAL_LAKE_BUDGET}-tile budget`,
+      `${PUBLIC_ROUND_LIMIT_SECONDS}-second limit`,
+      "reports advance to v6",
+    ],
     forbidden: ["16-participant normal round", "32-participant Mayhem boot"],
+  },
+  {
+    path: "docs/product/02-spec.md",
+    required: [
+      `${PUBLIC_ROUND_LIMIT_SECONDS}-second hard round limit`,
+      `exactly ${PUBLIC_LAKE_COUNT} separated ${PUBLIC_MINIMUM_LAKE_SIZE}–${PUBLIC_MAXIMUM_LAKE_SIZE}-tile lakes under a ${PUBLIC_TOTAL_LAKE_BUDGET}-tile total budget`,
+      "kill-triggered manual stat progression",
+      `fixed ${FIXED_COLLAPSE_SPEED[0]?.toUpperCase()}${FIXED_COLLAPSE_SPEED.slice(1)} collapse`,
+      `${FIXED_INITIAL_ITEM_COUNT} initial map items`,
+      `one new item every ${FIXED_ITEM_RESPAWN_SECONDS} seconds`,
+    ],
+    forbidden: ["75-second hard round limit"],
   },
 ] as const;
 

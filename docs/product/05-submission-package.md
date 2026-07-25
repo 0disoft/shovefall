@@ -1,7 +1,7 @@
 # Contest Submission Package
 
-- Status: `0.38.0` action-readability candidate; grouped local validation passed, exact-SHA proof pending
-- Candidate version: `0.38.0`
+- Status: `0.39.0` rules candidate; grouped local validation passed, exact-SHA proof pending
+- Candidate version: `0.39.0`
 - Candidate runtime SHA: pending final clean validation commit
 - Release gate: [../ops/release.md](../ops/release.md)
 - Asset ledger: [../assets/README.md](../assets/README.md)
@@ -15,7 +15,7 @@
 58도 사선 시점으로 보이는 해안선과 호수가 매번 달라지는 무인도에서 상대를 밀어내고 끝까지 살아남는 짧은 브라우저 파티 액션
 게임이다. 플레이어 한 명과 규칙 기반 컴퓨터들이 같은 물리 규칙으로 싸운다. WASD,
 방향키, 마우스 드래그, 터치 조이스틱, 게임패드로 이동하고 키보드·터치·게임패드로
-밀치기와 회피를 한다. 게임 전에 처치 포인트가 자동으로 소비될 성장 순서를 정한다.
+밀치기와 회피를 한다. 적을 처치하면 게임이 잠시 멈추고 힘·중심·발놀림·반사신경 중 하나를 직접 올린다.
 시작 장비에 장풍을 고르면 Q/E 또는 화면 버튼으로 두 번 쏠 수
 있고, 앞에 선 한 명을 몸무게에 따라 크게 날린다. 벽돌 가방을 고르면 앞 칸에 벽을 네
 번 세워 공격과 충돌을 막을 수 있다. 회피로 벽돌에 닿으면 정확히 올라가 밀리지 않고
@@ -112,8 +112,8 @@ AI 도구 이름과 역할은 실제 사용 기록만 남긴다. 사용하지 �
 
 ## 공개 전 체크
 
-- [x] `0.38.0`의 194개 unit/scenario 검사와 13개 production Chrome 경로가 로컬에서 통과했다.
-- [ ] `0.38.0`의 exact-SHA hosted CI, Pages, cache-busted 공개 브라우저 확인을 새로 확보한다. `0.37.0` 근거는 새 전투 방향 표시를 증명하지 않는다.
+- [x] `0.39.0`의 195개 unit/scenario 검사와 13개 production Chrome 경로가 로컬에서 통과했다.
+- [ ] `0.39.0`의 exact-SHA hosted CI, Pages, cache-busted 공개 브라우저 확인을 새로 확보한다. `0.37.0` 근거는 새 지도·포격·성장 규칙을 증명하지 않는다.
 - [x] `0.37.0`의 16시드 생산 감사는 시간초과 0회, 평균 `50.215`초, 외곽 두 위험 띠 생성 `83.57%`, 58회 폭탄 사용 중 설치자 직접 자폭 0회를 기록했다.
 - [x] `0.37.0` SHA `7386349b43a6e83bd0071873184f70e303c92ef0`은 [CI run 30087368621](https://github.com/0disoft/shovefall/actions/runs/30087368621)에서 merge checks, 13개 production Chrome 경로, Pages 업로드와 배포를 통과했다. 선택적 hosted 캡처 경고는 배포를 막지 않았고 새 캡처 아티팩트 근거로 쓰지 않는다.
 - [x] `0.34.1` 런타임 SHA `354a602392cccb453ebb1a4ac1fd52c5a39fac6c`을 원격 main에서 검증·캡처·배포했다. [CI run 30061893140](https://github.com/0disoft/shovefall/actions/runs/30061893140)은 179개 테스트, 13개 production Chrome 경로, exact-SHA 미디어 업로드, Pages 배포를 통과했다.

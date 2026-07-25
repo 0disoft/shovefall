@@ -10,6 +10,7 @@ import {
   getPresetCollapseSpeed,
   getPresetItemRespawnSeconds,
   getRecommendedInitialItemCount,
+  PUBLIC_ROUND_LIMIT_SECONDS,
   type PresetName,
 } from "../src/app/settings";
 import {
@@ -49,7 +50,7 @@ const CONTROLLED_ITEM_CHI_SQUARE_LIMIT = 5.991;
 const CONTROLLED_COLLAPSE_SAMPLE_COUNT = 16;
 const CONTROLLED_COLLAPSE_PARTICIPANT_COUNT = 16;
 const COLLAPSE_SPEEDS = ["slow", "normal", "fast"] as const satisfies readonly CollapseSpeed[];
-const ROUND_LIMIT_SECONDS = 75;
+const CONTROLLED_ROUND_LIMIT_SECONDS = 75;
 const MASS_BANDS = ["light", "normal", "heavy"] as const;
 const ITEM_SPAWN_BANDS = ["edge", "near-edge", "interior"] as const;
 const CONTROLLED_ITEM_GROUPS = ["control", ...MAP_ITEM_DEFINITION_IDS] as const;
@@ -398,7 +399,7 @@ function createAuditConfig(participantCount: (typeof PARTICIPANT_COUNTS)[number]
     participantCount,
     arenaColumns: arena.columns,
     arenaRows: arena.rows,
-    roundLimitSeconds: ROUND_LIMIT_SECONDS,
+    roundLimitSeconds: PUBLIC_ROUND_LIMIT_SECONDS,
     collapseSpeed: getPresetCollapseSpeed(preset),
     difficulty: "hard",
     itemsEnabled: true,
@@ -1160,7 +1161,7 @@ function auditControlledMass() {
     participantCount: CONTROLLED_MASS_PARTICIPANT_COUNT,
     arenaColumns: arena.columns,
     arenaRows: arena.rows,
-    roundLimitSeconds: ROUND_LIMIT_SECONDS,
+    roundLimitSeconds: CONTROLLED_ROUND_LIMIT_SECONDS,
     collapseSpeed: "normal",
     itemsEnabled: false,
   });
@@ -1260,7 +1261,7 @@ function auditControlledItems() {
     participantCount: CONTROLLED_ITEM_PARTICIPANT_COUNT,
     arenaColumns: arena.columns,
     arenaRows: arena.rows,
-    roundLimitSeconds: ROUND_LIMIT_SECONDS,
+    roundLimitSeconds: CONTROLLED_ROUND_LIMIT_SECONDS,
     collapseSpeed: "slow",
     itemsEnabled: false,
   });
@@ -1463,7 +1464,7 @@ function auditControlledCollapse() {
       participantCount: CONTROLLED_COLLAPSE_PARTICIPANT_COUNT,
       arenaColumns: arena.columns,
       arenaRows: arena.rows,
-      roundLimitSeconds: ROUND_LIMIT_SECONDS,
+      roundLimitSeconds: CONTROLLED_ROUND_LIMIT_SECONDS,
       collapseSpeed,
       difficulty: "normal",
       itemsEnabled: true,
@@ -1521,7 +1522,7 @@ function auditControlledCollapse() {
 }
 
 const PRODUCTION_DECISION_RULES = Object.freeze([
-  "Every sampled production-preset round must produce a structurally valid terminal result within 75 seconds.",
+  `Every sampled production-preset round must produce a structurally valid terminal result within ${PUBLIC_ROUND_LIMIT_SECONDS} seconds.`,
   "No sampled all-bot production-preset round may rely on the time-limit draw to terminate.",
   "At least 60% of observed item spawns must land in the outer two stable tile rings.",
   "Aggressor win rate must remain at least 0.75x Survivor unless their 95% Wilson intervals overlap, and its credited-elimination rate must not trail Survivor in every production preset sample.",

@@ -23,7 +23,7 @@ people, then publishing the exact candidate without burying combat telegraphs.
 - [x] Provider-neutral Vite and PixiJS static application with a pure 60 Hz simulation.
 - [x] Movement, shove, dodge, missed-shove stumble, simultaneous impulses, support loss, falling,
       results, and fresh-world restart.
-- [x] One public 50-participant mode with a 48×40 procedural island and exactly eight bounded separated lakes.
+- [x] One public 50-participant mode with a 48×40 procedural island and exactly twelve bounded separated lakes.
 - [x] Hard utility-bot reaction profile fixed for public play without bot-only physics advantages.
 - [x] Slow, Normal, and Fast collapse controls with deterministic warning and collapse schedules.
 - [x] Iron Boots, Feather, and Spring Glove with a bounded 3/2/1 outer-ring placement preference.
@@ -94,7 +94,7 @@ Exit conditions:
 - Screenshot, short gameplay capture, tool list, asset provenance, and development notes are ready
   in [05-submission-package.md](05-submission-package.md) for the contest post.
 
-Current status: `IN_PROGRESS`. Product `0.38.0`, simulation `19.0.0`, and content `13.0.0` are the current local rules. Eight accepted generated asset groups retain independent procedural fallbacks. The deployed `0.37.0` SHA `7386349b43a6e83bd0071873184f70e303c92ef0` passed hosted checks, thirteen production Chrome paths, Pages deployment, and a cache-busted public HTTP check in [CI run 30087368621](https://github.com/0disoft/shovefall/actions/runs/30087368621); optional hosted media capture remained non-blocking. Its merged sixteen-seed production audit completed without time-limit draws, averaged `50.215` seconds, placed `83.57%` of items in the outer two risk bands, and recorded zero Bomb-owner direct self-deaths across 58 uses. The new `0.38.0` action-feedback candidate passes 194 local unit/scenario checks and thirteen production Chrome paths; exact-SHA hosted proof, named physical-browser coverage, and human-play evidence remain open.
+Current status: `IN_PROGRESS`. Product `0.39.0`, simulation `20.0.0`, and content `14.0.0` are the current local rules. Public play fixes 50 Hard bots, Slow collapse, eight initial map items, four-second respawns, a 120-second limit, twelve lakes, nearby-wave artillery, and manual kill-reward stat choices. Eight accepted generated asset groups retain independent procedural fallbacks. The deployed `0.37.0` SHA `7386349b43a6e83bd0071873184f70e303c92ef0` remains the last hosted proof. The `0.39.0` candidate has current unit evidence, while production Chrome, strategy audit, capture, exact-SHA hosted proof, named physical-browser coverage, and human-play evidence must be refreshed after the final commit.
 
 ## Deferred Beyond the Submission
 

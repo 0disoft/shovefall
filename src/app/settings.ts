@@ -1,6 +1,5 @@
 import { ITEM_DEFINITION_IDS } from "../content/items";
-import type { BotDifficulty, ItemDefinitionId, UpgradeStatId } from "../simulation/contracts";
-import { normalizeUpgradePlan } from "../simulation/progression";
+import type { BotDifficulty, ItemDefinitionId } from "../simulation/contracts";
 import { SIMULATION_TUNING } from "../simulation/tuning";
 
 export const FORCED_PLAYER_COUNT = 50;
@@ -8,6 +7,10 @@ export const FORCED_BOT_DIFFICULTY = "hard" as const satisfies BotDifficulty;
 export const PRESET_NAMES = ["massive"] as const;
 export const BOT_DIFFICULTIES = [FORCED_BOT_DIFFICULTY] as const;
 export const DEFAULT_STARTING_WEIGHT = 75;
+export const FIXED_COLLAPSE_SPEED = "slow" as const;
+export const FIXED_INITIAL_ITEM_COUNT = 8;
+export const FIXED_ITEM_RESPAWN_SECONDS = 4;
+export const PUBLIC_ROUND_LIMIT_SECONDS = 120;
 
 export type PresetName = (typeof PRESET_NAMES)[number];
 export type CollapseSpeed = "slow" | "normal" | "fast";
@@ -29,7 +32,6 @@ export interface GameSettings {
   readonly botDifficulty: typeof FORCED_BOT_DIFFICULTY;
   readonly startingWeight: number;
   readonly startingItems: readonly ItemDefinitionId[];
-  readonly upgradePlan: readonly UpgradeStatId[];
 }
 
 export interface ArenaSize {
@@ -63,11 +65,11 @@ export function getPresetPlayerCount(_preset: PresetName): typeof FORCED_PLAYER_
 }
 
 export function getPresetCollapseSpeed(_preset: PresetName): CollapseSpeed {
-  return "normal";
+  return FIXED_COLLAPSE_SPEED;
 }
 
 export function getRecommendedInitialItemCount(playerCount: number): number {
-  return Math.ceil(normalizePlayerCount(playerCount) * 0.33);
+  return Math.min(FIXED_INITIAL_ITEM_COUNT, getMaximumItemCount(playerCount));
 }
 
 export function getMaximumItemCount(playerCount: number): number {
@@ -75,7 +77,7 @@ export function getMaximumItemCount(playerCount: number): number {
 }
 
 export function getPresetItemRespawnSeconds(_preset: PresetName): number {
-  return 5;
+  return FIXED_ITEM_RESPAWN_SECONDS;
 }
 
 export function normalizeInitialItemCount(value: number, playerCount: number): number {
@@ -144,7 +146,6 @@ export function normalizeSettings(
     readonly collapseSpeed?: string;
     readonly startingWeight?: number;
     readonly startingItems?: readonly string[];
-    readonly upgradePlan?: readonly unknown[];
     readonly playerCount?: number;
     readonly preset?: string;
     readonly botDifficulty?: string;
@@ -154,22 +155,12 @@ export function normalizeSettings(
   return Object.freeze({
     playerCount: FORCED_PLAYER_COUNT,
     preset: "massive",
-    collapseSpeed:
-      input.collapseSpeed !== undefined && isCollapseSpeed(input.collapseSpeed)
-        ? input.collapseSpeed
-        : getPresetCollapseSpeed("massive"),
-    initialItemCount: normalizeInitialItemCount(
-      input.initialItemCount ?? Number.NaN,
-      FORCED_PLAYER_COUNT,
-    ),
-    itemRespawnSeconds: normalizeItemRespawnSeconds(
-      input.itemRespawnSeconds ?? Number.NaN,
-      "massive",
-    ),
+    collapseSpeed: FIXED_COLLAPSE_SPEED,
+    initialItemCount: FIXED_INITIAL_ITEM_COUNT,
+    itemRespawnSeconds: FIXED_ITEM_RESPAWN_SECONDS,
     botDifficulty: FORCED_BOT_DIFFICULTY,
     startingWeight: normalizeStartingWeight(input.startingWeight ?? Number.NaN),
     startingItems: normalizeStartingItems(input.startingItems),
-    upgradePlan: normalizeUpgradePlan(input.upgradePlan),
   });
 }
 

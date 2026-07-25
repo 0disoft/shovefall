@@ -118,97 +118,8 @@
               </p>
             </fieldset>
 
-            <fieldset id="upgrade-plan" class="upgrade-plan-fieldset">
-              <legend>자동 성장 순서</legend>
-              <p class="fieldset-help">처치 포인트가 생기면 왼쪽부터 자동으로 찍어.</p>
-              <div class="upgrade-plan__choices" aria-label="성장 단계 추가">
-                <button type="button" data-add-upgrade="power">
-                  <strong>힘</strong><small>밀치기 +8%</small>
-                </button>
-                <button type="button" data-add-upgrade="stability">
-                  <strong>중심</strong><small>받는 밀침 -12%</small>
-                </button>
-                <button type="button" data-add-upgrade="mobility">
-                  <strong>발놀림</strong><small>이동 +5%</small>
-                </button>
-                <button type="button" data-add-upgrade="reflex">
-                  <strong>반사신경</strong><small>재사용 대기 감소</small>
-                </button>
-              </div>
-              <ol id="upgrade-plan-list" class="upgrade-plan__list" aria-live="polite"></ol>
-              <div class="upgrade-plan__actions">
-                <button id="clear-upgrade-plan" class="secondary-action" type="button">
-                  새로 짜기
-                </button>
-                <button id="undo-upgrade-plan" class="secondary-action" type="button">
-                  마지막 지우기
-                </button>
-                <button id="reset-upgrade-plan" class="secondary-action" type="button">
-                  균형 순서
-                </button>
-              </div>
-              <p id="upgrade-plan-help" class="fieldset-help" aria-live="polite"></p>
-            </fieldset>
-
-            <fieldset class="preset-fieldset">
-              <legend>바닥 붕괴</legend>
-              <label class="preset-card">
-                <input type="radio" name="collapseSpeed" value="slow" />
-                <span>
-                  <strong>느림</strong>
-                  <small>숨 돌릴 틈이 많아</small>
-                </span>
-              </label>
-              <label class="preset-card">
-                <input type="radio" name="collapseSpeed" value="normal" checked />
-                <span>
-                  <strong>보통</strong>
-                  <small>기본 템포로 무너져</small>
-                </span>
-              </label>
-              <label class="preset-card">
-                <input type="radio" name="collapseSpeed" value="fast" />
-                <span>
-                  <strong>빠름</strong>
-                  <small>쉴 새 없이 좁아져</small>
-                </span>
-              </label>
-            </fieldset>
-
-            <div class="player-control">
-              <div class="player-control__label">
-                <label for="initial-item-count">시작 아이템</label>
-                <output id="initial-item-count-value" for="initial-item-count">17개</output>
-              </div>
-              <input
-                id="initial-item-count"
-                name="initialItemCount"
-                type="range"
-                min="0"
-                max="25"
-                step="1"
-                value="17"
-              />
-            </div>
-
-            <div class="player-control">
-              <div class="player-control__label">
-                <label for="item-respawn">아이템 추가</label>
-                <output id="item-respawn-value" for="item-respawn">5초</output>
-              </div>
-              <input
-                id="item-respawn"
-                name="itemRespawnSeconds"
-                type="range"
-                min="0"
-                max="15"
-                step="1"
-                value="5"
-              />
-            </div>
-
             <p id="setup-summary" class="settings-summary" aria-live="polite">
-              50명 · AI 어려움 · 붕괴 보통 · 몸무게 75 · 시작 아이템 17개 · 5초마다 1개
+              50명 · 몸무게 75 · 맵 아이템 8개 · 4초마다 1개
             </p>
 
             <details id="debug-tuning" class="debug-tuning" data-debug-tuning="disabled" hidden>
@@ -360,7 +271,7 @@
                 >
               </div>
             </div>
-            <dl id="stat-status" class="stat-status" aria-label="자동 성장 상태" hidden>
+            <dl id="stat-status" class="stat-status" aria-label="스탯 상태" hidden>
               <div>
                 <dt>힘</dt>
                 <dd><output id="power-level">0</output></dd>
@@ -377,15 +288,47 @@
                 <dt>반사</dt>
                 <dd><output id="reflex-level">0</output></dd>
               </div>
-              <div class="stat-status__next">
-                <dt>다음</dt>
-                <dd><output id="next-upgrade-value">힘</output></dd>
-              </div>
               <div class="stat-status__points">
-                <dt>대기</dt>
+                <dt>포인트</dt>
                 <dd><output id="stat-points-value">0</output></dd>
               </div>
             </dl>
+            <section
+              id="stat-upgrade-overlay"
+              class="stat-upgrade"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="stat-upgrade-title"
+              hidden
+            >
+              <form id="stat-upgrade-form" class="stat-upgrade__panel">
+                <h3 id="stat-upgrade-title">스탯 하나 고르기</h3>
+                <p>처치 보상이다. 저장하면 바로 계속된다.</p>
+                <div class="stat-upgrade__choices">
+                  <label
+                    ><input type="radio" name="upgradeStat" value="power" checked /><span
+                      ><strong>힘</strong><small>밀치기 +8%</small></span
+                    ></label
+                  >
+                  <label
+                    ><input type="radio" name="upgradeStat" value="stability" /><span
+                      ><strong>중심</strong><small>받는 밀침 -12%</small></span
+                    ></label
+                  >
+                  <label
+                    ><input type="radio" name="upgradeStat" value="mobility" /><span
+                      ><strong>발놀림</strong><small>이동 +5%</small></span
+                    ></label
+                  >
+                  <label
+                    ><input type="radio" name="upgradeStat" value="reflex" /><span
+                      ><strong>반사신경</strong><small>재사용 대기 감소</small></span
+                    ></label
+                  >
+                </div>
+                <button class="primary-action" type="submit">저장하고 계속</button>
+              </form>
+            </section>
           </div>
           <dl id="game-telemetry" class="game-telemetry" aria-label="현재 라운드 상태" hidden>
             <div>

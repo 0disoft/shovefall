@@ -128,7 +128,7 @@ describe("procedural island arena", () => {
     expect(spawnIds.every((tileId) => stableIds.has(tileId))).toBe(true);
   });
 
-  it("carves eight separated lakes into the widened fifty-player island", () => {
+  it("carves twelve separated lakes into the widened fifty-player island", () => {
     const massiveConfig = normalizeGameConfig({
       participantCount: 50,
       arenaColumns: 48,
@@ -147,11 +147,11 @@ describe("procedural island arena", () => {
       const totalLakeTiles = lakes.reduce((sum, lake) => sum + lake.size, 0);
 
       expect(getComponents(landIds)).toHaveLength(1);
-      expect(lakes).toHaveLength(8);
-      expect(lakes.every((lake) => lake.size >= 6 && lake.size <= 10)).toBe(true);
-      expect(totalLakeTiles).toBeLessThanOrEqual(72);
-      expect(landIds.size).toBeGreaterThanOrEqual(1_080);
-      expect(landIds.size).toBeLessThanOrEqual(1_104);
+      expect(lakes).toHaveLength(12);
+      expect(lakes.every((lake) => lake.size >= 5 && lake.size <= 9)).toBe(true);
+      expect(totalLakeTiles).toBeLessThanOrEqual(96);
+      expect(landIds.size).toBeGreaterThanOrEqual(1_040);
+      expect(landIds.size).toBeLessThanOrEqual(1_096);
     }
   });
 

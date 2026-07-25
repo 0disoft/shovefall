@@ -142,41 +142,6 @@ function createCameraOffset(
   return Object.freeze({ x, y });
 }
 
-function createCameraShake(
-  effects: readonly VisualEffect[],
-  frameTick: number,
-  reducedMotion: boolean,
-): Vector2 {
-  if (reducedMotion) {
-    return Object.freeze({ x: 0, y: 0 });
-  }
-
-  let amplitude = 0;
-
-  for (const effect of effects) {
-    const duration = Math.max(1, effect.endTick - effect.startTick);
-    const progress = clamp((frameTick - effect.startTick) / duration, 0, 1);
-    const strength =
-      effect.kind === "rock-impact" || effect.kind === "bomb-detonated"
-        ? 8
-        : effect.kind === "tile-void"
-          ? 3.5
-          : effect.kind === "shove-hit" || effect.kind === "wind-blast-hit"
-            ? 2.25
-            : 0;
-    amplitude = Math.max(amplitude, strength * (1 - progress));
-  }
-
-  if (amplitude <= 0.05) {
-    return Object.freeze({ x: 0, y: 0 });
-  }
-
-  return Object.freeze({
-    x: Math.sin(frameTick * 2.17) * amplitude,
-    y: Math.cos(frameTick * 2.83) * amplitude * 0.62,
-  });
-}
-
 function getActionColor(action: ParticipantActionKind): number {
   return ACTION_COLORS[action];
 }
@@ -492,6 +457,44 @@ function drawActionFeedback(
   }
 }
 
+function drawFacingFeatures(
+  graphics: Graphics,
+  participant: RenderParticipantV1,
+  x: number,
+  y: number,
+  radius: number,
+  detailed: boolean,
+): void {
+  if (!detailed || participant.action === "Falling" || participant.action === "Eliminated") {
+    return;
+  }
+
+  const direction = projectArenaVector(participant.facing);
+  const length = Math.hypot(direction.x, direction.y);
+
+  if (length <= Number.EPSILON || direction.y < -0.18) {
+    return;
+  }
+
+  const normalized = { x: direction.x / length, y: direction.y / length };
+  const faceY = y - radius * 1.28;
+  const eyeRadius = Math.max(1.5, radius * 0.1);
+  const eyeOffset = Math.max(2.5, radius * 0.24);
+  const faceX = x + normalized.x * radius * 0.34;
+
+  if (normalized.y > 0.35) {
+    graphics
+      .circle(faceX - eyeOffset, faceY, eyeRadius)
+      .circle(faceX + eyeOffset, faceY, eyeRadius)
+      .fill({ color: 0x161b19, alpha: 0.96 });
+    return;
+  }
+
+  graphics
+    .circle(faceX + Math.sign(normalized.x) * eyeOffset * 0.35, faceY, eyeRadius)
+    .fill({ color: 0x161b19, alpha: 0.96 });
+}
+
 function drawMassMarker(
   graphics: Graphics,
   participant: RenderParticipantV1,
@@ -577,7 +580,10 @@ function removeStaleSprites<Key extends string | number>(
   }
 }
 
-function getTerrainTextureIndex(tile: TileState, supportedTileIds: ReadonlySet<string>): number {
+function getTerrainTextureIndex(
+  tile: TileState,
+  supportedTileIds: ReadonlySet<string>,
+): number | null {
   if (tile.state === "Warning" || tile.state === "Collapsing") {
     return 14;
   }
@@ -587,9 +593,12 @@ function getTerrainTextureIndex(tile: TileState, supportedTileIds: ReadonlySet<s
   const south = !supportedTileIds.has(`${tile.column}:${tile.row + 1}`);
   const west = !supportedTileIds.has(`${tile.column - 1}:${tile.row}`);
 
-  if (north && east) return 8;
-  if (east && south) return 9;
-  if (south && west) return 10;
+  const waterSideCount = [north, east, south, west].filter(Boolean).length;
+
+  if (waterSideCount > 2 || (north && south) || (east && west)) return null;
+  if (north && east) return 10;
+  if (east && south) return 8;
+  if (south && west) return 9;
   if (west && north) return 11;
   if (north) return 4;
   if (east) return 5;
@@ -627,7 +636,13 @@ function syncTerrainSprites(
       continue;
     }
 
-    const texture = textures[getTerrainTextureIndex(tile, supportedTileIds)];
+    const textureIndex = getTerrainTextureIndex(tile, supportedTileIds);
+
+    if (textureIndex === null) {
+      continue;
+    }
+
+    const texture = textures[textureIndex];
 
     if (texture === undefined) {
       continue;
@@ -1654,8 +1669,7 @@ export async function createArenaRenderer(
       latestHumanActorId,
       latestInterpolationAlpha,
     );
-    const shake = createCameraShake(visualEffects, latestFrame.tick, reducedMotion);
-    const presentationCamera = { x: camera.x + shake.x, y: camera.y + shake.y };
+    const presentationCamera = camera;
 
     for (const layer of [
       tiles,
@@ -1677,7 +1691,7 @@ export async function createArenaRenderer(
     }
     host.dataset.cameraX = camera.x.toFixed(2);
     host.dataset.cameraY = camera.y.toFixed(2);
-    host.dataset.cameraShake = Math.hypot(shake.x, shake.y).toFixed(2);
+    host.dataset.cameraShake = "0.00";
     host.dataset.projectionAngle = ARENA_CAMERA_ELEVATION_DEGREES.toString();
     host.dataset.projectionScaleY = ARENA_DEPTH_SCALE.toFixed(4);
     host.dataset.cliffDepth = projection.cliffDepth.toFixed(2);
@@ -1896,6 +1910,14 @@ export async function createArenaRenderer(
         reducedMotion,
         !mayhem || participant.actorId === latestHumanActorId || distanceFromHuman <= 8,
         latestFrame.tick,
+      );
+      drawFacingFeatures(
+        actionFeedback,
+        participant,
+        point.x,
+        point.y,
+        visualRadius,
+        !mayhem || participant.actorId === latestHumanActorId || distanceFromHuman <= 8,
       );
     }
 

@@ -33,19 +33,19 @@ describe("settings normalization", () => {
       playerCount: FORCED_PLAYER_COUNT,
       preset: "massive",
       botDifficulty: FORCED_BOT_DIFFICULTY,
-      collapseSpeed: "normal",
+      collapseSpeed: "slow",
       startingWeight: 75,
-      initialItemCount: 17,
-      itemRespawnSeconds: 5,
+      initialItemCount: 8,
+      itemRespawnSeconds: 4,
     });
     expect(getPresetPlayerCount("massive")).toBe(50);
-    expect(getPresetCollapseSpeed("massive")).toBe("normal");
-    expect(getPresetItemRespawnSeconds("massive")).toBe(5);
+    expect(getPresetCollapseSpeed("massive")).toBe("slow");
+    expect(getPresetItemRespawnSeconds("massive")).toBe(4);
     expect(isBotDifficulty("hard")).toBe(true);
     expect(isBotDifficulty("normal")).toBe(false);
   });
 
-  it("accepts only bounded collapse-speed overrides", () => {
+  it("keeps internal collapse tiers valid while fixing browser play to slow", () => {
     expect(isCollapseSpeed("slow")).toBe(true);
     expect(isCollapseSpeed("normal")).toBe(true);
     expect(isCollapseSpeed("fast")).toBe(true);
@@ -53,8 +53,11 @@ describe("settings normalization", () => {
     expect(normalizeSettings({ collapseSpeed: "slow" })).toMatchObject({
       collapseSpeed: "slow",
     });
+    expect(normalizeSettings({ collapseSpeed: "fast" })).toMatchObject({
+      collapseSpeed: "slow",
+    });
     expect(normalizeSettings({ collapseSpeed: "instant" })).toMatchObject({
-      collapseSpeed: "normal",
+      collapseSpeed: "slow",
     });
   });
 
@@ -69,13 +72,13 @@ describe("settings normalization", () => {
   });
 
   it("derives and bounds the item policy for fifty participants", () => {
-    expect(getRecommendedInitialItemCount(50)).toBe(17);
+    expect(getRecommendedInitialItemCount(50)).toBe(8);
     expect(getMaximumItemCount(50)).toBe(25);
     expect(normalizeInitialItemCount(99, 50)).toBe(25);
-    expect(normalizeInitialItemCount(Number.NaN, 50)).toBe(17);
+    expect(normalizeInitialItemCount(Number.NaN, 50)).toBe(8);
     expect(normalizeItemRespawnSeconds(-1, "massive")).toBe(0);
     expect(normalizeItemRespawnSeconds(99, "massive")).toBe(30);
-    expect(normalizeItemRespawnSeconds(Number.NaN, "massive")).toBe(5);
+    expect(normalizeItemRespawnSeconds(Number.NaN, "massive")).toBe(4);
   });
 
   it("keeps fixture tiers and widens the forced fifty-player island", () => {

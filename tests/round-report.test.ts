@@ -33,21 +33,22 @@ describe("playtest round reports", () => {
         completedTick: 1_350,
       }),
       DEFAULT_GAMEPLAY_TUNING,
+      [{ tick: 720, stat: "stability" }],
     );
 
     expect(report).toMatchObject({
-      schemaVersion: "shovefall-playtest-round/v5",
+      schemaVersion: "shovefall-playtest-round/v6",
       seed: "0000000800000000",
       settings: {
         preset: "massive",
         participantCount: 50,
         botDifficulty: "hard",
         collapseSpeed: "slow",
-        initialItemCount: 6,
-        itemRespawnSeconds: 5,
+        initialItemCount: 8,
+        itemRespawnSeconds: 4,
         startingWeight: 75,
         startingItems: ["iron-boots", "spring-glove"],
-        upgradePlan: expect.arrayContaining(["power", "stability", "mobility", "reflex"]),
+        roundLimitSeconds: 120,
       },
       gameplayTuning: DEFAULT_GAMEPLAY_TUNING,
       result: {
@@ -61,12 +62,13 @@ describe("playtest round reports", () => {
           creditedEliminations: 0,
           stats: { power: 0, stability: 0, mobility: 0, reflex: 0 },
         },
+        humanUpgradeSelections: [{ tick: 720, stat: "stability" }],
       },
     });
     expect(report.versions).toEqual({
-      product: "0.38.0",
-      simulation: "19.0.0",
-      content: "13.0.0",
+      product: "0.39.0",
+      simulation: "20.0.0",
+      content: "14.0.0",
     });
     expect(JSON.parse(serializePlaytestRoundReport(report))).toEqual(report);
   });

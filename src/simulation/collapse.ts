@@ -28,9 +28,9 @@ interface CollapseTiming {
 const COLLAPSE_TIMINGS: Readonly<Record<CollapseSpeed, CollapseTiming>> = Object.freeze({
   slow: Object.freeze({
     startTick: 18 * 60,
-    waveIntervalTicks: 84,
-    warningTicks: 120,
-    collapsingTicks: 24,
+    waveIntervalTicks: 30,
+    warningTicks: 60,
+    collapsingTicks: 30,
   }),
   normal: Object.freeze({
     startTick: 13 * 60,
@@ -46,21 +46,23 @@ const COLLAPSE_TIMINGS: Readonly<Record<CollapseSpeed, CollapseTiming>> = Object
   }),
 });
 
-function shuffleTiles(tiles: readonly TileState[], random: XorShift32): readonly TileState[] {
-  const shuffled = [...tiles];
-
-  for (let index = shuffled.length - 1; index > 0; index -= 1) {
-    const swapIndex = random.nextUint32() % (index + 1);
-    const current = shuffled[index];
-    const replacement = shuffled[swapIndex];
-
-    if (current !== undefined && replacement !== undefined) {
-      shuffled[index] = replacement;
-      shuffled[swapIndex] = current;
-    }
+function orderLayerTilesSpatially(
+  tiles: readonly TileState[],
+  centerX: number,
+  centerY: number,
+  random: XorShift32,
+): readonly TileState[] {
+  if (tiles.length < 2) {
+    return tiles;
   }
 
-  return Object.freeze(shuffled);
+  const ordered = tiles.toSorted((left, right) => {
+    const leftAngle = Math.atan2(left.row + 0.5 - centerY, left.column + 0.5 - centerX);
+    const rightAngle = Math.atan2(right.row + 0.5 - centerY, right.column + 0.5 - centerX);
+    return leftAngle - rightAngle || left.tileId.localeCompare(right.tileId);
+  });
+  const offset = random.nextUint32() % ordered.length;
+  return Object.freeze([...ordered.slice(offset), ...ordered.slice(0, offset)]);
 }
 
 export function createCollapsePlan(
@@ -75,6 +77,8 @@ export function createCollapsePlan(
   const shoreDepths = getLandShoreDepths(tiles);
   const minimumRemainingTiles = Math.ceil(landTiles.length * MINIMUM_REMAINING_LAND_RATIO);
   const protectedIds = selectProtectedCore(landTiles, shoreDepths, minimumRemainingTiles);
+  const centerX = landTiles.reduce((sum, tile) => sum + tile.column + 0.5, 0) / landTiles.length;
+  const centerY = landTiles.reduce((sum, tile) => sum + tile.row + 0.5, 0) / landTiles.length;
   const layers = new Map<number, TileState[]>();
 
   for (const tile of landTiles) {
@@ -90,9 +94,9 @@ export function createCollapsePlan(
 
   const orderedLayers = [...layers.entries()]
     .toSorted(([left], [right]) => left - right)
-    .map(([, layerTiles]) => shuffleTiles(layerTiles, random));
+    .map(([, layerTiles]) => orderLayerTilesSpatially(layerTiles, centerX, centerY, random));
   const orderedTiles = orderedLayers.flat();
-  const regularBatchSize = Math.max(2, Math.ceil(orderedTiles.length / 24));
+  const regularBatchSize = 6;
   const waves: TileState[][] = [];
   const finaleStartIndex = Math.max(0, orderedTiles.length - 4);
   let consumedTiles = 0;

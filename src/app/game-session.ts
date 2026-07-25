@@ -6,10 +6,11 @@ import type {
   GameConfigV1,
   ItemDefinitionId,
   RenderFrameV1,
+  RenderParticipantV1,
   SimulationEventV1,
   UpgradeStatId,
 } from "../simulation/contracts";
-import { getNextPlannedUpgrade, normalizeUpgradePlan } from "../simulation/progression";
+import { MAX_UPGRADE_LEVEL } from "../simulation/progression";
 import { clamp } from "../simulation/math";
 import { FIXED_TICKS_PER_SECOND } from "../simulation/versions";
 import { SimulationWorld } from "../simulation/world";
@@ -39,6 +40,7 @@ export interface SessionTelemetry {
 export interface GameSessionHooks {
   readonly onTelemetry: (telemetry: SessionTelemetry) => void;
   readonly onEvents: (events: readonly SimulationEventV1[]) => void;
+  readonly onHumanUpgradeRequested: (frame: RenderFrameV1) => void;
   readonly onHumanEliminated: () => void;
   readonly onRoundCompleted: (frame: RenderFrameV1) => void;
   readonly onPauseChanged: (paused: boolean) => void;
@@ -47,6 +49,7 @@ export interface GameSessionHooks {
 
 export interface GameSession {
   readonly active: boolean;
+  chooseUpgrade(stat: UpgradeStatId): boolean;
   queueDodge(): void;
   queueItemSlot(slotIndex: 0 | 1): void;
   queueShove(): void;
@@ -60,11 +63,55 @@ export interface GameSession {
     humanLoadout?: {
       readonly massFactor: number;
       readonly startingItems: readonly ItemDefinitionId[];
-      readonly upgradePlan: readonly UpgradeStatId[];
     },
   ): void;
   stop(): void;
   destroy(): void;
+}
+
+export type HumanPostStepDisposition =
+  | "continue"
+  | "human-eliminated"
+  | "round-completed"
+  | "upgrade-requested";
+
+function canSpendHumanStatPoint(participant: RenderParticipantV1 | undefined): boolean {
+  return (
+    participant?.active === true &&
+    participant.action !== "Falling" &&
+    participant.action !== "Eliminated" &&
+    participant.progression.statPoints > 0 &&
+    Object.values(participant.progression.stats).some((level) => level < MAX_UPGRADE_LEVEL)
+  );
+}
+
+export function getHumanPostStepDisposition(
+  frame: RenderFrameV1,
+  humanActorId: number,
+  upgradeSignal: boolean,
+  humanAlreadyEliminated: boolean,
+): HumanPostStepDisposition {
+  if (frame.round.status === "Completed") {
+    return "round-completed";
+  }
+
+  const human = frame.participants.find(({ actorId }) => actorId === humanActorId);
+
+  if (
+    !humanAlreadyEliminated &&
+    (human === undefined ||
+      !human.active ||
+      human.action === "Falling" ||
+      human.action === "Eliminated")
+  ) {
+    return "human-eliminated";
+  }
+
+  if (!humanAlreadyEliminated && upgradeSignal && canSpendHumanStatPoint(human)) {
+    return "upgrade-requested";
+  }
+
+  return "continue";
 }
 
 export function accumulateSimulationTime(
@@ -93,7 +140,8 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
   let rendererAvailable = true;
   let countdown: RoundCountdownValue = null;
   let countdownElapsedMilliseconds = 0;
-  let humanUpgradePlan: readonly UpgradeStatId[] = normalizeUpgradePlan(undefined);
+  let awaitingHumanUpgrade = false;
+  let pendingHumanUpgrade: UpgradeStatId | null = null;
   const keyboard: KeyboardInput = createKeyboardInput(
     () => active && !paused && countdown === null && !humanEliminated,
   );
@@ -175,15 +223,10 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
           gamepad.sample(keyboard.state);
         }
         const inputCommand = keyboard.state.consumeCommand(world.tick, HUMAN_ACTOR_ID);
-        const currentHuman = latestFrame?.participants.find(
-          (participant) => participant.actorId === HUMAN_ACTOR_ID,
-        );
-        const automaticUpgrade =
-          currentHuman === undefined
-            ? null
-            : getNextPlannedUpgrade(currentHuman.progression, humanUpgradePlan);
+        const requestedUpgrade = pendingHumanUpgrade;
+        pendingHumanUpgrade = null;
         const result = world.step([
-          Object.freeze({ ...inputCommand, upgradeStat: automaticUpgrade }),
+          Object.freeze({ ...inputCommand, upgradeStat: requestedUpgrade }),
           ...(bots?.createCommands(world.tick, latestFrame ?? world.createRenderFrame()) ?? []),
         ]);
         latestFrame = result.frame;
@@ -192,27 +235,44 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
         accumulatorMilliseconds -= FIXED_STEP_MILLISECONDS;
         steps += 1;
 
-        const human = result.frame.participants.find(
-          (participant) => participant.actorId === HUMAN_ACTOR_ID,
+        const earnedHumanPoint = result.events.some(
+          ({ kind, actorId }) => kind === "stat-point-earned" && actorId === HUMAN_ACTOR_ID,
+        );
+        const disposition = getHumanPostStepDisposition(
+          result.frame,
+          HUMAN_ACTOR_ID,
+          earnedHumanPoint || requestedUpgrade !== null,
+          humanEliminated,
         );
 
-        if (
-          !humanEliminated &&
-          (human?.active === false || human?.action === "Falling" || human?.action === "Eliminated")
-        ) {
-          humanEliminated = true;
-          keyboard.state.clear();
-          gamepad.clear(keyboard.state);
-          hooks.onHumanEliminated();
-        }
-
-        if (result.frame.round.status === "Completed") {
+        if (disposition === "round-completed") {
           active = false;
           keyboard.state.clear();
           gamepad.clear(keyboard.state);
           animationFrameId = undefined;
           publishFrame();
           hooks.onRoundCompleted(result.frame);
+          return;
+        }
+
+        if (disposition === "human-eliminated") {
+          humanEliminated = true;
+          awaitingHumanUpgrade = false;
+          pendingHumanUpgrade = null;
+          keyboard.state.clear();
+          gamepad.clear(keyboard.state);
+          hooks.onHumanEliminated();
+        } else if (disposition === "upgrade-requested") {
+          awaitingHumanUpgrade = true;
+          paused = true;
+          previousTimestamp = undefined;
+          accumulatorMilliseconds = 0;
+          keyboard.state.clear();
+          gamepad.clear(keyboard.state);
+          hooks.onPauseChanged(true);
+          hooks.onHumanUpgradeRequested(result.frame);
+          publishFrame();
+          schedule();
           return;
         }
       }
@@ -225,6 +285,10 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
   };
 
   const setPaused = (nextPaused: boolean): void => {
+    if (!nextPaused && awaitingHumanUpgrade) {
+      return;
+    }
+
     if (!active || paused === nextPaused) {
       return;
     }
@@ -267,6 +331,31 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
     get active(): boolean {
       return active;
     },
+    chooseUpgrade(stat: UpgradeStatId): boolean {
+      const human = latestFrame?.participants.find(
+        (participant) => participant.actorId === HUMAN_ACTOR_ID,
+      );
+
+      if (
+        !active ||
+        !awaitingHumanUpgrade ||
+        human === undefined ||
+        !canSpendHumanStatPoint(human) ||
+        human.progression.stats[stat] >= MAX_UPGRADE_LEVEL
+      ) {
+        return false;
+      }
+
+      pendingHumanUpgrade = stat;
+      awaitingHumanUpgrade = false;
+      paused = document.visibilityState !== "visible" || !rendererAvailable;
+      previousTimestamp = undefined;
+      keyboard.state.clear();
+      gamepad.clear(keyboard.state);
+      hooks.onPauseChanged(paused);
+      publishFrame();
+      return true;
+    },
     failForDiagnostics(error: unknown): void {
       fail(error);
     },
@@ -281,7 +370,6 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
       humanLoadout?: {
         readonly massFactor: number;
         readonly startingItems: readonly ItemDefinitionId[];
-        readonly upgradePlan: readonly UpgradeStatId[];
       },
     ): void {
       if (animationFrameId !== undefined) {
@@ -312,13 +400,14 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
       });
       nextRoundId += 1;
       bots = new BotDirector(masterSeed, HUMAN_ACTOR_ID, { difficulty: config.difficulty });
-      humanUpgradePlan = normalizeUpgradePlan(humanLoadout?.upgradePlan);
       latestFrame = world.createRenderFrame();
       accumulatorMilliseconds = 0;
       previousTimestamp = undefined;
       paused = document.visibilityState !== "visible" || !rendererAvailable;
       currentSeed = String(masterSeed);
       humanEliminated = false;
+      awaitingHumanUpgrade = false;
+      pendingHumanUpgrade = null;
       countdown = 3;
       countdownElapsedMilliseconds = 0;
       active = true;
@@ -358,6 +447,8 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
       accumulatorMilliseconds = 0;
       previousTimestamp = undefined;
       humanEliminated = false;
+      awaitingHumanUpgrade = false;
+      pendingHumanUpgrade = null;
       countdown = null;
       countdownElapsedMilliseconds = 0;
       keyboard.state.clear();

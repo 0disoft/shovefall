@@ -15,7 +15,7 @@ import { RandomStreamSet } from "../src/simulation/random";
 import { SimulationWorld } from "../src/simulation/world";
 
 describe("pirate artillery", () => {
-  it("distributes exactly one cannonball per doomed tile and exposes live ship ammo", () => {
+  it("fires one nearby-coast cannonball per collapse wave and exposes bounded live ammo", () => {
     const config = normalizeGameConfig({
       participantCount: 4,
       arenaColumns: 9,
@@ -39,13 +39,38 @@ describe("pirate artillery", () => {
       config.arenaColumns,
       config.arenaRows,
     );
-    const doomedTileCount = collapsePlan.reduce((total, wave) => total + wave.tileIds.length, 0);
     const initialAmmo = plan.ships.map(({ initialCannonAmmo }) => initialCannonAmmo);
     const firstShot = plan.cannonShots[0];
 
-    expect(plan.cannonShots).toHaveLength(doomedTileCount);
-    expect(initialAmmo.reduce((total, ammo) => total + ammo, 0)).toBe(doomedTileCount);
-    expect(Math.max(...initialAmmo) - Math.min(...initialAmmo)).toBeLessThanOrEqual(1);
+    expect(plan.cannonShots).toHaveLength(collapsePlan.length);
+    expect(initialAmmo.reduce((total, ammo) => total + ammo, 0)).toBe(collapsePlan.length);
+    for (const [waveIndex, shot] of plan.cannonShots.entries()) {
+      const wave = collapsePlan[waveIndex];
+      expect(wave?.tileIds).toContain(shot.targetTileId);
+
+      const chosenDistance = Math.hypot(
+        shot.target.x - shot.origin.x,
+        shot.target.y - shot.origin.y,
+      );
+      const nearestPossibleDistance = Math.min(
+        ...(wave?.tileIds ?? []).flatMap((tileId) => {
+          const tile = frame.tiles.find((candidate) => candidate.tileId === tileId);
+          return tile === undefined
+            ? []
+            : plan.ships.map(({ position }) =>
+                Math.hypot(tile.column + 0.5 - position.x, tile.row + 0.5 - position.y),
+              );
+        }),
+      );
+      expect(chosenDistance).toBeCloseTo(nearestPossibleDistance, 10);
+    }
+
+    const finalImpactTick = collapsePlan.at(-1)?.voidTick ?? 0;
+    const maximumShotsInFlight = Array.from(
+      { length: finalImpactTick + 1 },
+      (_, tick) => getActiveCannonShots(plan, tick).length,
+    ).reduce((maximum, count) => Math.max(maximum, count), 0);
+    expect(maximumShotsInFlight).toBeLessThanOrEqual(4);
     expect(
       getPirateShipStates(plan, 0).map(({ cannonAmmoRemaining }) => cannonAmmoRemaining),
     ).toEqual(initialAmmo);

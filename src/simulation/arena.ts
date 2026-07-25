@@ -6,10 +6,10 @@ const COAST_SAMPLE_COUNT = 24;
 const LARGE_ISLAND_PARTICIPANT_THRESHOLD = 40;
 const LARGE_ISLAND_MINIMUM_COLUMNS = 48;
 const LARGE_ISLAND_MINIMUM_ROWS = 40;
-const LARGE_ISLAND_LAKE_COUNT = 8;
-const LARGE_ISLAND_MINIMUM_LAKE_SIZE = 6;
-const LARGE_ISLAND_MAXIMUM_LAKE_SIZE = 10;
-const LARGE_ISLAND_TOTAL_LAKE_BUDGET = 72;
+export const PUBLIC_LAKE_COUNT = 12;
+export const PUBLIC_MINIMUM_LAKE_SIZE = 5;
+export const PUBLIC_MAXIMUM_LAKE_SIZE = 9;
+export const PUBLIC_TOTAL_LAKE_BUDGET = 96;
 const ORTHOGONAL_DIRECTIONS = Object.freeze([
   Object.freeze({ column: 1, row: 0 }),
   Object.freeze({ column: -1, row: 0 }),
@@ -157,10 +157,10 @@ function carveLakes(
     config.arenaColumns >= LARGE_ISLAND_MINIMUM_COLUMNS &&
     config.arenaRows >= LARGE_ISLAND_MINIMUM_ROWS;
   const lakeCount = usesLargeIslandPolicy
-    ? LARGE_ISLAND_LAKE_COUNT
+    ? PUBLIC_LAKE_COUNT
     : Math.max(1, Math.min(3, Math.floor(Math.min(config.arenaColumns, config.arenaRows) / 8)));
   const carvedIds = new Set<TileId>();
-  let remainingLargeIslandLakeBudget = LARGE_ISLAND_TOTAL_LAKE_BUDGET;
+  let remainingLargeIslandLakeBudget = PUBLIC_TOTAL_LAKE_BUDGET;
 
   for (let lakeIndex = 0; lakeIndex < lakeCount; lakeIndex += 1) {
     const currentTiles = tiles.map((tile) =>
@@ -179,12 +179,12 @@ function carveLakes(
     );
     const remainingLakeCount = lakeCount - lakeIndex - 1;
     const maximumLargeIslandLakeSize = Math.min(
-      LARGE_ISLAND_MAXIMUM_LAKE_SIZE,
-      remainingLargeIslandLakeBudget - remainingLakeCount * LARGE_ISLAND_MINIMUM_LAKE_SIZE,
+      PUBLIC_MAXIMUM_LAKE_SIZE,
+      remainingLargeIslandLakeBudget - remainingLakeCount * PUBLIC_MINIMUM_LAKE_SIZE,
     );
     const targetSize = usesLargeIslandPolicy
-      ? LARGE_ISLAND_MINIMUM_LAKE_SIZE +
-        (random.nextUint32() % (maximumLargeIslandLakeSize - LARGE_ISLAND_MINIMUM_LAKE_SIZE + 1))
+      ? PUBLIC_MINIMUM_LAKE_SIZE +
+        (random.nextUint32() % (maximumLargeIslandLakeSize - PUBLIC_MINIMUM_LAKE_SIZE + 1))
       : Math.min(7, 2 + (random.nextUint32() % 5));
     let accepted: readonly TileId[] | undefined;
 
@@ -221,7 +221,13 @@ function carveLakes(
 
       const nextLandIds = new Set([...landIds].filter((tileId) => !lake.has(tileId)));
 
-      if (lake.size >= 2 && nextLandIds.size >= minimumLandCount && isConnected(nextLandIds)) {
+      const minimumAcceptedLakeSize = usesLargeIslandPolicy ? targetSize : 2;
+
+      if (
+        lake.size >= minimumAcceptedLakeSize &&
+        nextLandIds.size >= minimumLandCount &&
+        isConnected(nextLandIds)
+      ) {
         accepted = Object.freeze([...lake]);
         landIds = nextLandIds;
         break;

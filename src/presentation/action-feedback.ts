@@ -209,7 +209,7 @@ export function createActionFeedbackGeometry(input: ActionFeedbackInput): Action
         0.72,
       ),
     );
-    circles.push(circle(end, Math.max(3, input.radius * 0.23), COLORS.shove, 1, 0xf6f5ef, 1));
+    circles.push(circle(end, Math.max(4, input.radius * 0.34), 0xe7b98b, 1, 0x4a2f24, 2));
   } else if (input.action === "DodgeActive") {
     const displacement = Object.freeze({
       x: input.center.x - input.previousCenter.x,

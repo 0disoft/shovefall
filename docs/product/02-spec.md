@@ -7,16 +7,16 @@
 
 ## Product
 
-바닥이 사라지는 술래잡기 (`Shovefall`) is a brief single-player browser party-action game with a 75-second hard round limit. One human and deterministic rule-based bots shove each other from a collapsing tile arena. The game must explain itself through movement, telegraphs, impacts, and falling rather than a long tutorial or decorative marketing copy. A target human-play duration distribution remains a playtest decision rather than a claim inferred from bot-only rounds.
+바닥이 사라지는 술래잡기 (`Shovefall`) is a brief single-player browser party-action game with a 120-second hard round limit. One human and deterministic rule-based bots shove each other from a collapsing tile arena. The game must explain itself through movement, telegraphs, impacts, and falling rather than a long tutorial or decorative marketing copy. A target human-play duration distribution remains a playtest decision rather than a claim inferred from bot-only rounds.
 
 The central promise is a readable comic reversal: a player can dodge an incoming shove so that the attacker stumbles into the void, or two attackers can collide on the same tick and both fly away. A result may be chaotic, but it must follow visible state and deterministic rules rather than a hidden probability roll.
 
 ## Core Loop
 
 1. `게임 시작` begins with the last saved settings; settings and the concise version history remain secondary menu branches.
-2. Before the round, the human selects a starting mass, two distinct starting items, and an ordered automatic growth plan. During play, movement uses `WASD`, arrow keys, mouse drag, a touch joystick, a standard gamepad stick, or its D-pad; `Space`, the first gamepad button, or the touch action extends a hand shove; `Shift`, the second gamepad button, or the touch action dodges; and `Q`/`E`, the third/fourth gamepad buttons, or arena buttons use inventory slots. A credited elimination spends its point on the next valid growth-plan step without interrupting play.
+2. Before the round, the human selects a starting mass and two distinct starting items. During play, movement uses `WASD`, arrow keys, mouse drag, a touch joystick, a standard gamepad stick, or its D-pad; `Space`, the first gamepad button, or the touch action extends a hand shove; `Shift`, the second gamepad button, or the touch action dodges; and `Q`/`E`, the third/fourth gamepad buttons, or arena buttons use inventory slots. A credited elimination pauses the round and opens one manual stat choice; a valid saved choice resumes play, while elimination and round completion take priority.
 3. Ordinary locomotion starts, turns, and stops immediately at the current mass-sensitive top speed. Acceleration and retained momentum apply only to external launch, stumble, dodge, Grappling Hook, and falling states; no hidden probability decides an outcome.
-4. Pirate ships fire one cannonball for every tile outside the protected 20% core. Orange exclamation and red skull stages expose the projectile's progress before impact turns that tile into water. After all cannon ammunition is spent, lethal rock shots pressure the remaining core without deleting more land.
+4. Collapse groups six spatially adjacent shore tiles into one wave. The closest pirate ship fires one cannonball at one tile in that wave; orange exclamation and red skull stages expose the projectile's progress before the whole warned wave turns to water. After all cannon ammunition is spent, lethal rock shots pressure the remaining core without deleting more land.
 5. The last active participant wins. A defeated human can restart immediately or watch no more than five seconds of accelerated resolution.
 
 ## Player and Mode Contract
@@ -24,7 +24,8 @@ The central promise is a readable comic reversal: a player can dodge an incoming
 - Simulation and replay support: 4 through 50 participants, including the human; counts below 50 remain internal fixtures and focused diagnostic scenarios.
 - Browser mode: exactly 50 participants with Hard AI.
 - Starting weight: one integer slider from 50 through 100, mapped deterministically to the simulation's `0.85..1.25` mass factor with 75 as neutral.
-- Arena policy: a 48×40 procedural-island bound with exactly eight separated 6–10-tile lakes under a 72-tile total budget for the public mode.
+- Arena policy: a 48×40 procedural-island bound with exactly 12 separated 5–9-tile lakes under a 96-tile total budget for the public mode.
+- Public pacing: fixed Slow collapse, 8 initial map items, one new item every 4 seconds, and a 120-second round limit.
 - Arena area, spawn spacing, item caps, and bot search bounds are derived from participant count and density rather than exposed as unrelated raw numbers.
 
 ## Gray-box Gate
@@ -35,11 +36,11 @@ Collapse, formal bots, 32-participant scale, items, audio, and final art cannot 
 
 ## MVP Scope
 
-- A menu-first game start plus bounded settings for starting weight, two starting items, a maximum-twenty-step automatic growth order, item frequency, and collapse speed; participant count and bot difficulty are fixed rather than exposed.
+- A menu-first game start plus bounded settings for starting weight and two starting items; participant count, bot difficulty, collapse speed, initial map-item count, respawn interval, and round limit are fixed rather than exposed.
 - A concise in-game version history that records why each important product change was made and what players can notice.
 - One human and 49 bots using the same `ActorCommandV1` contract.
 - A 60 Hz fixed-tick simulation independent of PixiJS and browser time.
-- Deterministic immediate locomotion, hand-reach shove, dodge, stumble, mass, collision, support, falling, elimination credit, and automatically planned stat progression.
+- Deterministic immediate locomotion, hand-reach shove, dodge, stumble, mass, collision, support, falling, elimination credit, and kill-triggered manual stat progression.
 - Stable, warning, collapsing, and void tile states driven by deterministic cannon trajectories, followed by a lethal but land-preserving rock phase.
 - At least three bot personalities implemented as data-driven utility weights.
 - Iron Boots, Feather, and Spring Glove after the core gate passes.
@@ -120,3 +121,5 @@ Version `0.36.0` keeps simulation `18.0.0` and advances content to `12.0.0`. Eac
 Version `0.37.0`, simulation `19.0.0`, and content `13.0.0` make a Bomb owner immune to the direct-kill part of that owner's explosion. The owner instead receives a strong outward launch with distance, mass, and Stability response plus 42 Stumbling ticks, so careless placement near water can still end the run. Every opponent inside the three-tile body-edge radius remains directly eliminated and Dodge still cannot evade the blast. The reaction resolves before new active-item commands, preventing a same-tick Grappling Hook escape. The renderer also loads a sixteen-frame true-alpha terrain atlas for deterministic grass variants, cardinal shores, coast corners, and cracked warning ground; existing procedural tiles stay underneath as independent failure fallback. Bomb semantics change deterministic outcomes and hashes, while terrain selection remains presentation-only. Replay stays v2 and fixtures regenerate under the new version envelope.
 
 Version `0.38.0` keeps simulation `19.0.0` and content `13.0.0` unchanged. It adds presentation-only action geometry: shove windup fans, three-line hand trajectories, dodge silhouettes and direction wedges, velocity-opposed stumble trails, and broken support rings for falling. The human and actors within eight world units receive the detailed set in 50-player rounds; distant bots keep a single cheap direction stroke so the local fight gains information without turning the full arena into effect noise. Reduced-motion mode uses fixed shapes rather than pulsing amplitudes. Hit windows, impulses, bot decisions, replay format, and deterministic hashes do not change.
+
+Version `0.39.0`, simulation `20.0.0`, and content `14.0.0` fix the public contract at 50 Hard participants, Slow collapse, 8 initial map items, 4-second respawns, and a 120-second limit. The public island requires 12 separated 5–9-tile lakes under a 96-tile budget. Collapse orders each shore layer spatially and removes six adjacent tiles per regular wave; only the closest ship fires one visible projectile for that wave, bounding concurrent trajectories while preserving every warned tile transition. Pre-round growth planning is removed. A credited human elimination pauses the browser for one explicit stat choice, but completed, inactive, Falling, and Eliminated states have higher priority and cannot accept a choice. Reports advance to v6 and record the public round limit plus each applied human choice tick and stat. Replay remains v2 and fixtures regenerate because arena, collapse, artillery, and timing change deterministic hashes.

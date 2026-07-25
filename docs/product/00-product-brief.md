@@ -23,7 +23,7 @@ participants away. The game is successful when that chaos looks earned rather th
 - A contest voter or casual desktop or mobile player who should understand the game within seconds.
 - No installation, account, tutorial wall, backend, or online opponent.
 - One fixed 50-participant Hard-AI mode; smaller counts remain diagnostic fixtures, not public choices.
-- A hard 75-second round limit with immediate restart after defeat or victory.
+- A hard 120-second round limit with immediate restart after defeat or victory.
 - WASD, arrow-key, mouse-drag, touch-joystick, or gamepad movement; keyboard, touch, and gamepad shove, dodge, and inventory-slot actions.
 
 ## Product Bet
@@ -55,10 +55,10 @@ physical-device support, cross-browser behavior, hosted CI, or deployment. Human
 
 ## Current State
 
-The gray-box game, fixed 50-participant Hard-AI mode, selectable collapse speed, immediate movement,
-automatic growth planning, three map items, all nine starting-item definitions and six active
+The gray-box game, fixed 50-participant Hard-AI mode, fixed Slow collapse, immediate movement,
+manual kill-reward growth, eight initial map items, all nine starting-item definitions and six active
 mechanics, Brick dodge mounting, opponent-lethal and owner-launching Bombs, pirate cannon collapse,
 protected-core rock pressure, generated terrain and action feedback, local production smoke,
 balance screens, and 50-participant performance harnesses are implemented. Hosted `0.37.0` and its
-sixteen-seed audit are current; fresh `0.38.0` browser, performance, capture, hosted, and public evidence; active-item balance; human playtest
+sixteen-seed audit remains historical; fresh `0.39.0` browser, performance, audit, capture, hosted, and public evidence; active-item balance; human playtest
 evidence; and named device/browser coverage remain open release work.

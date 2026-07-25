@@ -6,7 +6,7 @@
 ## Round Start
 
 1. The DOM setup model normalizes a supported preset or bounded custom settings.
-2. The application creates one master seed, immutable `GameConfigV1`, starting loadout, and saved automatic growth order.
+2. The application creates one master seed, immutable `GameConfigV1`, and starting loadout. A credited human elimination later pauses the scheduler for one explicit stat choice.
 3. The world derives named PRNG streams, builds a connected island with an irregular coastline and enclosed lakes, assigns supported spawn state, and converts the collapse plan into exact-ammunition offshore cannon shots plus a protected-core rock-phase start.
 4. Input adapters and bot controllers begin producing `ActorCommandV1` for the next integer tick.
 5. PixiJS receives the initial read-only `RenderFrameV1`; it does not own simulation state.

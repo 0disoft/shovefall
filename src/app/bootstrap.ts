@@ -2,27 +2,23 @@ import {
   FORCED_BOT_DIFFICULTY,
   getArenaSize,
   getStartingMassFactor,
-  isCollapseSpeed,
   normalizeSettings,
+  PUBLIC_ROUND_LIMIT_SECONDS,
   type GameSettings,
 } from "./settings";
 import { createGameSession, type GameSession, type SessionTelemetry } from "./game-session";
 import { createDebugTuningController, type DebugTuningController } from "./debug-tuning";
 import { createPointerControls, type PointerControls } from "./pointer-controls";
-import { createPlaytestRoundReport, serializePlaytestRoundReport } from "./round-report";
+import {
+  createPlaytestRoundReport,
+  type HumanUpgradeSelection,
+  serializePlaytestRoundReport,
+} from "./round-report";
 import { VERSION_HISTORY } from "./version-history";
 import type { SimulationEventV1, UpgradeStatId } from "../simulation/contracts";
 import { normalizeGameConfig } from "../simulation/contracts";
 import { DEFAULT_GAMEPLAY_TUNING, type GameplayTuningV1 } from "../simulation/tuning";
-import {
-  DEFAULT_UPGRADE_PLAN,
-  getNextPlannedUpgrade,
-  isUpgradeStatId,
-  MAX_UPGRADE_LEVEL,
-  MAX_UPGRADE_PLAN_STEPS,
-  normalizeUpgradePlan,
-  UPGRADE_STAT_IDS,
-} from "../simulation/progression";
+import { isUpgradeStatId, MAX_UPGRADE_LEVEL, UPGRADE_STAT_IDS } from "../simulation/progression";
 import { createArenaRenderer, type ArenaRenderer } from "../presentation/arena-renderer";
 import {
   createAudioFeedback,
@@ -146,21 +142,6 @@ function createDeveloperTelemetry(anchor: HTMLElement): DeveloperTelemetryContro
   });
 }
 
-function readSelectedCollapseSpeed(form: HTMLFormElement): GameSettings["collapseSpeed"] {
-  const data = new FormData(form);
-  const value = data.get("collapseSpeed");
-  return typeof value === "string" && isCollapseSpeed(value) ? value : "normal";
-}
-
-function setSelectedCollapseSpeed(
-  form: HTMLFormElement,
-  speed: GameSettings["collapseSpeed"],
-): void {
-  for (const input of form.querySelectorAll<HTMLInputElement>('input[name="collapseSpeed"]')) {
-    input.checked = input.value === speed;
-  }
-}
-
 function createRoundSeed(): string {
   const values = new Uint32Array(2);
   crypto.getRandomValues(values);
@@ -173,7 +154,7 @@ function createConfig(settings: GameSettings) {
     participantCount: settings.playerCount,
     arenaColumns: arenaSize.columns,
     arenaRows: arenaSize.rows,
-    roundLimitSeconds: 75,
+    roundLimitSeconds: PUBLIC_ROUND_LIMIT_SECONDS,
     collapseSpeed: settings.collapseSpeed,
     difficulty: settings.botDifficulty,
     itemsEnabled: settings.initialItemCount > 0 || settings.itemRespawnSeconds > 0,
@@ -257,22 +238,8 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   const form = requireElement(root, "#game-settings", HTMLFormElement);
   const startingWeight = requireElement(root, "#starting-weight", HTMLInputElement);
   const startingWeightValue = requireElement(root, "#starting-weight-value", HTMLOutputElement);
-  const initialItemCount = requireElement(root, "#initial-item-count", HTMLInputElement);
-  const initialItemCountValue = requireElement(
-    root,
-    "#initial-item-count-value",
-    HTMLOutputElement,
-  );
-  const itemRespawn = requireElement(root, "#item-respawn", HTMLInputElement);
-  const itemRespawnValue = requireElement(root, "#item-respawn-value", HTMLOutputElement);
   const setupSummary = requireElement(root, "#setup-summary", HTMLElement);
   const startingItemsHelp = requireElement(root, "#starting-items-help", HTMLElement);
-  const upgradePlanList = requireElement(root, "#upgrade-plan-list", HTMLOListElement);
-  const upgradePlanHelp = requireElement(root, "#upgrade-plan-help", HTMLElement);
-  const addUpgradeButtons = [...root.querySelectorAll<HTMLButtonElement>("[data-add-upgrade]")];
-  const clearUpgradePlanButton = requireElement(root, "#clear-upgrade-plan", HTMLButtonElement);
-  const undoUpgradePlanButton = requireElement(root, "#undo-upgrade-plan", HTMLButtonElement);
-  const resetUpgradePlanButton = requireElement(root, "#reset-upgrade-plan", HTMLButtonElement);
   const debugTuningPanel = requireElement(root, "#debug-tuning", HTMLDetailsElement);
   const startingItemInputs = [
     ...form.querySelectorAll<HTMLInputElement>('input[name="startingItem"]'),
@@ -292,6 +259,8 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   const shoveStatusValue = requireElement(root, "#shove-status-value", HTMLOutputElement);
   const dodgeStatusValue = requireElement(root, "#dodge-status-value", HTMLOutputElement);
   const statStatus = requireElement(root, "#stat-status", HTMLElement);
+  const statUpgradeOverlay = requireElement(root, "#stat-upgrade-overlay", HTMLElement);
+  const statUpgradeForm = requireElement(root, "#stat-upgrade-form", HTMLFormElement);
   const itemSlotButtons = Object.freeze([
     requireElement(root, "#use-item-slot-0", HTMLButtonElement),
     requireElement(root, "#use-item-slot-1", HTMLButtonElement),
@@ -305,7 +274,6 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   const itemValue = requireElement(root, "#item-value", HTMLOutputElement);
   const survivorValue = requireElement(root, "#survivor-value", HTMLOutputElement);
   const statPointsValue = requireElement(root, "#stat-points-value", HTMLOutputElement);
-  const nextUpgradeValue = requireElement(root, "#next-upgrade-value", HTMLOutputElement);
   const statLevelOutputs: Readonly<Record<UpgradeStatId, HTMLOutputElement>> = Object.freeze({
     power: requireElement(root, "#power-level", HTMLOutputElement),
     stability: requireElement(root, "#stability-level", HTMLOutputElement),
@@ -323,7 +291,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   let latestDebugTuningEnabled = false;
   let latestMasterSeed: string | undefined;
   let latestRoundReport: string | undefined;
-  let draftUpgradePlan: UpgradeStatId[] = [...DEFAULT_UPGRADE_PLAN];
+  let latestHumanUpgradeSelections: HumanUpgradeSelection[] = [];
 
   const setScreen = (screen: "menu" | "settings" | "history" | "arena"): void => {
     root.dataset.screen = screen;
@@ -406,44 +374,11 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   const readSettings = (): GameSettings => {
     const data = new FormData(form);
     return normalizeSettings({
-      initialItemCount: Number(initialItemCount.value),
-      itemRespawnSeconds: Number(itemRespawn.value),
-      collapseSpeed: readSelectedCollapseSpeed(form),
       startingWeight: Number(startingWeight.value),
       startingItems: data
         .getAll("startingItem")
         .filter((value): value is string => typeof value === "string"),
-      upgradePlan: draftUpgradePlan,
     });
-  };
-
-  const renderUpgradePlan = (): void => {
-    const fragment = document.createDocumentFragment();
-    const counts = new Map<UpgradeStatId, number>();
-
-    for (const [index, stat] of draftUpgradePlan.entries()) {
-      counts.set(stat, (counts.get(stat) ?? 0) + 1);
-      const item = document.createElement("li");
-      item.dataset.step = String(index + 1);
-      item.textContent = UPGRADE_LABELS[stat];
-      fragment.append(item);
-    }
-
-    upgradePlanList.replaceChildren(fragment);
-    const full = draftUpgradePlan.length >= MAX_UPGRADE_PLAN_STEPS;
-
-    for (const button of addUpgradeButtons) {
-      const stat = button.dataset.addUpgrade;
-      button.disabled =
-        !isUpgradeStatId(stat) || full || (counts.get(stat) ?? 0) >= MAX_UPGRADE_LEVEL;
-    }
-
-    undoUpgradePlanButton.disabled = draftUpgradePlan.length === 0;
-    clearUpgradePlanButton.disabled = draftUpgradePlan.length === 0;
-    upgradePlanHelp.textContent =
-      draftUpgradePlan.length === 0
-        ? "성장 단계를 하나 이상 골라. 비어 있으면 균형 순서가 적용돼."
-        : `${draftUpgradePlan.length}/${MAX_UPGRADE_PLAN_STEPS}단계 · 처치할 때마다 다음 단계가 자동 적용돼.`;
   };
 
   const renderStartingItemSelection = (): void => {
@@ -459,26 +394,10 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
 
   const renderSettingsSummary = (): void => {
     const settings = readSettings();
-    initialItemCount.max = String(Math.ceil(settings.playerCount * 0.5));
-    initialItemCount.value = String(settings.initialItemCount);
-    initialItemCountValue.value = `${settings.initialItemCount}개`;
-    itemRespawn.value = String(settings.itemRespawnSeconds);
-    itemRespawnValue.value =
-      settings.itemRespawnSeconds === 0 ? "추가 없음" : `${settings.itemRespawnSeconds}초`;
-    const collapseLabel =
-      settings.collapseSpeed === "slow"
-        ? "붕괴 느림"
-        : settings.collapseSpeed === "fast"
-          ? "붕괴 빠름"
-          : "붕괴 보통";
     startingWeight.value = String(settings.startingWeight);
     startingWeightValue.value = String(settings.startingWeight);
     const loadoutLabel = settings.startingItems.map((item) => ITEM_LABELS[item]).join(" + ");
-    setupSummary.textContent = `${collapseLabel} · 몸무게 ${settings.startingWeight} · ${loadoutLabel} · 자동 성장 ${settings.upgradePlan.length}단계 · 맵 아이템 ${settings.initialItemCount}개 · ${
-      settings.itemRespawnSeconds === 0
-        ? "추가 생성 없음"
-        : `${settings.itemRespawnSeconds}초마다 1개`
-    }`;
+    setupSummary.textContent = `몸무게 ${settings.startingWeight} · ${loadoutLabel} · 맵 아이템 ${settings.initialItemCount}개 · ${settings.itemRespawnSeconds}초마다 1개`;
     root.dataset.scale = "mayhem";
   };
 
@@ -490,22 +409,15 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   }
 
   const hydrateSettingsForm = (): void => {
-    setSelectedCollapseSpeed(form, latestSettings.collapseSpeed);
     startingWeight.value = String(latestSettings.startingWeight);
     startingWeightValue.value = String(latestSettings.startingWeight);
-    initialItemCount.max = String(Math.ceil(latestSettings.playerCount * 0.5));
-    initialItemCount.value = String(latestSettings.initialItemCount);
-    itemRespawn.value = String(latestSettings.itemRespawnSeconds);
 
     for (const input of startingItemInputs) {
       input.checked = latestSettings.startingItems.some((item) => item === input.value);
     }
 
-    draftUpgradePlan = [...latestSettings.upgradePlan];
-
     debugTuning?.load(latestGameplayTuning, latestDebugTuningEnabled);
     renderStartingItemSelection();
-    renderUpgradePlan();
     renderSettingsSummary();
   };
 
@@ -622,14 +534,6 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     for (const stat of UPGRADE_STAT_IDS) {
       statLevelOutputs[stat].value = String(human.progression.stats[stat]);
     }
-    const nextUpgrade = getNextPlannedUpgrade(
-      Object.freeze({
-        ...human.progression,
-        statPoints: Math.max(1, human.progression.statPoints),
-      }),
-      latestSettings.upgradePlan,
-    );
-    nextUpgradeValue.value = nextUpgrade === null ? "완료" : UPGRADE_LABELS[nextUpgrade];
     if (current.countdown !== null) {
       root.dataset.round = "countdown";
       readyMessage.textContent = String(current.countdown);
@@ -682,6 +586,19 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
       onTelemetry: updateTelemetry,
       onEvents(events): void {
         audio?.consumeEvents(events);
+
+        for (const event of events) {
+          if (
+            event.kind === "stat-upgraded" &&
+            event.actorId === 1 &&
+            event.upgradeStat !== undefined
+          ) {
+            latestHumanUpgradeSelections.push(
+              Object.freeze({ tick: event.tick, stat: event.upgradeStat }),
+            );
+          }
+        }
+
         const message = events
           .toReversed()
           .map(getEventMessage)
@@ -695,6 +612,35 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
         root.dataset.humanEliminated = "true";
         readyMessage.textContent = "떨어졌어. 남은 승부를 빠르게 돌리는 중.";
       },
+      onHumanUpgradeRequested(frame): void {
+        const human = frame.participants.find(({ actorId }) => actorId === 1);
+
+        if (human === undefined) {
+          return;
+        }
+
+        for (const input of statUpgradeForm.querySelectorAll<HTMLInputElement>(
+          'input[name="upgradeStat"]',
+        )) {
+          const stat = input.value;
+          input.disabled =
+            !isUpgradeStatId(stat) || human.progression.stats[stat] >= MAX_UPGRADE_LEVEL;
+        }
+
+        const firstAvailableInput = statUpgradeForm.querySelector<HTMLInputElement>(
+          'input[name="upgradeStat"]:not(:disabled)',
+        );
+        if (firstAvailableInput !== null) {
+          firstAvailableInput.checked = true;
+        }
+
+        statUpgradeOverlay.hidden = false;
+        root.dataset.upgrade = "pending";
+        rendererStatus.dataset.state = "paused";
+        rendererStatus.textContent = "스탯 선택 중";
+        readyMessage.textContent = "처치 보상으로 스탯 하나를 골라.";
+        firstAvailableInput?.focus({ preventScroll: true });
+      },
       onRoundCompleted(frame): void {
         const { round } = frame;
 
@@ -703,9 +649,17 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
         }
 
         latestRoundReport = serializePlaytestRoundReport(
-          createPlaytestRoundReport(latestSettings, latestMasterSeed, frame, latestGameplayTuning),
+          createPlaytestRoundReport(
+            latestSettings,
+            latestMasterSeed,
+            frame,
+            latestGameplayTuning,
+            latestHumanUpgradeSelections,
+          ),
         );
         root.dataset.round = "completed";
+        statUpgradeOverlay.hidden = true;
+        delete root.dataset.upgrade;
         copyRoundReportButton.hidden = false;
         rendererStatus.dataset.state = round.winnerActorId === 1 ? "victory" : "completed";
         rendererStatus.textContent = round.winnerActorId === 1 ? "승리" : "라운드 종료";
@@ -728,6 +682,8 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
         latestRoundReport = undefined;
         copyRoundReportButton.hidden = true;
         root.dataset.round = "fatal";
+        statUpgradeOverlay.hidden = true;
+        delete root.dataset.upgrade;
         rendererStatus.dataset.state = "error";
         rendererStatus.textContent = "라운드를 멈췄어";
         readyMessage.textContent = "문제가 생겼어. 다시 시작해 줘.";
@@ -766,11 +722,14 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     latestSettings = settings;
     latestMasterSeed = createRoundSeed();
     latestRoundReport = undefined;
+    latestHumanUpgradeSelections = [];
     copyRoundReportButton.hidden = true;
     copyRoundReportButton.textContent = "기록 복사";
     void audio?.unlock();
     setScreen("arena");
     root.dataset.round = "countdown";
+    statUpgradeOverlay.hidden = true;
+    delete root.dataset.upgrade;
     delete root.dataset.humanEliminated;
     root.dataset.initialItems = String(settings.initialItemCount);
     root.dataset.botDifficulty = FORCED_BOT_DIFFICULTY;
@@ -789,14 +748,11 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     session.start(createConfig(settings), latestMasterSeed, latestGameplayTuning, {
       massFactor: getStartingMassFactor(settings.startingWeight),
       startingItems: settings.startingItems,
-      upgradePlan: settings.upgradePlan,
     });
     arenaHost.focus();
   };
 
   startingWeight.addEventListener("input", renderSettingsSummary);
-  initialItemCount.addEventListener("input", renderSettingsSummary);
-  itemRespawn.addEventListener("input", renderSettingsSummary);
 
   form.addEventListener("change", (event) => {
     const target = event.target;
@@ -860,36 +816,24 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
 
   restartButton.addEventListener("click", () => startRound(latestSettings));
 
-  for (const button of addUpgradeButtons) {
-    button.addEventListener("click", () => {
-      const stat = button.dataset.addUpgrade;
+  statUpgradeForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const stat = new FormData(statUpgradeForm).get("upgradeStat");
 
-      if (!isUpgradeStatId(stat)) {
-        return;
-      }
+    if (
+      typeof stat !== "string" ||
+      !isUpgradeStatId(stat) ||
+      session?.chooseUpgrade(stat) !== true
+    ) {
+      return;
+    }
 
-      draftUpgradePlan = [...normalizeUpgradePlan([...draftUpgradePlan, stat])];
-      renderUpgradePlan();
-      renderSettingsSummary();
-    });
-  }
-
-  clearUpgradePlanButton.addEventListener("click", () => {
-    draftUpgradePlan = [];
-    renderUpgradePlan();
-    renderSettingsSummary();
-  });
-
-  undoUpgradePlanButton.addEventListener("click", () => {
-    draftUpgradePlan = draftUpgradePlan.slice(0, -1);
-    renderUpgradePlan();
-    renderSettingsSummary();
-  });
-
-  resetUpgradePlanButton.addEventListener("click", () => {
-    draftUpgradePlan = [...DEFAULT_UPGRADE_PLAN];
-    renderUpgradePlan();
-    renderSettingsSummary();
+    statUpgradeOverlay.hidden = true;
+    delete root.dataset.upgrade;
+    rendererStatus.dataset.state = "playing";
+    rendererStatus.textContent = "플레이 중";
+    readyMessage.textContent = `${UPGRADE_LABELS[stat]} 상승!`;
+    arenaHost.focus({ preventScroll: true });
   });
 
   for (const [slotIndex, button] of itemSlotButtons.entries()) {

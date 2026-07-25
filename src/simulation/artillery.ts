@@ -66,37 +66,45 @@ export function createArtilleryPlan(
     const launchTick = Math.max(0, wave.warningTick - remainingTelegraphTicks);
     const dangerTick = wave.warningTick + Math.max(1, Math.floor(remainingTelegraphTicks * 0.45));
 
-    for (const tileId of [...wave.tileIds].toSorted((left, right) => left.localeCompare(right))) {
-      const tile = tilesById.get(tileId);
-
-      if (tile === undefined) {
-        continue;
-      }
-
-      const shipIndex = (shotId - 1) % PIRATE_SHIP_COUNT;
-      const origin = shipPositions[shipIndex];
-
-      if (origin === undefined) {
-        continue;
-      }
-
-      ammoByShip[shipIndex] = (ammoByShip[shipIndex] ?? 0) + 1;
-      cannonLaunchTicksByShip[shipIndex]?.push(launchTick);
-      cannonShots.push(
-        Object.freeze({
-          shotId,
-          shipId: shipIndex + 1,
-          targetTileId: tileId,
+    const targetChoice = wave.tileIds
+      .map((tileId) => tilesById.get(tileId))
+      .filter((tile): tile is TileState => tile !== undefined)
+      .flatMap((tile) =>
+        shipPositions.map((origin, shipIndex) => ({
+          tile,
           origin,
-          target: Object.freeze({ x: tile.column + 0.5, y: tile.row + 0.5 }),
-          launchTick,
-          warningTick: wave.warningTick,
-          dangerTick,
-          impactTick: wave.voidTick,
-        }),
-      );
-      shotId += 1;
+          shipIndex,
+          distance: Math.hypot(tile.column + 0.5 - origin.x, tile.row + 0.5 - origin.y),
+        })),
+      )
+      .toSorted(
+        (left, right) =>
+          left.distance - right.distance ||
+          left.shipIndex - right.shipIndex ||
+          left.tile.tileId.localeCompare(right.tile.tileId),
+      )[0];
+
+    if (targetChoice === undefined) {
+      continue;
     }
+
+    const { tile, origin, shipIndex } = targetChoice;
+    ammoByShip[shipIndex] = (ammoByShip[shipIndex] ?? 0) + 1;
+    cannonLaunchTicksByShip[shipIndex]?.push(launchTick);
+    cannonShots.push(
+      Object.freeze({
+        shotId,
+        shipId: shipIndex + 1,
+        targetTileId: tile.tileId,
+        origin,
+        target: Object.freeze({ x: tile.column + 0.5, y: tile.row + 0.5 }),
+        launchTick,
+        warningTick: wave.warningTick,
+        dangerTick,
+        impactTick: wave.voidTick,
+      }),
+    );
+    shotId += 1;
   }
 
   const ships = shipPositions.map((position, index) =>

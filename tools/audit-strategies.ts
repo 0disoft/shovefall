@@ -6,6 +6,7 @@ import {
   getPresetCollapseSpeed,
   getPresetItemRespawnSeconds,
   getRecommendedInitialItemCount,
+  PUBLIC_ROUND_LIMIT_SECONDS,
   type PresetName,
 } from "../src/app/settings";
 import { ITEM_DEFINITION_IDS } from "../src/content/items";
@@ -25,7 +26,7 @@ import { SimulationWorld } from "../src/simulation/world";
 
 const PARTICIPANT_COUNTS = [50] as const;
 const SAMPLE_COUNT = 8;
-const ROUND_LIMIT_SECONDS = 75;
+const ROUND_LIMIT_SECONDS = PUBLIC_ROUND_LIMIT_SECONDS;
 const PRESET_BY_COUNT: Readonly<Record<(typeof PARTICIPANT_COUNTS)[number], PresetName>> =
   Object.freeze({ 50: "massive" });
 

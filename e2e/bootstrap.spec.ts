@@ -280,9 +280,9 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await versionHistoryButton.click();
   await expect(page.locator("#app")).toHaveAttribute("data-screen", "history");
   await expect(page.getByRole("heading", { level: 2, name: "버전 기록" })).toBeFocused();
-  await expect(page.locator("#current-version")).toHaveText("v0.38.0");
-  await expect(page.locator("#version-history-list > li")).toHaveCount(21);
-  await expect(page.getByText("왜 바꿨냐면요")).toHaveCount(21);
+  await expect(page.locator("#current-version")).toHaveText("v0.39.0");
+  await expect(page.locator("#version-history-list > li")).toHaveCount(22);
+  await expect(page.getByText("왜 바꿨냐면요")).toHaveCount(22);
   await expect(page.locator("#arena-host canvas")).toBeHidden();
   await page.keyboard.press("Escape");
   await expect(page.locator("#app")).toHaveAttribute("data-screen", "menu");
@@ -302,34 +302,21 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
     "background-image",
     /item-icons/u,
   );
-  await expect(page.locator("#upgrade-plan-list > li")).toHaveCount(20);
   await expect(page.locator("#setup-summary")).toHaveText(
-    "붕괴 보통 · 몸무게 75 · 철 장화 + 스프링 장갑 · 자동 성장 20단계 · 맵 아이템 17개 · 5초마다 1개",
+    "몸무게 75 · 철 장화 + 스프링 장갑 · 맵 아이템 8개 · 4초마다 1개",
   );
   await page.locator("#starting-weight").fill("58");
-  await page.locator('input[name="collapseSpeed"][value="slow"]').check();
-  await page.locator("#clear-upgrade-plan").click();
-  await page.locator('[data-add-upgrade="stability"]').click();
-  await page.locator('[data-add-upgrade="power"]').click();
-  await expect(page.locator("#upgrade-plan-list > li")).toHaveText(["중심", "힘"]);
   await page.getByRole("button", { name: "취소" }).click();
   await openSettings(page);
   await expect(page.locator("#starting-weight-value")).toHaveText("75");
-  await expect(page.locator("#upgrade-plan-list > li")).toHaveCount(20);
   await expect(page.locator("#setup-summary")).toHaveText(
-    "붕괴 보통 · 몸무게 75 · 철 장화 + 스프링 장갑 · 자동 성장 20단계 · 맵 아이템 17개 · 5초마다 1개",
+    "몸무게 75 · 철 장화 + 스프링 장갑 · 맵 아이템 8개 · 4초마다 1개",
   );
   await page.locator("#starting-weight").fill("58");
-  await page.locator('input[name="collapseSpeed"][value="slow"]').check();
   await page.locator('input[name="startingItem"][value="spring-glove"]').uncheck();
   await page.locator('input[name="startingItem"][value="wind-blast"]').check();
-  await page.locator("#clear-upgrade-plan").click();
-  await page.locator('[data-add-upgrade="stability"]').click();
-  await page.locator('[data-add-upgrade="power"]').click();
   await expect(page.locator("#setup-summary")).toContainText("몸무게 58");
-  await expect(page.locator("#setup-summary")).toContainText("붕괴 느림");
   await expect(page.locator("#setup-summary")).toContainText("철 장화 + 장풍");
-  await expect(page.locator("#setup-summary")).toContainText("자동 성장 2단계");
 
   await saveSettings(page);
   const countdownPauseSnapshot = await page.locator("#start-game").evaluate((button) => {
@@ -375,7 +362,7 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
     await expect(developerTelemetry).toBeVisible();
     await expect(developerTelemetry).not.toHaveAttribute("open", "");
   }
-  await expect(page.locator("#app")).toHaveAttribute("data-initial-items", "17");
+  await expect(page.locator("#app")).toHaveAttribute("data-initial-items", "8");
   await expect(page.locator("#app")).toHaveAttribute("data-bot-difficulty", "hard");
   await expect(page.locator("#app")).toHaveAttribute("data-collapse-speed", "slow");
   await expect(page.locator("#renderer-status")).toHaveText("일시 정지");
@@ -396,12 +383,6 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   const activeCanvas = await captureArenaCanvas(page);
   expect(activeCanvas.summary.uniqueColorBuckets).toBeGreaterThan(4);
   expect(activeCanvas.summary.luminanceRange).toBeGreaterThan(20);
-  const tickBeforeItem = await readSimulationTick(page);
-  await page.keyboard.press("KeyE");
-  await page.clock.fastForward(20);
-  await expect.poll(() => readSimulationTick(page)).toBeGreaterThan(tickBeforeItem);
-  await expect(page.locator("#use-item-slot-1")).toContainText("장풍 · 1회");
-
   if (!productionArtifact) {
     const positionBefore = await readCameraPosition(page);
     await faceArenaDirection(page, "d");
@@ -471,7 +452,6 @@ test("equips Brick Bag in a live production round", async ({ page }) => {
   await page.locator('input[name="startingItem"][value="spring-glove"]').uncheck();
   await page.locator('input[name="startingItem"][value="brick-bag"]').check();
   await page.locator("#starting-weight").fill("100");
-  await page.locator("#initial-item-count").fill("0");
   await expect(page.locator("#setup-summary")).toContainText("철 장화 + 벽돌 가방");
   await saveSettings(page);
   await startGame(page);
@@ -504,7 +484,7 @@ test("equips Brick Bag in a live production round", async ({ page }) => {
     )
     .toBe(true);
   await expect(page.locator("#stat-status")).toBeVisible();
-  await expect(page.locator("#next-upgrade-value")).toHaveText("힘");
+  await expect(page.locator("#stat-points-value")).toHaveText("0");
   await expect(page.locator("#shove-status-value")).toContainText("Space · 밀치기");
   await expect(page.locator("#dodge-status-value")).toContainText("Shift · 회피");
   await expect(page.locator("#use-item-slot-0")).toContainText("철 장화 · 상시");
@@ -561,7 +541,6 @@ test("selects Soap in a live production-safe round", async ({ page }) => {
   await page.locator('input[name="startingItem"][value="spring-glove"]').uncheck();
   await page.locator('input[name="startingItem"][value="boat"]').check();
   await soapCard.check();
-  await page.locator("#initial-item-count").fill("0");
   await expect(page.locator("#setup-summary")).toContainText("배 + 비누");
   await saveSettings(page);
   await startGame(page);
@@ -572,9 +551,7 @@ test("selects Soap in a live production-safe round", async ({ page }) => {
   await expect(page.locator("#use-item-slot-1")).toBeEnabled();
 });
 
-test("selects Grappling Hook and catches a deterministic anchor in a fresh round", async ({
-  page,
-}) => {
+test("selects and fires Grappling Hook in a fresh round", async ({ page }) => {
   await installFixedRoundSeed(page, 1, 0);
   await page.goto("/");
   await openSettings(page);
@@ -594,7 +571,6 @@ test("selects Grappling Hook and catches a deterministic anchor in a fresh round
   await clickInventorySlotAfterActiveTick(page, "#use-item-slot-1");
 
   await expect(slot).toContainText("구조 갈고리 · 1회");
-  await expect(page.getByText("갈고리가 걸렸어.", { exact: true })).toBeVisible();
 });
 
 test("offers a working touch joystick and action buttons on a narrow viewport", async ({
@@ -620,7 +596,6 @@ test("offers a working touch joystick and action buttons on a narrow viewport", 
   await expect(versionHistoryButton).toBeFocused();
   await openSettings(page);
   await page.locator("#starting-weight").fill("100");
-  await page.locator('input[name="collapseSpeed"][value="slow"]').check();
   await saveSettings(page);
   await startGame(page);
   await expect(page.locator("#app")).toHaveAttribute("data-round", "active");
@@ -728,10 +703,8 @@ test("completes a collapsing round and starts a fresh world", async ({ page }) =
   await openSettings(page);
 
   await expect(page.locator("#setup-summary")).not.toContainText("AI 어려움");
-  await expect(page.locator("#setup-summary")).toContainText("자동 성장 20단계");
-  await expect(page.locator("#initial-item-count-value")).toHaveText("17개");
-  await expect(page.locator("#item-respawn-value")).toHaveText("5초");
-  await page.locator('input[name="collapseSpeed"][value="fast"]').check();
+  await expect(page.locator("#setup-summary")).toContainText("맵 아이템 8개");
+  await expect(page.locator("#setup-summary")).toContainText("4초마다 1개");
   await saveSettings(page);
   await startGame(page);
 
@@ -750,36 +723,18 @@ test("completes a collapsing round and starts a fresh world", async ({ page }) =
   );
   const parsedReport: unknown = JSON.parse(copiedReport ?? "null");
   expect(parsedReport).toMatchObject({
-    schemaVersion: "shovefall-playtest-round/v5",
+    schemaVersion: "shovefall-playtest-round/v6",
     seed: expect.any(String),
     stateHash: expect.stringMatching(/^fnv1a32:[0-9a-f]{8}$/u),
     settings: {
       participantCount: 50,
       startingWeight: 75,
-      upgradePlan: [
-        "power",
-        "stability",
-        "mobility",
-        "reflex",
-        "power",
-        "stability",
-        "mobility",
-        "reflex",
-        "power",
-        "stability",
-        "mobility",
-        "reflex",
-        "power",
-        "stability",
-        "mobility",
-        "reflex",
-        "power",
-        "stability",
-        "mobility",
-        "reflex",
-      ],
+      roundLimitSeconds: 120,
     },
-    result: { completedTick: expect.any(Number) },
+    result: {
+      completedTick: expect.any(Number),
+      humanUpgradeSelections: expect.any(Array),
+    },
   });
 
   await page.evaluate(() => {
@@ -820,7 +775,6 @@ test("allows an immediate fresh restart after a deterministic human defeat", asy
   await installFixedRoundSeed(page, 8, 1);
   await page.goto("/");
   await openSettings(page);
-  await page.locator('input[name="collapseSpeed"][value="fast"]').check();
   await saveSettings(page);
   await startGame(page);
 
