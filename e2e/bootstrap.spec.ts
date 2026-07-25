@@ -85,7 +85,7 @@ async function fastForwardUntilRoundCompleted(page: Page, remainingSteps = 300):
     return;
   }
 
-  await page.clock.fastForward(300);
+  await page.clock.runFor(300);
   return fastForwardUntilRoundCompleted(page, remainingSteps - 1);
 }
 
@@ -127,6 +127,11 @@ async function installClipboardCapture(page: Page): Promise<void> {
   });
 }
 
+async function pauseInstalledClock(page: Page): Promise<void> {
+  const currentBrowserTime = await page.evaluate(() => Date.now());
+  await page.clock.pauseAt(currentBrowserTime + 60_000);
+}
+
 async function fastForwardUntilAttribute(
   page: Page,
   selector: string,
@@ -141,7 +146,7 @@ async function fastForwardUntilAttribute(
     return;
   }
 
-  await page.clock.fastForward(50);
+  await page.clock.runFor(50);
   return fastForwardUntilAttribute(page, selector, attribute, expected, remainingFrames - 1);
 }
 
@@ -159,9 +164,9 @@ async function finishInstalledClockCountdown(page: Page, remainingSteps = 24): P
   }
 
   if (remainingSteps === 24) {
-    await page.clock.fastForward(1_450);
+    await page.clock.runFor(1_450);
   } else {
-    await page.clock.fastForward(10);
+    await page.clock.runFor(10);
   }
 
   return finishInstalledClockCountdown(page, remainingSteps - 1);
@@ -198,7 +203,7 @@ async function waitForSimulationTickAdvance(
     throw new Error("inventory input was not consumed during the bounded fixed-clock window");
   }
 
-  await page.clock.fastForward(20);
+  await page.clock.runFor(20);
   return waitForSimulationTickAdvance(page, tickBefore, remainingFrames - 1);
 }
 
@@ -225,7 +230,7 @@ async function setArenaFacingDirection(page: Page, direction: string): Promise<v
   await page.keyboard.down(direction);
 
   try {
-    await page.clock.fastForward(34);
+    await page.clock.runFor(34);
     await expect.poll(() => readSimulationTick(page)).toBeGreaterThan(tickBeforeFacing);
   } finally {
     await page.keyboard.up(direction);
@@ -277,7 +282,7 @@ async function fastForwardUntilCameraMoved(
     throw new Error("camera did not follow held movement during the bounded fixed-clock window");
   }
 
-  await page.clock.fastForward(20);
+  await page.clock.runFor(20);
   return fastForwardUntilCameraMoved(page, positionBefore, remainingFrames - 1);
 }
 
@@ -300,6 +305,7 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await page.clock.install();
   await installFixedRoundSeed(page, 1, 0);
   await page.goto("/");
+  await pauseInstalledClock(page);
 
   await expect(page).toHaveTitle("바닥이 사라지는 술래잡기");
   await expect(
@@ -402,7 +408,7 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await expect(page.locator("#app")).toHaveAttribute("data-bot-difficulty", "hard");
   await expect(page.locator("#app")).toHaveAttribute("data-collapse-speed", "slow");
   await expect(page.locator("#renderer-status")).toHaveText("일시 정지");
-  await page.clock.fastForward(600);
+  await page.clock.runFor(600);
   await expect(page.locator("#game-telemetry")).toHaveAttribute("data-tick", "0");
   await expect(page.locator("#game-telemetry")).toHaveAttribute(
     "data-countdown",
@@ -539,6 +545,7 @@ test("equips and launches a Boat in a fresh round", async ({ page }) => {
   await page.clock.install();
   await installFixedRoundSeed(page, 1, 0);
   await page.goto("/");
+  await pauseInstalledClock(page);
   await openSettings(page);
   await page.locator('input[name="startingItem"][value="iron-boots"]').uncheck();
   await page.locator('input[name="startingItem"][value="spring-glove"]').uncheck();
@@ -560,6 +567,7 @@ test("equips and places a timed bomb in a fresh round", async ({ page }) => {
   await page.clock.install();
   await installFixedRoundSeed(page, 1, 0);
   await page.goto("/");
+  await pauseInstalledClock(page);
   await openSettings(page);
   await page.locator('input[name="startingItem"][value="iron-boots"]').uncheck();
   await page.locator('input[name="startingItem"][value="spring-glove"]').uncheck();
@@ -602,6 +610,7 @@ test("selects and fires Grappling Hook in a fresh round", async ({ page }) => {
   await page.clock.install();
   await installFixedRoundSeed(page, 1, 0);
   await page.goto("/");
+  await pauseInstalledClock(page);
   await openSettings(page);
   const grapplingHookCard = page.locator('input[name="startingItem"][value="grappling-hook"]');
   await expect(grapplingHookCard).toHaveCount(1);
@@ -746,6 +755,7 @@ test("completes a collapsing round and starts a fresh world", async ({ page }) =
   await page.clock.install();
   await installClipboardCapture(page);
   await page.goto("/");
+  await pauseInstalledClock(page);
   await openSettings(page);
 
   await expect(page.locator("#setup-summary")).not.toContainText("AI 어려움");
@@ -820,6 +830,7 @@ test("allows an immediate fresh restart after a deterministic human defeat", asy
   await page.clock.install();
   await installFixedRoundSeed(page, 8, 1);
   await page.goto("/");
+  await pauseInstalledClock(page);
   await openSettings(page);
   await saveSettings(page);
   await startGame(page);
