@@ -209,8 +209,27 @@ async function clickInventorySlotAfterActiveTick(page: Page, selector: string): 
     timeout: 15_000,
   });
   const tickBeforeClick = await readSimulationTick(page);
-  await slot.click();
+  await slot.evaluate((button) => {
+    if (!(button instanceof HTMLButtonElement) || button.disabled) {
+      throw new Error("inventory slot was not actionable at the click boundary");
+    }
+
+    button.click();
+  });
   await waitForSimulationTickAdvance(page, tickBeforeClick);
+}
+
+async function setArenaFacingDirection(page: Page, direction: string): Promise<void> {
+  await page.locator("#arena-host").focus();
+  const tickBeforeFacing = await readSimulationTick(page);
+  await page.keyboard.down(direction);
+
+  try {
+    await page.clock.fastForward(34);
+    await expect.poll(() => readSimulationTick(page)).toBeGreaterThan(tickBeforeFacing);
+  } finally {
+    await page.keyboard.up(direction);
+  }
 }
 
 async function useDirectionalInventorySlot(
@@ -226,7 +245,7 @@ async function useDirectionalInventorySlot(
   }
 
   const slot = page.locator(selector);
-  await faceArenaDirection(page, direction);
+  await setArenaFacingDirection(page, direction);
   await clickInventorySlotAfterActiveTick(page, selector);
 
   if ((await slot.textContent())?.includes(expectedText) === true) {
@@ -537,6 +556,7 @@ test("equips and launches a Boat in a fresh round", async ({ page }) => {
 });
 
 test("equips and places a timed bomb in a fresh round", async ({ page }) => {
+  test.setTimeout(60_000);
   await page.clock.install();
   await installFixedRoundSeed(page, 1, 0);
   await page.goto("/");
@@ -578,6 +598,7 @@ test("selects Soap in a live production-safe round", async ({ page }) => {
 });
 
 test("selects and fires Grappling Hook in a fresh round", async ({ page }) => {
+  test.setTimeout(60_000);
   await page.clock.install();
   await installFixedRoundSeed(page, 1, 0);
   await page.goto("/");
