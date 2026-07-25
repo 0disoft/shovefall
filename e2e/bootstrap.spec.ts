@@ -77,7 +77,7 @@ async function captureArenaCanvas(page: Page): Promise<{
   return { png, summary };
 }
 
-async function fastForwardUntilRoundCompleted(page: Page, remainingSteps = 300): Promise<void> {
+async function fastForwardUntilRoundCompleted(page: Page, remainingSteps = 900): Promise<void> {
   if (
     remainingSteps === 0 ||
     (await page.locator("#app").getAttribute("data-round")) === "completed"
@@ -85,7 +85,7 @@ async function fastForwardUntilRoundCompleted(page: Page, remainingSteps = 300):
     return;
   }
 
-  await page.clock.runFor(300);
+  await page.clock.fastForward(300);
   return fastForwardUntilRoundCompleted(page, remainingSteps - 1);
 }
 
@@ -146,11 +146,11 @@ async function fastForwardUntilAttribute(
     return;
   }
 
-  await page.clock.runFor(50);
+  await page.clock.fastForward(300);
   return fastForwardUntilAttribute(page, selector, attribute, expected, remainingFrames - 1);
 }
 
-async function finishInstalledClockCountdown(page: Page, remainingSteps = 24): Promise<void> {
+async function finishInstalledClockCountdown(page: Page, remainingSteps = 5): Promise<void> {
   const round = await page.locator("#app").getAttribute("data-round");
 
   if (round === "active") {
@@ -163,10 +163,10 @@ async function finishInstalledClockCountdown(page: Page, remainingSteps = 24): P
     );
   }
 
-  if (remainingSteps === 24) {
-    await page.clock.runFor(1_450);
+  if (remainingSteps === 5) {
+    await page.clock.fastForward(1);
   } else {
-    await page.clock.runFor(10);
+    await page.clock.fastForward(510);
   }
 
   return finishInstalledClockCountdown(page, remainingSteps - 1);
@@ -203,7 +203,7 @@ async function waitForSimulationTickAdvance(
     throw new Error("inventory input was not consumed during the bounded fixed-clock window");
   }
 
-  await page.clock.runFor(20);
+  await page.clock.fastForward(20);
   return waitForSimulationTickAdvance(page, tickBefore, remainingFrames - 1);
 }
 
@@ -230,7 +230,7 @@ async function setArenaFacingDirection(page: Page, direction: string): Promise<v
   await page.keyboard.down(direction);
 
   try {
-    await page.clock.runFor(34);
+    await page.clock.fastForward(34);
     await expect.poll(() => readSimulationTick(page)).toBeGreaterThan(tickBeforeFacing);
   } finally {
     await page.keyboard.up(direction);
@@ -282,7 +282,7 @@ async function fastForwardUntilCameraMoved(
     throw new Error("camera did not follow held movement during the bounded fixed-clock window");
   }
 
-  await page.clock.runFor(20);
+  await page.clock.fastForward(20);
   return fastForwardUntilCameraMoved(page, positionBefore, remainingFrames - 1);
 }
 
@@ -408,7 +408,7 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await expect(page.locator("#app")).toHaveAttribute("data-bot-difficulty", "hard");
   await expect(page.locator("#app")).toHaveAttribute("data-collapse-speed", "slow");
   await expect(page.locator("#renderer-status")).toHaveText("일시 정지");
-  await page.clock.runFor(600);
+  await page.clock.fastForward(600);
   await expect(page.locator("#game-telemetry")).toHaveAttribute("data-tick", "0");
   await expect(page.locator("#game-telemetry")).toHaveAttribute(
     "data-countdown",
