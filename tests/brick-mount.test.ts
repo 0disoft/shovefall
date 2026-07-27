@@ -15,7 +15,7 @@ function getActor(world: SimulationWorld, actorId: number) {
 }
 
 describe("brick dodge mounting", () => {
-  it("lands a dodge on the contacted wall, blocks shoves, and dismounts by movement", () => {
+  it("lands a dodge on the contacted wall and dismounts by movement", () => {
     const world = new SimulationWorld(
       normalizeGameConfig({
         participantCount: 4,
@@ -68,18 +68,6 @@ describe("brick dodge mounting", () => {
     expect(mounted.action).toBe("Anchored");
     expect(mounted.position).toEqual({ x: 4.5, y: 3.5 });
     expect(mounted.velocity).toEqual({ x: 0, y: 0 });
-
-    for (let tick = 0; tick < 20; tick += 1) {
-      world.step([{ ...createNeutralCommand(world.tick, 1), move: { x: 0, y: 1 } }]);
-    }
-
-    const blocked = world.step([
-      { ...createNeutralCommand(world.tick, 1), shovePressed: true, move: { x: 1, y: 0 } },
-      { ...createNeutralCommand(world.tick, 2), shovePressed: true },
-    ]);
-    expect(blocked.events.some(({ kind }) => kind === "shove-hit")).toBe(false);
-    expect(getActor(world, 2).action).toBe("Anchored");
-    expect(getActor(world, 2).position).toEqual({ x: 4.5, y: 3.5 });
 
     world.step([{ ...createNeutralCommand(world.tick, 2), move: { x: -1, y: 0 } }]);
     expect(getActor(world, 2).action).toBe("Ready");

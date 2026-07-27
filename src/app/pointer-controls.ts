@@ -11,12 +11,19 @@ export interface PointerControlsOptions {
   readonly arena: HTMLElement;
   readonly joystick: HTMLElement;
   readonly joystickKnob: HTMLElement;
-  readonly shoveButton: HTMLButtonElement;
-  readonly dodgeButton: HTMLButtonElement;
+  readonly grappleButton: HTMLButtonElement;
+  readonly actionButtons: readonly {
+    readonly button: HTMLButtonElement;
+    readonly activate: () => void;
+  }[];
   readonly isActive: () => boolean;
+  readonly isTargetApproaching: () => boolean;
+  readonly isTargeting: () => boolean;
   readonly onMove: (x: number, y: number) => void;
-  readonly onShove: () => void;
-  readonly onDodge: () => void;
+  readonly onGrapple: () => void;
+  readonly onTargetHover: (clientX: number, clientY: number) => void;
+  readonly onTargetConfirm: (clientX: number, clientY: number) => void;
+  readonly onTargetCancel: () => void;
 }
 
 interface ActivePointer {
@@ -92,6 +99,14 @@ export function createPointerControls(options: PointerControlsOptions): PointerC
   };
 
   const handleArenaPointerDown = (event: PointerEvent): void => {
+    if (options.isActive() && options.isTargeting() && event.button === 0) {
+      event.preventDefault();
+      options.onTargetConfirm(event.clientX, event.clientY);
+      return;
+    }
+    if (options.isActive() && options.isTargetApproaching() && event.button === 0) {
+      options.onTargetCancel();
+    }
     beginPointer(event, options.arena, event.clientX, event.clientY, DEFAULT_DRAG_RADIUS);
   };
 
@@ -107,6 +122,9 @@ export function createPointerControls(options: PointerControlsOptions): PointerC
   };
 
   const handlePointerMove = (event: PointerEvent): void => {
+    if (options.isActive() && options.isTargeting()) {
+      options.onTargetHover(event.clientX, event.clientY);
+    }
     if (activePointer?.id !== event.pointerId) {
       return;
     }
@@ -146,34 +164,48 @@ export function createPointerControls(options: PointerControlsOptions): PointerC
     action();
   };
 
-  const handleShove = (event: PointerEvent): void => queueAction(event, options.onShove);
-  const handleDodge = (event: PointerEvent): void => queueAction(event, options.onDodge);
+  const actionHandlers = options.actionButtons.map(({ button, activate }) => {
+    const handler = (event: PointerEvent): void => queueAction(event, activate);
+    button.addEventListener("pointerdown", handler);
+    return Object.freeze({ button, handler });
+  });
+  const handleGrapple = (event: PointerEvent): void => queueAction(event, options.onGrapple);
   const handleWindowBlur = (): void => resetMovement();
   const handleVisibilityChange = (): void => {
     if (document.visibilityState !== "visible") {
       resetMovement();
     }
   };
+  const handleContextMenu = (event: MouseEvent): void => {
+    if (!options.isTargeting() && !options.isTargetApproaching()) {
+      return;
+    }
+    event.preventDefault();
+    options.onTargetCancel();
+  };
 
   options.arena.addEventListener("pointerdown", handleArenaPointerDown);
+  options.arena.addEventListener("contextmenu", handleContextMenu);
   options.joystick.addEventListener("pointerdown", handleJoystickPointerDown);
+  options.grappleButton.addEventListener("pointerdown", handleGrapple);
   window.addEventListener("pointermove", handlePointerMove, { passive: false });
   window.addEventListener("pointerup", endPointer);
   window.addEventListener("pointercancel", endPointer);
-  options.shoveButton.addEventListener("pointerdown", handleShove);
-  options.dodgeButton.addEventListener("pointerdown", handleDodge);
   window.addEventListener("blur", handleWindowBlur);
   document.addEventListener("visibilitychange", handleVisibilityChange);
 
   return Object.freeze({
     destroy(): void {
       options.arena.removeEventListener("pointerdown", handleArenaPointerDown);
+      options.arena.removeEventListener("contextmenu", handleContextMenu);
       options.joystick.removeEventListener("pointerdown", handleJoystickPointerDown);
+      options.grappleButton.removeEventListener("pointerdown", handleGrapple);
       window.removeEventListener("pointermove", handlePointerMove);
       window.removeEventListener("pointerup", endPointer);
       window.removeEventListener("pointercancel", endPointer);
-      options.shoveButton.removeEventListener("pointerdown", handleShove);
-      options.dodgeButton.removeEventListener("pointerdown", handleDodge);
+      for (const { button, handler } of actionHandlers) {
+        button.removeEventListener("pointerdown", handler);
+      }
       window.removeEventListener("blur", handleWindowBlur);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       resetMovement();

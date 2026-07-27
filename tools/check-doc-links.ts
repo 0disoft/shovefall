@@ -59,7 +59,7 @@ const CURRENT_PRODUCT_CONTRACTS = [
       `${PUBLIC_LAKE_COUNT} separated ${PUBLIC_MINIMUM_LAKE_SIZE}–${PUBLIC_MAXIMUM_LAKE_SIZE}-tile lakes`,
       `${PUBLIC_TOTAL_LAKE_BUDGET}-tile budget`,
       `${PUBLIC_ROUND_LIMIT_SECONDS}-second limit`,
-      "reports advance to v6",
+      "reports remain v9",
     ],
     forbidden: ["16-participant normal round", "32-participant Mayhem boot"],
   },
@@ -68,7 +68,7 @@ const CURRENT_PRODUCT_CONTRACTS = [
     required: [
       `${PUBLIC_ROUND_LIMIT_SECONDS}-second hard round limit`,
       `exactly ${PUBLIC_LAKE_COUNT} separated ${PUBLIC_MINIMUM_LAKE_SIZE}–${PUBLIC_MAXIMUM_LAKE_SIZE}-tile lakes under a ${PUBLIC_TOTAL_LAKE_BUDGET}-tile total budget`,
-      "kill-triggered manual stat progression",
+      "kill-triggered direct six-trait progression",
       `fixed ${FIXED_COLLAPSE_SPEED[0]?.toUpperCase()}${FIXED_COLLAPSE_SPEED.slice(1)} collapse`,
       `${FIXED_INITIAL_ITEM_COUNT} initial map items`,
       `one new item every ${FIXED_ITEM_RESPAWN_SECONDS} seconds`,

@@ -15,7 +15,7 @@ const SERVER_READY_TIMEOUT_MS = 30_000;
 const BROWSER_STEP_TIMEOUT_MS = 20_000;
 const GAMEPLAY_SCENE_TIMEOUT_MS = 75_000;
 const POST_ACTION_CAPTURE_TICKS = 45;
-const GRAPPLING_CAPTURE_DIRECTIONS = Object.freeze([
+const GRAPPLE_CAPTURE_DIRECTIONS = Object.freeze([
   "ArrowRight",
   "ArrowDown",
   "ArrowLeft",
@@ -61,10 +61,17 @@ export interface CaptureManifest {
     readonly seed: readonly [number, number];
     readonly settings: {
       readonly botDifficulty: "hard";
-      readonly collapseSpeed: "normal";
-      readonly participantCount: 50;
-      readonly startingItems: readonly ["bomb", "grappling-hook"];
-      readonly startingWeight: 75;
+      readonly collapseSpeed: "slow";
+      readonly participantCount: 60;
+      readonly startingItems: readonly ["bomb"];
+      readonly startingAttributes: {
+        readonly strength: 4;
+        readonly agility: 4;
+        readonly constitution: 4;
+        readonly spirit: 4;
+        readonly balance: 4;
+        readonly willpower: 0;
+      };
     };
     readonly viewport: typeof CAPTURE_VIEWPORT;
   };
@@ -314,12 +321,7 @@ async function waitForTickDelta(page: Page, startingTick: number, delta: number)
 async function chooseCaptureLoadout(page: Page): Promise<void> {
   await page.getByRole("button", { name: "설정", exact: true }).click();
   await waitForAttribute(page, "#app", "data-screen", "settings");
-  await page.locator('input[name="startingItem"][value="iron-boots"]').uncheck();
-  await page.locator('input[name="startingItem"][value="spring-glove"]').uncheck();
   await page.locator('input[name="startingItem"][value="bomb"]').check();
-  await page.locator('input[name="startingItem"][value="grappling-hook"]').check();
-  await page.locator("#starting-weight").fill("100");
-  await page.locator('input[name="collapseSpeed"][value="normal"]').check();
   await page.getByRole("button", { name: "설정 저장" }).click();
   await waitForAttribute(page, "#app", "data-screen", "menu");
 }
@@ -373,26 +375,27 @@ async function clickInventorySlotWhenReady(page: Page, selector: string): Promis
   );
 }
 
-async function useGrapplingHookForCapture(page: Page, directionIndex = 0): Promise<void> {
-  const hookSlot = page.locator("#use-item-slot-1");
-  const direction = GRAPPLING_CAPTURE_DIRECTIONS[directionIndex];
+async function useGrappleForCapture(page: Page, directionIndex = 0): Promise<void> {
+  const grappleButton = page.locator("#use-grapple");
+  const direction = GRAPPLE_CAPTURE_DIRECTIONS[directionIndex];
 
   if (direction === undefined) {
-    throw new Error("The fixed capture seed exposed no cardinal Grappling Hook anchor.");
+    throw new Error("The fixed capture seed exposed no cardinal grapple anchor.");
   }
 
-  reportPhase(`gameplay-use-hook-${direction}`);
-  await waitForInventorySlotReady(page, "#use-item-slot-1");
+  reportPhase(`gameplay-use-grapple-${direction}`);
+  await waitForInventorySlotReady(page, "#use-grapple");
   await faceDirectionForCapture(page, direction);
   const attemptTick = await readSimulationTick(page);
-  await clickInventorySlotWhenReady(page, "#use-item-slot-1");
+  await page.keyboard.press("KeyE");
+  await page.keyboard.press("KeyE");
   await waitForTickDelta(page, attemptTick, 2);
 
-  if ((await hookSlot.textContent())?.includes("1회") === true) {
+  if ((await grappleButton.getAttribute("data-state")) !== "ready") {
     return;
   }
 
-  return useGrapplingHookForCapture(page, directionIndex + 1);
+  return useGrappleForCapture(page, directionIndex + 1);
 }
 
 async function createGameplayScene(page: Page): Promise<void> {
@@ -405,12 +408,15 @@ async function createGameplayScene(page: Page): Promise<void> {
   reportPhase("gameplay-start-recording");
   await startCanvasRecording(page);
 
-  reportPhase("gameplay-use-hook");
-  await useGrapplingHookForCapture(page);
+  reportPhase("gameplay-use-grapple");
+  await useGrappleForCapture(page);
 
   reportPhase("gameplay-use-bomb");
   await clickInventorySlotWhenReady(page, "#use-item-slot-0");
-  await page.getByText("폭탄을 놨어. 5초 뒤 터져.", { exact: true }).waitFor({ state: "visible" });
+  await clickInventorySlotWhenReady(page, "#use-item-slot-0");
+  await page
+    .getByText("폭탄을 놨어. 3.5초 뒤 터져.", { exact: true })
+    .waitFor({ state: "visible" });
   reportPhase("gameplay-move-right");
   const movementStart = await readSimulationTick(page);
   await page.keyboard.down("ArrowRight");
@@ -634,10 +640,17 @@ export async function captureMedia(
         seed: [1, 0],
         settings: {
           botDifficulty: "hard",
-          collapseSpeed: "normal",
-          participantCount: 50,
-          startingItems: ["bomb", "grappling-hook"],
-          startingWeight: 75,
+          collapseSpeed: "slow",
+          participantCount: 60,
+          startingItems: ["bomb"],
+          startingAttributes: {
+            strength: 4,
+            agility: 4,
+            constitution: 4,
+            spirit: 4,
+            balance: 4,
+            willpower: 0,
+          },
         },
         viewport: CAPTURE_VIEWPORT,
       },

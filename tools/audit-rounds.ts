@@ -37,7 +37,7 @@ import {
 import { SimulationWorld, type ParticipantSpawnOverride } from "../src/simulation/world";
 import { getBalanceSignal, wilsonInterval } from "./item-balance-statistics";
 
-const PARTICIPANT_COUNTS = [50] as const;
+const PARTICIPANT_COUNTS = [60] as const;
 const SAMPLE_COUNT = 16;
 const PRODUCTION_SHARD_COUNT = 2;
 const PRODUCTION_SAMPLES_PER_SHARD = SAMPLE_COUNT / PRODUCTION_SHARD_COUNT;
@@ -90,7 +90,7 @@ function parseAuditSection(value: string | undefined): AuditSection {
 const PRESET_BY_PARTICIPANT_COUNT: Readonly<
   Record<(typeof PARTICIPANT_COUNTS)[number], PresetName>
 > = Object.freeze({
-  50: "massive",
+  60: "massive",
 });
 
 const CONTROLLED_MASS_FACTORS: Readonly<Record<MassBand, number>> = Object.freeze({
@@ -139,7 +139,7 @@ interface ProductionShardArtifact {
   readonly auditVersion: 11;
   readonly productVersion: string;
   readonly simulationVersion: string;
-  readonly participantCount: 50;
+  readonly participantCount: 60;
   readonly shardIndex: number;
   readonly shardCount: typeof PRODUCTION_SHARD_COUNT;
   readonly sampleStart: number;
@@ -340,7 +340,6 @@ function createItemCounts(): Record<ItemDefinitionId, number> {
     boat: 0,
     bomb: 0,
     soap: 0,
-    "grappling-hook": 0,
   };
 }
 
@@ -679,7 +678,6 @@ function aggregateBalance(results: readonly RoundAuditResult[]) {
     boat: { pickupCount: 0, exposedActorRounds: 0, winnerActorRounds: 0 },
     bomb: { pickupCount: 0, exposedActorRounds: 0, winnerActorRounds: 0 },
     soap: { pickupCount: 0, exposedActorRounds: 0, winnerActorRounds: 0 },
-    "grappling-hook": { pickupCount: 0, exposedActorRounds: 0, winnerActorRounds: 0 },
   };
   const massExposure: Record<
     MassBand,
@@ -1027,7 +1025,7 @@ function parseProductionShardArtifact(
     auditVersion: 11,
     productVersion: PRODUCT_VERSION,
     simulationVersion: SIMULATION_VERSION,
-    participantCount: 50,
+    participantCount: 60,
     shardIndex,
     shardCount: PRODUCTION_SHARD_COUNT,
     sampleStart,
@@ -1037,7 +1035,7 @@ function parseProductionShardArtifact(
 }
 
 async function runProductionShard(shardIndex: number) {
-  const participantCount = 50;
+  const participantCount = 60;
   const sampleStart = shardIndex * PRODUCTION_SAMPLES_PER_SHARD;
   const config = createAuditConfig(participantCount);
   const results = Array.from({ length: PRODUCTION_SAMPLES_PER_SHARD }, (_, localIndex) => {
@@ -1141,8 +1139,8 @@ async function mergeProductionShards(): Promise<readonly ProductionAuditResult[]
     throw new Error("production merge found duplicate seeds");
   }
 
-  const config = createAuditConfig(50);
-  return Object.freeze([summarizeParticipantAudit(50, config, results)]);
+  const config = createAuditConfig(60);
+  return Object.freeze([summarizeParticipantAudit(60, config, results)]);
 }
 
 function createControlledMassOverrides(sampleIndex: number): readonly ParticipantSpawnOverride[] {

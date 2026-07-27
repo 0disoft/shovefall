@@ -3,6 +3,7 @@ import type {
   BombState,
   BrickWallState,
   CannonShotState,
+  GiftDeliveryState,
   ItemDefinitionId,
   ParticipantActionKind,
   RenderFrameV1,
@@ -10,8 +11,11 @@ import type {
   RenderParticipantV1,
   RockShotState,
   SimulationEventV1,
+  SkillDefinitionId,
   SoapPatchState,
   TileState,
+  TreeObstacleState,
+  TreasureShipState,
   PirateShipState,
 } from "../simulation/contracts";
 import { clamp, type Vector2 } from "../simulation/math";
@@ -33,6 +37,19 @@ export interface ArenaRenderer {
   consumeEvents(events: readonly SimulationEventV1[], frame: RenderFrameV1): void;
   destroy(): void;
   render(frame: RenderFrameV1, interpolationAlpha: number, humanActorId: number): void;
+  screenToWorld(clientX: number, clientY: number): Vector2 | undefined;
+  setAimPreview(preview: ArenaAimPreview | null): void;
+}
+
+export interface ArenaAimPreview {
+  readonly targetMode: "self" | "direction" | "ground";
+  readonly source: Vector2;
+  readonly target: Vector2;
+  readonly castRange: number;
+  readonly effectRadius: number;
+  readonly valid: boolean;
+  readonly approaching: boolean;
+  readonly visualKind: string;
 }
 
 export interface ArenaRendererOptions {
@@ -41,6 +58,10 @@ export interface ArenaRendererOptions {
 }
 
 type VisualEffectKind =
+  | "skill-used"
+  | "skill-hit"
+  | "shield-applied"
+  | "status-applied"
   | "shove-hit"
   | "shove-missed"
   | "dodge-succeeded"
@@ -64,12 +85,30 @@ interface VisualEffect {
   readonly position: Vector2;
   readonly vector: Vector2 | undefined;
   readonly itemDefinitionId: ItemDefinitionId | undefined;
+  readonly skillDefinitionId: SimulationEventV1["skillDefinitionId"];
 }
 
 const DEFAULT_RESOLUTION_CAP = 1.5;
 const MAYHEM_RESOLUTION_CAP = 1;
 const NORMAL_EFFECT_CAP = 36;
 const MAYHEM_EFFECT_CAP = 14;
+const DIRECTIONAL_SKILL_EFFECTS: ReadonlySet<SkillDefinitionId> = new Set([
+  "force-palm",
+  "blink-step",
+  "arc-bolt",
+  "chain-bind",
+  "tidal-charge",
+]);
+const SKILL_EFFECT_SIZE: Readonly<Record<SkillDefinitionId, number>> = Object.freeze({
+  "force-palm": 2.15,
+  "blink-step": 2,
+  "arc-bolt": 1.8,
+  "chain-bind": 2.4,
+  "meteor-mark": 3.6,
+  "frost-field": 3.6,
+  "tidal-charge": 2.4,
+  aegis: 2.6,
+});
 const BOT_COLORS = [0xb8c1bd, 0xd5aaa7, 0xc9bd91, 0xaab8d5, 0xc0a8cf];
 const ACTION_COLORS: Readonly<Record<ParticipantActionKind, number>> = Object.freeze({
   Ready: 0xe8ecea,
@@ -92,8 +131,8 @@ const ITEM_COLORS = Object.freeze({
   boat: 0x4c9bd4,
   bomb: 0xff5c4d,
   soap: 0xd58bea,
-  "grappling-hook": 0xffc857,
 } as const);
+const GRAPPLING_HOOK_COLOR = 0xffc857;
 
 function getArenaDimensions(frame: RenderFrameV1): { columns: number; rows: number } {
   return frame.tiles.reduce(
@@ -151,14 +190,6 @@ function getTileTerrainVariant(tile: TileState): number {
 }
 
 function getTileFillColor(tile: TileState, isShore: boolean): number {
-  if (tile.state === "Warning") {
-    return 0x303a36;
-  }
-
-  if (tile.state === "Collapsing") {
-    return 0x25302c;
-  }
-
   const variant = getTileTerrainVariant(tile);
   const interiorColors = [0x2c3a31, 0x304036, 0x29372f] as const;
   const shoreColors = [0x514a35, 0x574d37, 0x49452f] as const;
@@ -178,7 +209,7 @@ function drawTileCliff(
   const x = projection.originX + tile.column * projection.pitch;
   const y = projection.originY + tile.row * projection.depthPitch;
   const frontY = y + projection.tileDepth;
-  const color = tile.state === "Stable" ? 0x202724 : tile.state === "Warning" ? 0x5a3918 : 0x421d1b;
+  const color = 0x202724;
 
   graphics
     .poly([
@@ -191,7 +222,7 @@ function drawTileCliff(
       x,
       frontY + projection.cliffDepth,
     ])
-    .fill({ color, alpha: tile.state === "Collapsing" ? 0.68 : 1 })
+    .fill({ color })
     .stroke({ color: 0x0d1210, width: 1 });
 }
 
@@ -209,74 +240,90 @@ function drawTile(
   const y = projection.originY + tile.row * projection.depthPitch;
   const radius = Math.max(2, projection.tileDepth * 0.08);
   const fillColor = getTileFillColor(tile, isShore);
-  const strokeColor =
-    tile.state === "Stable"
-      ? isShore
-        ? 0x8b7950
-        : 0x435249
-      : tile.state === "Warning"
-        ? 0xffc857
-        : 0xff5c4d;
+  const strokeColor = isShore ? 0x8b7950 : 0x435249;
 
   graphics
     .roundRect(x, y, projection.tileWidth, projection.tileDepth, radius)
-    .fill({ color: fillColor, alpha: tile.state === "Collapsing" ? 0.72 : 1 })
-    .stroke({ color: strokeColor, width: tile.state === "Stable" ? 1 : 2 });
+    .fill({ color: fillColor })
+    .stroke({ color: strokeColor, width: 1 });
 
   graphics
     .moveTo(x + radius, y + 1)
     .lineTo(x + projection.tileWidth - radius, y + 1)
     .stroke({
-      color: tile.state === "Stable" ? 0x59645f : strokeColor,
+      color: 0x59645f,
       width: 1,
-      alpha: tile.state === "Stable" ? 0.42 : 0.72,
+      alpha: 0.42,
     });
 
-  if (tile.state === "Stable") {
-    const variant = getTileTerrainVariant(tile);
-    const markColor = isShore ? 0xb29a62 : 0x637b68;
-    const markX = x + projection.tileWidth * (0.28 + variant * 0.18);
-    const markY = y + projection.tileDepth * (0.38 + (variant % 2) * 0.2);
-    const markSize = Math.max(1.5, projection.tileWidth * 0.035);
+  const variant = getTileTerrainVariant(tile);
+  const markColor = isShore ? 0xb29a62 : 0x637b68;
+  const markX = x + projection.tileWidth * (0.28 + variant * 0.18);
+  const markY = y + projection.tileDepth * (0.38 + (variant % 2) * 0.2);
+  const markSize = Math.max(1.5, projection.tileWidth * 0.035);
 
-    if (isShore) {
-      const inset = Math.max(2, projection.tileWidth * 0.075);
-      graphics
-        .roundRect(
-          x + inset,
-          y + inset * ARENA_DEPTH_SCALE,
-          projection.tileWidth - inset * 2,
-          projection.tileDepth - inset * ARENA_DEPTH_SCALE * 2,
-          radius,
-        )
-        .fill({ color: 0x344238, alpha: 0.74 });
-    }
-
+  if (isShore) {
+    const inset = Math.max(2, projection.tileWidth * 0.075);
     graphics
-      .circle(markX, markY, markSize)
-      .circle(markX + markSize * 2.4, markY - markSize * 0.8, markSize * 0.65)
-      .fill({ color: markColor, alpha: isShore ? 0.42 : 0.28 });
+      .roundRect(
+        x + inset,
+        y + inset * ARENA_DEPTH_SCALE,
+        projection.tileWidth - inset * 2,
+        projection.tileDepth - inset * ARENA_DEPTH_SCALE * 2,
+        radius,
+      )
+      .fill({ color: 0x344238, alpha: 0.74 });
   }
 
-  if (tile.state === "Warning") {
-    const insetX = projection.tileWidth * 0.2;
-    const insetY = projection.tileDepth * 0.2;
+  graphics
+    .circle(markX, markY, markSize)
+    .circle(markX + markSize * 2.4, markY - markSize * 0.8, markSize * 0.65)
+    .fill({ color: markColor, alpha: isShore ? 0.42 : 0.28 });
+}
+
+function drawTileHazardMarker(
+  graphics: Graphics,
+  tile: TileState,
+  critical: boolean,
+  projection: ArenaProjection,
+): void {
+  const center = projectArenaPoint({ x: tile.column + 0.5, y: tile.row + 0.5 }, projection);
+  const radius = Math.max(8, projection.tileWidth * 0.19);
+  const color = critical ? 0xff5c4d : 0xffc857;
+
+  graphics
+    .circle(center.x, center.y, radius)
+    .fill({ color: 0x101412, alpha: 0.7 })
+    .stroke({ color, width: 2.5, alpha: 0.96 });
+
+  if (!critical) {
     graphics
-      .moveTo(x + insetX, y + projection.tileDepth - insetY)
-      .lineTo(x + projection.tileWidth - insetX, y + insetY)
-      .stroke({ color: 0x8a5a1e, width: Math.max(2, projection.tileWidth * 0.045), alpha: 0.5 });
+      .moveTo(center.x, center.y - radius * 0.52)
+      .lineTo(center.x, center.y + radius * 0.12)
+      .circle(center.x, center.y + radius * 0.48, Math.max(1.8, radius * 0.11))
+      .stroke({ color, width: 3, alpha: 1, cap: "round" });
+    return;
   }
 
-  if (tile.state === "Collapsing") {
-    const insetX = projection.tileWidth * 0.18;
-    const insetY = projection.tileDepth * 0.18;
-    graphics
-      .moveTo(x + insetX, y + insetY)
-      .lineTo(x + projection.tileWidth - insetX, y + projection.tileDepth - insetY)
-      .moveTo(x + projection.tileWidth - insetX, y + insetY)
-      .lineTo(x + insetX, y + projection.tileDepth - insetY)
-      .stroke({ color: 0x6b2a24, width: Math.max(2, projection.tileWidth * 0.055), alpha: 0.58 });
-  }
+  const skullY = center.y - radius * 0.1;
+  graphics
+    .circle(center.x, skullY, radius * 0.46)
+    .roundRect(
+      center.x - radius * 0.3,
+      skullY + radius * 0.25,
+      radius * 0.6,
+      radius * 0.38,
+      radius * 0.08,
+    )
+    .fill({ color, alpha: 0.98 })
+    .circle(center.x - radius * 0.18, skullY - radius * 0.05, radius * 0.1)
+    .circle(center.x + radius * 0.18, skullY - radius * 0.05, radius * 0.1)
+    .fill({ color: 0x101412, alpha: 1 })
+    .moveTo(center.x, skullY + radius * 0.08)
+    .lineTo(center.x - radius * 0.08, skullY + radius * 0.2)
+    .lineTo(center.x + radius * 0.08, skullY + radius * 0.2)
+    .closePath()
+    .fill({ color: 0x101412, alpha: 1 });
 }
 
 function getShotProgress(tick: number, launchTick: number, impactTick: number): number {
@@ -330,10 +377,6 @@ function drawCannonShot(
     .circle(projected.x, projected.y - arc, radius)
     .fill({ color: 0x252b29 })
     .stroke({ color: 0xff8f5c, width: 2 });
-
-  if (tick >= shot.warningTick) {
-    drawTargetWarning(graphics, shot.target, tick >= shot.dangerTick, projection);
-  }
 }
 
 function drawRockShot(
@@ -395,6 +438,77 @@ function drawPirateShip(
     .lineTo(x, y + height * 0.02)
     .closePath()
     .fill({ color: 0x242a28, alpha: 0.94 });
+}
+
+function drawTreasureShip(
+  graphics: Graphics,
+  ship: TreasureShipState,
+  projection: ArenaProjection,
+): void {
+  const { x, y } = projectArenaPoint(ship.position, projection);
+  const width = projection.tileWidth * 1.14;
+  const height = projection.tileDepth * 1.82;
+  graphics
+    .ellipse(x, y + height * 0.34, width * 0.62, height * 0.28)
+    .fill({ color: 0x07100f, alpha: 0.42 })
+    .poly([
+      x,
+      y - height * 0.68,
+      x + width * 0.5,
+      y + height * 0.2,
+      x,
+      y + height * 0.58,
+      x - width * 0.5,
+      y + height * 0.2,
+    ])
+    .fill({ color: 0x2f7f78 })
+    .stroke({ color: 0xffd166, width: 3 })
+    .moveTo(x, y - height * 0.52)
+    .lineTo(x, y + height * 0.12)
+    .moveTo(x, y - height * 0.44)
+    .lineTo(x + width * 0.42, y - height * 0.18)
+    .lineTo(x, y + height * 0.04)
+    .closePath()
+    .fill({ color: 0xffd166, alpha: 0.96 })
+    .stroke({ color: 0x8a5a1e, width: 2 });
+
+  const chestWidth = width * 0.26;
+  const chestHeight = height * 0.16;
+  graphics
+    .roundRect(x - chestWidth / 2, y - height * 0.22, chestWidth, chestHeight, 3)
+    .fill({ color: 0xb56f3f })
+    .stroke({ color: 0xfff0a8, width: 1.5 });
+}
+
+function drawGiftDelivery(
+  graphics: Graphics,
+  delivery: GiftDeliveryState,
+  tick: number,
+  projection: ArenaProjection,
+  reducedMotion: boolean,
+): void {
+  const progress = getShotProgress(tick, delivery.launchTick, delivery.impactTick);
+  const worldPosition = Object.freeze({
+    x: delivery.origin.x + (delivery.target.x - delivery.origin.x) * progress,
+    y: delivery.origin.y + (delivery.target.y - delivery.origin.y) * progress,
+  });
+  const projected = projectArenaPoint(worldPosition, projection);
+  const target = projectArenaPoint(delivery.target, projection);
+  const arc = reducedMotion ? 0 : Math.sin(Math.PI * progress) * projection.tileWidth * 1.15;
+  const size = clamp(projection.tileWidth * (0.28 + progress * 0.1), 14, 32);
+  const boxX = projected.x;
+  const boxY = projected.y - arc;
+
+  graphics
+    .ellipse(target.x, target.y, projection.pitch * 0.34, projection.depthPitch * 0.34)
+    .fill({ color: 0xffd166, alpha: 0.1 + progress * 0.18 })
+    .stroke({ color: 0xffd166, width: 2.5, alpha: 0.62 + progress * 0.28 })
+    .roundRect(boxX - size / 2, boxY - size / 2, size, size, Math.max(2, size * 0.12))
+    .fill({ color: 0xffd166 })
+    .stroke({ color: 0x7b3f35, width: 2 })
+    .rect(boxX - size * 0.09, boxY - size / 2, size * 0.18, size)
+    .rect(boxX - size / 2, boxY - size * 0.09, size, size * 0.18)
+    .fill({ color: 0xff5c4d });
 }
 
 function drawActionFeedback(
@@ -580,14 +694,7 @@ function removeStaleSprites<Key extends string | number>(
   }
 }
 
-function getTerrainTextureIndex(
-  tile: TileState,
-  supportedTileIds: ReadonlySet<string>,
-): number | null {
-  if (tile.state === "Warning" || tile.state === "Collapsing") {
-    return 14;
-  }
-
+function getTerrainTextureIndex(tile: TileState, supportedTileIds: ReadonlySet<string>): number {
   const north = !supportedTileIds.has(`${tile.column}:${tile.row - 1}`);
   const east = !supportedTileIds.has(`${tile.column + 1}:${tile.row}`);
   const south = !supportedTileIds.has(`${tile.column}:${tile.row + 1}`);
@@ -595,7 +702,19 @@ function getTerrainTextureIndex(
 
   const waterSideCount = [north, east, south, west].filter(Boolean).length;
 
-  if (waterSideCount > 2 || (north && south) || (east && west)) return null;
+  if (waterSideCount === 4) {
+    return getTileTerrainVariant(tile);
+  }
+
+  if (waterSideCount === 3) {
+    if (!west) return 5;
+    if (!north) return 6;
+    if (!east) return 7;
+    return 4;
+  }
+
+  if (north && south) return getTileTerrainVariant(tile) % 2 === 0 ? 4 : 6;
+  if (east && west) return getTileTerrainVariant(tile) % 2 === 0 ? 5 : 7;
   if (north && east) return 10;
   if (east && south) return 8;
   if (south && west) return 9;
@@ -638,10 +757,6 @@ function syncTerrainSprites(
 
     const textureIndex = getTerrainTextureIndex(tile, supportedTileIds);
 
-    if (textureIndex === null) {
-      continue;
-    }
-
     const texture = textures[textureIndex];
 
     if (texture === undefined) {
@@ -673,20 +788,77 @@ function syncTerrainSprites(
     }
 
     sprite.texture = texture;
-    sprite.position.set(
-      x + projection.tileWidth * 0.5,
-      y + (projection.tileDepth + projection.cliffDepth) * 0.5,
-    );
-    sprite.width = projection.tileWidth * 1.18;
-    sprite.height = (projection.tileDepth + projection.cliffDepth) * 1.25;
-    sprite.alpha = tile.state === "Collapsing" ? 0.86 : 1;
-    sprite.tint =
-      tile.state === "Warning" ? 0xffc66d : tile.state === "Collapsing" ? 0xff7a68 : 0xffffff;
+    sprite.position.set(x + projection.tileWidth * 0.5, y + projection.tileDepth * 0.5);
+    sprite.width = projection.tileWidth * 1.015;
+    sprite.height = projection.tileDepth * 1.025;
+    sprite.alpha = 1;
+    sprite.tint = 0xffffff;
     sprite.zIndex = tile.row * 10_000 + tile.column;
   }
 
   removeStaleSprites(layer, sprites, visibleTileIds);
   return sprites.size;
+}
+
+function syncTreeSprites(
+  layer: Container,
+  sprites: Map<string, Sprite>,
+  frame: RenderFrameV1,
+  projection: ArenaProjection,
+  assets: ArenaVisualAssets,
+): void {
+  const texture = assets.treeTexture;
+
+  if (texture === null) {
+    removeStaleSprites(layer, sprites, new Set<string>());
+    return;
+  }
+
+  const visibleTileIds = new Set<string>();
+
+  for (const tree of frame.trees) {
+    visibleTileIds.add(tree.tileId);
+    let sprite = sprites.get(tree.tileId);
+
+    if (sprite === undefined) {
+      sprite = new Sprite(texture);
+      sprite.anchor.set(0.5, 0.92);
+      sprites.set(tree.tileId, sprite);
+      layer.addChild(sprite);
+    }
+
+    const point = projectArenaPoint({ x: tree.column + 0.5, y: tree.row + 0.5 }, projection);
+    const targetHeight = clamp(projection.tileWidth * 2.4, 68, 152);
+    sprite.position.set(point.x, point.y + projection.tileDepth * 0.42);
+    sprite.height = targetHeight;
+    sprite.width = targetHeight * (texture.width / texture.height);
+    sprite.zIndex = Math.round((tree.row + 0.62) * 1_000);
+    sprite.visible = true;
+  }
+
+  removeStaleSprites(layer, sprites, visibleTileIds);
+}
+
+function drawTreeObstacle(
+  graphics: Graphics,
+  tree: TreeObstacleState,
+  projection: ArenaProjection,
+): void {
+  const point = projectArenaPoint({ x: tree.column + 0.5, y: tree.row + 0.5 }, projection);
+  const trunkWidth = Math.max(5, projection.tileWidth * 0.13);
+  const trunkHeight = Math.max(14, projection.tileWidth * 0.48);
+  const canopyRadius = Math.max(14, projection.tileWidth * 0.42);
+  graphics
+    .ellipse(point.x, point.y + projection.tileDepth * 0.42, canopyRadius * 0.72, 4)
+    .fill({ color: 0x050706, alpha: 0.35 })
+    .roundRect(point.x - trunkWidth / 2, point.y - trunkHeight * 0.58, trunkWidth, trunkHeight, 2)
+    .fill({ color: 0x735036 })
+    .circle(point.x, point.y - trunkHeight * 0.72, canopyRadius)
+    .fill({ color: 0x2f7445 })
+    .circle(point.x - canopyRadius * 0.52, point.y - trunkHeight * 0.62, canopyRadius * 0.68)
+    .fill({ color: 0x3d8f52 })
+    .circle(point.x + canopyRadius * 0.5, point.y - trunkHeight * 0.6, canopyRadius * 0.64)
+    .fill({ color: 0x28623e });
 }
 
 function syncItemSprites(
@@ -912,6 +1084,163 @@ function syncImpactSprites(
   removeStaleSprites(layer, sprites, visibleEffectKeys);
 }
 
+function syncSkillEffectSprites(
+  layer: Container,
+  sprites: Map<string, Sprite>,
+  effects: readonly VisualEffect[],
+  frameTick: number,
+  projection: ArenaProjection,
+  reducedMotion: boolean,
+  assets: ArenaVisualAssets,
+): void {
+  const visibleEffectKeys = new Set<string>();
+
+  for (const effect of effects) {
+    const definitionId = effect.skillDefinitionId;
+    const texture =
+      definitionId === undefined ? undefined : assets.skillEffectTextures[definitionId];
+    const isSkillEffect =
+      effect.kind === "skill-used" ||
+      effect.kind === "skill-hit" ||
+      effect.kind === "status-applied" ||
+      effect.kind === "shield-applied";
+
+    if (!isSkillEffect || definitionId === undefined || texture === undefined) {
+      continue;
+    }
+
+    visibleEffectKeys.add(effect.key);
+    let sprite = sprites.get(effect.key);
+
+    if (sprite === undefined) {
+      sprite = new Sprite(texture);
+      sprite.anchor.set(0.5);
+      sprites.set(effect.key, sprite);
+      layer.addChild(sprite);
+    } else if (sprite.texture !== texture) {
+      sprite.texture = texture;
+    }
+
+    const duration = Math.max(1, effect.endTick - effect.startTick);
+    const progress = clamp((frameTick - effect.startTick) / duration, 0, 1);
+    const point = projectArenaPoint(effect.position, projection);
+    const baseSize = projection.tileWidth * SKILL_EFFECT_SIZE[definitionId];
+    const hitScale = effect.kind === "skill-hit" || effect.kind === "status-applied" ? 0.82 : 1;
+    const animatedScale = reducedMotion ? 0.9 : 0.7 + progress * 0.48;
+    const size = clamp(baseSize * hitScale * animatedScale, 42, 280);
+    const direction = projectArenaVector(effect.vector ?? { x: 1, y: 0 });
+    sprite.position.set(point.x, point.y);
+    sprite.width = size;
+    sprite.height = size;
+    sprite.rotation = DIRECTIONAL_SKILL_EFFECTS.has(definitionId)
+      ? Math.atan2(direction.y, direction.x)
+      : definitionId === "frost-field" && !reducedMotion
+        ? progress * 0.18
+        : 0;
+    sprite.alpha = Math.max(0, 0.94 * (1 - progress * 0.86));
+    sprite.visible = true;
+  }
+
+  removeStaleSprites(layer, sprites, visibleEffectKeys);
+}
+
+function syncSkillZoneSprites(
+  layer: Container,
+  sprites: Map<number, Sprite>,
+  frame: RenderFrameV1,
+  projection: ArenaProjection,
+  reducedMotion: boolean,
+  assets: ArenaVisualAssets,
+): void {
+  const visibleZoneIds = new Set<number>();
+
+  for (const zone of frame.skillZones) {
+    const texture = assets.skillEffectTextures[zone.skillDefinitionId];
+    if (texture === undefined) {
+      continue;
+    }
+
+    visibleZoneIds.add(zone.zoneId);
+    let sprite = sprites.get(zone.zoneId);
+    if (sprite === undefined) {
+      sprite = new Sprite(texture);
+      sprite.anchor.set(0.5);
+      sprites.set(zone.zoneId, sprite);
+      layer.addChild(sprite);
+    } else if (sprite.texture !== texture) {
+      sprite.texture = texture;
+    }
+
+    const point = projectArenaPoint(zone.position, projection);
+    const pending = frame.tick < zone.activateTick;
+    const pulse = reducedMotion ? 1 : 1 + Math.sin(frame.tick * 0.09 + zone.zoneId) * 0.035;
+    const width = clamp(zone.radius * projection.pitch * 2.25 * pulse, 72, 330);
+    const heightMultiplier = 0.66;
+    sprite.position.set(point.x, point.y);
+    sprite.width = width;
+    sprite.height = width * heightMultiplier;
+    sprite.alpha = pending ? 0.38 : 0.58;
+    sprite.rotation = zone.kind === "frost" && !reducedMotion ? frame.tick * 0.0018 : 0;
+    sprite.visible = true;
+  }
+
+  removeStaleSprites(layer, sprites, visibleZoneIds);
+}
+
+function syncAegisSprites(
+  layer: Container,
+  sprites: Map<number, Sprite>,
+  frame: RenderFrameV1,
+  projection: ArenaProjection,
+  interpolationAlpha: number,
+  reducedMotion: boolean,
+  assets: ArenaVisualAssets,
+): void {
+  const texture = assets.skillEffectTextures.aegis;
+  const visibleActorIds = new Set<number>();
+
+  if (texture === undefined) {
+    removeStaleSprites(layer, sprites, visibleActorIds);
+    return;
+  }
+
+  for (const participant of frame.participants) {
+    if (!participant.active || participant.combat.shield <= 0) {
+      continue;
+    }
+
+    visibleActorIds.add(participant.actorId);
+    let sprite = sprites.get(participant.actorId);
+    if (sprite === undefined) {
+      sprite = new Sprite(texture);
+      sprite.anchor.set(0.5);
+      sprites.set(participant.actorId, sprite);
+      layer.addChild(sprite);
+    }
+
+    const worldX =
+      participant.previousPosition.x +
+      (participant.position.x - participant.previousPosition.x) * interpolationAlpha;
+    const worldY =
+      participant.previousPosition.y +
+      (participant.position.y - participant.previousPosition.y) * interpolationAlpha;
+    const point = projectArenaPoint({ x: worldX, y: worldY }, projection);
+    const pulse = reducedMotion ? 1 : 1 + Math.sin(frame.tick * 0.12 + participant.actorId) * 0.045;
+    const size = clamp(participant.radius * projection.pitch * 4.8 * pulse, 48, 112);
+    sprite.position.set(point.x, point.y - size * 0.05);
+    sprite.width = size;
+    sprite.height = size;
+    sprite.alpha = 0.58;
+    sprite.rotation = reducedMotion
+      ? 0
+      : Math.sin(frame.tick * 0.025 + participant.actorId) * 0.025;
+    sprite.zIndex = worldY * 1000 + participant.actorId - 0.5;
+    sprite.visible = true;
+  }
+
+  removeStaleSprites(layer, sprites, visibleActorIds);
+}
+
 function syncParticipantSprites(
   layer: Container,
   sprites: Map<number, Sprite>,
@@ -939,7 +1268,8 @@ function syncParticipantSprites(
     }
 
     visibleActorIds.add(participant.actorId);
-    const texture = characterTextures[(participant.actorId - 1) % characterTextures.length];
+    const textureIndex = (participant.actorId - 1) % characterTextures.length;
+    const texture = characterTextures[textureIndex];
 
     if (texture === undefined) {
       continue;
@@ -965,7 +1295,8 @@ function syncParticipantSprites(
     const point = projectArenaPoint({ x: worldX, y: worldY }, projection);
     const collisionRadius = participant.radius * projection.pitch;
     const visualScale = 1 + (participant.massFactor - 1) * 0.16;
-    const targetHeight = Math.max(28, collisionRadius * visualScale * 3.45);
+    const frameDisplayScale = assets.characterDisplayScales[textureIndex] ?? 1;
+    const targetHeight = Math.max(28, collisionRadius * visualScale * 3.45) * frameDisplayScale;
     const baseWidth = targetHeight * (texture.width / texture.height);
     const actionPhase = ((frame.tick + participant.actorId * 5) % 18) / 18;
     const stumbleTilt = reducedMotion ? 0 : Math.sin(actionPhase * Math.PI * 2) * 0.13;
@@ -1410,6 +1741,71 @@ function drawParticipant(
   }
 }
 
+function drawCombatBars(
+  graphics: Graphics,
+  participant: RenderParticipantV1,
+  x: number,
+  y: number,
+  projection: ArenaProjection,
+  isHuman: boolean,
+): void {
+  if (!participant.active || participant.action === "Falling") {
+    return;
+  }
+
+  const width = Math.max(isHuman ? 58 : 32, projection.tileWidth * (isHuman ? 1.05 : 0.62));
+  const height = Math.max(3, projection.tileWidth * 0.055);
+  const gap = Math.max(2, height * 0.65);
+  const top = y - Math.max(26, participant.radius * projection.pitch * 3.4);
+  const healthRatio = clamp(participant.combat.health / participant.combat.maximumHealth, 0, 1);
+  const manaRatio = clamp(participant.combat.mana / participant.combat.maximumMana, 0, 1);
+
+  graphics
+    .roundRect(x - width / 2, top, width, height, height / 2)
+    .fill({ color: 0x090b0a, alpha: 0.82 })
+    .roundRect(x - width / 2, top, width * healthRatio, height, height / 2)
+    .fill({ color: healthRatio <= 0.3 ? 0xff5c4d : 0x5fd67a, alpha: 0.96 })
+    .roundRect(x - width / 2, top + height + gap, width, height, height / 2)
+    .fill({ color: 0x090b0a, alpha: 0.82 })
+    .roundRect(x - width / 2, top + height + gap, width * manaRatio, height, height / 2)
+    .fill({ color: 0x4ca6ff, alpha: 0.94 });
+
+  if (participant.combat.shield > 0 && participant.combat.shieldEndsTick > 0) {
+    const shieldRatio = clamp(participant.combat.shield / participant.combat.maximumHealth, 0, 1);
+    graphics
+      .roundRect(x - width / 2, top - gap - height, width * shieldRatio, height, height / 2)
+      .fill({ color: 0x8ee7ff, alpha: 0.88 });
+  }
+}
+
+function drawSkillZone(
+  graphics: Graphics,
+  zone: RenderFrameV1["skillZones"][number],
+  frameTick: number,
+  projection: ArenaProjection,
+): void {
+  const point = projectArenaPoint(zone.position, projection);
+  const radiusX = zone.radius * projection.pitch;
+  const radiusY = zone.radius * projection.depthPitch;
+  const pending = frameTick < zone.activateTick;
+  const color = zone.kind === "frost" ? 0x72d8ff : 0xff695c;
+  const alpha = pending ? 0.2 : 0.24;
+  graphics
+    .ellipse(point.x, point.y, radiusX, radiusY)
+    .fill({ color, alpha })
+    .stroke({ color, width: pending ? 3 : 4, alpha: 0.9 });
+  if (pending) {
+    const progress = clamp(
+      1 - (zone.activateTick - frameTick) / Math.max(1, zone.activateTick - zone.placedTick),
+      0,
+      1,
+    );
+    graphics
+      .ellipse(point.x, point.y, radiusX * progress, radiusY * progress)
+      .stroke({ color: 0xffc857, width: 3, alpha: 0.95 });
+  }
+}
+
 function getEffectPosition(event: SimulationEventV1, frame: RenderFrameV1): Vector2 | undefined {
   if (event.position !== undefined) {
     return event.position;
@@ -1429,7 +1825,11 @@ function getEffectPosition(event: SimulationEventV1, frame: RenderFrameV1): Vect
   }
 
   const actorId =
-    event.kind === "shove-hit" || event.kind === "wind-blast-hit" || event.kind === "soap-triggered"
+    event.kind === "shove-hit" ||
+    event.kind === "wind-blast-hit" ||
+    event.kind === "soap-triggered" ||
+    event.kind === "skill-hit" ||
+    event.kind === "status-applied"
       ? event.targetActorId
       : event.actorId;
   return frame.participants.find((participant) => participant.actorId === actorId)?.position;
@@ -1437,6 +1837,10 @@ function getEffectPosition(event: SimulationEventV1, frame: RenderFrameV1): Vect
 
 function isVisualEffectKind(kind: SimulationEventV1["kind"]): kind is VisualEffectKind {
   return (
+    kind === "skill-used" ||
+    kind === "skill-hit" ||
+    kind === "shield-applied" ||
+    kind === "status-applied" ||
     kind === "shove-hit" ||
     kind === "shove-missed" ||
     kind === "dodge-succeeded" ||
@@ -1451,6 +1855,121 @@ function isVisualEffectKind(kind: SimulationEventV1["kind"]): kind is VisualEffe
     kind === "rock-impact" ||
     kind === "tile-void"
   );
+}
+
+function drawSkillEffect(
+  graphics: Graphics,
+  effect: VisualEffect,
+  x: number,
+  y: number,
+  baseRadius: number,
+  progress: number,
+  alpha: number,
+): void {
+  const direction = projectArenaVector(effect.vector ?? { x: 1, y: 0 });
+  const perpendicular = { x: -direction.y, y: direction.x };
+  const radius = baseRadius * (1.15 + progress * 1.8);
+  const color = effect.kind === "skill-hit" ? 0xffc857 : 0x72d8ff;
+
+  switch (effect.skillDefinitionId) {
+    case "force-palm":
+      for (const spread of [-0.75, 0, 0.75]) {
+        graphics
+          .moveTo(x, y)
+          .lineTo(
+            x + direction.x * radius * 2.8 + perpendicular.x * radius * spread,
+            y + direction.y * radius * 2.8 + perpendicular.y * radius * spread,
+          );
+      }
+      graphics.stroke({ color: 0xffb05c, width: 4, alpha, cap: "round" });
+      break;
+    case "blink-step":
+      for (let index = 0; index < 3; index += 1) {
+        const offset = index * radius * 0.85;
+        graphics
+          .moveTo(
+            x - direction.x * offset - perpendicular.x * radius,
+            y - direction.y * offset - perpendicular.y * radius,
+          )
+          .lineTo(x - direction.x * (offset + radius), y - direction.y * (offset + radius))
+          .lineTo(
+            x - direction.x * offset + perpendicular.x * radius,
+            y - direction.y * offset + perpendicular.y * radius,
+          );
+      }
+      graphics.stroke({ color: 0x74f1e6, width: 3, alpha, cap: "round" });
+      break;
+    case "arc-bolt": {
+      const length = radius * 5.5;
+      graphics.moveTo(x - direction.x * length, y - direction.y * length);
+      for (let index = 1; index <= 6; index += 1) {
+        const ratio = index / 6;
+        const jitter = index % 2 === 0 ? -radius * 0.55 : radius * 0.55;
+        graphics.lineTo(
+          x - direction.x * length * (1 - ratio) + perpendicular.x * jitter,
+          y - direction.y * length * (1 - ratio) + perpendicular.y * jitter,
+        );
+      }
+      graphics.stroke({ color: 0x62e7ff, width: 6, alpha, cap: "round", join: "round" });
+      break;
+    }
+    case "chain-bind":
+      for (let index = 0; index < 4; index += 1) {
+        const offset = radius * index * 1.25;
+        graphics.ellipse(
+          x - direction.x * offset,
+          y - direction.y * offset,
+          radius * 0.62,
+          radius * 0.34,
+        );
+      }
+      graphics.stroke({ color: 0xc9d2da, width: 3, alpha });
+      break;
+    case "meteor-mark":
+      for (let index = 0; index < 8; index += 1) {
+        const angle = (Math.PI * 2 * index) / 8;
+        graphics
+          .moveTo(x + Math.cos(angle) * radius * 0.55, y + Math.sin(angle) * radius * 0.32)
+          .lineTo(x + Math.cos(angle) * radius * 2.2, y + Math.sin(angle) * radius * 1.25);
+      }
+      graphics.stroke({ color: 0xff784e, width: 4, alpha, cap: "round" });
+      graphics.circle(x, y, radius * 0.72).fill({ color: 0xffb13b, alpha: alpha * 0.4 });
+      break;
+    case "frost-field":
+      for (let index = 0; index < 6; index += 1) {
+        const angle = (Math.PI * index) / 3;
+        graphics
+          .moveTo(x - Math.cos(angle) * radius * 1.8, y - Math.sin(angle) * radius)
+          .lineTo(x + Math.cos(angle) * radius * 1.8, y + Math.sin(angle) * radius);
+      }
+      graphics.stroke({ color: 0xa9f1ff, width: 3, alpha, cap: "round" });
+      break;
+    case "tidal-charge":
+      for (let index = 0; index < 3; index += 1) {
+        const offset = radius * index * 0.72;
+        graphics
+          .moveTo(
+            x - direction.x * offset - perpendicular.x * radius * 1.2,
+            y - direction.y * offset - perpendicular.y * radius * 1.2,
+          )
+          .quadraticCurveTo(
+            x + direction.x * radius * 0.8 - direction.x * offset,
+            y + direction.y * radius * 0.8 - direction.y * offset,
+            x - direction.x * offset + perpendicular.x * radius * 1.2,
+            y - direction.y * offset + perpendicular.y * radius * 1.2,
+          );
+      }
+      graphics.stroke({ color: 0x4dc9ff, width: 4, alpha, cap: "round" });
+      break;
+    case "aegis":
+      graphics
+        .regularPoly(x, y, radius * 1.8, 6, Math.PI / 6)
+        .fill({ color: 0x55d7ff, alpha: alpha * 0.16 })
+        .stroke({ color: 0xb9f2ff, width: 4, alpha });
+      break;
+    default:
+      graphics.circle(x, y, radius).stroke({ color, width: 4, alpha });
+  }
 }
 
 function drawWorldEffect(
@@ -1475,6 +1994,16 @@ function drawWorldEffect(
     graphics
       .ellipse(x, y, projection.pitch * waveScale * 0.72, projection.depthPitch * waveScale * 0.72)
       .stroke({ color: 0xdaf7ff, width: 2, alpha: alpha * 0.8 });
+  } else if (effect.kind === "skill-used") {
+    drawSkillEffect(graphics, effect, x, y, baseRadius, reducedMotion ? 0.25 : progress, alpha);
+  } else if (effect.kind === "skill-hit") {
+    drawSkillEffect(graphics, effect, x, y, baseRadius, reducedMotion ? 0.25 : progress, alpha);
+  } else if (effect.kind === "shield-applied") {
+    graphics
+      .circle(x, y, baseRadius * (reducedMotion ? 2 : 2 + progress))
+      .stroke({ color: 0x8ee7ff, width: 5, alpha });
+  } else if (effect.kind === "status-applied") {
+    graphics.circle(x, y, baseRadius * 1.6).stroke({ color: 0xd58bea, width: 3, alpha });
   } else if (effect.kind === "rock-impact") {
     const burst = baseRadius * (reducedMotion ? 2.4 : 1.4 + progress * 4.8);
     graphics.circle(x, y, burst).stroke({ color: 0xff5c4d, width: 5, alpha });
@@ -1488,7 +2017,7 @@ function drawWorldEffect(
     );
     const hookSize = Math.max(5, projection.tileWidth * 0.13);
     graphics.moveTo(x, y).lineTo(anchor.x, anchor.y).stroke({
-      color: ITEM_COLORS["grappling-hook"],
+      color: GRAPPLING_HOOK_COLOR,
       width: 3,
       alpha: cableAlpha,
       cap: "round",
@@ -1499,7 +2028,7 @@ function drawWorldEffect(
       .lineTo(anchor.x, anchor.y)
       .lineTo(anchor.x + hookSize, anchor.y - hookSize * 0.55)
       .stroke({
-        color: ITEM_COLORS["grappling-hook"],
+        color: GRAPPLING_HOOK_COLOR,
         width: 3,
         alpha: cableAlpha,
         cap: "round",
@@ -1580,6 +2109,83 @@ function drawWorldEffect(
   }
 }
 
+function drawAimPreview(
+  graphics: Graphics,
+  preview: ArenaAimPreview,
+  projection: ArenaProjection,
+): void {
+  const source = projectArenaPoint(preview.source, projection);
+  const target = projectArenaPoint(preview.target, projection);
+  const color = preview.valid ? (preview.approaching ? 0xffc857 : 0x50d9ff) : 0xff625f;
+  const fillAlpha = preview.valid ? 0.13 : 0.09;
+  const lineAlpha = preview.approaching ? 0.92 : 0.78;
+  const radius = Math.max(0.35, preview.effectRadius);
+
+  if (preview.targetMode === "direction") {
+    const deltaX = target.x - source.x;
+    const deltaY = target.y - source.y;
+    const length = Math.max(1, Math.hypot(deltaX, deltaY));
+    const normalX = -deltaY / length;
+    const normalY = deltaX / length;
+    const halfWidth = Math.max(5, projection.tileWidth * Math.max(0.12, radius * 0.18));
+    graphics
+      .moveTo(source.x + normalX * halfWidth, source.y + normalY * halfWidth)
+      .lineTo(target.x + normalX * halfWidth, target.y + normalY * halfWidth)
+      .lineTo(target.x - normalX * halfWidth, target.y - normalY * halfWidth)
+      .lineTo(source.x - normalX * halfWidth, source.y - normalY * halfWidth)
+      .closePath()
+      .fill({ color, alpha: fillAlpha })
+      .stroke({ color, width: 2.5, alpha: lineAlpha });
+    graphics
+      .moveTo(target.x - normalX * halfWidth * 1.8, target.y - normalY * halfWidth * 1.8)
+      .lineTo(target.x, target.y)
+      .lineTo(
+        target.x - (deltaX / length) * halfWidth * 2 + normalX * halfWidth * 1.8,
+        target.y - (deltaY / length) * halfWidth * 2 + normalY * halfWidth * 1.8,
+      )
+      .stroke({ color, width: 4, alpha: lineAlpha, cap: "round" });
+  } else {
+    graphics
+      .ellipse(target.x, target.y, projection.pitch * radius, projection.depthPitch * radius)
+      .fill({ color, alpha: fillAlpha })
+      .stroke({ color, width: 3, alpha: lineAlpha });
+  }
+
+  const markerSize = Math.max(8, projection.tileWidth * 0.2);
+  if (preview.visualKind === "bomb") {
+    graphics
+      .circle(target.x, target.y - markerSize * 0.18, markerSize * 0.55)
+      .fill({ color: 0x1a2024, alpha: 0.72 })
+      .stroke({ color, width: 3, alpha: lineAlpha })
+      .moveTo(target.x + markerSize * 0.28, target.y - markerSize * 0.62)
+      .quadraticCurveTo(
+        target.x + markerSize * 0.72,
+        target.y - markerSize * 1.05,
+        target.x + markerSize * 0.95,
+        target.y - markerSize * 0.72,
+      )
+      .stroke({ color: 0xffc857, width: 3, alpha: lineAlpha, cap: "round" });
+  } else if (preview.targetMode !== "direction") {
+    graphics
+      .moveTo(target.x - markerSize, target.y)
+      .lineTo(target.x + markerSize, target.y)
+      .moveTo(target.x, target.y - markerSize * ARENA_DEPTH_SCALE)
+      .lineTo(target.x, target.y + markerSize * ARENA_DEPTH_SCALE)
+      .stroke({ color, width: 2.5, alpha: lineAlpha, cap: "round" });
+  }
+
+  if (preview.castRange > 0 && preview.targetMode === "ground") {
+    graphics
+      .ellipse(
+        source.x,
+        source.y,
+        projection.pitch * preview.castRange,
+        projection.depthPitch * preview.castRange,
+      )
+      .stroke({ color, width: 1.5, alpha: 0.28 });
+  }
+}
+
 export async function createArenaRenderer(
   host: HTMLElement,
   options: ArenaRendererOptions = {},
@@ -1590,7 +2196,7 @@ export async function createArenaRenderer(
     antialias: true,
     autoDensity: true,
     autoStart: false,
-    background: "#141816",
+    background: "#0c2830",
     preference: "webgl",
     resolution: Math.min(window.devicePixelRatio, DEFAULT_RESOLUTION_CAP),
     resizeTo: host,
@@ -1605,6 +2211,7 @@ export async function createArenaRenderer(
   let visualAssets: ArenaVisualAssets | null = null;
   host.dataset.visualAssets = "loading";
 
+  const oceanLayer = new Container();
   const tiles = new Graphics();
   const terrainSprites = new Container();
   terrainSprites.sortableChildren = true;
@@ -1613,15 +2220,19 @@ export async function createArenaRenderer(
   const projectileSprites = new Container();
   const items = new Graphics();
   const itemSprites = new Container();
+  const skillZoneSprites = new Container();
   const participants = new Graphics();
   const participantSprites = new Container();
   const actionFeedback = new Graphics();
   const effectLayer = new Graphics();
+  const skillEffectSprites = new Container();
+  const aimingLayer = new Graphics();
   const impactSprites = new Container();
   const artilleryLabels = new Container();
   const artilleryLabelsByShip = new Map<number, Text>();
   participantSprites.sortableChildren = true;
   application.stage.addChild(
+    oceanLayer,
     tiles,
     terrainSprites,
     artillery,
@@ -1629,15 +2240,19 @@ export async function createArenaRenderer(
     projectileSprites,
     items,
     itemSprites,
+    skillZoneSprites,
     participants,
     participantSprites,
     actionFeedback,
     effectLayer,
+    skillEffectSprites,
+    aimingLayer,
     impactSprites,
     artilleryLabels,
   );
   const itemSpritesById = new Map<number, Sprite>();
   const terrainSpritesByTileId = new Map<string, Sprite>();
+  const treeSpritesByTileId = new Map<string, Sprite>();
   const bombSpritesByKey = new Map<string, Sprite>();
   const soapSpritesByTileId = new Map<string, Sprite>();
   const pirateShipSpritesById = new Map<number, Sprite>();
@@ -1645,7 +2260,10 @@ export async function createArenaRenderer(
   const rockSpritesByShotId = new Map<number, Sprite>();
   const participantSpritesByActorId = new Map<number, Sprite>();
   const boatSpritesByActorId = new Map<number, Sprite>();
+  const aegisSpritesByActorId = new Map<number, Sprite>();
   const impactSpritesByEffectKey = new Map<string, Sprite>();
+  const skillEffectSpritesByKey = new Map<string, Sprite>();
+  const skillZoneSpritesById = new Map<number, Sprite>();
   const eventLedger = new SimulationEventLedger();
   const motionPreference = window.matchMedia("(prefers-reduced-motion: reduce)");
   let reducedMotion = motionPreference.matches;
@@ -1653,7 +2271,9 @@ export async function createArenaRenderer(
   let latestFrame: RenderFrameV1 | undefined;
   let latestInterpolationAlpha = 0;
   let latestHumanActorId = 1;
+  let latestAimPreview: ArenaAimPreview | null = null;
   let tileLayerDirty = true;
+  let oceanSprite: Sprite | undefined;
 
   const draw = (): void => {
     if (latestFrame === undefined) {
@@ -1671,6 +2291,17 @@ export async function createArenaRenderer(
     );
     const presentationCamera = camera;
 
+    if (visualAssets?.oceanTexture !== null && visualAssets?.oceanTexture !== undefined) {
+      if (oceanSprite === undefined) {
+        oceanSprite = new Sprite(visualAssets.oceanTexture);
+        oceanLayer.addChild(oceanSprite);
+      }
+
+      oceanSprite.width = application.screen.width;
+      oceanSprite.height = application.screen.height;
+      oceanSprite.alpha = 0.92;
+    }
+
     for (const layer of [
       tiles,
       terrainSprites,
@@ -1679,10 +2310,13 @@ export async function createArenaRenderer(
       projectileSprites,
       items,
       itemSprites,
+      skillZoneSprites,
       participants,
       participantSprites,
       actionFeedback,
       effectLayer,
+      skillEffectSprites,
+      aimingLayer,
       impactSprites,
       artilleryLabels,
     ]) {
@@ -1700,6 +2334,7 @@ export async function createArenaRenderer(
     participants.clear();
     actionFeedback.clear();
     effectLayer.clear();
+    aimingLayer.clear();
     const mayhem = latestFrame.participants.length >= 25;
 
     if (tileLayerDirty) {
@@ -1708,16 +2343,25 @@ export async function createArenaRenderer(
         latestFrame.tiles.filter(({ state }) => state !== "Void").map(({ tileId }) => tileId),
       );
 
-      for (const tile of latestFrame.tiles) {
-        drawTileCliff(
-          tiles,
-          tile,
-          projection,
-          supportedTileIds.has(`${tile.column}:${tile.row + 1}`),
-        );
+      const hasGeneratedTerrain =
+        visualAssets?.terrainTextures !== null && visualAssets?.terrainTextures !== undefined;
+
+      if (!hasGeneratedTerrain) {
+        for (const tile of latestFrame.tiles) {
+          drawTileCliff(
+            tiles,
+            tile,
+            projection,
+            supportedTileIds.has(`${tile.column}:${tile.row + 1}`),
+          );
+        }
       }
 
       for (const tile of latestFrame.tiles) {
+        if (hasGeneratedTerrain) {
+          continue;
+        }
+
         const isShore =
           !supportedTileIds.has(`${tile.column - 1}:${tile.row}`) ||
           !supportedTileIds.has(`${tile.column + 1}:${tile.row}`) ||
@@ -1740,6 +2384,26 @@ export async function createArenaRenderer(
         application.screen.width,
         application.screen.height,
       ).toString();
+    }
+
+    const frameTick = latestFrame.tick;
+    const dangerousCannonTargets = new Set(
+      latestFrame.cannonShots
+        .filter(({ dangerTick }) => frameTick >= dangerTick)
+        .map(({ targetTileId }) => targetTileId),
+    );
+
+    for (const tile of latestFrame.tiles) {
+      if (tile.state !== "Warning" && tile.state !== "Collapsing") {
+        continue;
+      }
+
+      drawTileHazardMarker(
+        artillery,
+        tile,
+        tile.state === "Collapsing" || dangerousCannonTargets.has(tile.tileId),
+        projection,
+      );
     }
 
     for (const ship of latestFrame.pirateShips) {
@@ -1769,6 +2433,32 @@ export async function createArenaRenderer(
       label.position.set(point.x, point.y - projection.tileDepth * 1.25);
     }
 
+    drawTreasureShip(artillery, latestFrame.treasureShip, projection);
+    const treasureShipPoint = projectArenaPoint(latestFrame.treasureShip.position, projection);
+    let treasureShipLabel = artilleryLabelsByShip.get(-1);
+
+    if (treasureShipLabel === undefined) {
+      treasureShipLabel = new Text({
+        text: "보물선",
+        style: {
+          fill: 0xffd166,
+          fontFamily: "system-ui, sans-serif",
+          fontSize: Math.max(12, projection.tileWidth * 0.22),
+          fontWeight: "900",
+          stroke: { color: 0x0f0c0e, width: 4 },
+        },
+      });
+      treasureShipLabel.anchor.set(0.5, 1);
+      artilleryLabelsByShip.set(-1, treasureShipLabel);
+      artilleryLabels.addChild(treasureShipLabel);
+    }
+
+    treasureShipLabel.style.fontSize = Math.max(12, projection.tileWidth * 0.22);
+    treasureShipLabel.position.set(
+      treasureShipPoint.x,
+      treasureShipPoint.y - projection.tileDepth * 1.35,
+    );
+
     if (visualAssets !== null) {
       syncPirateShipSprites(
         pirateShipSprites,
@@ -1785,6 +2475,10 @@ export async function createArenaRenderer(
 
     for (const shot of latestFrame.rockShots) {
       drawRockShot(artillery, shot, latestFrame.tick, projection, reducedMotion);
+    }
+
+    for (const delivery of latestFrame.giftDeliveries) {
+      drawGiftDelivery(artillery, delivery, latestFrame.tick, projection, reducedMotion);
     }
 
     if (visualAssets !== null) {
@@ -1815,7 +2509,19 @@ export async function createArenaRenderer(
       drawSoapPatch(items, patch, projection);
     }
 
+    for (const zone of latestFrame.skillZones) {
+      drawSkillZone(items, zone, latestFrame.tick, projection);
+    }
+
     if (visualAssets !== null) {
+      syncSkillZoneSprites(
+        skillZoneSprites,
+        skillZoneSpritesById,
+        latestFrame,
+        projection,
+        reducedMotion,
+        visualAssets,
+      );
       syncPlacedItemSprites(
         itemSprites,
         bombSpritesByKey,
@@ -1843,6 +2549,12 @@ export async function createArenaRenderer(
         sortKey: `wall:${wall.tileId}`,
         wall,
       })),
+      ...latestFrame.trees.map((tree) => ({
+        kind: "tree" as const,
+        depth: tree.row + 0.62,
+        sortKey: `tree:${tree.tileId}`,
+        tree,
+      })),
     ].toSorted(
       (left, right) => left.depth - right.depth || left.sortKey.localeCompare(right.sortKey),
     );
@@ -1853,6 +2565,10 @@ export async function createArenaRenderer(
     for (const entry of depthEntries) {
       if (entry.kind === "brick-wall") {
         drawBrickWall(participants, entry.wall, projection);
+      } else if (entry.kind === "tree") {
+        if (visualAssets?.treeTexture === null || visualAssets === null) {
+          drawTreeObstacle(participants, entry.tree, projection);
+        }
       } else {
         drawParticipant(
           participants,
@@ -1867,10 +2583,26 @@ export async function createArenaRenderer(
     }
 
     if (visualAssets !== null) {
+      syncTreeSprites(
+        participantSprites,
+        treeSpritesByTileId,
+        latestFrame,
+        projection,
+        visualAssets,
+      );
       syncParticipantSprites(
         participantSprites,
         participantSpritesByActorId,
         boatSpritesByActorId,
+        latestFrame,
+        projection,
+        latestInterpolationAlpha,
+        reducedMotion,
+        visualAssets,
+      );
+      syncAegisSprites(
+        participantSprites,
+        aegisSpritesByActorId,
         latestFrame,
         projection,
         latestInterpolationAlpha,
@@ -1911,6 +2643,16 @@ export async function createArenaRenderer(
         !mayhem || participant.actorId === latestHumanActorId || distanceFromHuman <= 8,
         latestFrame.tick,
       );
+      if (participant.actorId === latestHumanActorId || distanceFromHuman <= 5) {
+        drawCombatBars(
+          actionFeedback,
+          participant,
+          point.x,
+          point.y,
+          projection,
+          participant.actorId === latestHumanActorId,
+        );
+      }
       drawFacingFeatures(
         actionFeedback,
         participant,
@@ -1929,6 +2671,22 @@ export async function createArenaRenderer(
 
     for (const effect of visualEffects) {
       drawWorldEffect(effectLayer, effect, latestFrame.tick, projection, reducedMotion);
+    }
+
+    if (visualAssets !== null) {
+      syncSkillEffectSprites(
+        skillEffectSprites,
+        skillEffectSpritesByKey,
+        visualEffects,
+        latestFrame.tick,
+        projection,
+        reducedMotion,
+        visualAssets,
+      );
+    }
+
+    if (latestAimPreview !== null) {
+      drawAimPreview(aimingLayer, latestAimPreview, projection);
     }
 
     if (visualAssets !== null) {
@@ -1960,11 +2718,18 @@ export async function createArenaRenderer(
       loadedAssets.impactExplosionTexture,
       loadedAssets.seawaterImpactTexture,
       loadedAssets.terrainTextures,
+      loadedAssets.treeTexture,
+      Object.keys(loadedAssets.skillEffectTextures).length === 9
+        ? loadedAssets.skillEffectTextures
+        : null,
     ].filter((asset) => asset !== null).length;
+    host.dataset.skillEffectAssets = Object.keys(
+      loadedAssets.skillEffectTextures,
+    ).length.toString();
     host.dataset.visualAssets =
       loadedAssetCount === 0
         ? "procedural-fallback"
-        : loadedAssetCount === 8
+        : loadedAssetCount === 10
           ? "generated"
           : "partial";
 
@@ -2013,8 +2778,7 @@ export async function createArenaRenderer(
       const appended = accepted.flatMap((event): readonly VisualEffect[] => {
         if (
           !isVisualEffectKind(event.kind) ||
-          (event.kind === "item-used" &&
-            (event.itemDefinitionId === "soap" || event.itemDefinitionId === "grappling-hook"))
+          (event.kind === "item-used" && event.itemDefinitionId === "soap")
         ) {
           return [];
         }
@@ -2043,6 +2807,7 @@ export async function createArenaRenderer(
             position,
             vector: event.vector,
             itemDefinitionId: event.itemDefinitionId,
+            skillDefinitionId: event.skillDefinitionId,
           }),
         ];
       });
@@ -2082,6 +2847,37 @@ export async function createArenaRenderer(
       );
       latestInterpolationAlpha = clamp(interpolationAlpha, 0, 1);
       latestHumanActorId = humanActorId;
+      present();
+    },
+    screenToWorld(clientX: number, clientY: number): Vector2 | undefined {
+      if (latestFrame === undefined) {
+        return undefined;
+      }
+      const bounds = host.getBoundingClientRect();
+      if (bounds.width <= 0 || bounds.height <= 0) {
+        return undefined;
+      }
+      const projection = createArenaProjection(application.screen.width, application.screen.height);
+      const camera = createCameraOffset(
+        latestFrame,
+        application.screen.width,
+        application.screen.height,
+        projection,
+        latestHumanActorId,
+        latestInterpolationAlpha,
+      );
+      return Object.freeze({
+        x: (clientX - bounds.left - camera.x - projection.originX) / projection.pitch,
+        y: (clientY - bounds.top - camera.y - projection.originY) / projection.depthPitch,
+      });
+    },
+    setAimPreview(preview: ArenaAimPreview | null): void {
+      latestAimPreview = preview;
+      if (preview === null) {
+        host.removeAttribute("data-targeting");
+      } else {
+        host.dataset.targeting = preview.valid ? "valid" : "invalid";
+      }
       present();
     },
   });

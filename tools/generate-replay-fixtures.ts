@@ -4,6 +4,7 @@ import {
   createNeutralCommand,
   normalizeGameConfig,
   type ActorCommandV1,
+  type ReplayHumanSetupV4,
 } from "../src/simulation/contracts";
 import { createReplayFixture } from "../src/simulation/replay";
 
@@ -14,10 +15,7 @@ interface FixtureDefinition {
   readonly endTick: number;
   readonly commands: readonly ActorCommandV1[];
   readonly checkpoints: readonly number[];
-  readonly humanSetup?: {
-    readonly baseMassFactor: number;
-    readonly startingItems: readonly ["wind-blast", "iron-boots"];
-  };
+  readonly humanSetup?: ReplayHumanSetupV4;
 }
 
 function movementCommand(tick: number, x: number, y: number): ActorCommandV1 {
@@ -49,8 +47,16 @@ const definitions: readonly FixtureDefinition[] = [
     ],
     checkpoints: [30, 60, 90, 120, 180],
     humanSetup: {
-      baseMassFactor: 1,
+      startingAttributes: {
+        strength: 4,
+        agility: 4,
+        constitution: 4,
+        spirit: 4,
+        balance: 4,
+        willpower: 0,
+      },
       startingItems: ["wind-blast", "iron-boots"],
+      startingSkills: ["force-palm", "blink-step", "arc-bolt"],
     },
   },
   {

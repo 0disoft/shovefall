@@ -1,6 +1,6 @@
 {
   "name": "shovefall",
-  "version": "0.39.1",
+  "version": "0.69.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -20,6 +20,8 @@
     "audit:rounds:controlled-items": "bun tools/audit-rounds.ts items",
     "audit:rounds:collapse": "bun tools/audit-rounds.ts collapse",
     "audit:items": "bun tools/audit-items.ts",
+    "audit:balance": "bun tools/audit-balance-dashboard.ts",
+    "audit:focus": "bun tools/audit-attribute-focus.ts",
     "audit:strategy": "bun tools/audit-strategies.ts",
     "profile:browser": "bun tools/run-browser-profile.ts",
     "profile:browser:execute": "playwright test --config=playwright.scale.config.ts --grep @profile",

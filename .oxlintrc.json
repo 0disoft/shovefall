@@ -44,6 +44,30 @@
       "rules": {
         "unicorn/no-array-fill-with-reference-type": "off"
       }
+    },
+    {
+      "files": ["src/balance/main.ts"],
+      "rules": {
+        "import/no-unassigned-import": "off"
+      }
+    },
+    {
+      "files": ["src/balance/contract.ts"],
+      "rules": {
+        "typescript/no-unsafe-type-assertion": "off"
+      }
+    },
+    {
+      "files": ["tools/audit-balance-dashboard.ts"],
+      "rules": {
+        "typescript/no-unsafe-type-assertion": "off"
+      }
+    },
+    {
+      "files": ["tools/audit-attribute-focus.ts"],
+      "rules": {
+        "typescript/no-unsafe-type-assertion": "off"
+      }
     }
   ]
 }

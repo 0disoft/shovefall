@@ -60,7 +60,32 @@ interface ActiveVoice {
 }
 
 const MAX_ACTIVE_VOICES = 6;
+export const MASTER_GAIN_SCALE = 0.7;
 const SOUND_DEFINITIONS: Partial<Record<SimulationEventKind, SoundDefinition>> = Object.freeze({
+  "skill-used": Object.freeze({
+    frequency: 390,
+    endFrequency: 660,
+    durationSeconds: 0.12,
+    gain: 0.05,
+    priority: 2,
+    oscillatorType: "triangle",
+  }),
+  "skill-hit": Object.freeze({
+    frequency: 170,
+    endFrequency: 76,
+    durationSeconds: 0.16,
+    gain: 0.085,
+    priority: 4,
+    oscillatorType: "square",
+  }),
+  "shield-applied": Object.freeze({
+    frequency: 480,
+    endFrequency: 760,
+    durationSeconds: 0.18,
+    gain: 0.055,
+    priority: 3,
+    oscillatorType: "sine",
+  }),
   "shove-hit": Object.freeze({
     frequency: 150,
     endFrequency: 82,
@@ -256,7 +281,7 @@ export function createAudioFeedback(
       oscillator.type = definition.oscillatorType;
       oscillator.frequency.setValueAtTime(definition.frequency, startedAt);
       oscillator.frequency.exponentialRampToValueAtTime(definition.endFrequency, endsAt);
-      gain.gain.setValueAtTime(definition.gain, startedAt);
+      gain.gain.setValueAtTime(definition.gain * MASTER_GAIN_SCALE, startedAt);
       gain.gain.exponentialRampToValueAtTime(0.000_1, endsAt);
       oscillator.connect(gain);
       gain.connect(context.destination);

@@ -10,6 +10,7 @@ const graphicsFill = vi.hoisted(() =>
 const graphicsStroke = vi.hoisted(() =>
   vi.fn<(options?: { readonly color?: number; readonly alpha?: number }) => void>(),
 );
+const spriteTint = vi.hoisted(() => vi.fn<(value: number) => void>());
 
 vi.mock("pixi.js", () => {
   class FakeGraphics {
@@ -162,6 +163,10 @@ vi.mock("pixi.js", () => {
     public width = 0;
     public zIndex = 0;
 
+    public set tint(value: number) {
+      spriteTint(value);
+    }
+
     public constructor(texture: FakeTexture) {
       this.texture = texture;
     }
@@ -233,6 +238,7 @@ describe("arena renderer presentation", () => {
     applicationRender.mockClear();
     graphicsFill.mockClear();
     graphicsStroke.mockClear();
+    spriteTint.mockClear();
     vi.stubGlobal("window", {
       devicePixelRatio: 1,
       matchMedia: () => ({
@@ -261,6 +267,50 @@ describe("arena renderer presentation", () => {
     expect(host.dataset.projectionAngle).toBe("58");
     expect(Number(host.dataset.projectionScaleY)).toBeCloseTo(Math.sin((58 * Math.PI) / 180), 4);
     expect(Number(host.dataset.cliffDepth)).toBeGreaterThanOrEqual(6);
+  });
+
+  it("keeps warning terrain untinted and draws a separate hazard marker", async () => {
+    const host = createHost();
+    const renderer = await createArenaRenderer(host);
+    const baseFrame = new SimulationWorld(
+      normalizeGameConfig({ participantCount: 8 }),
+      "terrain-warning-overlay",
+    ).createRenderFrame();
+    const warningTile = baseFrame.tiles.find(({ state }) => state === "Stable");
+
+    expect(warningTile).toBeDefined();
+
+    if (warningTile === undefined) {
+      throw new Error("Terrain warning test requires one stable tile.");
+    }
+
+    const frame = Object.freeze({
+      ...baseFrame,
+      tiles: Object.freeze(
+        baseFrame.tiles.map((tile) =>
+          tile.tileId === warningTile.tileId
+            ? Object.freeze({ ...tile, state: "Warning" as const })
+            : tile,
+        ),
+      ),
+    });
+
+    await vi.waitFor(() => expect(host.dataset.visualAssets).not.toBe("loading"));
+    graphicsFill.mockClear();
+    graphicsStroke.mockClear();
+    spriteTint.mockClear();
+    renderer.render(frame, 0, 1);
+
+    expect(spriteTint).toHaveBeenCalled();
+    expect(spriteTint).toHaveBeenCalledWith(0xffffff);
+    expect(spriteTint).not.toHaveBeenCalledWith(0xffc66d);
+    expect(spriteTint).not.toHaveBeenCalledWith(0xff7a68);
+    expect(graphicsFill).toHaveBeenCalledWith(
+      expect.objectContaining({ color: 0x101412, alpha: 0.7 }),
+    );
+    expect(graphicsStroke).toHaveBeenCalledWith(
+      expect.objectContaining({ color: 0xffc857, alpha: 0.96 }),
+    );
   });
 
   it("moves the world camera opposite the human instead of fitting the whole island", async () => {
@@ -518,7 +568,6 @@ describe("arena renderer presentation", () => {
           sequence: 0,
           kind: "grappling-hook-hit",
           actorId: 1,
-          itemDefinitionId: "grappling-hook",
           position: { x: 4.5, y: 5.5 },
           vector: { x: 3, y: -1 },
         },

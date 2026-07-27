@@ -7,7 +7,15 @@ export interface GamepadMovementVector {
 
 export interface GamepadInput {
   clear(state: InputState): void;
-  sample(state: InputState): void;
+  sample(state: InputState, actions?: GamepadActions): void;
+}
+
+export interface GamepadActions {
+  readonly isTargeting?: () => boolean;
+  readonly onTargetingMoved?: (x: number, y: number) => void;
+  readonly onGrappleRequested?: () => void;
+  readonly onSkillRequested: (slotIndex: 0 | 1) => void;
+  readonly onItemRequested: (slotIndex: 0) => void;
 }
 
 export interface GamepadSnapshot {
@@ -48,22 +56,22 @@ export function getGamepadMovementVector(
 export function createGamepadInput(
   source: GamepadSource = () => navigator.getGamepads(),
 ): GamepadInput {
-  let shoveHeld = false;
-  let dodgeHeld = false;
+  let firstSkillHeld = false;
+  let secondSkillHeld = false;
+  let grappleHeld = false;
   let firstItemHeld = false;
-  let secondItemHeld = false;
 
   const clear = (state: InputState): void => {
-    shoveHeld = false;
-    dodgeHeld = false;
+    firstSkillHeld = false;
+    secondSkillHeld = false;
+    grappleHeld = false;
     firstItemHeld = false;
-    secondItemHeld = false;
     state.setGamepadMovement(0, 0);
   };
 
   return Object.freeze({
     clear,
-    sample(state: InputState): void {
+    sample(state: InputState, actions?: GamepadActions): void {
       const gamepads = source();
       const gamepad = [...gamepads].find((candidate) => candidate?.connected === true);
 
@@ -73,29 +81,36 @@ export function createGamepadInput(
       }
 
       const movement = getGamepadMovementVector(gamepad.axes, gamepad.buttons);
-      const shovePressed = readButton(gamepad.buttons, 0);
-      const dodgePressed = readButton(gamepad.buttons, 1);
-      const firstItemPressed = readButton(gamepad.buttons, 2);
-      const secondItemPressed = readButton(gamepad.buttons, 3);
-      state.setGamepadMovement(movement.x, movement.y);
-
-      if (shovePressed && !shoveHeld) {
-        state.queueShove();
+      const firstSkillPressed = readButton(gamepad.buttons, 0);
+      const secondSkillPressed = readButton(gamepad.buttons, 1);
+      const grapplePressed = readButton(gamepad.buttons, 2);
+      const firstItemPressed = readButton(gamepad.buttons, 4);
+      if (actions?.isTargeting?.() === true) {
+        state.setGamepadMovement(0, 0);
+        if (movement.x !== 0 || movement.y !== 0) {
+          actions.onTargetingMoved?.(movement.x, movement.y);
+        }
+      } else {
+        state.setGamepadMovement(movement.x, movement.y);
       }
-      if (dodgePressed && !dodgeHeld) {
-        state.queueDodge();
+
+      if (firstSkillPressed && !firstSkillHeld) {
+        actions?.onSkillRequested(0);
+      }
+      if (secondSkillPressed && !secondSkillHeld) {
+        actions?.onSkillRequested(1);
+      }
+      if (grapplePressed && !grappleHeld) {
+        actions?.onGrappleRequested?.();
       }
       if (firstItemPressed && !firstItemHeld) {
-        state.queueItemSlot(0);
-      }
-      if (secondItemPressed && !secondItemHeld) {
-        state.queueItemSlot(1);
+        actions?.onItemRequested(0);
       }
 
-      shoveHeld = shovePressed;
-      dodgeHeld = dodgePressed;
+      firstSkillHeld = firstSkillPressed;
+      secondSkillHeld = secondSkillPressed;
+      grappleHeld = grapplePressed;
       firstItemHeld = firstItemPressed;
-      secondItemHeld = secondItemPressed;
     },
   });
 }

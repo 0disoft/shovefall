@@ -13,7 +13,7 @@ Ship a short browser party-action game whose chaos stays readable. The submissio
 must let a first-time player move, shove, dodge, understand most defeats, and restart without an
 account, tutorial wall, backend, or hidden probability deciding combat.
 
-The implementation already proves deterministic rules, fixed 50-participant browser boot,
+The implementation already proves deterministic rules, fixed 60-participant browser boot,
 bounded local 50-participant workload, and the Coal-Twilight procedural visual direction. The critical
 path is no longer adding systems. It is proving the current systems and final-art readability with
 people, then publishing the exact candidate without burying combat telegraphs.
@@ -23,7 +23,7 @@ people, then publishing the exact candidate without burying combat telegraphs.
 - [x] Provider-neutral Vite and PixiJS static application with a pure 60 Hz simulation.
 - [x] Movement, shove, dodge, missed-shove stumble, simultaneous impulses, support loss, falling,
       results, and fresh-world restart.
-- [x] One public 50-participant mode with a 48×40 procedural island and exactly twelve bounded separated lakes.
+- [x] One public 60-participant mode with a 48×40 procedural island and exactly twelve bounded separated lakes.
 - [x] Hard utility-bot reaction profile fixed for public play without bot-only physics advantages.
 - [x] Slow, Normal, and Fast collapse controls with deterministic warning and collapse schedules.
 - [x] Iron Boots, Feather, and Spring Glove with a bounded 3/2/1 outer-ring placement preference.
@@ -53,7 +53,7 @@ Exit conditions:
 - Edge-item attempts are experienced as a visible voluntary risk. Unreadable spawns, accidental
   pickups, and forced deaths are separated from chosen greed.
 - Human identity, shove windup, dodge window, collapse warning, item type, and result state remain
-  distinguishable in the fixed 50-participant mode.
+  distinguishable in the fixed 60-participant mode.
 
 Current status: `PENDING_EXTERNAL_PLAYTEST`. Automated audits are supporting evidence only; bots do not use charged active items, so they cannot establish Grappling Hook or active-item pair balance.
 
@@ -94,7 +94,7 @@ Exit conditions:
 - Screenshot, short gameplay capture, tool list, asset provenance, and development notes are ready
   in [05-submission-package.md](05-submission-package.md) for the contest post.
 
-Current status: `IN_PROGRESS`. Product `0.39.1`, simulation `20.0.0`, and content `14.0.0` are the current local rules. Public play fixes 50 Hard bots, Slow collapse, eight initial map items, four-second respawns, a 120-second limit, twelve lakes, nearby-wave artillery, manual kill-reward stat choices, and countdown-held keyboard movement. Eight accepted generated asset groups retain independent procedural fallbacks. The deployed `0.37.0` SHA `7386349b43a6e83bd0071873184f70e303c92ef0` remains the last hosted proof. The `0.39.1` candidate has current unit and production Chrome evidence; strategy audit, capture, exact-SHA hosted proof, named physical-browser coverage, and human-play evidence remain pending after the final commit.
+Current status: `IN_PROGRESS`. Product `0.69.0`, simulation `41.0.0`, and content `25.0.0` are the current local rules. Public play fixes 60 participants with Hard bots, opening outer-coast-only Slow collapse, eight initial map items, one seven-second treasure-gift launch when capacity permits, a 120-second limit, twelve lakes, deterministic solid trees, clear-water cannon targeting with per-ship reload, obstacle-aware bot routing, target commitment, tactical skill selection, lethal-rock escape, and a bounded browser-local scoreboard. The human moves only through arrows, pointer/touch, or gamepad movement surfaces, selects two mana-backed `Q/W` combat skills from eight, uses the shared 15-second `E` Grappling Hook, chooses one starting `D` item, and spends each credited-elimination reward on one of six directly available combat traits. The live arena fills the viewport and moves telemetry plus non-combat actions into a `P` pause layer; Shift is unbound. That layer shows the current round's traveled distance, dealt and received health damage, shield-blocked damage, slowed time, and per-skill use counts. Completed and fatal panels remove the resumable action instead of leaving a dead control. Cannon warnings preserve the island art and use separate exclamation and skull markers. Health, mana, regeneration, shields, damage, and control participate in deterministic combat alongside support loss. Generated asset groups retain independent procedural fallbacks. The deployed `0.37.0` SHA `7386349b43a6e83bd0071873184f70e303c92ef0` remains the last hosted proof. The `0.69.0` candidate still needs grouped production Chrome evidence, combat/item/trait balance review, treasure-delivery readability, capture, exact-SHA hosted proof, named physical-browser coverage, and human-play evidence.
 
 ## Deferred Beyond the Submission
 

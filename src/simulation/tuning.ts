@@ -1,3 +1,5 @@
+import { GRAPPLING_HOOK_DEFINITION } from "../content/built-in-actions";
+import { getItemDefinition } from "../content/items";
 import { clamp } from "./math";
 
 export interface GameplayTuningV1 {
@@ -5,10 +7,31 @@ export interface GameplayTuningV1 {
   readonly movementMaximumSpeed: number;
   readonly lightweightSpeedMultiplier: number;
   readonly heavyweightSpeedMultiplier: number;
+  readonly shoveWindupTicks: number;
   readonly shoveActiveTicks: number;
+  readonly shoveRecoveryTicks: number;
+  readonly shoveCooldownTicks: number;
   readonly shoveReach: number;
+  readonly shoveBaseImpulse: number;
+  readonly shoveMaximumImpulse: number;
+  readonly shoveHitStumbleTicks: number;
   readonly dodgeActiveTicks: number;
+  readonly dodgeCooldownTicks: number;
+  readonly dodgeEvasionTicks: number;
   readonly dodgeSpeed: number;
+  readonly healthRegenDelayTicks: number;
+  readonly healthRegenPerTick: number;
+  readonly manaRegenDelayTicks: number;
+  readonly manaRegenPerTick: number;
+  readonly shoveDamage: number;
+  readonly windBlastRange: number;
+  readonly windBlastBaseImpulse: number;
+  readonly bombFuseTicks: number;
+  readonly bombBlastRadius: number;
+  readonly grapplingHookCooldownTicks: number;
+  readonly grapplingHookRange: number;
+  readonly grapplingHookPullTicks: number;
+  readonly soapStumbleTicks: number;
 }
 
 export type GameplayTuningInput = Partial<Omit<GameplayTuningV1, "tuningVersion">>;
@@ -22,7 +45,7 @@ interface NumericTuningLimit {
 export const SIMULATION_TUNING = Object.freeze({
   mass: Object.freeze({
     minimum: 0.85,
-    maximum: 1.25,
+    maximum: 1.65,
     default: 1,
   }),
   body: Object.freeze({
@@ -37,7 +60,7 @@ export const SIMULATION_TUNING = Object.freeze({
     cellSize: 1.7,
   }),
   movement: Object.freeze({
-    baseMaximumSpeed: 0.055,
+    baseMaximumSpeed: 0.04,
     lightweightSpeedMultiplier: 1.5,
     heavyweightSpeedMultiplier: 0.82,
     windupControl: 0.35,
@@ -62,21 +85,23 @@ export const SIMULATION_TUNING = Object.freeze({
     eliminationCreditTicks: 180,
   }),
   windBlast: Object.freeze({
-    range: 6.5,
+    range: getItemDefinition("wind-blast").castRange,
+    minimumAimDot: 0.94,
     baseImpulse: 0.52,
     maximumImpulse: 0.64,
-    stumbleTicks: 30,
+    stumbleTicks: 60,
   }),
   grapplingHook: Object.freeze({
-    range: 4.5,
-    minimumAnchorDistance: 1.25,
-    targetSpeed: 0.3,
-    acceleration: 0.24,
-    pullTicks: 12,
+    cooldownTicks: GRAPPLING_HOOK_DEFINITION.cooldownTicks,
+    range: GRAPPLING_HOOK_DEFINITION.castRange,
+    minimumAnchorDistance: GRAPPLING_HOOK_DEFINITION.minimumAnchorDistance,
+    targetSpeed: GRAPPLING_HOOK_DEFINITION.targetSpeed,
+    acceleration: GRAPPLING_HOOK_DEFINITION.acceleration,
+    pullTicks: GRAPPLING_HOOK_DEFINITION.pullTicks,
   }),
   bomb: Object.freeze({
-    fuseTicks: 300,
-    blastRadius: 3,
+    fuseTicks: getItemDefinition("bomb").fuseTicks,
+    blastRadius: getItemDefinition("bomb").effectRadius,
     ownerBaseImpulse: 0.42,
     ownerMaximumImpulse: 0.52,
     ownerMinimumFalloff: 0.65,
@@ -85,13 +110,13 @@ export const SIMULATION_TUNING = Object.freeze({
   soap: Object.freeze({
     minimumSpeed: 0.105,
     maximumSpeed: 0.42,
-    stumbleTicks: 24,
+    stumbleTicks: getItemDefinition("soap").stumbleTicks,
   }),
   dodge: Object.freeze({
     activeTicks: 4,
     evasionTicks: 4,
     cooldownTicks: 108,
-    speed: 0.08,
+    speed: 0.6,
   }),
   support: Object.freeze({
     graceTicks: 9,
@@ -107,10 +132,31 @@ export const GAMEPLAY_TUNING_LIMITS: Readonly<
   movementMaximumSpeed: Object.freeze({ minimum: 0.035, maximum: 0.09, step: 0.001 }),
   lightweightSpeedMultiplier: Object.freeze({ minimum: 1, maximum: 1.6, step: 0.05 }),
   heavyweightSpeedMultiplier: Object.freeze({ minimum: 0.6, maximum: 1, step: 0.05 }),
+  shoveWindupTicks: Object.freeze({ minimum: 2, maximum: 20, step: 1 }),
   shoveActiveTicks: Object.freeze({ minimum: 3, maximum: 9, step: 1 }),
+  shoveRecoveryTicks: Object.freeze({ minimum: 5, maximum: 60, step: 1 }),
+  shoveCooldownTicks: Object.freeze({ minimum: 30, maximum: 300, step: 6 }),
   shoveReach: Object.freeze({ minimum: 0.12, maximum: 0.5, step: 0.01 }),
+  shoveBaseImpulse: Object.freeze({ minimum: 0.05, maximum: 0.5, step: 0.01 }),
+  shoveMaximumImpulse: Object.freeze({ minimum: 0.1, maximum: 0.8, step: 0.02 }),
+  shoveHitStumbleTicks: Object.freeze({ minimum: 5, maximum: 60, step: 1 }),
   dodgeActiveTicks: Object.freeze({ minimum: 3, maximum: 10, step: 1 }),
-  dodgeSpeed: Object.freeze({ minimum: 0.07, maximum: 0.17, step: 0.005 }),
+  dodgeCooldownTicks: Object.freeze({ minimum: 30, maximum: 360, step: 6 }),
+  dodgeEvasionTicks: Object.freeze({ minimum: 1, maximum: 10, step: 1 }),
+  dodgeSpeed: Object.freeze({ minimum: 0.07, maximum: 0.75, step: 0.025 }),
+  healthRegenDelayTicks: Object.freeze({ minimum: 60, maximum: 600, step: 30 }),
+  healthRegenPerTick: Object.freeze({ minimum: 0, maximum: 0.3, step: 0.01 }),
+  manaRegenDelayTicks: Object.freeze({ minimum: 0, maximum: 300, step: 15 }),
+  manaRegenPerTick: Object.freeze({ minimum: 0, maximum: 0.5, step: 0.025 }),
+  shoveDamage: Object.freeze({ minimum: 0, maximum: 30, step: 1 }),
+  windBlastRange: Object.freeze({ minimum: 2, maximum: 15, step: 0.5 }),
+  windBlastBaseImpulse: Object.freeze({ minimum: 0.1, maximum: 1.5, step: 0.02 }),
+  bombFuseTicks: Object.freeze({ minimum: 60, maximum: 600, step: 30 }),
+  bombBlastRadius: Object.freeze({ minimum: 1, maximum: 8, step: 0.5 }),
+  grapplingHookCooldownTicks: Object.freeze({ minimum: 120, maximum: 1_200, step: 30 }),
+  grapplingHookRange: Object.freeze({ minimum: 2, maximum: 10, step: 0.5 }),
+  grapplingHookPullTicks: Object.freeze({ minimum: 4, maximum: 30, step: 1 }),
+  soapStumbleTicks: Object.freeze({ minimum: 5, maximum: 60, step: 1 }),
 });
 
 export const DEFAULT_GAMEPLAY_TUNING: GameplayTuningV1 = Object.freeze({
@@ -118,10 +164,31 @@ export const DEFAULT_GAMEPLAY_TUNING: GameplayTuningV1 = Object.freeze({
   movementMaximumSpeed: SIMULATION_TUNING.movement.baseMaximumSpeed,
   lightweightSpeedMultiplier: SIMULATION_TUNING.movement.lightweightSpeedMultiplier,
   heavyweightSpeedMultiplier: SIMULATION_TUNING.movement.heavyweightSpeedMultiplier,
+  shoveWindupTicks: SIMULATION_TUNING.shove.windupTicks,
   shoveActiveTicks: SIMULATION_TUNING.shove.activeTicks,
+  shoveRecoveryTicks: SIMULATION_TUNING.shove.recoveryTicks,
+  shoveCooldownTicks: SIMULATION_TUNING.shove.cooldownTicks,
   shoveReach: SIMULATION_TUNING.shove.reach,
+  shoveBaseImpulse: SIMULATION_TUNING.shove.baseImpulse,
+  shoveMaximumImpulse: SIMULATION_TUNING.shove.maximumImpulse,
+  shoveHitStumbleTicks: SIMULATION_TUNING.shove.hitStumbleTicks,
   dodgeActiveTicks: SIMULATION_TUNING.dodge.activeTicks,
+  dodgeCooldownTicks: SIMULATION_TUNING.dodge.cooldownTicks,
+  dodgeEvasionTicks: SIMULATION_TUNING.dodge.evasionTicks,
   dodgeSpeed: SIMULATION_TUNING.dodge.speed,
+  healthRegenDelayTicks: 300,
+  healthRegenPerTick: 0.04,
+  manaRegenDelayTicks: 60,
+  manaRegenPerTick: 0.1,
+  shoveDamage: 7,
+  windBlastRange: SIMULATION_TUNING.windBlast.range,
+  windBlastBaseImpulse: SIMULATION_TUNING.windBlast.baseImpulse,
+  bombFuseTicks: SIMULATION_TUNING.bomb.fuseTicks,
+  bombBlastRadius: SIMULATION_TUNING.bomb.blastRadius,
+  grapplingHookCooldownTicks: SIMULATION_TUNING.grapplingHook.cooldownTicks,
+  grapplingHookRange: SIMULATION_TUNING.grapplingHook.range,
+  grapplingHookPullTicks: SIMULATION_TUNING.grapplingHook.pullTicks,
+  soapStumbleTicks: SIMULATION_TUNING.soap.stumbleTicks,
 });
 
 export interface MovementProfile {
@@ -166,25 +233,130 @@ export function normalizeGameplayTuning(input: GameplayTuningInput = {}): Gamepl
       DEFAULT_GAMEPLAY_TUNING.heavyweightSpeedMultiplier,
       GAMEPLAY_TUNING_LIMITS.heavyweightSpeedMultiplier,
     ),
+    shoveWindupTicks: normalizeInteger(
+      input.shoveWindupTicks,
+      DEFAULT_GAMEPLAY_TUNING.shoveWindupTicks,
+      GAMEPLAY_TUNING_LIMITS.shoveWindupTicks,
+    ),
     shoveActiveTicks: normalizeInteger(
       input.shoveActiveTicks,
       DEFAULT_GAMEPLAY_TUNING.shoveActiveTicks,
       GAMEPLAY_TUNING_LIMITS.shoveActiveTicks,
+    ),
+    shoveRecoveryTicks: normalizeInteger(
+      input.shoveRecoveryTicks,
+      DEFAULT_GAMEPLAY_TUNING.shoveRecoveryTicks,
+      GAMEPLAY_TUNING_LIMITS.shoveRecoveryTicks,
+    ),
+    shoveCooldownTicks: normalizeInteger(
+      input.shoveCooldownTicks,
+      DEFAULT_GAMEPLAY_TUNING.shoveCooldownTicks,
+      GAMEPLAY_TUNING_LIMITS.shoveCooldownTicks,
     ),
     shoveReach: normalizeNumber(
       input.shoveReach,
       DEFAULT_GAMEPLAY_TUNING.shoveReach,
       GAMEPLAY_TUNING_LIMITS.shoveReach,
     ),
+    shoveBaseImpulse: normalizeNumber(
+      input.shoveBaseImpulse,
+      DEFAULT_GAMEPLAY_TUNING.shoveBaseImpulse,
+      GAMEPLAY_TUNING_LIMITS.shoveBaseImpulse,
+    ),
+    shoveMaximumImpulse: normalizeNumber(
+      input.shoveMaximumImpulse,
+      DEFAULT_GAMEPLAY_TUNING.shoveMaximumImpulse,
+      GAMEPLAY_TUNING_LIMITS.shoveMaximumImpulse,
+    ),
+    shoveHitStumbleTicks: normalizeInteger(
+      input.shoveHitStumbleTicks,
+      DEFAULT_GAMEPLAY_TUNING.shoveHitStumbleTicks,
+      GAMEPLAY_TUNING_LIMITS.shoveHitStumbleTicks,
+    ),
     dodgeActiveTicks: normalizeInteger(
       input.dodgeActiveTicks,
       DEFAULT_GAMEPLAY_TUNING.dodgeActiveTicks,
       GAMEPLAY_TUNING_LIMITS.dodgeActiveTicks,
     ),
+    dodgeCooldownTicks: normalizeInteger(
+      input.dodgeCooldownTicks,
+      DEFAULT_GAMEPLAY_TUNING.dodgeCooldownTicks,
+      GAMEPLAY_TUNING_LIMITS.dodgeCooldownTicks,
+    ),
+    dodgeEvasionTicks: normalizeInteger(
+      input.dodgeEvasionTicks,
+      DEFAULT_GAMEPLAY_TUNING.dodgeEvasionTicks,
+      GAMEPLAY_TUNING_LIMITS.dodgeEvasionTicks,
+    ),
     dodgeSpeed: normalizeNumber(
       input.dodgeSpeed,
       DEFAULT_GAMEPLAY_TUNING.dodgeSpeed,
       GAMEPLAY_TUNING_LIMITS.dodgeSpeed,
+    ),
+    healthRegenDelayTicks: normalizeInteger(
+      input.healthRegenDelayTicks,
+      DEFAULT_GAMEPLAY_TUNING.healthRegenDelayTicks,
+      GAMEPLAY_TUNING_LIMITS.healthRegenDelayTicks,
+    ),
+    healthRegenPerTick: normalizeNumber(
+      input.healthRegenPerTick,
+      DEFAULT_GAMEPLAY_TUNING.healthRegenPerTick,
+      GAMEPLAY_TUNING_LIMITS.healthRegenPerTick,
+    ),
+    manaRegenDelayTicks: normalizeInteger(
+      input.manaRegenDelayTicks,
+      DEFAULT_GAMEPLAY_TUNING.manaRegenDelayTicks,
+      GAMEPLAY_TUNING_LIMITS.manaRegenDelayTicks,
+    ),
+    manaRegenPerTick: normalizeNumber(
+      input.manaRegenPerTick,
+      DEFAULT_GAMEPLAY_TUNING.manaRegenPerTick,
+      GAMEPLAY_TUNING_LIMITS.manaRegenPerTick,
+    ),
+    shoveDamage: normalizeNumber(
+      input.shoveDamage,
+      DEFAULT_GAMEPLAY_TUNING.shoveDamage,
+      GAMEPLAY_TUNING_LIMITS.shoveDamage,
+    ),
+    windBlastRange: normalizeNumber(
+      input.windBlastRange,
+      DEFAULT_GAMEPLAY_TUNING.windBlastRange,
+      GAMEPLAY_TUNING_LIMITS.windBlastRange,
+    ),
+    windBlastBaseImpulse: normalizeNumber(
+      input.windBlastBaseImpulse,
+      DEFAULT_GAMEPLAY_TUNING.windBlastBaseImpulse,
+      GAMEPLAY_TUNING_LIMITS.windBlastBaseImpulse,
+    ),
+    bombFuseTicks: normalizeInteger(
+      input.bombFuseTicks,
+      DEFAULT_GAMEPLAY_TUNING.bombFuseTicks,
+      GAMEPLAY_TUNING_LIMITS.bombFuseTicks,
+    ),
+    bombBlastRadius: normalizeNumber(
+      input.bombBlastRadius,
+      DEFAULT_GAMEPLAY_TUNING.bombBlastRadius,
+      GAMEPLAY_TUNING_LIMITS.bombBlastRadius,
+    ),
+    grapplingHookCooldownTicks: normalizeInteger(
+      input.grapplingHookCooldownTicks,
+      DEFAULT_GAMEPLAY_TUNING.grapplingHookCooldownTicks,
+      GAMEPLAY_TUNING_LIMITS.grapplingHookCooldownTicks,
+    ),
+    grapplingHookRange: normalizeNumber(
+      input.grapplingHookRange,
+      DEFAULT_GAMEPLAY_TUNING.grapplingHookRange,
+      GAMEPLAY_TUNING_LIMITS.grapplingHookRange,
+    ),
+    grapplingHookPullTicks: normalizeInteger(
+      input.grapplingHookPullTicks,
+      DEFAULT_GAMEPLAY_TUNING.grapplingHookPullTicks,
+      GAMEPLAY_TUNING_LIMITS.grapplingHookPullTicks,
+    ),
+    soapStumbleTicks: normalizeInteger(
+      input.soapStumbleTicks,
+      DEFAULT_GAMEPLAY_TUNING.soapStumbleTicks,
+      GAMEPLAY_TUNING_LIMITS.soapStumbleTicks,
     ),
   });
 }
@@ -194,7 +366,19 @@ export function normalizeMassFactor(value: number): number {
 }
 
 export function getMassDodgeSpeedMultiplier(massFactor: number): number {
-  return SIMULATION_TUNING.mass.default / normalizeMassFactor(massFactor);
+  const mass = normalizeMassFactor(massFactor);
+
+  if (mass <= SIMULATION_TUNING.mass.default) {
+    const progress =
+      (SIMULATION_TUNING.mass.default - mass) /
+      (SIMULATION_TUNING.mass.default - SIMULATION_TUNING.mass.minimum);
+    return 1 + progress * 0.25;
+  }
+
+  const progress =
+    (mass - SIMULATION_TUNING.mass.default) /
+    (SIMULATION_TUNING.mass.maximum - SIMULATION_TUNING.mass.default);
+  return 1 - progress * 0.375;
 }
 
 export function getIncomingMassImpulseMultiplier(massFactor: number): number {

@@ -1,11 +1,21 @@
 # Static Release Procedure
 
-- Status: `0.39.1` input-fix candidate; grouped local validation passed, hosted proof pending
+- Status: `0.69.0` round-statistics candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.39.1`
+- Current product version: `0.69.0`
 - Validation source: [../../VALIDATION.md](../../VALIDATION.md)
 - Submission package: [../product/05-submission-package.md](../product/05-submission-package.md)
 - Asset ledger: [../assets/README.md](../assets/README.md)
+
+Product `0.67.0`, simulation `39.0.0`, and content `25.0.0` increase the shared Grappling Hook cooldown from 600 to 900 ticks, expose its 15-second base reuse time and live remaining cooldown in the HUD, and move the headless scale harness from 50 to the public 60 participants. Unit and replay checks pass. The first corrected fixed-60 profile fails the unchanged simulation p95 gate at `14.143 ms` against `10 ms`; hosted, browser, and release evidence therefore remain pending.
+
+Product `0.67.1`, simulation `39.0.0`, and content `25.0.0` make native hidden state authoritative over shared button display styles. Completed and fatal panels remove and disable the resumable action, while active manual pause restores it. Simulation, replay, and report schemas are unchanged.
+
+Product `0.67.2`, simulation `39.0.0`, and content `25.0.0` preserve generated and procedural terrain colors through cannon warning and critical phases. Separate amber exclamation and red skull markers carry the danger state without replacing the island surface. Simulation, collapse timing, replay, and report schemas are unchanged.
+
+Product `0.68.0`, simulation `40.0.0`, and content `25.0.0` separate boundary-connected outer ocean from enclosed lakes for collapse and artillery planning. Ships sit 1.4 tiles offshore, fire only along a sampled clear-water approach at a current outer-coast tile, target a 210-tick flight, and cannot fire again until 120 ticks after their prior impact. Replay and report schemas remain unchanged, but deterministic fixtures advance to the new simulation envelope.
+
+Product `0.69.0`, simulation `41.0.0`, and content `25.0.0` move manual pause from Shift to `P` and leave Shift unbound. Session-local round statistics accumulate actual path distance, health damage dealt and received, shield-absorbed damage, slowed ticks, and selected-skill use counts from authoritative frames and events. The pause layer renders that live snapshot without changing replay or report schemas; deterministic fixtures advance because `damage-applied` events can now include absorbed damage.
 
 Product `0.20.0`, simulation `6.0.0`, and content `4.0.0` introduce starting loadouts, larger arenas, hand-reach shove physics, credited-elimination stat growth, and local debug tuning. Local unit, browser, focused strategy, headless scale, and production Chrome profiles pass. The legacy full controlled round audit timed out twice and hosted proof for this exact candidate remains pending; older hosted SHA evidence does not prove these rules.
 
@@ -51,7 +61,53 @@ Product `0.38.0` keeps simulation `19.0.0` and content `13.0.0`. It adds present
 
 Product `0.39.1`, simulation `20.0.0`, and content `14.0.0` preserve the Slow-collapse 50-player rules, including 12 separated 5–9-tile lakes under the 96-tile budget, and fix keyboard movement held during the countdown. The application remembers movement through the transition but still rejects pre-start shove, dodge, and item edges; reports advance to v6 for the current public rules. Replay remains v2 because simulation state and hashes are unchanged. All 195 unit/scenario checks, fourteen development Chrome paths, and thirteen production-artifact Chrome paths pass locally. Strategy audit, host-qualified profile, capture, hosted CI, Pages, and public URL evidence remain gates for this candidate.
 
-The browser profile rejects a host above its five-sample CPU qualification before Chrome starts. Contest-release promotion still requires `0.39.1` production Chrome, strategy audit, hosted proof, a passing host-qualified production-browser profile, active-item balance evidence, and human playtest.
+Product `0.41.0`, simulation `21.0.0`, and content `15.0.0` include solid deterministic trees, mass-scaled 1.5–3-tile Dodge, swept Soap crossings, one-airborne-shot-per-ship scheduling, immediate bot escape from lethal rocks, and a browser-local 50-round scoreboard. Presentation adds atlas-derived ocean, rectangular surface crops, generated trees, effective percentage HUD values, and 70% master audio gain. Replay remains v2 but fixtures regenerate for the product envelope and prior deterministic state changes. Grouped local, production browser, audit, profile, capture, hosted CI, Pages, and public URL evidence are pending for this candidate.
+
+Product `0.42.0`, simulation `22.0.0`, and content `16.0.0` separate movement from combat: arrows/pointer/gamepad own movement, three selected reusable skills use `Q/W/E`, and two charged inventory slots use `D/F`. Setup chooses one starting item and map pickups fill empty or depleted stable slots. Kill rewards pause for a prerequisite-gated stat/skill tree. Reports advance to v7; replay stays v2 with optional starting-skill compatibility and regenerated deterministic fixtures. Grouped local, production browser, balance audit, profile, capture, hosted CI, Pages, and public URL evidence are pending for this candidate.
+
+Product `0.43.0`, simulation `23.0.0`, and content `17.0.0` add health and mana, regeneration, shields, deterministic control state, and nine inventory-independent combat skills. Bots receive varied three-skill loadouts and use the same readiness and mana rules. Vitality, Focus, and selected-skill scaling extend the kill-reward tree. Public Slow artillery begins during the opening seconds and spreads waves every 42 ticks. Reports advance to v8 with final human combat state; replay remains v2 with regenerated deterministic fixtures. Grouped local, production browser, combat balance, profile, capture, hosted CI, Pages, and public URL evidence are pending for this candidate.
+
+Product `0.44.0` and simulation `24.0.0` replace immediate scheduled item materialization with one visible 72-tick treasure gift. A tick-derived offshore ship orbit, nearby candidate restriction after the existing 3:2:1 risk-band draw, one-flight limit, impact revalidation, reserved item IDs, and active-delivery hashing keep the sequence deterministic and bounded. Content remains `17.0.0`, reports remain v8, replay remains v2, and fixtures regenerate. Grouped local, production browser, treasure-delivery readability, balance, profile, capture, hosted CI, Pages, and public URL evidence are pending for this candidate.
+
+Product `0.44.0`, simulation `24.0.0`, and content `17.0.0` were the prior treasure-delivery contract.
+
+Product `0.45.0`, simulation `25.0.0`, and content `17.0.0` replace total-spent skill gating with a three-branch progression graph. Root and branch levels gate matching `Q/W/E` ranks, while rank three requires cross-branch skill investment. The DOM renders nine keyboard-selectable nodes, explicit prerequisite text, persistent ranks, and decorative connection state without owning eligibility. Vitality and Focus become valid normalized commands, and ambiguous dual upgrades fail closed. Reports and replay format remain v8 and v2; deterministic fixtures regenerate. Grouped local, production browser, path-balance, narrow-viewport, capture, hosted CI, Pages, and public URL evidence are pending.
+
+Product `0.46.0`, simulation `26.0.0`, and content `17.0.0` replace the starting-weight slider with an exact 20-point five-attribute build. Replay advances to v3 and local reports to v9.
+
+Product `0.47.0`, simulation `26.0.0`, and content `17.0.0` remove every preselected starting attribute, skill, and item from the browser. Settings remain invalid until all 20 points, three skills, and one item are chosen. Starting without a saved valid setup opens an accessible modal and routes directly to settings. Hosted exact-SHA proof remains pending.
+
+Product `0.48.0`, simulation `26.0.0`, and content `17.0.0` split setup into four accessible tabs and expose current derived combat values plus each attribute's next-point delta. The Lab tab remains development-only. The simulation, replay, and report contracts do not change.
+
+Product `0.49.0`, simulation `27.0.0`, and content `17.0.0` add Willpower as the sixth starting attribute, remove the four-point neutral threshold, and open every attribute to the full 20-point budget with linear per-point effects. Willpower reduces health damage and increases shields. The six setup cards use a two-column, three-row desktop layout with a narrow-screen fallback. Replay remains v3 and reports remain v9, while deterministic fixtures require regeneration for the expanded hashed setup contract.
+
+Product `0.50.0`, simulation `28.0.0`, and content `18.0.0` add the same bounded forward-cone assistance to Wind Blast and Arc Bolt while retaining wall/tree occlusion on the assisted path. Settings add nine repository-owned skill icons, complete combat details, and vertical attribute steppers. Replay remains v3 and reports remain v9; deterministic fixtures require regeneration because assisted targeting changes simulation outcomes.
+
+Product `0.51.0` and simulation `29.0.0` make Hard bots sample their complete Dodge path before committing, preserve skill knockback through Stumbling actions, and add an Arc Bolt impact trail. Content remains `18.0.0`, replay remains v3, and reports remain v9. Deterministic fixtures require regeneration because bot commands and skill displacement change outcomes.
+
+Product `0.58.0`, simulation `33.0.0`, and content `21.0.0` define the current local candidate. The Boat card now exposes the already-enforced boarding restrictions: skills and items cannot be used, and health and mana regeneration stop during its four-second water traversal. Replay remains v3 and reports remain v9; deterministic fixtures advance to the new version envelope.
+
+Product `0.59.0`, simulation `33.0.0`, and content `21.0.0` replace the player-facing `1.00×` mass multiplier with a weight-adjustment label. Neutral reads `기본`; Strength investment reports its percentage above baseline while the deterministic simulation value remains unchanged. Replay remains v3 and reports remain v9; deterministic fixtures advance only for the product-version envelope.
+
+Product `0.60.0`, simulation `33.0.0`, and content `21.0.0` make aiming input-complete without a pointer. `Q/W/D` enter aim, arrows move the target while ordinary movement is held at zero, the same action key or Enter confirms, and Escape cancels. Pointer confirmation remains available, self-target actions bypass aim, and movement input cancels an out-of-range approach. Replay remains v3 and reports remain v9; deterministic fixtures advance only for the product-version envelope.
+
+Product `0.61.0`, simulation `34.0.0`, and content `22.0.0` align the fixed 60-participant browser mode with bot-loadout, replay, and scoreboard boundaries, fixing the startup exception that previously left the renderer before its first frame. Skill and item balance fields now drive both descriptions and default runtime tuning. Brick Bag gains two-tile placement and 20 healing on each accepted wall; Soap gains three-tile placement. Replay remains v3 and reports remain v9; deterministic fixtures require regeneration.
+
+Product `0.61.1`, simulation `34.0.0`, and content `22.0.0` remove the always-visible fixed-seed warning, build metadata, and summary-card preamble from the local balance dashboard so comparison results begin immediately below the page header. A short inline error remains hidden unless the snapshot cannot be parsed. Replay stays v3 and reports stay v9.
+
+Product `0.62.0`, simulation `34.0.0`, and content `22.0.0` add nine separately generated skill-effect sprites without changing combat rules. Directional art rotates with projected vectors, persistent zone and shield sprites follow authoritative simulation state, and the prior Graphics geometry remains the optional-asset fallback. Replay stays v3 and reports stay v9; fixtures advance only for the product-version envelope.
+
+Product `0.63.0`, simulation `35.0.0`, and content `23.0.0` replace the public `E` shove with a cooldown-based Grappling Hook shared by every participant and remove Hook from the item catalog. Bomb and Soap owner exceptions, Arc Bolt cooldown and impulse, Spring Glove Hook enhancement, command fields, cooldown state, HUD, bot decisions, and targeting adapters advance together. Replay advances to v4 and deterministic fixtures must be regenerated; reports stay v9.
+
+Product `0.63.1`, simulation `35.0.0`, and content `23.0.0` keep replay v4 and report v9. Item labels move into the item definition SSOT; targeting construction and action HUD state become pure application modules with direct tests. Runtime order and public behavior do not change.
+
+Product `0.64.0`, simulation `36.0.0`, and content `24.0.0` remove Stone Prison and the barrier-zone rule from the public catalog, bots, simulation, and presentation. Replay advances to v5 because old setup payloads may name the retired skill. The focused balance audit rotates all 28 remaining two-skill combinations and five starting items through eighty balanced-build 60-participant rounds; reports stay v9.
+
+Product `0.65.0`, simulation `37.0.0`, and content `25.0.0` rebalance Force Palm, Chain Bind, Frost Field, Aegis, and Wind Blast from that focused audit and widen Hard-bot Brick Bag use under readable pressure. Skill and item cards continue to derive values from their runtime definitions. Replay stays v5 with regenerated deterministic fixtures; reports stay v9.
+
+Product `0.66.0`, simulation `38.0.0`, and content `25.0.0` add obstacle-aware bot detours, blocked-path Dodge and emergency checks, stalled-progress recovery, target commitment, reachable-item selection, and contextual skill utility with obstacle visibility. The terrain cache and bounded 384-expansion search keep the 60-participant path inside the existing deterministic command boundary. Replay and reports remain v5 and v9; fixtures regenerate for the new version envelope.
+
+The browser profile rejects a host above its five-sample CPU qualification before Chrome starts. Contest-release promotion still requires `0.62.0` production Chrome, strategy audit, hosted proof, a passing host-qualified 60-participant production-browser profile, combat/item/tree-path, assisted-aim, bot-dodge balance evidence, simultaneous skill-VFX readability, treasure-delivery readability, short-viewport pause/trait-choice proof, and human playtest.
 
 ## Release Types
 

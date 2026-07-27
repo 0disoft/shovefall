@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { createAudioFeedback, type AudioContextPort } from "../src/presentation/audio-feedback";
+import {
+  createAudioFeedback,
+  MASTER_GAIN_SCALE,
+  type AudioContextPort,
+} from "../src/presentation/audio-feedback";
 import { SimulationEventLedger } from "../src/presentation/event-ledger";
 import type { SimulationEventKind, SimulationEventV1 } from "../src/simulation/contracts";
 
@@ -64,13 +68,16 @@ class FakeAudioContext implements AudioContextPort {
   public readonly destination = Object.freeze({});
   public state = "suspended";
   public readonly oscillators: FakeOscillator[] = [];
+  public readonly gains: FakeGain[] = [];
 
   public async close(): Promise<void> {
     this.state = "closed";
   }
 
   public createGain(): FakeGain {
-    return new FakeGain();
+    const gain = new FakeGain();
+    this.gains.push(gain);
+    return gain;
   }
 
   public createOscillator(): FakeOscillator {
@@ -121,6 +128,7 @@ describe("optional Web Audio feedback", () => {
     audio.consumeEvents([createEvent(1, 1, 1)]);
     audio.consumeEvents([createEvent(1, 1, 1)]);
     expect(context.oscillators).toHaveLength(1);
+    expect(context.gains[0]?.gain.values[0]).toBeCloseTo(0.11 * MASTER_GAIN_SCALE, 10);
 
     audio.setMuted(true);
     audio.consumeEvents([createEvent(1, 2, 2)]);
@@ -209,7 +217,6 @@ describe("optional Web Audio feedback", () => {
     audio.consumeEvents([
       {
         ...createEvent(1, 0, 0, "grappling-hook-hit"),
-        itemDefinitionId: "grappling-hook",
         position: { x: 4.5, y: 5.5 },
         vector: { x: 3, y: 0 },
       },

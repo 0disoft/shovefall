@@ -8,25 +8,37 @@ import {
   getPresetItemRespawnSeconds,
   getPresetPlayerCount,
   getRecommendedInitialItemCount,
-  getStartingMassFactor,
   isBotDifficulty,
   isCollapseSpeed,
   normalizeInitialItemCount,
   normalizeItemRespawnSeconds,
   normalizePlayerCount,
   normalizeSettings,
-  normalizeStartingWeight,
 } from "../src/app/settings";
+import {
+  DEFAULT_STARTING_ATTRIBUTES,
+  getStartingControlDurationMultiplier,
+  getStartingCooldownMultiplier,
+  getStartingDamageTakenMultiplier,
+  getStartingIncomingImpulseMultiplier,
+  getStartingMassFactor,
+  getStartingMaximumHealthBonus,
+  getStartingMaximumManaBonus,
+  getStartingMovementMultiplier,
+  getStartingOutgoingMultiplier,
+  getStartingShieldMultiplier,
+  normalizeStartingAttributes,
+} from "../src/simulation/starting-attributes";
 
 describe("settings normalization", () => {
   it("keeps internal participant fixtures bounded through the forced browser count", () => {
     expect(normalizePlayerCount(-10)).toBe(4);
     expect(normalizePlayerCount(12.4)).toBe(12);
-    expect(normalizePlayerCount(100)).toBe(50);
-    expect(normalizePlayerCount(Number.NaN)).toBe(50);
+    expect(normalizePlayerCount(100)).toBe(60);
+    expect(normalizePlayerCount(Number.NaN)).toBe(60);
   });
 
-  it("forces every browser setting input to the single 50-player hard-AI mode", () => {
+  it("forces every browser setting input to the single 60-player hard-AI mode", () => {
     expect(
       normalizeSettings({ playerCount: 8, preset: "relaxed", botDifficulty: "easy" }),
     ).toMatchObject({
@@ -34,13 +46,13 @@ describe("settings normalization", () => {
       preset: "massive",
       botDifficulty: FORCED_BOT_DIFFICULTY,
       collapseSpeed: "slow",
-      startingWeight: 75,
+      startingAttributes: DEFAULT_STARTING_ATTRIBUTES,
       initialItemCount: 8,
-      itemRespawnSeconds: 4,
+      itemRespawnSeconds: 7,
     });
-    expect(getPresetPlayerCount("massive")).toBe(50);
+    expect(getPresetPlayerCount("massive")).toBe(60);
     expect(getPresetCollapseSpeed("massive")).toBe("slow");
-    expect(getPresetItemRespawnSeconds("massive")).toBe(4);
+    expect(getPresetItemRespawnSeconds("massive")).toBe(7);
     expect(isBotDifficulty("hard")).toBe(true);
     expect(isBotDifficulty("normal")).toBe(false);
   });
@@ -61,14 +73,64 @@ describe("settings normalization", () => {
     });
   });
 
-  it("maps the 50 through 100 weight slider onto the full mass contract", () => {
-    expect(normalizeStartingWeight(1)).toBe(50);
-    expect(normalizeStartingWeight(74.6)).toBe(75);
-    expect(normalizeStartingWeight(500)).toBe(100);
-    expect(normalizeStartingWeight(Number.NaN)).toBe(75);
-    expect(getStartingMassFactor(50)).toBeCloseTo(0.85, 10);
-    expect(getStartingMassFactor(75)).toBeCloseTo(1, 10);
-    expect(getStartingMassFactor(100)).toBeCloseTo(1.25, 10);
+  it("normalizes exactly twenty starting points across all six attributes", () => {
+    expect(normalizeStartingAttributes({ ...DEFAULT_STARTING_ATTRIBUTES })).toEqual(
+      DEFAULT_STARTING_ATTRIBUTES,
+    );
+    expect(normalizeStartingAttributes({ ...DEFAULT_STARTING_ATTRIBUTES, strength: 5 })).toEqual(
+      DEFAULT_STARTING_ATTRIBUTES,
+    );
+    expect(DEFAULT_STARTING_ATTRIBUTES).toEqual({
+      strength: 4,
+      agility: 4,
+      constitution: 4,
+      spirit: 4,
+      balance: 4,
+      willpower: 0,
+    });
+    expect(getStartingMassFactor(DEFAULT_STARTING_ATTRIBUTES)).toBe(1.1);
+    expect(getStartingMovementMultiplier(DEFAULT_STARTING_ATTRIBUTES)).toBe(1.16);
+    expect(getStartingCooldownMultiplier(DEFAULT_STARTING_ATTRIBUTES)).toBe(0.84);
+    expect(getStartingOutgoingMultiplier(DEFAULT_STARTING_ATTRIBUTES)).toBe(1.1);
+    expect(getStartingIncomingImpulseMultiplier(DEFAULT_STARTING_ATTRIBUTES)).toBe(0.86);
+    expect(getStartingControlDurationMultiplier(DEFAULT_STARTING_ATTRIBUTES)).toBe(0.9);
+    expect(getStartingMaximumHealthBonus(DEFAULT_STARTING_ATTRIBUTES)).toBe(24);
+    expect(getStartingMaximumManaBonus(DEFAULT_STARTING_ATTRIBUTES)).toBe(32);
+    expect(getStartingDamageTakenMultiplier(DEFAULT_STARTING_ATTRIBUTES)).toBe(1);
+    expect(getStartingShieldMultiplier(DEFAULT_STARTING_ATTRIBUTES)).toBe(1);
+  });
+
+  it("allows a full twenty-point specialization without a soft cap", () => {
+    const strength = normalizeStartingAttributes({
+      strength: 20,
+      agility: 0,
+      constitution: 0,
+      spirit: 0,
+      balance: 0,
+      willpower: 0,
+    });
+    const agility = normalizeStartingAttributes({
+      strength: 0,
+      agility: 20,
+      constitution: 0,
+      spirit: 0,
+      balance: 0,
+      willpower: 0,
+    });
+    const willpower = normalizeStartingAttributes({
+      strength: 0,
+      agility: 0,
+      constitution: 0,
+      spirit: 0,
+      balance: 0,
+      willpower: 20,
+    });
+    expect(getStartingMassFactor(strength)).toBe(1.5);
+    expect(getStartingOutgoingMultiplier(strength)).toBe(1.5);
+    expect(getStartingMovementMultiplier(agility)).toBe(1.8);
+    expect(getStartingCooldownMultiplier(agility)).toBe(0.2);
+    expect(getStartingDamageTakenMultiplier(willpower)).toBe(0.6);
+    expect(getStartingShieldMultiplier(willpower)).toBe(1.4);
   });
 
   it("derives and bounds the item policy for fifty participants", () => {
@@ -78,10 +140,10 @@ describe("settings normalization", () => {
     expect(normalizeInitialItemCount(Number.NaN, 50)).toBe(8);
     expect(normalizeItemRespawnSeconds(-1, "massive")).toBe(0);
     expect(normalizeItemRespawnSeconds(99, "massive")).toBe(30);
-    expect(normalizeItemRespawnSeconds(Number.NaN, "massive")).toBe(4);
+    expect(normalizeItemRespawnSeconds(Number.NaN, "massive")).toBe(7);
   });
 
-  it("keeps fixture tiers and widens the forced fifty-player island", () => {
+  it("keeps fixture tiers and the large-island boundary", () => {
     expect(getArenaSize(4)).toEqual({ columns: 22, rows: 17 });
     expect(getArenaSize(16)).toEqual({ columns: 25, rows: 20 });
     expect(getArenaSize(24)).toEqual({ columns: 28, rows: 23 });
@@ -89,18 +151,43 @@ describe("settings normalization", () => {
     expect(getArenaSize(50)).toEqual({ columns: 48, rows: 40 });
   });
 
-  it("keeps exactly two unique items from the nine-item catalog", () => {
+  it("keeps one active item and two unique skills", () => {
     expect(
       normalizeSettings({
-        startingWeight: 58,
-        startingItems: ["wind-blast", "grappling-hook"],
+        startingAttributes: {
+          strength: 8,
+          agility: 0,
+          constitution: 4,
+          spirit: 4,
+          balance: 4,
+          willpower: 0,
+        },
+        startingItems: ["soap"],
+        startingSkills: ["blink-step", "chain-bind"],
       }),
     ).toMatchObject({
-      startingWeight: 58,
-      startingItems: ["wind-blast", "grappling-hook"],
+      startingAttributes: {
+        strength: 8,
+        agility: 0,
+        constitution: 4,
+        spirit: 4,
+        balance: 4,
+        willpower: 0,
+      },
+      startingItems: ["soap"],
+      startingSkills: ["blink-step", "chain-bind"],
     });
     expect(normalizeSettings({ startingItems: ["feather", "feather", "unknown"] })).toMatchObject({
-      startingItems: ["iron-boots", "spring-glove"],
+      startingItems: ["bomb"],
+      startingSkills: ["force-palm", "blink-step"],
+    });
+    expect(normalizeSettings({ startingItems: ["grappling-hook"] })).toMatchObject({
+      startingItems: ["bomb"],
+    });
+    expect(
+      normalizeSettings({ startingSkills: ["blink-step", "blink-step", "unknown"] }),
+    ).toMatchObject({
+      startingSkills: ["force-palm", "blink-step"],
     });
   });
 });

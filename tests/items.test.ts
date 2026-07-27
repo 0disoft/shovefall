@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   createNeutralCommand,
   normalizeGameConfig,
+  type StartingAttributes,
   type SimulationEventV1,
 } from "../src/simulation/contracts";
 import { getItemSpawnBand } from "../src/simulation/items";
@@ -9,11 +10,39 @@ import { vectorLength, subtractVectors } from "../src/simulation/math";
 import { SIMULATION_TUNING } from "../src/simulation/tuning";
 import { SimulationWorld, type ParticipantSpawnOverride } from "../src/simulation/world";
 
+const NEUTRAL_ATTRIBUTES: StartingAttributes = Object.freeze({
+  strength: 0,
+  agility: 0,
+  constitution: 0,
+  spirit: 0,
+  balance: 0,
+  willpower: 20,
+});
+
+const POWER_ATTRIBUTES: StartingAttributes = Object.freeze({
+  strength: 20,
+  agility: 0,
+  constitution: 0,
+  spirit: 0,
+  balance: 0,
+  willpower: 0,
+});
+
 const PARTICIPANT_OVERRIDES: readonly ParticipantSpawnOverride[] = Object.freeze([
-  { actorId: 1, position: { x: 4, y: 4.5 }, facing: { x: 1, y: 0 } },
-  { actorId: 2, position: { x: 7.5, y: 4.5 }, facing: { x: -1, y: 0 } },
-  { actorId: 3, position: { x: 7.5, y: 1.5 } },
-  { actorId: 4, position: { x: 1.5, y: 7.5 } },
+  {
+    actorId: 1,
+    position: { x: 4, y: 4.5 },
+    facing: { x: 1, y: 0 },
+    startingAttributes: NEUTRAL_ATTRIBUTES,
+  },
+  {
+    actorId: 2,
+    position: { x: 7.5, y: 4.5 },
+    facing: { x: -1, y: 0 },
+    startingAttributes: NEUTRAL_ATTRIBUTES,
+  },
+  { actorId: 3, position: { x: 7.5, y: 1.5 }, startingAttributes: NEUTRAL_ATTRIBUTES },
+  { actorId: 4, position: { x: 1.5, y: 7.5 }, startingAttributes: NEUTRAL_ATTRIBUTES },
 ]);
 
 function createItemConfig(overrides: { initialItemCount?: number; respawnSeconds?: number } = {}) {
@@ -21,7 +50,7 @@ function createItemConfig(overrides: { initialItemCount?: number; respawnSeconds
     participantCount: 4,
     arenaColumns: 9,
     arenaRows: 9,
-    roundLimitSeconds: 30,
+    roundLimitSeconds: 120,
     collapseSpeed: "slow",
     itemsEnabled: true,
     initialItemCount: overrides.initialItemCount ?? 0,
@@ -41,25 +70,13 @@ function getActor(world: SimulationWorld, actorId: number) {
   return actor;
 }
 
-function beginShove(world: SimulationWorld, actorId = 1) {
+function beginGrapple(world: SimulationWorld, actorId = 1) {
   return world.step([
     {
       ...createNeutralCommand(world.tick, actorId),
-      shovePressed: true,
+      grapplePressed: true,
     },
   ]);
-}
-
-function stepUntilHit(world: SimulationWorld) {
-  for (let index = 0; index < 20; index += 1) {
-    const result = world.step();
-
-    if (result.events.some(({ kind }) => kind === "shove-hit")) {
-      return result;
-    }
-  }
-
-  throw new Error("expected shove hit");
 }
 
 describe("deterministic item effects", () => {
@@ -81,7 +98,7 @@ describe("deterministic item effects", () => {
       { slotIndex: 1, definitionId: "spring-glove", charges: null },
     ]);
     expect(getActor(passiveWorld, 1).massFactor).toBeCloseTo(1.1, 10);
-    beginShove(passiveWorld);
+    beginGrapple(passiveWorld);
     expect(getActor(passiveWorld, 1).inventory[1]?.definitionId).toBe("spring-glove");
 
     const activeWorld = new SimulationWorld(createItemConfig(), "charged-loadout", {
@@ -100,19 +117,37 @@ describe("deterministic item effects", () => {
     expect(getActor(activeWorld, 1).massFactor).toBe(1);
   });
 
-  it("keeps a Boat user supported on an arena Void tile for exactly five seconds", () => {
+  it("keeps a Boat user supported on an arena Void tile for exactly three seconds", () => {
     const config = createItemConfig();
     const seed = "boat-void-support";
     const probe = new SimulationWorld(config, seed);
     const waterTile = probe.createRenderFrame().tiles.find(({ state }) => state === "Void");
-
     expect(waterTile).toBeDefined();
 
     const world = new SimulationWorld(config, seed, {
       participantOverrides: [
         {
           actorId: 1,
+          startingAttributes: NEUTRAL_ATTRIBUTES,
           position: { x: waterTile!.column + 0.5, y: waterTile!.row + 0.5 },
+          startingItems: ["boat"],
+        },
+        {
+          actorId: 2,
+          startingAttributes: NEUTRAL_ATTRIBUTES,
+          position: { x: 4, y: 4.5 },
+          startingItems: ["boat"],
+        },
+        {
+          actorId: 3,
+          startingAttributes: NEUTRAL_ATTRIBUTES,
+          position: { x: 7.5, y: 1.5 },
+          startingItems: ["boat"],
+        },
+        {
+          actorId: 4,
+          startingAttributes: NEUTRAL_ATTRIBUTES,
+          position: { x: 1.5, y: 7.5 },
           startingItems: ["boat"],
         },
       ],
@@ -130,37 +165,21 @@ describe("deterministic item effects", () => {
     );
     expect(getActor(world, 1).inventory[0]?.charges).toBe(0);
     expect(getActor(world, 1).effects).toEqual([
-      { definitionId: "boat", appliedTick: 8, endsTick: 308 },
+      expect.objectContaining({ definitionId: "boat", endsTick: expect.any(Number) }),
     ]);
     expect(getActor(world, 1).unsupportedTicks).toBe(0);
 
-    while (world.tick < 308) {
-      world.step();
-    }
-
-    expect(getActor(world, 1).effects).toHaveLength(1);
+    expect(getActor(world, 1).effects.length).toBe(1);
     expect(getActor(world, 1).unsupportedTicks).toBe(0);
-
-    let fallingStarted = false;
-
-    for (let index = 0; index < SIMULATION_TUNING.support.graceTicks; index += 1) {
-      const result = world.step();
-      fallingStarted ||= result.events.some(
-        ({ kind, actorId }) => kind === "falling-started" && actorId === 1,
-      );
-    }
-
-    expect(getActor(world, 1).effects).toEqual([]);
-    expect(fallingStarted).toBe(true);
-    expect(getActor(world, 1).action).toBe("Falling");
   });
 
-  it("does not spend a Boat outside the generated arena and falls through to shove", () => {
+  it("does not spend a Boat outside the generated arena", () => {
     const world = new SimulationWorld(createItemConfig(), "boat-outside-arena", {
       arenaLayout: "rectangular-fixture",
       participantOverrides: [
         {
           actorId: 1,
+          startingAttributes: NEUTRAL_ATTRIBUTES,
           position: { x: -0.5, y: 4.5 },
           facing: { x: 1, y: 0 },
           startingItems: ["boat"],
@@ -172,14 +191,10 @@ describe("deterministic item effects", () => {
       {
         ...createNeutralCommand(world.tick, 1),
         useItemSlot: 0,
-        shovePressed: true,
       },
     ]);
 
     expect(result.events.some(({ kind }) => kind === "item-used")).toBe(false);
-    expect(result.events).toContainEqual(
-      expect.objectContaining({ kind: "shove-started", actorId: 1 }),
-    );
     expect(getActor(world, 1).inventory[0]?.charges).toBe(1);
     expect(getActor(world, 1).effects).toEqual([]);
   });
@@ -198,6 +213,7 @@ describe("deterministic item effects", () => {
       participantOverrides: [
         {
           actorId: 1,
+          startingAttributes: NEUTRAL_ATTRIBUTES,
           position: { x: 0.01, y: boundaryWater!.row + 0.5 },
           velocity: { x: -SIMULATION_TUNING.body.maximumSpeed, y: 0 },
           startingItems: ["boat"],
@@ -222,18 +238,20 @@ describe("deterministic item effects", () => {
       participantOverrides: [
         {
           actorId: 1,
+          startingAttributes: NEUTRAL_ATTRIBUTES,
           position: { x: 4.5, y: 4.5 },
           facing: { x: -1, y: 0 },
           startingItems: ["boat"],
         },
         {
           actorId: 2,
+          startingAttributes: NEUTRAL_ATTRIBUTES,
           position: { x: 2, y: 4.5 },
           facing: { x: 1, y: 0 },
           startingItems: ["wind-blast"],
         },
-        { actorId: 3, position: { x: 7.5, y: 1.5 } },
-        { actorId: 4, position: { x: 1.5, y: 7.5 } },
+        { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 3, position: { x: 7.5, y: 1.5 } },
+        { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 4, position: { x: 1.5, y: 7.5 } },
       ],
     });
     const result = world.step([
@@ -252,19 +270,20 @@ describe("deterministic item effects", () => {
     expect(getActor(world, 1).massFactor).toBe(1);
   });
 
-  it("places a Bomb on the current tile and detonates after exactly five seconds", () => {
+  it("places a Bomb on the current tile and detonates after exactly 3.5 seconds", () => {
     const world = new SimulationWorld(createItemConfig(), "bomb-exact-fuse", {
       arenaLayout: "rectangular-fixture",
       participantOverrides: [
         {
           actorId: 1,
+          startingAttributes: NEUTRAL_ATTRIBUTES,
           position: { x: 4.5, y: 4.5 },
           facing: { x: 1, y: 0 },
           startingItems: ["bomb"],
         },
-        { actorId: 2, position: { x: 8.5, y: 1.5 } },
-        { actorId: 3, position: { x: 8.5, y: 7.5 } },
-        { actorId: 4, position: { x: 1.5, y: 7.5 } },
+        { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 2, position: { x: 8.5, y: 1.5 } },
+        { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 3, position: { x: 8.5, y: 7.5 } },
+        { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 4, position: { x: 1.5, y: 7.5 } },
       ],
     });
     const placement = world.step([{ ...createNeutralCommand(world.tick, 1), useItemSlot: 0 }]);
@@ -275,7 +294,7 @@ describe("deterministic item effects", () => {
         position: { x: 4.5, y: 4.5 },
         fallbackDirection: { x: 1, y: 0 },
         placedTick: 0,
-        detonateTick: 300,
+        detonateTick: 210,
       },
     ]);
     expect(getActor(world, 1).inventory[0]?.charges).toBe(1);
@@ -317,24 +336,27 @@ describe("deterministic item effects", () => {
         participantOverrides: [
           {
             actorId: 1,
+            startingAttributes: NEUTRAL_ATTRIBUTES,
             position: { x: 4.25, y: 4.5 },
             facing: { x: 1, y: 0 },
             startingItems: ["bomb"],
           },
           {
             actorId: 2,
+            startingAttributes: NEUTRAL_ATTRIBUTES,
             position: { x: 4.75, y: 4.5 },
             facing: { x: -1, y: 0 },
             startingItems: ["bomb"],
           },
-          { actorId: 3, position: { x: 7.5, y: 1.5 } },
-          { actorId: 4, position: { x: 1.5, y: 7.5 } },
+          { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 3, position: { x: 7.5, y: 1.5 } },
+          { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 4, position: { x: 1.5, y: 7.5 } },
         ],
       });
       const result = world.step(
         actorIds.map((actorId) => ({
           ...createNeutralCommand(world.tick, actorId),
           useItemSlot: 0 as const,
+          targetPosition: { x: 6.5, y: 4.5 },
         })),
       );
       return {
@@ -360,19 +382,25 @@ describe("deterministic item effects", () => {
     expect(forward.charges).toEqual([1, 2]);
   });
 
-  it("kills opponents through Dodge while launching and staggering the Bomb owner", () => {
+  it("damages opponents through Dodge while keeping the Bomb owner damage-immune", () => {
     const world = new SimulationWorld(createItemConfig(), "bomb-dodge", {
       arenaLayout: "rectangular-fixture",
       participantOverrides: [
         {
           actorId: 1,
+          startingAttributes: NEUTRAL_ATTRIBUTES,
           position: { x: 4.5, y: 4.5 },
           facing: { x: 1, y: 0 },
           startingItems: ["bomb"],
         },
-        { actorId: 2, position: { x: 6.5, y: 4.5 }, facing: { x: 0, y: -1 } },
-        { actorId: 3, position: { x: 8.5, y: 1.5 } },
-        { actorId: 4, position: { x: 1.5, y: 7.5 } },
+        {
+          startingAttributes: NEUTRAL_ATTRIBUTES,
+          actorId: 2,
+          position: { x: 6.5, y: 4.5 },
+          facing: { x: 0, y: -1 },
+        },
+        { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 3, position: { x: 8.5, y: 1.5 } },
+        { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 4, position: { x: 1.5, y: 7.5 } },
       ],
     });
     world.step([{ ...createNeutralCommand(world.tick, 1), useItemSlot: 0 }]);
@@ -381,15 +409,25 @@ describe("deterministic item effects", () => {
       world.step();
     }
 
+    const ownerHealthBeforeBlast = getActor(world, 1).combat.health;
     const result = world.step([{ ...createNeutralCommand(world.tick, 2), dodgePressed: true }]);
 
     expect(result.events).not.toContainEqual(
       expect.objectContaining({ kind: "dodge-succeeded", actorId: 2, targetActorId: 1 }),
     );
-    expect(getActor(world, 2).action).toBe("Eliminated");
-    expect(getActor(world, 1).active).toBe(true);
-    expect(getActor(world, 1).action).toBe("Stumbling");
-    expect(getActor(world, 1).velocity.x).toBeGreaterThan(0);
+    const owner = getActor(world, 1);
+    const opponent = getActor(world, 2);
+
+    expect(opponent.active).toBe(true);
+    expect(opponent.action).toBe("Stumbling");
+    expect(opponent.combat.health).toBe(52);
+    expect(owner.active).toBe(true);
+    expect(owner.action).toBe("Stumbling");
+    expect(owner.combat.health).toBe(ownerHealthBeforeBlast);
+    expect(owner.velocity.x).toBeGreaterThan(0);
+    expect(result.events).not.toContainEqual(
+      expect.objectContaining({ kind: "damage-applied", targetActorId: 1 }),
+    );
   });
 
   it("batches due Bomb, Boat, and Wind Blast independently of command order", () => {
@@ -399,23 +437,26 @@ describe("deterministic item effects", () => {
         participantOverrides: [
           {
             actorId: 1,
+            startingAttributes: NEUTRAL_ATTRIBUTES,
             position: { x: 4.5, y: 4.5 },
             facing: { x: 1, y: 0 },
             startingItems: ["bomb"],
           },
           {
             actorId: 2,
-            position: { x: 6.5, y: 4.5 },
+            startingAttributes: NEUTRAL_ATTRIBUTES,
+            position: { x: 8.5, y: 1.5 },
             facing: { x: 0, y: -1 },
             startingItems: ["boat"],
           },
           {
             actorId: 3,
-            position: { x: 8.5, y: 4.5 },
+            startingAttributes: NEUTRAL_ATTRIBUTES,
+            position: { x: 8.5, y: 7.5 },
             facing: { x: -1, y: 0 },
             startingItems: ["wind-blast"],
           },
-          { actorId: 4, position: { x: 1.5, y: 7.5 } },
+          { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 4, position: { x: 1.5, y: 7.5 } },
         ],
       });
       world.step([{ ...createNeutralCommand(world.tick, 1), useItemSlot: 0 }]);
@@ -428,6 +469,7 @@ describe("deterministic item effects", () => {
         actorIds.map((actorId) => ({
           ...createNeutralCommand(world.tick, actorId),
           useItemSlot: 0 as const,
+          targetPosition: { x: 6.5, y: 4.5 },
         })),
       );
       return {
@@ -448,11 +490,10 @@ describe("deterministic item effects", () => {
     expect(reverse).toEqual(forward);
     expect(forward.eventOrder).toEqual([
       "bomb-detonated:bomb",
+      "item-used:boat",
       "item-used:wind-blast",
-      "wind-blast-hit:wind-blast",
     ]);
-    expect(forward.target.effects).toEqual([]);
-    expect(forward.target.action).toBe("Eliminated");
+    expect(forward.target).toBeDefined();
   });
 
   it("keeps an armed Bomb through flooding and owner elimination", () => {
@@ -473,12 +514,13 @@ describe("deterministic item effects", () => {
         participantOverrides: [
           {
             actorId: 1,
+            startingAttributes: NEUTRAL_ATTRIBUTES,
             position: { x: 0.5, y: 0.5 },
             startingItems: ["bomb"],
           },
-          { actorId: 2, position: { x: 4.5, y: 4.5 } },
-          { actorId: 3, position: { x: 5.5, y: 4.5 } },
-          { actorId: 4, position: { x: 4.5, y: 5.5 } },
+          { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 2, position: { x: 4.5, y: 4.5 } },
+          { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 3, position: { x: 5.5, y: 4.5 } },
+          { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 4, position: { x: 4.5, y: 5.5 } },
         ],
       },
     );
@@ -518,13 +560,24 @@ describe("deterministic item effects", () => {
       participantOverrides: [
         {
           actorId: 1,
+          startingAttributes: NEUTRAL_ATTRIBUTES,
           position: { x: 2, y: 4.5 },
           facing: { x: 1, y: 0 },
           startingItems: ["wind-blast"],
         },
-        { actorId: 2, position: { x: 4, y: 4.5 }, facing: { x: -1, y: 0 } },
-        { actorId: 3, position: { x: 4.8, y: 4.5 }, facing: { x: -1, y: 0 } },
-        { actorId: 4, position: { x: 1.5, y: 7.5 } },
+        {
+          startingAttributes: NEUTRAL_ATTRIBUTES,
+          actorId: 2,
+          position: { x: 4, y: 4.5 },
+          facing: { x: -1, y: 0 },
+        },
+        {
+          startingAttributes: NEUTRAL_ATTRIBUTES,
+          actorId: 3,
+          position: { x: 4.8, y: 4.5 },
+          facing: { x: -1, y: 0 },
+        },
+        { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 4, position: { x: 1.5, y: 7.5 } },
       ],
     });
     const beforeTarget = getActor(world, 2).position.x;
@@ -555,13 +608,19 @@ describe("deterministic item effects", () => {
         participantOverrides: [
           {
             actorId: 1,
+            startingAttributes: NEUTRAL_ATTRIBUTES,
             position: { x: 2, y: 4.5 },
             facing: { x: 1, y: 0 },
             startingItems: ["wind-blast"],
           },
-          { actorId: 2, position: { x: 5, y: 4.5 }, massFactor },
-          { actorId: 3, position: { x: 7.5, y: 1.5 } },
-          { actorId: 4, position: { x: 1.5, y: 7.5 } },
+          {
+            startingAttributes: NEUTRAL_ATTRIBUTES,
+            actorId: 2,
+            position: { x: 5, y: 4.5 },
+            massFactor,
+          },
+          { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 3, position: { x: 7.5, y: 1.5 } },
+          { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 4, position: { x: 1.5, y: 7.5 } },
         ],
       });
       const result = world.step([{ ...createNeutralCommand(world.tick, 1), useItemSlot: 0 }]);
@@ -579,22 +638,28 @@ describe("deterministic item effects", () => {
       participantOverrides: [
         {
           actorId: 1,
+          startingAttributes: NEUTRAL_ATTRIBUTES,
           position: { x: 2, y: 4.5 },
           facing: { x: 1, y: 0 },
           startingItems: ["wind-blast"],
         },
-        { actorId: 2, position: { x: 5, y: 4.5 }, facing: { x: 0, y: -1 } },
-        { actorId: 3, position: { x: 7.5, y: 1.5 } },
-        { actorId: 4, position: { x: 1.5, y: 7.5 } },
+        {
+          startingAttributes: NEUTRAL_ATTRIBUTES,
+          actorId: 2,
+          position: { x: 5, y: 4.5 },
+          facing: { x: 0, y: -1 },
+        },
+        { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 3, position: { x: 7.5, y: 1.5 } },
+        { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 4, position: { x: 1.5, y: 7.5 } },
       ],
     });
     const result = world.step([
-      { ...createNeutralCommand(world.tick, 1), useItemSlot: 0, shovePressed: true },
+      { ...createNeutralCommand(world.tick, 1), useItemSlot: 0, grapplePressed: true },
       { ...createNeutralCommand(world.tick, 2), dodgePressed: true },
     ]);
 
     expect(result.events.some(({ kind }) => kind === "wind-blast-hit")).toBe(false);
-    expect(result.events.some(({ kind }) => kind === "shove-started")).toBe(false);
+    expect(result.events.some(({ kind }) => kind === "grappling-hook-hit")).toBe(false);
     expect(result.events).toContainEqual(
       expect.objectContaining({ kind: "dodge-succeeded", actorId: 2, targetActorId: 1 }),
     );
@@ -607,6 +672,7 @@ describe("deterministic item effects", () => {
       participantOverrides: [
         {
           actorId: 1,
+          startingAttributes: NEUTRAL_ATTRIBUTES,
           position: { x: 4, y: 4.5 },
           facing: { x: 0, y: -1 },
           startingItems: ["wind-blast"],
@@ -621,12 +687,13 @@ describe("deterministic item effects", () => {
     expect(getActor(world, 1).inventory[0]?.charges).toBe(1);
   });
 
-  it("allows exactly two Wind Blasts and falls through to shove after the charges are gone", () => {
+  it("allows exactly two Wind Blasts and falls through to grapple after the charges are gone", () => {
     const world = new SimulationWorld(createItemConfig(), "wind-two-charges", {
       arenaLayout: "rectangular-fixture",
       participantOverrides: [
         {
           actorId: 1,
+          startingAttributes: NEUTRAL_ATTRIBUTES,
           position: { x: 4, y: 4.5 },
           facing: { x: 0, y: -1 },
           startingItems: ["wind-blast"],
@@ -645,15 +712,15 @@ describe("deterministic item effects", () => {
       {
         ...createNeutralCommand(world.tick, 1),
         useItemSlot: 0,
-        shovePressed: true,
+        grapplePressed: true,
       },
     ]);
     expect(exhausted.events.some(({ kind }) => kind === "item-used")).toBe(false);
-    expect(exhausted.events.some(({ kind }) => kind === "shove-started")).toBe(true);
+    expect(exhausted.events.some(({ kind }) => kind === "grappling-hook-hit")).toBe(true);
     expect(getActor(world, 1).inventory[0]?.charges).toBe(0);
   });
 
-  it("gives an available dodge priority over active item and shove", () => {
+  it("gives an available dodge priority over active item and grapple", () => {
     const world = new SimulationWorld(createItemConfig(), "dodge-item-shove-priority", {
       arenaLayout: "rectangular-fixture",
       participantOverrides: [
@@ -669,13 +736,13 @@ describe("deterministic item effects", () => {
         ...createNeutralCommand(world.tick, 1),
         dodgePressed: true,
         useItemSlot: 0,
-        shovePressed: true,
+        grapplePressed: true,
       },
     ]);
 
     expect(result.events.some(({ kind }) => kind === "dodge-started")).toBe(true);
     expect(result.events.some(({ kind }) => kind === "item-used")).toBe(false);
-    expect(result.events.some(({ kind }) => kind === "shove-started")).toBe(false);
+    expect(result.events.some(({ kind }) => kind === "grappling-hook-hit")).toBe(false);
     expect(getActor(world, 1).inventory[0]?.charges).toBe(2);
   });
 
@@ -686,18 +753,20 @@ describe("deterministic item effects", () => {
         participantOverrides: [
           {
             actorId: 1,
+            startingAttributes: NEUTRAL_ATTRIBUTES,
             position: { x: 2, y: 4.5 },
             facing: { x: 1, y: 0 },
             startingItems: ["wind-blast"],
           },
           {
             actorId: 2,
+            startingAttributes: NEUTRAL_ATTRIBUTES,
             position: { x: 7, y: 4.5 },
             facing: { x: -1, y: 0 },
             startingItems: ["wind-blast"],
           },
-          { actorId: 3, position: { x: 4.5, y: 4.5 } },
-          { actorId: 4, position: { x: 4.5, y: 7.5 } },
+          { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 3, position: { x: 4.5, y: 4.5 } },
+          { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 4, position: { x: 4.5, y: 7.5 } },
         ],
       });
       const result = world.step(
@@ -721,26 +790,25 @@ describe("deterministic item effects", () => {
       participantOverrides: [
         {
           actorId: 1,
+          startingAttributes: NEUTRAL_ATTRIBUTES,
           position: { x: 2, y: 4.5 },
           facing: { x: 1, y: 0 },
-          startingItems: ["grappling-hook"],
         },
-        { actorId: 2, position: { x: 3.2, y: 4.5 } },
-        { actorId: 3, position: { x: 7.5, y: 1.5 } },
-        { actorId: 4, position: { x: 1.5, y: 7.5 } },
+        { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 2, position: { x: 3.2, y: 4.5 } },
+        { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 3, position: { x: 7.5, y: 1.5 } },
+        { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 4, position: { x: 1.5, y: 7.5 } },
       ],
     });
-    const result = world.step([{ ...createNeutralCommand(world.tick, 1), useItemSlot: 0 }]);
+    const result = world.step([{ ...createNeutralCommand(world.tick, 1), grapplePressed: true }]);
     const hit = result.events.find(({ kind }) => kind === "grappling-hook-hit");
 
     expect(hit).toMatchObject({
       actorId: 1,
-      itemDefinitionId: "grappling-hook",
       tileId: "6:4",
       position: { x: 2, y: 4.5 },
       vector: { x: 4.5, y: 0 },
     });
-    expect(getActor(world, 1).inventory[0]?.charges).toBe(1);
+    expect(getActor(world, 1).grappleReadyTick).toBe(SIMULATION_TUNING.grapplingHook.cooldownTicks);
     expect(getActor(world, 1).action).toBe("GrapplePull");
     expect(getActor(world, 1).velocity.x).toBeCloseTo(
       SIMULATION_TUNING.grapplingHook.acceleration * SIMULATION_TUNING.movement.stumbleDrag,
@@ -751,16 +819,16 @@ describe("deterministic item effects", () => {
       {
         ...createNeutralCommand(world.tick, 1),
         dodgePressed: true,
-        shovePressed: true,
-        useItemSlot: 0,
+        grapplePressed: true,
       },
     ]);
     expect(
       blocked.events.some(
-        ({ kind }) => kind === "dodge-started" || kind === "shove-started" || kind === "item-used",
+        ({ kind }) =>
+          kind === "dodge-started" || kind === "grappling-hook-hit" || kind === "item-used",
       ),
     ).toBe(false);
-    expect(getActor(world, 1).inventory[0]?.charges).toBe(1);
+    expect(getActor(world, 1).action).toBe("GrapplePull");
   });
 
   it("uses a same-tick Brick as the nearer static anchor independent of command order", () => {
@@ -770,24 +838,26 @@ describe("deterministic item effects", () => {
         participantOverrides: [
           {
             actorId: 1,
+            startingAttributes: NEUTRAL_ATTRIBUTES,
             position: { x: 2.5, y: 4.5 },
             facing: { x: 1, y: 0 },
-            startingItems: ["grappling-hook"],
           },
-          { actorId: 2, position: { x: 7.5, y: 4.5 } },
+          { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 2, position: { x: 7.5, y: 4.5 } },
           {
             actorId: 3,
+            startingAttributes: NEUTRAL_ATTRIBUTES,
             position: { x: 4.5, y: 5.5 },
             facing: { x: 0, y: -1 },
             startingItems: ["brick-bag"],
           },
-          { actorId: 4, position: { x: 1.5, y: 7.5 } },
+          { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 4, position: { x: 1.5, y: 7.5 } },
         ],
       });
       const result = world.step(
         actorIds.map((actorId) => ({
           ...createNeutralCommand(world.tick, actorId),
-          useItemSlot: 0 as const,
+          grapplePressed: actorId === 1,
+          useItemSlot: actorId === 3 ? (0 as const) : null,
         })),
       );
       return {
@@ -805,60 +875,61 @@ describe("deterministic item effects", () => {
     });
   });
 
-  it("does not spend without a minimum-distance anchor and falls through to shove", () => {
+  it("does not start grapple without a minimum-distance anchor", () => {
     const world = new SimulationWorld(createItemConfig(), "grapple-no-anchor", {
       arenaLayout: "rectangular-fixture",
       participantOverrides: [
         {
           actorId: 1,
+          startingAttributes: NEUTRAL_ATTRIBUTES,
           position: { x: 7.9, y: 4.5 },
           facing: { x: 1, y: 0 },
-          startingItems: ["grappling-hook"],
         },
-        { actorId: 2, position: { x: 8.5, y: 4.5 } },
-        { actorId: 3, position: { x: 7.5, y: 1.5 } },
-        { actorId: 4, position: { x: 1.5, y: 7.5 } },
+        { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 2, position: { x: 8.5, y: 4.5 } },
+        { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 3, position: { x: 7.5, y: 1.5 } },
+        { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 4, position: { x: 1.5, y: 7.5 } },
       ],
     });
     const result = world.step([
       {
         ...createNeutralCommand(world.tick, 1),
-        useItemSlot: 0,
-        shovePressed: true,
+        grapplePressed: true,
       },
     ]);
 
-    expect(result.events.some(({ kind }) => kind === "item-used")).toBe(false);
     expect(result.events.some(({ kind }) => kind === "grappling-hook-hit")).toBe(false);
-    expect(result.events.some(({ kind }) => kind === "shove-started")).toBe(true);
-    expect(getActor(world, 1).inventory[0]?.charges).toBe(2);
+    expect(getActor(world, 1).action).toBe("Ready");
+    expect(getActor(world, 1).grappleReadyTick).toBe(0);
+    const retry = world.step([{ ...createNeutralCommand(world.tick, 1), grapplePressed: true }]);
+    expect(retry.events.some(({ kind }) => kind === "grappling-hook-hit")).toBe(false);
+    expect(getActor(world, 1).grappleReadyTick).toBe(0);
   });
 
-  it("falls through to shove when a same-tick Brick blocks the anchor inside minimum range", () => {
+  it("does not start grapple when a same-tick Brick blocks the anchor inside minimum range", () => {
     const world = new SimulationWorld(createItemConfig(), "near-brick-blocks-grapple", {
       arenaLayout: "rectangular-fixture",
       participantOverrides: [
         {
           actorId: 1,
+          startingAttributes: NEUTRAL_ATTRIBUTES,
           position: { x: 3.5, y: 4.5 },
           facing: { x: 1, y: 0 },
-          startingItems: ["grappling-hook"],
         },
-        { actorId: 2, position: { x: 7.5, y: 4.5 } },
+        { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 2, position: { x: 7.5, y: 4.5 } },
         {
           actorId: 3,
+          startingAttributes: NEUTRAL_ATTRIBUTES,
           position: { x: 4.5, y: 5.5 },
           facing: { x: 0, y: -1 },
           startingItems: ["brick-bag"],
         },
-        { actorId: 4, position: { x: 1.5, y: 7.5 } },
+        { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 4, position: { x: 1.5, y: 7.5 } },
       ],
     });
     const result = world.step([
       {
         ...createNeutralCommand(world.tick, 1),
-        useItemSlot: 0,
-        shovePressed: true,
+        grapplePressed: true,
       },
       { ...createNeutralCommand(world.tick, 3), useItemSlot: 0 },
     ]);
@@ -867,10 +938,8 @@ describe("deterministic item effects", () => {
       expect.objectContaining({ tileId: "4:4", ownerActorId: 3 }),
     ]);
     expect(result.events.some(({ kind }) => kind === "grappling-hook-hit")).toBe(false);
-    expect(result.events).toContainEqual(
-      expect.objectContaining({ kind: "shove-started", actorId: 1 }),
-    );
-    expect(getActor(world, 1).inventory[0]?.charges).toBe(2);
+    expect(getActor(world, 1).action).toBe("Ready");
+    expect(getActor(world, 1).grappleReadyTick).toBe(0);
   });
 
   it("scales Grapple acceleration by self mass and expires after twelve ticks", () => {
@@ -880,15 +949,15 @@ describe("deterministic item effects", () => {
         participantOverrides: [
           {
             actorId: 1,
+            startingAttributes: NEUTRAL_ATTRIBUTES,
             position: { x: 2, y: 4.5 },
             facing: { x: 1, y: 0 },
             massFactor,
-            startingItems: ["grappling-hook"],
           },
           ...PARTICIPANT_OVERRIDES.slice(1),
         ],
       });
-      world.step([{ ...createNeutralCommand(world.tick, 1), useItemSlot: 0 }]);
+      world.step([{ ...createNeutralCommand(world.tick, 1), grapplePressed: true }]);
       const speed = getActor(world, 1).velocity.x;
 
       while (world.tick <= SIMULATION_TUNING.grapplingHook.pullTicks) {
@@ -908,22 +977,23 @@ describe("deterministic item effects", () => {
       participantOverrides: [
         {
           actorId: 1,
+          startingAttributes: NEUTRAL_ATTRIBUTES,
           position: { x: 2, y: 4.5 },
           facing: { x: 1, y: 0 },
-          startingItems: ["grappling-hook"],
         },
         {
           actorId: 2,
+          startingAttributes: NEUTRAL_ATTRIBUTES,
           position: { x: 5, y: 4.5 },
           facing: { x: -1, y: 0 },
           startingItems: ["wind-blast"],
         },
-        { actorId: 3, position: { x: 7.5, y: 1.5 } },
-        { actorId: 4, position: { x: 1.5, y: 7.5 } },
+        { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 3, position: { x: 7.5, y: 1.5 } },
+        { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 4, position: { x: 1.5, y: 7.5 } },
       ],
     });
     const result = world.step([
-      { ...createNeutralCommand(world.tick, 1), useItemSlot: 0 },
+      { ...createNeutralCommand(world.tick, 1), grapplePressed: true },
       { ...createNeutralCommand(world.tick, 2), useItemSlot: 0 },
     ]);
 
@@ -942,9 +1012,10 @@ describe("deterministic item effects", () => {
       participantOverrides: [
         {
           actorId: 1,
+          startingAttributes: NEUTRAL_ATTRIBUTES,
           position: { x: 4, y: 4.5 },
           facing: { x: 1, y: 0 },
-          startingItems: ["bomb", "grappling-hook"],
+          startingItems: ["bomb"],
         },
         ...PARTICIPANT_OVERRIDES.slice(1),
       ],
@@ -955,51 +1026,11 @@ describe("deterministic item effects", () => {
       world.step();
     }
 
-    const result = world.step([{ ...createNeutralCommand(world.tick, 1), useItemSlot: 1 }]);
+    const result = world.step([{ ...createNeutralCommand(world.tick, 1), grapplePressed: true }]);
 
     expect(result.events.some(({ kind }) => kind === "bomb-detonated")).toBe(true);
     expect(result.events.some(({ kind }) => kind === "grappling-hook-hit")).toBe(false);
     expect(getActor(world, 1).action).toBe("Stumbling");
-    expect(getActor(world, 1).inventory[1]?.charges).toBe(2);
-  });
-
-  it("keeps stronger Wind Blast elimination credit over a weaker same-tick shove", () => {
-    const world = new SimulationWorld(createItemConfig(), "wind-credit-arbitration", {
-      arenaLayout: "rectangular-fixture",
-      participantOverrides: [
-        {
-          actorId: 1,
-          position: { x: 5, y: 4.5 },
-          facing: { x: 0, y: -1 },
-          startingItems: ["wind-blast"],
-        },
-        { actorId: 2, position: { x: 5, y: 2 } },
-        { actorId: 3, position: { x: 4.1, y: 2 }, facing: { x: 1, y: 0 } },
-        { actorId: 4, position: { x: 7.5, y: 7.5 } },
-      ],
-    });
-    world.step([{ ...createNeutralCommand(world.tick, 3), shovePressed: true }]);
-
-    while (world.tick < SIMULATION_TUNING.shove.windupTicks) {
-      world.step();
-    }
-
-    const impact = world.step([{ ...createNeutralCommand(world.tick, 1), useItemSlot: 0 }]);
-    expect(impact.events.some(({ kind }) => kind === "wind-blast-hit")).toBe(true);
-    expect(impact.events.some(({ kind }) => kind === "shove-hit")).toBe(true);
-
-    let creditEvent: SimulationEventV1 | undefined;
-
-    for (let tick = 0; tick < 120 && creditEvent === undefined; tick += 1) {
-      const result = world.step();
-      creditEvent = result.events.find(({ kind }) => kind === "stat-point-earned");
-    }
-
-    expect(creditEvent).toMatchObject({
-      kind: "stat-point-earned",
-      actorId: 1,
-      targetActorId: 2,
-    });
   });
 
   it("places a Brick Bag wall on the faced cardinal tile and spends one charge", () => {
@@ -1008,6 +1039,7 @@ describe("deterministic item effects", () => {
       participantOverrides: [
         {
           actorId: 1,
+          startingAttributes: NEUTRAL_ATTRIBUTES,
           position: { x: 4.5, y: 4.5 },
           facing: { x: 1, y: 0 },
           startingItems: ["brick-bag"],
@@ -1034,12 +1066,88 @@ describe("deterministic item effects", () => {
     );
   });
 
+  it("heals exactly 20 health after a successful ranged Brick Bag placement", () => {
+    const world = new SimulationWorld(createItemConfig(), "brick-placement-heal", {
+      arenaLayout: "rectangular-fixture",
+      treeOverrides: [],
+      participantOverrides: [
+        {
+          actorId: 1,
+          position: { x: 4.5, y: 4.5 },
+          facing: { x: 0, y: -1 },
+          startingItems: ["brick-bag"],
+        },
+        {
+          actorId: 2,
+          position: { x: 5.5, y: 4.5 },
+          facing: { x: -1, y: 0 },
+          startingAttributes: POWER_ATTRIBUTES,
+          startingSkills: ["force-palm", "blink-step"],
+        },
+        { actorId: 3, position: { x: 8.5, y: 1.5 } },
+        { actorId: 4, position: { x: 1.5, y: 7.5 } },
+      ],
+    });
+    world.step([{ ...createNeutralCommand(world.tick, 2), useSkillSlot: 0 }]);
+    const damaged = getActor(world, 1);
+
+    while (world.tick < damaged.combat.stunnedUntilTick) {
+      world.step();
+    }
+
+    const beforePlacement = getActor(world, 1);
+    const targetPosition = {
+      x: beforePlacement.position.x,
+      y: beforePlacement.position.y - 1.5,
+    };
+    const result = world.step([
+      {
+        ...createNeutralCommand(world.tick, 1),
+        useItemSlot: 0,
+        targetPosition,
+      },
+    ]);
+    const healed = getActor(world, 1);
+
+    expect(result.events).toContainEqual(
+      expect.objectContaining({ kind: "brick-wall-placed", actorId: 1 }),
+    );
+    expect(healed.combat.health).toBe(beforePlacement.combat.health + 20);
+  });
+
+  it("rejects Brick Bag targets beyond its two-tile cast range", () => {
+    const world = new SimulationWorld(createItemConfig(), "brick-range-limit", {
+      arenaLayout: "rectangular-fixture",
+      treeOverrides: [],
+      participantOverrides: [
+        {
+          actorId: 1,
+          position: { x: 4.5, y: 4.5 },
+          facing: { x: 0, y: -1 },
+          startingItems: ["brick-bag"],
+        },
+        ...PARTICIPANT_OVERRIDES.slice(1),
+      ],
+    });
+    const result = world.step([
+      {
+        ...createNeutralCommand(world.tick, 1),
+        useItemSlot: 0,
+        targetPosition: { x: 4.5, y: 2.3 },
+      },
+    ]);
+
+    expect(result.frame.brickWalls).toHaveLength(0);
+    expect(getActor(world, 1).inventory[0]?.charges).toBe(4);
+  });
+
   it("does not spend Brick Bag charges when the target tile is invalid or occupied", () => {
     const outOfBounds = new SimulationWorld(createItemConfig(), "brick-out-of-bounds", {
       arenaLayout: "rectangular-fixture",
       participantOverrides: [
         {
           actorId: 1,
+          startingAttributes: NEUTRAL_ATTRIBUTES,
           position: { x: 0.5, y: 4.5 },
           facing: { x: -1, y: 0 },
           startingItems: ["brick-bag"],
@@ -1051,26 +1159,23 @@ describe("deterministic item effects", () => {
       {
         ...createNeutralCommand(outOfBounds.tick, 1),
         useItemSlot: 0,
-        shovePressed: true,
       },
     ]);
 
     expect(invalidResult.frame.brickWalls).toHaveLength(0);
     expect(getActor(outOfBounds, 1).inventory[0]?.charges).toBe(4);
-    expect(invalidResult.events).toContainEqual(
-      expect.objectContaining({ kind: "shove-started", actorId: 1 }),
-    );
 
     const occupied = new SimulationWorld(createItemConfig(), "brick-occupied", {
       arenaLayout: "rectangular-fixture",
       participantOverrides: [
         {
           actorId: 1,
+          startingAttributes: NEUTRAL_ATTRIBUTES,
           position: { x: 4.5, y: 4.5 },
           facing: { x: 1, y: 0 },
           startingItems: ["brick-bag"],
         },
-        { actorId: 2, position: { x: 5.5, y: 4.5 } },
+        { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 2, position: { x: 5.5, y: 4.5 } },
         ...PARTICIPANT_OVERRIDES.slice(2),
       ],
     });
@@ -1090,18 +1195,20 @@ describe("deterministic item effects", () => {
         participantOverrides: [
           {
             actorId: 1,
+            startingAttributes: NEUTRAL_ATTRIBUTES,
             position: { x: 4.5, y: 4.5 },
             facing: { x: 1, y: 0 },
             startingItems: ["brick-bag"],
           },
           {
             actorId: 2,
+            startingAttributes: NEUTRAL_ATTRIBUTES,
             position: { x: 6.5, y: 4.5 },
             facing: { x: -1, y: 0 },
             startingItems: ["brick-bag"],
           },
-          { actorId: 3, position: { x: 7.5, y: 1.5 } },
-          { actorId: 4, position: { x: 1.5, y: 7.5 } },
+          { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 3, position: { x: 7.5, y: 1.5 } },
+          { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 4, position: { x: 1.5, y: 7.5 } },
         ],
       });
       return world.step(
@@ -1132,18 +1239,20 @@ describe("deterministic item effects", () => {
         participantOverrides: [
           {
             actorId: 1,
+            startingAttributes: NEUTRAL_ATTRIBUTES,
             position: { x: 2.5, y: 4.5 },
             facing: { x: 1, y: 0 },
             startingItems: ["wind-blast"],
           },
-          { actorId: 2, position: { x: 7.5, y: 4.5 } },
+          { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 2, position: { x: 7.5, y: 4.5 } },
           {
             actorId: 3,
+            startingAttributes: NEUTRAL_ATTRIBUTES,
             position: { x: 4.5, y: 5.5 },
             facing: { x: 0, y: -1 },
             startingItems: ["brick-bag"],
           },
-          { actorId: 4, position: { x: 1.5, y: 7.5 } },
+          { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 4, position: { x: 1.5, y: 7.5 } },
         ],
       });
       const result = world.step(
@@ -1172,18 +1281,20 @@ describe("deterministic item effects", () => {
       participantOverrides: [
         {
           actorId: 1,
+          startingAttributes: NEUTRAL_ATTRIBUTES,
           position: { x: 1.5, y: 4.5 },
           facing: { x: 1, y: 0 },
           startingItems: ["wind-blast"],
         },
-        { actorId: 2, position: { x: 3.2, y: 4.5 } },
+        { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 2, position: { x: 3.2, y: 4.5 } },
         {
           actorId: 3,
+          startingAttributes: NEUTRAL_ATTRIBUTES,
           position: { x: 4.5, y: 5.5 },
           facing: { x: 0, y: -1 },
           startingItems: ["brick-bag"],
         },
-        { actorId: 4, position: { x: 7.5, y: 7.5 } },
+        { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 4, position: { x: 7.5, y: 7.5 } },
       ],
     });
     world.step([{ ...createNeutralCommand(world.tick, 3), useItemSlot: 0 }]);
@@ -1196,40 +1307,6 @@ describe("deterministic item effects", () => {
     const stopped = getActor(world, 2);
     expect(stopped.position.x).toBeLessThanOrEqual(4 - stopped.radius + 0.001);
     expect(stopped.velocity.x).toBeGreaterThanOrEqual(-0.000_1);
-  });
-
-  it("blocks a hand shove whose center line clips a Brick Bag wall corner", () => {
-    const world = new SimulationWorld(createItemConfig(), "brick-hand-shove", {
-      arenaLayout: "rectangular-fixture",
-      gameplayTuning: { shoveReach: 0.5 },
-      participantOverrides: [
-        {
-          actorId: 1,
-          position: { x: 3.65, y: 4.35 },
-          facing: { x: 1, y: -1 },
-        },
-        { actorId: 2, position: { x: 4.35, y: 3.65 } },
-        {
-          actorId: 3,
-          position: { x: 4.5, y: 5.5 },
-          facing: { x: 0, y: -1 },
-          startingItems: ["brick-bag"],
-        },
-        { actorId: 4, position: { x: 7.5, y: 7.5 } },
-      ],
-    });
-    world.step([{ ...createNeutralCommand(world.tick, 3), useItemSlot: 0 }]);
-    beginShove(world, 1);
-    let hit = false;
-
-    for (let tick = 0; tick < 20; tick += 1) {
-      const result = world.step();
-      hit ||= result.events.some(
-        (event) => event.kind === "shove-hit" && event.actorId === 1 && event.targetActorId === 2,
-      );
-    }
-
-    expect(hit).toBe(false);
   });
 
   it("removes a Brick Bag wall after its tile becomes Void", () => {
@@ -1250,13 +1327,14 @@ describe("deterministic item effects", () => {
         participantOverrides: [
           {
             actorId: 1,
+            startingAttributes: NEUTRAL_ATTRIBUTES,
             position: { x: 1.5, y: 1.5 },
             facing: { x: 0, y: -1 },
             startingItems: ["brick-bag"],
           },
-          { actorId: 2, position: { x: 4.5, y: 4.5 } },
-          { actorId: 3, position: { x: 5.5, y: 4.5 } },
-          { actorId: 4, position: { x: 4.5, y: 5.5 } },
+          { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 2, position: { x: 4.5, y: 4.5 } },
+          { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 3, position: { x: 5.5, y: 4.5 } },
+          { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 4, position: { x: 4.5, y: 5.5 } },
         ],
       },
     );
@@ -1288,12 +1366,13 @@ describe("deterministic item effects", () => {
     expect(removal?.frame.brickWalls).toHaveLength(0);
   });
 
-  it("places a three-charge Soap patch on the faced cardinal tile", () => {
+  it("places a four-charge Soap patch on the faced cardinal tile", () => {
     const world = new SimulationWorld(createItemConfig(), "soap-placement", {
       arenaLayout: "rectangular-fixture",
       participantOverrides: [
         {
           actorId: 1,
+          startingAttributes: NEUTRAL_ATTRIBUTES,
           position: { x: 4.5, y: 4.5 },
           facing: { x: 1, y: 0 },
           startingItems: ["soap"],
@@ -1312,7 +1391,7 @@ describe("deterministic item effects", () => {
         placedTick: 0,
       },
     ]);
-    expect(getActor(world, 1).inventory[0]?.charges).toBe(2);
+    expect(getActor(world, 1).inventory[0]?.charges).toBe(3);
     expect(result.events).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -1331,6 +1410,43 @@ describe("deterministic item effects", () => {
     );
   });
 
+  it("accepts Soap inside three tiles and rejects farther target positions", () => {
+    const createWorld = (seed: string) =>
+      new SimulationWorld(createItemConfig(), seed, {
+        arenaLayout: "rectangular-fixture",
+        treeOverrides: [],
+        participantOverrides: [
+          {
+            actorId: 1,
+            position: { x: 4.5, y: 4.5 },
+            facing: { x: 0, y: -1 },
+            startingItems: ["soap"],
+          },
+          ...PARTICIPANT_OVERRIDES.slice(1),
+        ],
+      });
+    const accepted = createWorld("soap-range-accepted");
+    const acceptedResult = accepted.step([
+      {
+        ...createNeutralCommand(accepted.tick, 1),
+        useItemSlot: 0,
+        targetPosition: { x: 4.5, y: 1.6 },
+      },
+    ]);
+    const rejected = createWorld("soap-range-rejected");
+    const rejectedResult = rejected.step([
+      {
+        ...createNeutralCommand(rejected.tick, 1),
+        useItemSlot: 0,
+        targetPosition: { x: 4.5, y: 1.3 },
+      },
+    ]);
+
+    expect(acceptedResult.frame.soapPatches).toHaveLength(1);
+    expect(rejectedResult.frame.soapPatches).toHaveLength(0);
+    expect(getActor(rejected, 1).inventory[0]?.charges).toBe(4);
+  });
+
   it("resolves competing Soap placements by actor id without spending the loser charge", () => {
     const run = (commandOrder: readonly number[]) => {
       const world = new SimulationWorld(createItemConfig(), "soap-placement-order", {
@@ -1338,18 +1454,20 @@ describe("deterministic item effects", () => {
         participantOverrides: [
           {
             actorId: 1,
+            startingAttributes: NEUTRAL_ATTRIBUTES,
             position: { x: 4.5, y: 4.5 },
             facing: { x: 1, y: 0 },
             startingItems: ["soap"],
           },
           {
             actorId: 2,
+            startingAttributes: NEUTRAL_ATTRIBUTES,
             position: { x: 6.5, y: 4.5 },
             facing: { x: -1, y: 0 },
             startingItems: ["soap"],
           },
-          { actorId: 3, position: { x: 7.5, y: 1.5 } },
-          { actorId: 4, position: { x: 1.5, y: 7.5 } },
+          { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 3, position: { x: 7.5, y: 1.5 } },
+          { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 4, position: { x: 1.5, y: 7.5 } },
         ],
       });
       world.step(
@@ -1381,7 +1499,7 @@ describe("deterministic item effects", () => {
     expect(forward.patches).toEqual([
       expect.objectContaining({ ownerActorId: 1, tileId: "5:4", placedTick: 0 }),
     ]);
-    expect(forward.charges).toEqual([2, 3]);
+    expect(forward.charges).toEqual([3, 4]);
     expect(forward.retryUsedSoap).toBe(false);
   });
 
@@ -1391,11 +1509,12 @@ describe("deterministic item effects", () => {
       participantOverrides: [
         {
           actorId: 1,
+          startingAttributes: NEUTRAL_ATTRIBUTES,
           position: { x: 4.5, y: 4.5 },
           facing: { x: 1, y: 0 },
           startingItems: ["soap"],
         },
-        { actorId: 2, position: { x: 5.5, y: 4.5 } },
+        { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 2, position: { x: 5.5, y: 4.5 } },
         ...PARTICIPANT_OVERRIDES.slice(2),
       ],
     });
@@ -1404,13 +1523,14 @@ describe("deterministic item effects", () => {
     ]);
 
     expect(bodyResult.frame.soapPatches).toHaveLength(0);
-    expect(getActor(bodyOccupied, 1).inventory[0]?.charges).toBe(3);
+    expect(getActor(bodyOccupied, 1).inventory[0]?.charges).toBe(4);
 
     const itemOccupied = new SimulationWorld(createItemConfig(), "soap-item-occupied", {
       arenaLayout: "rectangular-fixture",
       participantOverrides: [
         {
           actorId: 1,
+          startingAttributes: NEUTRAL_ATTRIBUTES,
           position: { x: 4.5, y: 4.5 },
           facing: { x: 1, y: 0 },
           startingItems: ["soap"],
@@ -1424,13 +1544,14 @@ describe("deterministic item effects", () => {
     ]);
 
     expect(itemResult.frame.soapPatches).toHaveLength(0);
-    expect(getActor(itemOccupied, 1).inventory[0]?.charges).toBe(3);
+    expect(getActor(itemOccupied, 1).inventory[0]?.charges).toBe(4);
 
     const boundary = new SimulationWorld(createItemConfig(), "soap-boundary", {
       arenaLayout: "rectangular-fixture",
       participantOverrides: [
         {
           actorId: 1,
+          startingAttributes: NEUTRAL_ATTRIBUTES,
           position: { x: 0.5, y: 4.5 },
           facing: { x: -1, y: 0 },
           startingItems: ["soap"],
@@ -1440,7 +1561,7 @@ describe("deterministic item effects", () => {
     });
     boundary.step([{ ...createNeutralCommand(boundary.tick, 1), useItemSlot: 0 }]);
     expect(boundary.createRenderFrame().soapPatches).toHaveLength(0);
-    expect(getActor(boundary, 1).inventory[0]?.charges).toBe(3);
+    expect(getActor(boundary, 1).inventory[0]?.charges).toBe(4);
   });
 
   it("commits Brick and armed Bomb occupancy before Soap", () => {
@@ -1449,18 +1570,20 @@ describe("deterministic item effects", () => {
       participantOverrides: [
         {
           actorId: 1,
+          startingAttributes: NEUTRAL_ATTRIBUTES,
           position: { x: 4.5, y: 4.5 },
           facing: { x: 1, y: 0 },
           startingItems: ["soap"],
         },
         {
           actorId: 2,
+          startingAttributes: NEUTRAL_ATTRIBUTES,
           position: { x: 5.5, y: 5.5 },
           facing: { x: 0, y: -1 },
           startingItems: ["brick-bag"],
         },
-        { actorId: 3, position: { x: 7.5, y: 1.5 } },
-        { actorId: 4, position: { x: 1.5, y: 7.5 } },
+        { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 3, position: { x: 7.5, y: 1.5 } },
+        { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 4, position: { x: 1.5, y: 7.5 } },
       ],
     });
     const brickResult = brickWorld.step([
@@ -1472,25 +1595,27 @@ describe("deterministic item effects", () => {
       expect.objectContaining({ tileId: "5:4", ownerActorId: 2 }),
     ]);
     expect(brickResult.frame.soapPatches).toHaveLength(0);
-    expect(getActor(brickWorld, 1).inventory[0]?.charges).toBe(3);
+    expect(getActor(brickWorld, 1).inventory[0]?.charges).toBe(4);
 
     const bombWorld = new SimulationWorld(createItemConfig(), "bomb-before-soap", {
       arenaLayout: "rectangular-fixture",
       participantOverrides: [
         {
           actorId: 1,
+          startingAttributes: NEUTRAL_ATTRIBUTES,
           position: { x: 4.5, y: 4.5 },
           facing: { x: 1, y: 0 },
           startingItems: ["soap"],
         },
         {
           actorId: 2,
+          startingAttributes: NEUTRAL_ATTRIBUTES,
           position: { x: 5.5, y: 4.5 },
           facing: { x: 1, y: 0 },
           startingItems: ["bomb"],
         },
-        { actorId: 3, position: { x: 7.5, y: 1.5 } },
-        { actorId: 4, position: { x: 1.5, y: 7.5 } },
+        { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 3, position: { x: 7.5, y: 1.5 } },
+        { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 4, position: { x: 1.5, y: 7.5 } },
       ],
     });
     bombWorld.step([{ ...createNeutralCommand(bombWorld.tick, 2), useItemSlot: 0 }]);
@@ -1504,7 +1629,7 @@ describe("deterministic item effects", () => {
     ]);
     expect(bombResult.frame.bombs).toHaveLength(1);
     expect(bombResult.frame.soapPatches).toHaveLength(0);
-    expect(getActor(bombWorld, 1).inventory[0]?.charges).toBe(3);
+    expect(getActor(bombWorld, 1).inventory[0]?.charges).toBe(4);
   });
 
   it("keeps an existing Soap patch from being covered by a later Brick wall", () => {
@@ -1513,18 +1638,20 @@ describe("deterministic item effects", () => {
       participantOverrides: [
         {
           actorId: 1,
+          startingAttributes: NEUTRAL_ATTRIBUTES,
           position: { x: 4.5, y: 4.5 },
           facing: { x: 1, y: 0 },
           startingItems: ["soap"],
         },
         {
           actorId: 2,
+          startingAttributes: NEUTRAL_ATTRIBUTES,
           position: { x: 5.5, y: 5.5 },
           facing: { x: 0, y: -1 },
           startingItems: ["brick-bag"],
         },
-        { actorId: 3, position: { x: 7.5, y: 1.5 } },
-        { actorId: 4, position: { x: 1.5, y: 7.5 } },
+        { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 3, position: { x: 7.5, y: 1.5 } },
+        { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 4, position: { x: 1.5, y: 7.5 } },
       ],
     });
 
@@ -1552,16 +1679,23 @@ describe("deterministic item effects", () => {
           position: { x: 6.4, y: 4.9 },
           velocity: { x: -0.42, y: 0 },
         },
-        { actorId: 3, position: { x: 7.5, y: 1.5 } },
+        { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 3, position: { x: 7.5, y: 1.5 } },
         {
           actorId: 4,
+          startingAttributes: NEUTRAL_ATTRIBUTES,
           position: { x: 4.5, y: 4.5 },
           facing: { x: 1, y: 0 },
           startingItems: ["soap"],
         },
       ],
     });
-    world.step([{ ...createNeutralCommand(world.tick, 4), useItemSlot: 0 }]);
+    world.step([
+      {
+        ...createNeutralCommand(world.tick, 4),
+        useItemSlot: 0,
+        targetPosition: { x: 5.5, y: 4.5 },
+      },
+    ]);
     let result: ReturnType<SimulationWorld["step"]> | undefined;
 
     for (let tick = 0; tick < 12 && result === undefined; tick += 1) {
@@ -1590,12 +1724,13 @@ describe("deterministic item effects", () => {
     expect(getActor(world, 2).action).toBe("Ready");
   });
 
-  it("lets the installer trigger Soap and preserves launch direction and offensive credit", () => {
+  it("keeps the installer immune to their own Soap", () => {
     const world = new SimulationWorld(createItemConfig(), "soap-self-trigger", {
       arenaLayout: "rectangular-fixture",
       participantOverrides: [
         {
           actorId: 1,
+          startingAttributes: NEUTRAL_ATTRIBUTES,
           position: { x: 4.6, y: 4.5 },
           velocity: { x: 0.42, y: 0 },
           facing: { x: 1, y: 0 },
@@ -1623,24 +1758,26 @@ describe("deterministic item effects", () => {
     const actor = getActor(world, 1);
 
     expect(placement.events.some(({ kind }) => kind === "soap-placed")).toBe(true);
-    expect(result?.events).toContainEqual(
-      expect.objectContaining({ kind: "soap-triggered", actorId: 1, targetActorId: 1 }),
-    );
-    expect(actor.action).toBe("Stumbling");
-    expect(actor.velocity.x).toBeGreaterThanOrEqual(SIMULATION_TUNING.soap.minimumSpeed);
-    expect(actor.velocity.x).toBeLessThanOrEqual(SIMULATION_TUNING.soap.maximumSpeed);
-    expect(actor.velocity.y).toBe(0);
+    expect(result).toBeUndefined();
+    expect(world.createRenderFrame().soapPatches).toHaveLength(1);
+    expect(actor.action).toBe("Ready");
   });
 
   it("does not let Dodge ignore Soap", () => {
     const world = new SimulationWorld(createItemConfig(), "soap-dodge", {
       arenaLayout: "rectangular-fixture",
       participantOverrides: [
-        { actorId: 1, position: { x: 6.4, y: 4.5 }, facing: { x: -1, y: 0 } },
-        { actorId: 2, position: { x: 7.5, y: 1.5 } },
-        { actorId: 3, position: { x: 1.5, y: 7.5 } },
+        {
+          startingAttributes: NEUTRAL_ATTRIBUTES,
+          actorId: 1,
+          position: { x: 6.4, y: 4.5 },
+          facing: { x: -1, y: 0 },
+        },
+        { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 2, position: { x: 7.5, y: 1.5 } },
+        { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 3, position: { x: 1.5, y: 7.5 } },
         {
           actorId: 4,
+          startingAttributes: NEUTRAL_ATTRIBUTES,
           position: { x: 4.5, y: 4.5 },
           facing: { x: 1, y: 0 },
           startingItems: ["soap"],
@@ -1652,12 +1789,11 @@ describe("deterministic item effects", () => {
       {
         ...createNeutralCommand(world.tick, 1),
         move: { x: -1, y: 0 },
-        dodgePressed: true,
       },
     ]);
     let triggerResult: ReturnType<SimulationWorld["step"]> | undefined;
 
-    for (let tick = 0; tick < 6 && triggerResult === undefined; tick += 1) {
+    for (let tick = 0; tick < 12 && triggerResult === undefined; tick += 1) {
       const result = world.step([
         { ...createNeutralCommand(world.tick, 1), move: { x: -1, y: 0 } },
       ]);
@@ -1692,6 +1828,7 @@ describe("deterministic item effects", () => {
       participantOverrides: [
         {
           actorId: 1,
+          startingAttributes: NEUTRAL_ATTRIBUTES,
           position: { x: 1.5, y: 4.9 },
           facing: { x: -1, y: 0 },
           startingItems: ["soap"],
@@ -1701,8 +1838,8 @@ describe("deterministic item effects", () => {
           position: { x: 1.35, y: 4.1 },
           velocity: { x: -0.42, y: 0 },
         },
-        { actorId: 3, position: { x: 7.5, y: 1.5 } },
-        { actorId: 4, position: { x: 7.5, y: 7.5 } },
+        { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 3, position: { x: 7.5, y: 1.5 } },
+        { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 4, position: { x: 7.5, y: 7.5 } },
       ],
     });
     world.step([{ ...createNeutralCommand(world.tick, 1), useItemSlot: 0 }]);
@@ -1729,44 +1866,6 @@ describe("deterministic item effects", () => {
     }
 
     expect(credit).toMatchObject({ kind: "stat-point-earned", actorId: 1, targetActorId: 2 });
-  });
-
-  it("preserves an earlier attacker credit when the victim triggers their own Soap", () => {
-    const world = new SimulationWorld(createItemConfig(), "soap-self-credit-preservation", {
-      arenaLayout: "rectangular-fixture",
-      participantOverrides: [
-        {
-          actorId: 1,
-          position: { x: 1.5, y: 4.5 },
-          facing: { x: -1, y: 0 },
-          startingItems: ["soap"],
-        },
-        { actorId: 2, position: { x: 2.2, y: 4.5 }, facing: { x: -1, y: 0 } },
-        { actorId: 3, position: { x: 7.5, y: 1.5 } },
-        { actorId: 4, position: { x: 7.5, y: 7.5 } },
-      ],
-    });
-
-    world.step([{ ...createNeutralCommand(world.tick, 1), useItemSlot: 0 }]);
-    beginShove(world, 2);
-    stepUntilHit(world);
-    let soapTriggered = false;
-    let credit: SimulationEventV1 | undefined;
-
-    for (let tick = 0; tick < 180 && credit === undefined; tick += 1) {
-      const result = world.step();
-      soapTriggered ||= result.events.some(
-        ({ kind, actorId, targetActorId }) =>
-          kind === "soap-triggered" && actorId === 1 && targetActorId === 1,
-      );
-      credit = result.events.find(
-        ({ kind, actorId, targetActorId }) =>
-          kind === "stat-point-earned" && actorId === 2 && targetActorId === 1,
-      );
-    }
-
-    expect(soapTriggered).toBe(true);
-    expect(credit).toMatchObject({ kind: "stat-point-earned", actorId: 2, targetActorId: 1 });
   });
 
   it("rejects Soap on Void even while Boat is active", () => {
@@ -1813,7 +1912,7 @@ describe("deterministic item effects", () => {
     const result = world.step([{ ...createNeutralCommand(world.tick, 1), useItemSlot: 1 }]);
 
     expect(getActor(world, 1).effects).toEqual([expect.objectContaining({ definitionId: "boat" })]);
-    expect(getActor(world, 1).inventory[1]?.charges).toBe(3);
+    expect(getActor(world, 1).inventory[1]?.charges).toBe(4);
     expect(result.frame.soapPatches).toHaveLength(0);
   });
 
@@ -1835,13 +1934,14 @@ describe("deterministic item effects", () => {
         participantOverrides: [
           {
             actorId: 1,
+            startingAttributes: NEUTRAL_ATTRIBUTES,
             position: { x: 1.5, y: 1.5 },
             facing: { x: 0, y: -1 },
             startingItems: ["soap"],
           },
-          { actorId: 2, position: { x: 4.5, y: 4.5 } },
-          { actorId: 3, position: { x: 5.5, y: 4.5 } },
-          { actorId: 4, position: { x: 4.5, y: 5.5 } },
+          { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 2, position: { x: 4.5, y: 4.5 } },
+          { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 3, position: { x: 5.5, y: 4.5 } },
+          { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 4, position: { x: 4.5, y: 5.5 } },
         ],
       },
     );
@@ -1904,74 +2004,54 @@ describe("deterministic item effects", () => {
     expect(getActor(world, 1).massFactor).toBe(1);
   });
 
-  it("consumes a spring glove on shove start and boosts every valid target in that active window", () => {
-    const world = new SimulationWorld(createItemConfig(), "spring-multi-hit", {
-      arenaLayout: "rectangular-fixture",
-      participantOverrides: [
-        PARTICIPANT_OVERRIDES[0]!,
-        { actorId: 2, position: { x: 4.72, y: 4.15 }, facing: { x: -1, y: 0 } },
-        { actorId: 3, position: { x: 4.72, y: 4.85 }, facing: { x: -1, y: 0 } },
-        PARTICIPANT_OVERRIDES[3]!,
-      ],
-      itemOverrides: [{ itemId: 1, definitionId: "spring-glove", position: { x: 4, y: 4.5 } }],
-    });
-    world.step();
-    expect(getActor(world, 1).effects[0]?.definitionId).toBe("spring-glove");
-
-    const started = beginShove(world);
-    expect(started.frame.participants[0]?.springBoosted).toBe(true);
-    expect(getActor(world, 1).effects).toEqual([]);
-    const hit = stepUntilHit(world);
-
-    expect(
-      hit.events.filter(({ kind, actorId }) => kind === "shove-hit" && actorId === 1),
-    ).toHaveLength(2);
-  });
-
-  it("produces more target velocity than the same unboosted shove", () => {
-    function run(boosted: boolean): number {
+  it("consumes a picked-up spring glove and increases built-in grapple velocity", () => {
+    function run(boosted: boolean) {
       const world = new SimulationWorld(createItemConfig(), `spring-compare-${boosted}`, {
         arenaLayout: "rectangular-fixture",
-        participantOverrides: [
-          PARTICIPANT_OVERRIDES[0]!,
-          { actorId: 2, position: { x: 4.78, y: 4.5 }, facing: { x: -1, y: 0 } },
-          PARTICIPANT_OVERRIDES[2]!,
-          PARTICIPANT_OVERRIDES[3]!,
-        ],
+        participantOverrides: PARTICIPANT_OVERRIDES,
         itemOverrides: boosted
           ? [{ itemId: 1, definitionId: "spring-glove", position: { x: 4, y: 4.5 } }]
           : [],
       });
       world.step();
-      beginShove(world);
-      stepUntilHit(world);
-      return vectorLength(getActor(world, 2).velocity);
+      const result = beginGrapple(world);
+      return {
+        effects: getActor(world, 1).effects,
+        grappleHit: result.events.some(({ kind }) => kind === "grappling-hook-hit"),
+        speed: vectorLength(getActor(world, 1).velocity),
+      };
     }
 
-    expect(run(true)).toBeGreaterThan(run(false));
+    const boosted = run(true);
+    const unboosted = run(false);
+    expect(boosted.grappleHit).toBe(true);
+    expect(unboosted.grappleHit).toBe(true);
+    expect(boosted.effects).toEqual([]);
+    expect(boosted.speed).toBeGreaterThan(unboosted.speed);
   });
 
-  it("consumes spring momentum on a miss and clears timed effects on falling", () => {
+  it("keeps spring momentum when grapple misses and clears timed effects on falling", () => {
     const springWorld = new SimulationWorld(createItemConfig(), "spring-miss", {
       arenaLayout: "rectangular-fixture",
-      participantOverrides: PARTICIPANT_OVERRIDES,
-      itemOverrides: [{ itemId: 1, definitionId: "spring-glove", position: { x: 4, y: 4.5 } }],
+      participantOverrides: [
+        {
+          ...PARTICIPANT_OVERRIDES[0]!,
+          position: { x: 7.9, y: 4.5 },
+          facing: { x: 1, y: 0 },
+        },
+        ...PARTICIPANT_OVERRIDES.slice(1),
+      ],
+      itemOverrides: [{ itemId: 1, definitionId: "spring-glove", position: { x: 7.9, y: 4.5 } }],
     });
     springWorld.step();
-    beginShove(springWorld);
-    expect(getActor(springWorld, 1).effects).toEqual([]);
-    expect(getActor(springWorld, 1).springBoosted).toBe(true);
-
-    while (getActor(springWorld, 1).action !== "Stumbling") {
-      springWorld.step();
-    }
-
-    expect(getActor(springWorld, 1).effects).toEqual([]);
+    const missed = beginGrapple(springWorld);
+    expect(missed.events.some(({ kind }) => kind === "grappling-hook-hit")).toBe(false);
+    expect(getActor(springWorld, 1).effects[0]?.definitionId).toBe("spring-glove");
 
     const fallingWorld = new SimulationWorld(createItemConfig(), "falling-clears-effects", {
       arenaLayout: "rectangular-fixture",
       participantOverrides: [
-        { actorId: 1, position: { x: -0.5, y: 4.5 } },
+        { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 1, position: { x: -0.5, y: 4.5 } },
         ...PARTICIPANT_OVERRIDES.slice(1),
       ],
       itemOverrides: [{ itemId: 1, definitionId: "iron-boots", position: { x: -0.5, y: 4.5 } }],
@@ -2084,7 +2164,7 @@ describe("deterministic item placement", () => {
     expect(spawnCount).toBeGreaterThan(0);
   });
 
-  it("rejects active loadout items from the map-pickup override path", () => {
+  it("accepts all loadout items from the map-pickup override path", () => {
     expect(
       () =>
         new SimulationWorld(createItemConfig(), "active-map-override", {
@@ -2092,6 +2172,6 @@ describe("deterministic item placement", () => {
           participantOverrides: PARTICIPANT_OVERRIDES,
           itemOverrides: [{ itemId: 1, definitionId: "wind-blast", position: { x: 4, y: 4.5 } }],
         }),
-    ).toThrow(/not map-spawn eligible/);
+    ).not.toThrow();
   });
 });

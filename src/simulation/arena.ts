@@ -143,6 +143,103 @@ export function getLandShoreDepths(tiles: readonly TileState[]): ReadonlyMap<Til
   return depths;
 }
 
+export function getOuterOceanTileIds(
+  tiles: readonly TileState[],
+  columns: number,
+  rows: number,
+): ReadonlySet<TileId> {
+  const voidIds = new Set(
+    tiles.filter(({ state }) => state === "Void").map(({ tileId }) => tileId),
+  );
+  const outerOceanIds = new Set<TileId>();
+  const queue: TileId[] = [];
+
+  for (const tile of tiles) {
+    if (
+      tile.state === "Void" &&
+      (tile.column === 0 || tile.row === 0 || tile.column === columns - 1 || tile.row === rows - 1)
+    ) {
+      outerOceanIds.add(tile.tileId);
+      queue.push(tile.tileId);
+    }
+  }
+
+  for (let cursor = 0; cursor < queue.length; cursor += 1) {
+    const tileId = queue[cursor];
+
+    if (tileId === undefined) {
+      continue;
+    }
+
+    const [columnText, rowText] = tileId.split(":");
+    const column = Number(columnText);
+    const row = Number(rowText);
+
+    for (const direction of ORTHOGONAL_DIRECTIONS) {
+      const neighborId = createTileId(column + direction.column, row + direction.row);
+
+      if (voidIds.has(neighborId) && !outerOceanIds.has(neighborId)) {
+        outerOceanIds.add(neighborId);
+        queue.push(neighborId);
+      }
+    }
+  }
+
+  return outerOceanIds;
+}
+
+export function getOuterCoastDepths(
+  tiles: readonly TileState[],
+  columns: number,
+  rows: number,
+): ReadonlyMap<TileId, number> {
+  const landTiles = tiles.filter(({ state }) => state !== "Void");
+  const landIds = new Set(landTiles.map(({ tileId }) => tileId));
+  const landById = new Map(landTiles.map((tile) => [tile.tileId, tile] as const));
+  const outerOceanIds = getOuterOceanTileIds(tiles, columns, rows);
+  const depths = new Map<TileId, number>();
+  let frontier = landTiles
+    .filter(
+      (tile) =>
+        tile.column === 0 ||
+        tile.row === 0 ||
+        tile.column === columns - 1 ||
+        tile.row === rows - 1 ||
+        getNeighbors(tile).some((neighborId) => outerOceanIds.has(neighborId)),
+    )
+    .map(({ tileId }) => tileId);
+
+  for (const tileId of frontier) {
+    depths.set(tileId, 0);
+  }
+
+  let depth = 1;
+
+  while (frontier.length > 0 && depths.size < landTiles.length) {
+    const nextFrontier: TileId[] = [];
+
+    for (const tileId of frontier) {
+      const tile = landById.get(tileId);
+
+      if (tile === undefined) {
+        continue;
+      }
+
+      for (const neighborId of getNeighbors(tile)) {
+        if (landIds.has(neighborId) && !depths.has(neighborId)) {
+          depths.set(neighborId, depth);
+          nextFrontier.push(neighborId);
+        }
+      }
+    }
+
+    frontier = nextFrontier;
+    depth += 1;
+  }
+
+  return depths;
+}
+
 function carveLakes(
   tiles: readonly TileState[],
   config: GameConfigV1,
@@ -334,40 +431,43 @@ export function createRectangularArenaTiles(config: GameConfigV1): readonly Tile
 export function createParticipantSpawnPositions(
   tiles: readonly TileState[],
   participantCount: number,
-  phase: number,
+  random: XorShift32,
 ): readonly Vector2[] {
   const stableTiles = tiles.filter(({ state }) => state === "Stable");
   const depths = getLandShoreDepths(tiles);
-  const center = stableTiles.reduce(
-    (sum, tile) => ({ x: sum.x + tile.column + 0.5, y: sum.y + tile.row + 0.5 }),
-    { x: 0, y: 0 },
-  );
-  center.x /= Math.max(1, stableTiles.length);
-  center.y /= Math.max(1, stableTiles.length);
   const maximumDepth = Math.max(0, ...depths.values());
   const preferredDepth = maximumDepth >= 2 ? 1 : 0;
-  const candidates = stableTiles.filter((tile) => (depths.get(tile.tileId) ?? 0) >= preferredDepth);
-  const radius =
-    Math.min(
-      Math.max(...stableTiles.map((tile) => Math.abs(tile.column + 0.5 - center.x))),
-      Math.max(...stableTiles.map((tile) => Math.abs(tile.row + 0.5 - center.y))),
-    ) * 0.62;
-  const remaining = new Map(candidates.map((tile) => [tile.tileId, tile] as const));
+  const candidates = shuffle(
+    stableTiles.filter((tile) => (depths.get(tile.tileId) ?? 0) >= preferredDepth),
+    random,
+  );
+  const remaining = new Map(
+    candidates.map((tile, index) => [tile.tileId, Object.freeze({ tile, tie: index })] as const),
+  );
   const positions: Vector2[] = [];
 
   for (let index = 0; index < participantCount; index += 1) {
-    const angle = phase + (index / participantCount) * Math.PI * 2;
-    const target = {
-      x: center.x + Math.cos(angle) * radius,
-      y: center.y + Math.sin(angle) * radius,
-    };
     const selected = [...remaining.values()].toSorted((left, right) => {
-      const leftDistance = Math.hypot(left.column + 0.5 - target.x, left.row + 0.5 - target.y);
-      const rightDistance = Math.hypot(right.column + 0.5 - target.x, right.row + 0.5 - target.y);
+      const leftDistance =
+        positions.length === 0
+          ? 0
+          : Math.min(
+              ...positions.map((position) =>
+                Math.hypot(left.tile.column + 0.5 - position.x, left.tile.row + 0.5 - position.y),
+              ),
+            );
+      const rightDistance =
+        positions.length === 0
+          ? 0
+          : Math.min(
+              ...positions.map((position) =>
+                Math.hypot(right.tile.column + 0.5 - position.x, right.tile.row + 0.5 - position.y),
+              ),
+            );
       return (
-        leftDistance - rightDistance ||
-        (depths.get(right.tileId) ?? 0) - (depths.get(left.tileId) ?? 0) ||
-        left.tileId.localeCompare(right.tileId)
+        rightDistance - leftDistance ||
+        (depths.get(right.tile.tileId) ?? 0) - (depths.get(left.tile.tileId) ?? 0) ||
+        left.tie - right.tie
       );
     })[0];
 
@@ -375,8 +475,8 @@ export function createParticipantSpawnPositions(
       throw new Error("arena does not contain enough safe participant spawn tiles");
     }
 
-    remaining.delete(selected.tileId);
-    positions.push(Object.freeze({ x: selected.column + 0.5, y: selected.row + 0.5 }));
+    remaining.delete(selected.tile.tileId);
+    positions.push(Object.freeze({ x: selected.tile.column + 0.5, y: selected.tile.row + 0.5 }));
   }
 
   return Object.freeze(positions);

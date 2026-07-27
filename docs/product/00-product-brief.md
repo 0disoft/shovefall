@@ -22,9 +22,9 @@ participants away. The game is successful when that chaos looks earned rather th
 
 - A contest voter or casual desktop or mobile player who should understand the game within seconds.
 - No installation, account, tutorial wall, backend, or online opponent.
-- One fixed 50-participant Hard-AI mode; smaller counts remain diagnostic fixtures, not public choices.
+- One fixed 60-participant Hard-AI mode; smaller counts remain diagnostic fixtures, not public choices.
 - A hard 120-second round limit with immediate restart after defeat or victory.
-- WASD, arrow-key, mouse-drag, touch-joystick, or gamepad movement; keyboard, touch, and gamepad shove, dodge, and inventory-slot actions.
+- Arrow-key, mouse-drag, touch-joystick, or gamepad movement; two `Q/W` skills and one `D` item enter a visible pointer-confirmed aim mode before activation.
 
 ## Product Bet
 
@@ -55,10 +55,10 @@ physical-device support, cross-browser behavior, hosted CI, or deployment. Human
 
 ## Current State
 
-The gray-box game, fixed 50-participant Hard-AI mode, fixed Slow collapse, immediate movement,
-manual kill-reward growth, eight initial map items, all nine starting-item definitions and six active
+The gray-box game, fixed 60-participant Hard-AI mode, fixed Slow collapse, immediate movement,
+manual kill-reward growth, eight initial map items, all eight item definitions and five active
 mechanics, Brick dodge mounting, opponent-lethal and owner-launching Bombs, pirate cannon collapse,
-protected-core rock pressure, generated terrain and action feedback, local production smoke,
-balance screens, and 50-participant performance harnesses are implemented. Hosted `0.37.0` and its
-sixteen-seed audit remains historical; fresh `0.39.1` browser, performance, audit, capture, hosted, and public evidence; active-item balance; human playtest
+protected-core rock pressure, orbiting treasure-ship gift deliveries, generated terrain and action feedback, local production smoke,
+balance screens, and 60-participant performance harnesses are implemented. Hosted `0.37.0` and its
+sixteen-seed audit remains historical; fresh `0.69.0` browser, performance, audit, capture, hosted, and public evidence; direct-trait and item balance; human playtest
 evidence; and named device/browser coverage remain open release work.

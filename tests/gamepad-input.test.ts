@@ -29,7 +29,7 @@ describe("gamepad movement", () => {
     expect(movement.y).toBeCloseTo(-Math.SQRT1_2);
   });
 
-  it("bridges item buttons as one-shot edges with slot zero priority", () => {
+  it("bridges two skill buttons, built-in grapple, and one bumper item as targeting requests", () => {
     let buttons = Array.from({ length: 16 }, () => button());
     const input = new InputState();
     const adapter = createGamepadInput(() => [
@@ -39,20 +39,39 @@ describe("gamepad movement", () => {
         buttons,
       },
     ]);
+    const skillRequests: number[] = [];
+    const itemRequests: number[] = [];
+    let grappleRequests = 0;
+    const actions = {
+      onGrappleRequested: () => {
+        grappleRequests += 1;
+      },
+      onSkillRequested: (slotIndex: 0 | 1) => skillRequests.push(slotIndex),
+      onItemRequested: (slotIndex: 0) => itemRequests.push(slotIndex),
+    };
 
-    buttons[2] = button(true);
-    buttons[3] = button(true);
-    adapter.sample(input);
-    expect(input.consumeCommand(0, 1).useItemSlot).toBe(0);
-    adapter.sample(input);
-    expect(input.consumeCommand(1, 1).useItemSlot).toBeNull();
+    buttons[0] = button(true);
+    buttons[1] = button(true);
+    adapter.sample(input, actions);
+    expect(skillRequests).toEqual([0, 1]);
+    adapter.sample(input, actions);
+    expect(skillRequests).toEqual([0, 1]);
 
     buttons = Array.from({ length: 16 }, () => button());
-    adapter.sample(input);
-    buttons[3] = button(true);
-    adapter.sample(input);
-    expect(input.consumeCommand(2, 1).useItemSlot).toBe(1);
+    adapter.sample(input, actions);
+    buttons[2] = button(true);
+    adapter.sample(input, actions);
+    expect(grappleRequests).toBe(1);
+    adapter.sample(input, actions);
+    expect(grappleRequests).toBe(1);
+    expect(skillRequests).toEqual([0, 1]);
+    buttons = Array.from({ length: 16 }, () => button());
+    adapter.sample(input, actions);
+    buttons[4] = button(true);
+    buttons[5] = button(true);
+    adapter.sample(input, actions);
+    expect(itemRequests).toEqual([0]);
     adapter.clear(input);
-    expect(input.consumeCommand(3, 1).useItemSlot).toBeNull();
+    expect(input.consumeCommand(0, 1).useItemSlot).toBeNull();
   });
 });

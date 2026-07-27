@@ -1,14 +1,15 @@
 # Asset Provenance Ledger
 
-- Status: Active; eight generated PNG assets ship with procedural fallbacks
+- Status: Active; eighteen generated PNG assets and one repository-owned SVG atlas ship with fallbacks
 - Owner: Repository owner
 - Visual gate: [../product/01-roadmap.md](../product/01-roadmap.md)
 - Frontend boundary: [../frontend/FRONTEND_DESIGN.md](../frontend/FRONTEND_DESIGN.md)
 
 ## Current Inventory
 
-Repository inspection on 2026-07-24 found two accepted owner-generated PNG atlases, one
-Codex-generated terrain atlas, and five Codex-generated single sprites. Six earlier multi-asset
+Repository inspection on 2026-07-27 found two accepted owner-generated PNG atlases, one
+Codex-generated terrain atlas, fifteen Codex-generated single sprites, and one repository-owned
+skill icon SVG atlas. Six earlier multi-asset
 outputs were rejected before intake because their visible checkerboard was baked into
 opaque RGB pixels rather than represented by alpha transparency.
 
@@ -19,12 +20,15 @@ opaque RGB pixels rather than represented by alpha transparency.
 | `procedural-audio` | Optional action cues | Repository-owned Web Audio oscillator synthesis | None | Repository code terms | None |
 | `generated-character-variants` | Arena participants | `src/assets/generated/character-variants.png` | Owner-generated with ChatGPT image generation | OpenAI Terms of Use output-ownership clause; user remains responsible for the output | No service attribution requirement identified; generator is recorded here |
 | `generated-item-icons` | Settings cards and map pickups | `src/assets/generated/item-icons.png` | Owner-generated with ChatGPT image generation | OpenAI Terms of Use output-ownership clause; user remains responsible for the output | No service attribution requirement identified; generator is recorded here |
+| `repository-skill-icons` | Starting-skill cards | `src/assets/generated/skill-icons.svg` | Repository-owned vector drawing | None | None |
 | `generated-pirate-galleon` | Eight offshore pirate-ship positions | `src/assets/generated/pirate-ship-galleon.png` | Codex built-in image generation plus local chroma-key removal | OpenAI Terms of Use output-ownership clause; user remains responsible for the output | No service attribution requirement identified; generator and processing are recorded here |
 | `generated-cannonball-projectile` | Cannon trajectories | `src/assets/generated/cannonball-projectile.png` | Codex built-in image generation plus local chroma-key removal | Same output-ownership evidence | Generator and processing recorded here |
 | `generated-lethal-boulder` | Protected-core rock trajectories | `src/assets/generated/lethal-boulder.png` | Codex built-in image generation plus local chroma-key removal | Same output-ownership evidence | Generator and processing recorded here |
 | `generated-impact-explosion` | Bomb and rock impacts | `src/assets/generated/impact-explosion.png` | Codex built-in image generation plus local chroma-key removal | Same output-ownership evidence | Generator and processing recorded here |
 | `generated-seawater-impact` | Flooded-tile impacts | `src/assets/generated/seawater-impact.png` | Codex built-in image generation plus local chroma-key removal | Same output-ownership evidence | Generator and processing recorded here |
 | `generated-island-terrain` | Stable coast and warning tiles | `src/assets/generated/island-terrain-atlas.png` | Codex built-in image generation plus local chroma-key removal | Same output-ownership evidence | Generator and processing recorded here |
+| `generated-tree-obstacle` | Solid inland tree obstacles | `src/assets/generated/tree-obstacle.png` | Codex built-in image generation plus local chroma-key removal | Same output-ownership evidence | Generator and processing recorded here |
+| `generated-skill-vfx` | Eight active skill casts, hits, persistent zones, and shields; one retired source sprite retained outside the runtime map | `src/assets/generated/skill-vfx-*.png` | Codex built-in image generation plus local chroma-key removal | Same output-ownership evidence | Generator and processing recorded here |
 
 Dependencies are tracked by `package.json` and `bun.lock`; this ledger owns media and creative
 assets, not dependency license inventory.
@@ -43,7 +47,7 @@ assets, not dependency license inventory.
 | Rights evidence | [OpenAI Terms of Use](https://openai.com/policies/row-terms-of-use/) state that, as between the user and OpenAI and to the extent permitted by law, the user owns output; similarity and third-party-right limitations still apply |
 | Attribution decision | No attribution requirement was identified in the cited ownership clause; voluntary generator provenance remains in this ledger |
 | Prompt/source record | `docs/assets/prompts/character-variants.txt` |
-| Modifications | Renamed; no pixel edits or recompression; sixteen measured alpha bounds become PixiJS texture frames |
+| Modifications | Renamed; no pixel edits or recompression; sixteen measured alpha bounds become PixiJS texture frames. The four bottom-row frames retain extra transparent headroom and a compensating display scale so hats and round heads are not clipped while visible character size stays aligned with the other twelve variants. |
 | Technical contract | 512×512 RGBA PNG, 251,392 bytes, SHA-256 `078523241d2bd0cf389fb63eeaf646930913d8a1e8cdba26d07df8bd404e4524`; Lanczos-downsampled from the accepted source; asynchronous same-origin load; procedural participant geometry remains the failure fallback |
 | Reviewer decision | Accepted 2026-07-24; final 50-player readability remains subject to browser capture and human review |
 
@@ -52,16 +56,32 @@ assets, not dependency license inventory.
 | Field | Record |
 |---|---|
 | Asset ID and repository path | `generated-item-icons`; `src/assets/generated/item-icons.png` |
-| Type and purpose | Transparent PNG atlas; nine selected item illustrations for settings cards and map pickups |
+| Type and purpose | Transparent PNG atlas; eight active item illustrations plus one retired Hook illustration |
 | Source | Repository owner generated the selected output with ChatGPT image generation |
 | Snapshot | Received and inspected 2026-07-24 |
-| Copy extent | Selected generated output copied verbatim into the repository; only nine documented alpha regions are referenced |
+| Copy extent | Selected generated output copied verbatim into the repository; eight active alpha regions are referenced |
 | Rights evidence | [OpenAI Terms of Use](https://openai.com/policies/row-terms-of-use/) output-ownership clause, with the same user-responsibility and non-uniqueness limits |
 | Attribution decision | No attribution requirement was identified in the cited ownership clause; voluntary generator provenance remains in this ledger |
 | Prompt/source record | `docs/assets/prompts/item-icons.txt` |
-| Modifications | Renamed; no pixel edits or recompression; CSS background windows and PixiJS texture frames isolate the nine selected icons |
+| Modifications | Renamed; no pixel edits or recompression; CSS background windows and PixiJS texture frames isolate the eight active icons |
 | Technical contract | 512×512 RGBA PNG, 288,460 bytes, SHA-256 `e33ed70348e83616ea28e5bcf5b9096a359678fb09a68a8962aea738b9274782`; Lanczos-downsampled from the accepted source; text labels remain usable if CSS art fails, and procedural pickup symbols remain the canvas fallback |
 | Reviewer decision | Accepted 2026-07-24; compression and physical-device readability remain pending |
+
+### `repository-skill-icons`
+
+| Field | Record |
+|---|---|
+| Asset ID and repository path | `repository-skill-icons`; `src/assets/generated/skill-icons.svg` |
+| Type and purpose | Transparent SVG strip; eight active skill-card icons and one retired Stone Prison cell selected through CSS background windows |
+| Source | Repository-owned vector drawing authored for the current skill definitions; no external image source |
+| Snapshot | Authored and inspected 2026-07-26 |
+| Copy extent | Original repository asset |
+| Rights evidence | Repository code terms; no third-party source or generator output used |
+| Attribution decision | None |
+| Prompt/source record | The unused replacement-raster brief remains outside the repository at `prompts/shovefall-combat-skill-icons-v2.txt`; it is not provenance for this SVG |
+| Modifications | None; CSS scales one 64×64 cell from the strip for each of the eight active cards |
+| Technical contract | 576×64 transparent SVG, 4,446 bytes, SHA-256 `82e45d842eabfdec414cd8eb036cef0f0a8ce8f0e941690aa721121258f31a68`; skill names and full text remain visible if the decorative image fails |
+| Reviewer decision | Accepted 2026-07-26 as the lightweight current asset; final browser-scale readability remains pending |
 
 ### `generated-pirate-galleon`
 
@@ -103,6 +123,49 @@ assets, not dependency license inventory.
 | Modifications | Built-in output used a flat magenta background; the installed image-generation helper sampled border key `#fb02fa`, applied soft matte and despill, and wrote alpha PNG |
 | Technical contract | 1254×1254 RGBA PNG, 1,977,027 bytes, SHA-256 `6b8832ed16393d654895ff6e3fc45a166192215271ae9eae44629ab66c4a2bc9`; transparent corners; asynchronous same-origin load; procedural tile geometry remains beneath the atlas fallback |
 | Reviewer decision | Accepted 2026-07-24 after alpha and visual-edge inspection; thirteen local production Chrome paths pass with camera-space terrain culling below 500 live sprites, while final coast alignment remains pending human capture review |
+
+### `generated-tree-obstacle`
+
+| Field | Record |
+|---|---|
+| Asset ID and repository path | `generated-tree-obstacle`; `src/assets/generated/tree-obstacle.png` |
+| Type and purpose | Transparent single-sprite PNG; deterministic solid trees rendered in arena depth order |
+| Source | Codex built-in image generation requested by the repository owner |
+| Snapshot | Generated, processed, and inspected 2026-07-25 |
+| Copy extent | Newly generated single tree sprite reused for every deterministic tree obstacle |
+| Rights evidence | [OpenAI Terms of Use](https://openai.com/policies/row-terms-of-use/) output-ownership clause, with user responsibility and non-uniqueness limits |
+| Attribution decision | No attribution requirement was identified in the cited ownership clause; voluntary generator provenance remains in this ledger |
+| Prompt/source record | `docs/assets/prompts/tree-obstacle-magenta.txt` |
+| Modifications | Built-in output used a flat magenta background; local border-color chroma key, soft alpha edge, and magenta despill produced the shipped RGBA PNG |
+| Technical contract | 1254×1254 RGBA PNG, 1,215,394 bytes, SHA-256 `1fca60d38063924015f8c9bb81059e8c20e202f5d28964a03e20c39b50aa023a`; alpha-zero corners; asynchronous same-origin load; procedural tree geometry remains the load-failure fallback |
+| Reviewer decision | Accepted 2026-07-25 after alpha and edge inspection; public-scale occlusion and final browser capture remain pending |
+
+### `generated-skill-vfx`
+
+| Field | Record |
+|---|---|
+| Asset ID and repository path | `generated-skill-vfx`; eight active and one retired `src/assets/generated/skill-vfx-*.png` files |
+| Type and purpose | Transparent single-sprite PNGs for all eight active reusable skills; transient casts and hits reuse bounded sprites, Meteor Mark and Frost Field decorate persistent zones, and Aegis remains visible while shield health remains |
+| Source | Codex built-in image generation requested by the repository owner |
+| Snapshot | Generated, processed, and inspected 2026-07-27 |
+| Rights evidence | [OpenAI Terms of Use](https://openai.com/policies/row-terms-of-use/) output-ownership clause, with user responsibility and non-uniqueness limits |
+| Attribution decision | No attribution requirement was identified in the cited ownership clause; voluntary generator provenance remains in this ledger |
+| Prompt/source record | [prompts/skill-vfx-chroma.md](prompts/skill-vfx-chroma.md) |
+| Modifications | Each built-in output used a flat green background; the installed image-generation helper sampled its border key, applied soft matte and despill, then Pillow cropped the visible alpha bounds and Lanczos-downsampled the result into a padded 512×512 RGBA canvas |
+| Technical contract | Eight active 512×512 RGBA PNGs totaling 1,393,704 bytes; all four corners are alpha zero; asynchronous same-origin loading; at most fourteen transient skill sprites in the 25-plus-participant mode; procedural skill geometry remains the load-failure and targeting fallback |
+| Reviewer decision | Accepted 2026-07-27 after alpha, corner, coverage, and visual-edge inspection; final live combat scale and simultaneous-effect readability remain browser and human-review gates |
+
+| Asset | Bytes | SHA-256 |
+|---|---:|---|
+| `skill-vfx-force-palm.png` | 195,007 | `f387e20a508b4db7c4bab7c942f279814728011176179de1b8a178f9d32908a5` |
+| `skill-vfx-blink-step.png` | 113,482 | `8872998feba75d5a1cf82f0e2141b0bfae2f750dc9bf245162cafb060bbf89fd` |
+| `skill-vfx-arc-bolt.png` | 118,575 | `b08fc8fbfd597f8e41dfeb9079a255b9532edf7daf8f8968d2871fb582850faf` |
+| `skill-vfx-chain-bind.png` | 86,354 | `60c3d47294df69e4a019c52d26ac28ea42274c79484028fa94c1297deb15f5dd` |
+| `skill-vfx-stone-prison.png` | 269,838 | `f20965b3c2a17fb028d314f0bdd86854c96e562d1e04b686a4f9d42db513a831` (retired source asset; not loaded by the game) |
+| `skill-vfx-meteor-mark.png` | 193,167 | `990a2d78139d56621384308b2018bc94f435be00a5f048529cf511b2fb210452` |
+| `skill-vfx-frost-field.png` | 283,939 | `524ae0e576b4efcd38dc910cc764c5b11e93cc9495e0f0687cc4dd4c50130c7a` |
+| `skill-vfx-tidal-charge.png` | 164,963 | `a811ea52e01e205673fd512a3fe7d1f61928c0f8fe74be8b10501d66331a24a6` |
+| `skill-vfx-aegis.png` | 238,217 | `670d2286808489e52d2ea94f4235b0ae3f567ebb051ecbd05015fa9a7d8ae84c` |
 
 The selected images contain no visible trademark, signature, watermark, named copyrighted
 character, or named living-artist imitation. A metadata probe reported no container tags. This is a

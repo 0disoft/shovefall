@@ -11,11 +11,12 @@ import {
 
 export interface HumanUpgradeSelection {
   readonly tick: number;
-  readonly stat: UpgradeStatId;
+  readonly stat?: UpgradeStatId;
+  readonly skillSlot?: 0 | 1 | 2;
 }
 
-export interface PlaytestRoundReportV6 {
-  readonly schemaVersion: "shovefall-playtest-round/v6";
+export interface PlaytestRoundReportV9 {
+  readonly schemaVersion: "shovefall-playtest-round/v9";
   readonly versions: {
     readonly product: string;
     readonly simulation: string;
@@ -31,8 +32,9 @@ export interface PlaytestRoundReportV6 {
     readonly collapseSpeed: GameSettings["collapseSpeed"];
     readonly initialItemCount: number;
     readonly itemRespawnSeconds: number;
-    readonly startingWeight: GameSettings["startingWeight"];
+    readonly startingAttributes: GameSettings["startingAttributes"];
     readonly startingItems: GameSettings["startingItems"];
+    readonly startingSkills: GameSettings["startingSkills"];
     readonly roundLimitSeconds: number;
   };
   readonly gameplayTuning: GameplayTuningV1;
@@ -43,6 +45,7 @@ export interface PlaytestRoundReportV6 {
     readonly completedTick: number;
     readonly durationSeconds: number;
     readonly humanProgression: RenderFrameV1["participants"][number]["progression"];
+    readonly humanCombat: RenderFrameV1["participants"][number]["combat"];
     readonly humanUpgradeSelections: readonly HumanUpgradeSelection[];
   };
 }
@@ -53,7 +56,7 @@ export function createPlaytestRoundReport(
   frame: RenderFrameV1,
   gameplayTuning: GameplayTuningV1,
   humanUpgradeSelections: readonly HumanUpgradeSelection[] = Object.freeze([]),
-): PlaytestRoundReportV6 {
+): PlaytestRoundReportV9 {
   const { round } = frame;
 
   if (round.status !== "Completed" || round.completedTick === null || round.reason === null) {
@@ -73,7 +76,7 @@ export function createPlaytestRoundReport(
   }
 
   return Object.freeze({
-    schemaVersion: "shovefall-playtest-round/v6",
+    schemaVersion: "shovefall-playtest-round/v9",
     versions: Object.freeze({
       product: PRODUCT_VERSION,
       simulation: SIMULATION_VERSION,
@@ -89,8 +92,9 @@ export function createPlaytestRoundReport(
       collapseSpeed: settings.collapseSpeed,
       initialItemCount: settings.initialItemCount,
       itemRespawnSeconds: settings.itemRespawnSeconds,
-      startingWeight: settings.startingWeight,
+      startingAttributes: settings.startingAttributes,
       startingItems: settings.startingItems,
+      startingSkills: settings.startingSkills,
       roundLimitSeconds: PUBLIC_ROUND_LIMIT_SECONDS,
     }),
     gameplayTuning,
@@ -101,6 +105,7 @@ export function createPlaytestRoundReport(
       completedTick: round.completedTick,
       durationSeconds: round.completedTick / FIXED_TICKS_PER_SECOND,
       humanProgression: human.progression,
+      humanCombat: human.combat,
       humanUpgradeSelections: Object.freeze(
         humanUpgradeSelections.map((selection) => Object.freeze({ ...selection })),
       ),
@@ -108,6 +113,6 @@ export function createPlaytestRoundReport(
   });
 }
 
-export function serializePlaytestRoundReport(report: PlaytestRoundReportV6): string {
+export function serializePlaytestRoundReport(report: PlaytestRoundReportV9): string {
   return JSON.stringify(report, null, 2);
 }

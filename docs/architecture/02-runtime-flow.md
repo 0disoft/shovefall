@@ -27,22 +27,28 @@ Each 60 Hz tick uses this versioned order:
 10. Sum and apply actor impulses, then arbitrate same-tick offensive credit.
 11. Evaluate tile support, grace ticks, falling, and elimination.
 12. Resolve map items and timed effects.
-13. Advance cannon-backed collapse warnings, tile state, and item spawns.
+13. Advance cannon-backed collapse warnings, tile state, treasure-gift launches, and gift landings.
 14. Resolve due lethal rock impacts and launch the next survivor-targeted rock when its interval is due.
 15. Decide round result.
 16. Emit ordered events, an immutable render frame, and a quantized state hash.
 
-All sixteen stages are implemented. Active-item eligibility is decided from one pre-item participant snapshot; actor ID orders activation, charge spending, first-hit ray selection, and Wind impulses. Brick commits before Bomb placement. Due Bombs directly eliminate in-range bodies before new Bombs, Boat, and Wind resolve; same-tick Dodge can still evade the first Wind target but never a Bomb. Timed effects expire with action transitions before movement. Item pickup runs after support, so a valid pickup wins over a tile that begins collapsing later in the same tick. Collapse advances from the actual ocean and lake shoreline rather than the rectangular render bounds. A connected protected core equal to `ceil(initial playable land × 0.20)` is never scheduled, so pre-existing water never returns as land and collapse never crosses the 20% floor. One assigned cannon projectile reaches each scheduled Void transition. Sixty ticks after the final impact, targeted rocks begin without deleting tiles; active shots and cursors enter the deterministic hash. Later work cannot reorder the pipeline or change contact meaning without a simulation-version decision and regenerated replay evidence.
+All sixteen stages are implemented. Active-item eligibility is decided from one pre-item participant snapshot; actor ID orders activation, charge spending, first-hit ray selection, and Wind impulses. Brick commits before Bomb placement. Due Bombs directly eliminate in-range bodies before new Bombs, Boat, and Wind resolve; same-tick Dodge can still evade the first Wind target but never a Bomb. Timed effects expire with action transitions before movement. Item pickup runs after support, so a valid pickup wins over a tile that begins collapsing later in the same tick. Scheduled replacements reserve an item ID at treasure-ship launch and join the item list only after a stable, unblocked landing; one active delivery prevents a second airborne gift. Collapse advances from the actual ocean and lake shoreline rather than the rectangular render bounds. A connected protected core equal to `ceil(initial playable land × 0.20)` is never scheduled, so pre-existing water never returns as land and collapse never crosses the 20% floor. One assigned cannon projectile reaches each scheduled Void transition. Sixty ticks after the final impact, targeted rocks begin without deleting tiles; active shots and cursors enter the deterministic hash. Later work cannot reorder the pipeline or change contact meaning without a simulation-version decision and regenerated replay evidence.
 
 ## Browser Scheduling
 
 The application accumulates monotonic browser time and executes whole fixed ticks. It may interpolate presentation between the two latest render frames. It may not pass render delta into the simulation, skip authoritative ticks, or allow PixiJS callbacks to mutate the world.
 
-When the browser cannot keep up, the application caps work per render frame and exposes backlog diagnostics. Normal play may slow temporarily instead of silently dropping rule steps. Focus loss clears held input and pauses or resumes through the application lifecycle contract.
+When the browser cannot keep up, the application caps work per render frame and exposes backlog diagnostics. Normal play may slow temporarily instead of silently dropping rule steps. Focus loss clears held input and contributes an environmental pause reason. A P-owned manual pause is separate and cannot be cleared merely because focus, visibility, or the renderer returns.
 
 Start and restart create and render the new tick-zero world immediately, then the same animation-frame scheduler advances a 1.5-second `3→2→1` countdown before accumulating simulation time. Human input and bot decisions remain closed during this state. Pause and renderer-loss paths update the reference timestamp without advancing countdown elapsed time, so hidden wall time never starts a round.
 
 When the human enters irreversible falling, command input closes and accumulated browser time advances the same authoritative simulation at six times normal speed. Physics and bot rules do not change. Completion publishes the final frame before the DOM result so telemetry cannot overwrite result state, then stops scheduling until restart creates a new world.
+
+## Application Action Boundary
+
+`src/app/action-targeting.ts` is the pure adapter from content definitions to pointer, keyboard, touch, and gamepad aim previews. It derives target mode, initial target, range, radius, repeat-to-confirm identity, and approach policy for skills, active items, and the built-in Grappling Hook. `GameSession` owns lifecycle and command delivery but does not duplicate those per-content calculations.
+
+`src/app/action-hud.ts` derives button state, text, accessibility labels, mana requirements, cooldowns, and charge availability from a read-only participant plus tick context. `bootstrap.ts` only binds those view models to DOM nodes. Both modules have DOM-free unit tests, so adding content or changing a cooldown no longer requires booting PixiJS to verify application behavior.
 
 ## Replay Flow
 

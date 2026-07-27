@@ -58,7 +58,7 @@ describe("replay fixture contract", () => {
   it("rejects unknown format majors", () => {
     const fixture = createFixture();
 
-    expect(() => parseReplayFixtureJson(JSON.stringify({ ...fixture, formatVersion: 3 }))).toThrow(
+    expect(() => parseReplayFixtureJson(JSON.stringify({ ...fixture, formatVersion: 2 }))).toThrow(
       /unsupported replay format major/u,
     );
     expect(() => parseReplayFixtureJson(JSON.stringify({ ...fixture, formatVersion: 1 }))).toThrow(
@@ -66,26 +66,43 @@ describe("replay fixture contract", () => {
     );
   });
 
-  it("round-trips the human mass, loadout, and active-item command", () => {
+  it("round-trips the human attributes, loadout, and active-item command", () => {
     const fixture = createReplayFixture({
       buildId: "active-item-replay",
       config: normalizeGameConfig({ participantCount: 4, roundLimitSeconds: 10 }),
       masterSeed: "active-item-replay",
       humanActorId: 1,
       humanSetup: {
-        baseMassFactor: 1.25,
-        startingItems: ["wind-blast", "iron-boots"],
+        startingAttributes: {
+          strength: 8,
+          agility: 0,
+          constitution: 4,
+          spirit: 4,
+          balance: 4,
+          willpower: 0,
+        },
+        startingItems: ["wind-blast"],
+        startingSkills: ["force-palm", "blink-step", "chain-bind"],
       },
       endTick: 30,
-      commands: [{ ...createNeutralCommand(0, 1), useItemSlot: 0 }],
+      commands: [{ ...createNeutralCommand(0, 1), useSkillSlot: 2, useItemSlot: 0 }],
       checkpointTicks: [1, 30],
     });
     const parsed = parseReplayFixtureJson(JSON.stringify(fixture));
 
     expect(parsed.humanSetup).toEqual({
-      baseMassFactor: 1.25,
-      startingItems: ["wind-blast", "iron-boots"],
+      startingAttributes: {
+        strength: 8,
+        agility: 0,
+        constitution: 4,
+        spirit: 4,
+        balance: 4,
+        willpower: 0,
+      },
+      startingItems: ["wind-blast"],
+      startingSkills: ["force-palm", "blink-step", "chain-bind"],
     });
+    expect(parsed.commands[0]?.useSkillSlot).toBe(2);
     expect(parsed.commands[0]?.useItemSlot).toBe(0);
     expect(runReplayFixture(parsed).finalHash).toBe(fixture.finalHash);
   });
@@ -101,7 +118,18 @@ describe("replay fixture contract", () => {
       parseReplayFixtureJson(
         JSON.stringify({
           ...fixture,
-          humanSetup: { baseMassFactor: 1, startingItems: ["wind-blast", "wind-blast"] },
+          humanSetup: {
+            startingAttributes: {
+              strength: 4,
+              agility: 4,
+              constitution: 4,
+              spirit: 4,
+              balance: 4,
+              willpower: 0,
+            },
+            startingItems: ["wind-blast", "wind-blast"],
+            startingSkills: ["force-palm", "blink-step", "arc-bolt"],
+          },
         }),
       ),
     ).toThrow(/unique items/u);
@@ -153,7 +181,7 @@ describe("replay fixture contract", () => {
   it("rejects non-boolean action flags instead of treating them as false", () => {
     const fixture = createFixture();
     const commands = fixture.commands.map((command, index) =>
-      index === 0 ? { ...command, shovePressed: "false" } : command,
+      index === 0 ? { ...command, grapplePressed: "false" } : command,
     );
 
     expect(() => parseReplayFixtureJson(JSON.stringify({ ...fixture, commands }))).toThrow(

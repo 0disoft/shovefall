@@ -1,26 +1,38 @@
-import { ITEM_DEFINITION_IDS } from "../content/items";
-import type { BotDifficulty, ItemDefinitionId } from "../simulation/contracts";
-import { SIMULATION_TUNING } from "../simulation/tuning";
+import { isActiveItemDefinitionId } from "../content/items";
+import { DEFAULT_SKILL_LOADOUT, isSkillDefinitionId } from "../content/skills";
+import {
+  MAXIMUM_PARTICIPANT_COUNT,
+  MINIMUM_PARTICIPANT_COUNT,
+  type BotDifficulty,
+  type ItemDefinitionId,
+  type SkillDefinitionId,
+  type StartingAttributes,
+} from "../simulation/contracts";
+import {
+  DEFAULT_STARTING_ATTRIBUTES,
+  normalizeStartingAttributes,
+} from "../simulation/starting-attributes";
 
-export const FORCED_PLAYER_COUNT = 50;
+export const FORCED_PLAYER_COUNT = MAXIMUM_PARTICIPANT_COUNT;
 export const FORCED_BOT_DIFFICULTY = "hard" as const satisfies BotDifficulty;
 export const PRESET_NAMES = ["massive"] as const;
 export const BOT_DIFFICULTIES = [FORCED_BOT_DIFFICULTY] as const;
-export const DEFAULT_STARTING_WEIGHT = 75;
 export const FIXED_COLLAPSE_SPEED = "slow" as const;
 export const FIXED_INITIAL_ITEM_COUNT = 8;
-export const FIXED_ITEM_RESPAWN_SECONDS = 4;
+export const FIXED_ITEM_RESPAWN_SECONDS = 7;
 export const PUBLIC_ROUND_LIMIT_SECONDS = 120;
 
 export type PresetName = (typeof PRESET_NAMES)[number];
 export type CollapseSpeed = "slow" | "normal" | "fast";
 
-export const STARTING_WEIGHT_LIMITS = Object.freeze({ minimum: 50, maximum: 100 });
 export const DEFAULT_STARTING_ITEMS = Object.freeze([
-  "iron-boots",
-  "spring-glove",
+  "bomb",
 ] as const satisfies readonly ItemDefinitionId[]);
-export const PLAYER_COUNT_LIMITS = Object.freeze({ minimum: 4, maximum: FORCED_PLAYER_COUNT });
+export const DEFAULT_STARTING_SKILLS = DEFAULT_SKILL_LOADOUT;
+export const PLAYER_COUNT_LIMITS = Object.freeze({
+  minimum: MINIMUM_PARTICIPANT_COUNT,
+  maximum: FORCED_PLAYER_COUNT,
+});
 export const ITEM_RESPAWN_LIMITS = Object.freeze({ minimum: 0, maximum: 30 });
 
 export interface GameSettings {
@@ -30,8 +42,9 @@ export interface GameSettings {
   readonly initialItemCount: number;
   readonly itemRespawnSeconds: number;
   readonly botDifficulty: typeof FORCED_BOT_DIFFICULTY;
-  readonly startingWeight: number;
+  readonly startingAttributes: StartingAttributes;
   readonly startingItems: readonly ItemDefinitionId[];
+  readonly startingSkills: readonly SkillDefinitionId[];
 }
 
 export interface ArenaSize {
@@ -54,10 +67,15 @@ export function isCollapseSpeed(value: string): value is CollapseSpeed {
 function normalizeStartingItems(
   values: readonly string[] | undefined,
 ): readonly ItemDefinitionId[] {
-  const selected = [...new Set(values ?? [])].filter((value): value is ItemDefinitionId =>
-    ITEM_DEFINITION_IDS.some((definitionId) => definitionId === value),
-  );
-  return Object.freeze(selected.length === 2 ? selected : [...DEFAULT_STARTING_ITEMS]);
+  const selected = [...new Set(values ?? [])].filter(isActiveItemDefinitionId);
+  return Object.freeze(selected.length === 1 ? selected : [...DEFAULT_STARTING_ITEMS]);
+}
+
+function normalizeStartingSkills(
+  values: readonly string[] | undefined,
+): readonly SkillDefinitionId[] {
+  const selected = [...new Set(values ?? [])].filter(isSkillDefinitionId);
+  return Object.freeze(selected.length === 2 ? selected : [...DEFAULT_STARTING_SKILLS]);
 }
 
 export function getPresetPlayerCount(_preset: PresetName): typeof FORCED_PLAYER_COUNT {
@@ -110,42 +128,14 @@ export function normalizePlayerCount(value: number): number {
   );
 }
 
-export function normalizeStartingWeight(value: number): number {
-  if (!Number.isFinite(value)) {
-    return DEFAULT_STARTING_WEIGHT;
-  }
-
-  return Math.min(
-    STARTING_WEIGHT_LIMITS.maximum,
-    Math.max(STARTING_WEIGHT_LIMITS.minimum, Math.round(value)),
-  );
-}
-
-export function getStartingMassFactor(weight: number): number {
-  const normalized = normalizeStartingWeight(weight);
-
-  if (normalized <= DEFAULT_STARTING_WEIGHT) {
-    return (
-      SIMULATION_TUNING.mass.minimum +
-      ((normalized - STARTING_WEIGHT_LIMITS.minimum) / 25) *
-        (SIMULATION_TUNING.mass.default - SIMULATION_TUNING.mass.minimum)
-    );
-  }
-
-  return (
-    SIMULATION_TUNING.mass.default +
-    ((normalized - DEFAULT_STARTING_WEIGHT) / 25) *
-      (SIMULATION_TUNING.mass.maximum - SIMULATION_TUNING.mass.default)
-  );
-}
-
 export function normalizeSettings(
   input: {
     readonly initialItemCount?: number;
     readonly itemRespawnSeconds?: number;
     readonly collapseSpeed?: string;
-    readonly startingWeight?: number;
+    readonly startingAttributes?: unknown;
     readonly startingItems?: readonly string[];
+    readonly startingSkills?: readonly string[];
     readonly playerCount?: number;
     readonly preset?: string;
     readonly botDifficulty?: string;
@@ -159,8 +149,11 @@ export function normalizeSettings(
     initialItemCount: FIXED_INITIAL_ITEM_COUNT,
     itemRespawnSeconds: FIXED_ITEM_RESPAWN_SECONDS,
     botDifficulty: FORCED_BOT_DIFFICULTY,
-    startingWeight: normalizeStartingWeight(input.startingWeight ?? Number.NaN),
+    startingAttributes: normalizeStartingAttributes(
+      input.startingAttributes ?? DEFAULT_STARTING_ATTRIBUTES,
+    ),
     startingItems: normalizeStartingItems(input.startingItems),
+    startingSkills: normalizeStartingSkills(input.startingSkills),
   });
 }
 

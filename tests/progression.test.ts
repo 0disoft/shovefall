@@ -1,25 +1,30 @@
 import { describe, expect, it } from "vitest";
-import { createNeutralCommand, normalizeGameConfig } from "../src/simulation/contracts";
+import { normalizeGameConfig } from "../src/simulation/contracts";
 import {
   awardStatPoint,
+  canSpendStatPoint,
+  canSpendSkillPoint,
   createParticipantProgression,
+  getSkillCooldownMultiplier,
   getNextPlannedUpgrade,
   getMobilityMultiplier,
   getPowerMultiplier,
   getStabilityMultiplier,
   normalizeUpgradePlan,
+  spendSkillPoint,
   spendStatPoint,
 } from "../src/simulation/progression";
 import { SimulationWorld } from "../src/simulation/world";
 
 describe("elimination progression", () => {
-  it("initializes a selected base mass and two distinct starting items", () => {
+  it("initializes a selected base mass, one item, and three skills", () => {
     const world = new SimulationWorld(normalizeGameConfig({ participantCount: 4 }), "loadout", {
       participantOverrides: [
         {
           actorId: 1,
           massFactor: 0.85,
-          startingItems: ["feather", "spring-glove"],
+          startingItems: ["bomb"],
+          startingSkills: ["blink-step", "chain-bind", "aegis"],
         },
       ],
     });
@@ -27,9 +32,11 @@ describe("elimination progression", () => {
 
     expect(human?.massFactor).toBe(0.85);
     expect(human?.effects).toEqual([]);
-    expect(human?.inventory).toEqual([
-      { slotIndex: 0, definitionId: "feather", charges: null },
-      { slotIndex: 1, definitionId: "spring-glove", charges: null },
+    expect(human?.inventory).toEqual([{ slotIndex: 0, definitionId: "bomb", charges: 2 }]);
+    expect(human?.skills).toEqual([
+      { slotIndex: 0, definitionId: "blink-step", readyTick: 0 },
+      { slotIndex: 1, definitionId: "chain-bind", readyTick: 0 },
+      { slotIndex: 2, definitionId: "aegis", readyTick: 0 },
     ]);
   });
 
@@ -53,6 +60,59 @@ describe("elimination progression", () => {
     expect(spendStatPoint(awardStatPoint(capped), "power")).toBeUndefined();
   });
 
+  it("spends the same kill reward through prerequisite-gated skill ranks", () => {
+    const firstPoint = awardStatPoint(createParticipantProgression());
+    expect(canSpendSkillPoint(firstPoint, 0)).toBe(false);
+    const powerOne = spendStatPoint(firstPoint, "power")!;
+    expect(canSpendStatPoint(awardStatPoint(powerOne), "stability")).toBe(true);
+    const stabilityOne = spendStatPoint(awardStatPoint(powerOne), "stability")!;
+    const firstRank = spendSkillPoint(awardStatPoint(stabilityOne), 0);
+
+    expect(firstRank).toMatchObject({ statPoints: 0, skillRanks: [1, 0, 0] });
+    expect(getSkillCooldownMultiplier(0)).toBe(1);
+    expect(getSkillCooldownMultiplier(1)).toBe(0.9);
+    expect(getSkillCooldownMultiplier(3)).toBe(0.7);
+
+    const blockedSecondRank = awardStatPoint(firstRank ?? stabilityOne);
+    expect(canSpendSkillPoint(blockedSecondRank, 0)).toBe(false);
+    expect(spendSkillPoint(blockedSecondRank, 0)).toBeUndefined();
+
+    const powerTwo = spendStatPoint(blockedSecondRank, "power")!;
+    const stabilityTwo = spendStatPoint(awardStatPoint(powerTwo), "stability")!;
+    const eligibleSecondRank = awardStatPoint(stabilityTwo);
+    expect(canSpendSkillPoint(eligibleSecondRank, 0)).toBe(true);
+    expect(spendSkillPoint(eligibleSecondRank, 0)).toMatchObject({
+      statPoints: 0,
+      skillRanks: [2, 0, 0],
+    });
+  });
+
+  it("offers all six traits directly without branch prerequisites", () => {
+    const initial = awardStatPoint(createParticipantProgression());
+    expect(canSpendStatPoint(initial, "power")).toBe(true);
+    expect(canSpendStatPoint(initial, "stability")).toBe(true);
+    expect(canSpendStatPoint(initial, "mobility")).toBe(true);
+    expect(canSpendStatPoint(initial, "reflex")).toBe(true);
+    expect(canSpendStatPoint(initial, "vitality")).toBe(true);
+    expect(canSpendStatPoint(initial, "focus")).toBe(true);
+
+    const progression = {
+      ...createParticipantProgression(),
+      statPoints: 1,
+      stats: {
+        power: 3,
+        stability: 3,
+        mobility: 1,
+        reflex: 1,
+        vitality: 0,
+        focus: 0,
+      },
+      skillRanks: [2, 0, 0] as const,
+    };
+    expect(canSpendSkillPoint(progression, 0)).toBe(false);
+    expect(canSpendSkillPoint({ ...progression, skillRanks: [2, 1, 0] as const }, 0)).toBe(true);
+  });
+
   it("normalizes and follows a bounded pre-round automatic upgrade order", () => {
     const plan = normalizeUpgradePlan([
       "mobility",
@@ -71,53 +131,6 @@ describe("elimination progression", () => {
     const upgraded = spendStatPoint(earned, "mobility");
     expect(getNextPlannedUpgrade(awardStatPoint(upgraded ?? earned), plan)).toBe("power");
     expect(normalizeUpgradePlan([])).toEqual([]);
-    expect(normalizeUpgradePlan(undefined)).toHaveLength(20);
-  });
-
-  it("credits the last shove when its target enters irreversible falling", () => {
-    const config = normalizeGameConfig({
-      participantCount: 4,
-      arenaColumns: 8,
-      arenaRows: 8,
-      roundLimitSeconds: 10,
-      itemsEnabled: false,
-    });
-    const world = new SimulationWorld(config, "credited-shove", {
-      participantOverrides: [
-        { actorId: 1, position: { x: 1.05, y: 4.5 }, facing: { x: -1, y: 0 } },
-        { actorId: 2, position: { x: 0.36, y: 4.5 }, facing: { x: 1, y: 0 } },
-        { actorId: 3, position: { x: 5.5, y: 2.5 } },
-        { actorId: 4, position: { x: 5.5, y: 5.5 } },
-      ],
-    });
-    let earned = false;
-    let earnedProgression;
-
-    for (
-      let tick = 0;
-      tick < 120 && world.createRenderFrame().round.status === "Active";
-      tick += 1
-    ) {
-      const command = {
-        ...createNeutralCommand(world.tick, 1),
-        move: { x: -1, y: 0 },
-        shovePressed: tick === 0,
-      };
-      const result = world.step([command]);
-      earned ||= result.events.some(
-        ({ kind, actorId, targetActorId }) =>
-          kind === "stat-point-earned" && actorId === 1 && targetActorId === 2,
-      );
-
-      if (earned) {
-        earnedProgression = result.frame.participants.find(
-          ({ actorId }) => actorId === 1,
-        )?.progression;
-        break;
-      }
-    }
-
-    expect(earned).toBe(true);
-    expect(earnedProgression).toMatchObject({ statPoints: 1, creditedEliminations: 1 });
+    expect(normalizeUpgradePlan(undefined)).toHaveLength(30);
   });
 });

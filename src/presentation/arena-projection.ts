@@ -2,7 +2,7 @@ import { clamp, type Vector2 } from "../simulation/math";
 
 export const ARENA_CAMERA_ELEVATION_DEGREES = 58;
 export const ARENA_DEPTH_SCALE = Math.sin((ARENA_CAMERA_ELEVATION_DEGREES * Math.PI) / 180);
-export const ARENA_TILE_GAP = 4;
+export const ARENA_TILE_GAP = 0;
 export const ARENA_SHADOW_OFFSET_SCALE = clamp((1 - ARENA_DEPTH_SCALE) * 4.5, 0.18, 0.55);
 
 export interface ArenaProjection {

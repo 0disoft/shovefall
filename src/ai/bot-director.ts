@@ -9,6 +9,7 @@ import {
   type RenderFrameV1,
   type RenderItemV1,
   type RenderParticipantV1,
+  type SkillSlotIndex,
   type TileId,
   type TileState,
   type UpgradeStatId,
@@ -26,7 +27,18 @@ import {
 import { RandomStreamSet, type SeedInput, type XorShift32 } from "../simulation/random";
 import { ParticipantSpatialHash } from "../simulation/spatial-hash";
 import { SIMULATION_TUNING } from "../simulation/tuning";
-import { MAX_UPGRADE_LEVEL } from "../simulation/progression";
+import { canSpendStatPoint, getSkillManaMultiplier } from "../simulation/progression";
+import { getSkillDefinition } from "../content/skills";
+import {
+  createBotBlockedTileIds,
+  createBotNavigationTerrain,
+  findBotNavigationDirection,
+  getBotEdgeDistance,
+  getImmediateBotTileEscape,
+  getSafeBotDodgeDirection,
+  isBotNavigationSegmentClear,
+  type BotNavigationTerrain,
+} from "./bot-navigation";
 
 export interface BotDirectorOptions {
   readonly difficulty?: BotDifficulty;
@@ -55,23 +67,20 @@ interface BotMemory {
   bombEscapeUntilTick: number;
   intent: Vector2;
   lastItemUseTick: number;
+  lastProgressPosition: Vector2;
+  lastProgressTick: number;
   nextDecisionTick: number;
-}
-
-interface ArenaBounds {
-  readonly columns: number;
-  readonly rows: number;
-  readonly center: Vector2;
-  readonly stableTiles: readonly TileState[];
-  readonly stableTileDepths: ReadonlyMap<string, number>;
-  readonly tilesById: ReadonlyMap<TileId, TileState>;
+  stalledDecisionCount: number;
+  targetActorId: ActorId | null;
+  targetLockUntilTick: number;
 }
 
 interface BotDecision {
   readonly move: Vector2;
-  readonly shovePressed: boolean;
+  readonly grapplePressed: boolean;
   readonly dodgePressed: boolean;
   readonly useItemSlot: InventorySlotIndex | null;
+  readonly useSkillSlot: SkillSlotIndex | null;
 }
 
 const DEFAULT_REACTION_DELAY_TICKS = 10;
@@ -99,8 +108,19 @@ const EDGE_EMERGENCY_DISTANCE = 0.82;
 const THREAT_DISTANCE = 1.65;
 const THREAT_FACING_DOT = 0.55;
 const ACTIVE_ITEM_DECISION_COOLDOWN_TICKS = 75;
+const BRICK_BAG_MINIMUM_TARGET_DISTANCE = 1.35;
+const BRICK_BAG_MAXIMUM_TARGET_DISTANCE = 3.2;
+const BRICK_BAG_EDGE_PRESSURE_DISTANCE = 3.25;
+const BRICK_BAG_HEALTH_PRESSURE_RATIO = 0.65;
 const BOMB_ESCAPE_TICKS = 120;
 const MINIMUM_BOMB_LOBBY_SURVIVORS = 10;
+const ROCK_ESCAPE_LOOKAHEAD_TICKS = 72;
+const ROCK_ESCAPE_SEARCH_RADIUS = 3.5;
+const TARGET_LOCK_TICKS = 45;
+const TARGET_SWITCH_SCORE_MARGIN = 0.65;
+const STALL_PROGRESS_DISTANCE = 0.08;
+const STALL_DECISION_THRESHOLD = 2;
+const CROWD_AVOIDANCE_DISTANCE = 1.15;
 
 const ACTIVE_ITEM_IDS = Object.freeze([
   "wind-blast",
@@ -108,7 +128,6 @@ const ACTIVE_ITEM_IDS = Object.freeze([
   "boat",
   "bomb",
   "soap",
-  "grappling-hook",
 ] as const satisfies readonly ItemDefinitionId[]);
 type ActiveItemDefinitionId = (typeof ACTIVE_ITEM_IDS)[number];
 
@@ -124,131 +143,75 @@ export function getBotDifficultyProfile(difficulty: BotDifficulty): BotDifficult
   return BOT_DIFFICULTY_PROFILES[difficulty];
 }
 
-function createArenaBounds(frame: RenderFrameV1): ArenaBounds {
-  const dimensions = frame.tiles.reduce(
-    (result, tile) => ({
-      columns: Math.max(result.columns, tile.column + 1),
-      rows: Math.max(result.rows, tile.row + 1),
-    }),
-    { columns: 1, rows: 1 },
-  );
-  const stableTiles = frame.tiles.filter(({ state }) => state === "Stable");
-  const tilesById = new Map(frame.tiles.map((tile) => [tile.tileId, tile] as const));
-  const stableTileIds = new Set(stableTiles.map(({ tileId }) => tileId));
-  const stableTilesById = new Map(stableTiles.map((tile) => [tile.tileId, tile] as const));
-  const stableTileDepths = new Map<TileId, number>();
-  let frontier = stableTiles
-    .filter(({ column, row }) =>
-      (
-        [
-          `${column + 1}:${row}`,
-          `${column - 1}:${row}`,
-          `${column}:${row + 1}`,
-          `${column}:${row - 1}`,
-        ] as readonly TileId[]
-      ).some((tileId) => !stableTileIds.has(tileId)),
-    )
-    .map(({ tileId }) => tileId);
-
-  for (const tileId of frontier) {
-    stableTileDepths.set(tileId, 0);
-  }
-
-  let depth = 1;
-
-  while (frontier.length > 0 && stableTileDepths.size < stableTiles.length) {
-    const nextFrontier: TileId[] = [];
-
-    for (const tileId of frontier) {
-      const tile = stableTilesById.get(tileId);
-
-      if (tile === undefined) {
-        continue;
-      }
-
-      for (const neighborId of [
-        `${tile.column + 1}:${tile.row}`,
-        `${tile.column - 1}:${tile.row}`,
-        `${tile.column}:${tile.row + 1}`,
-        `${tile.column}:${tile.row - 1}`,
-      ] as readonly TileId[]) {
-        if (stableTileIds.has(neighborId) && !stableTileDepths.has(neighborId)) {
-          stableTileDepths.set(neighborId, depth);
-          nextFrontier.push(neighborId);
-        }
-      }
-    }
-
-    frontier = nextFrontier;
-    depth += 1;
-  }
-
-  const center = stableTiles.reduce(
-    (sum, tile) => ({ x: sum.x + tile.column + 0.5, y: sum.y + tile.row + 0.5 }),
-    { x: 0, y: 0 },
-  );
-  center.x /= Math.max(1, stableTiles.length);
-  center.y /= Math.max(1, stableTiles.length);
-
-  return Object.freeze({
-    ...dimensions,
-    center: Object.freeze(center),
-    stableTiles: Object.freeze(stableTiles),
-    stableTileDepths,
-    tilesById,
-  });
-}
-
-function getEdgeDistance(participant: RenderParticipantV1, bounds: ArenaBounds): number {
-  const tileId = `${Math.floor(participant.position.x)}:${Math.floor(participant.position.y)}`;
-  const depth = bounds.stableTileDepths.get(tileId);
-  return depth === undefined ? 0 : depth + 0.5;
-}
-
-function getImmediateTileEscape(
+function getImmediateRockEscape(
   participant: RenderParticipantV1,
-  bounds: ArenaBounds,
+  frame: RenderFrameV1,
+  terrain: BotNavigationTerrain,
+  blockedTileIds: ReadonlySet<TileId>,
 ): Vector2 | undefined {
-  const column = Math.floor(participant.position.x);
-  const row = Math.floor(participant.position.y);
-  const currentTile = bounds.tilesById.get(`${column}:${row}`);
+  const imminentShots = frame.rockShots
+    .filter(({ impactTick }) => impactTick >= frame.tick)
+    .filter(({ blastRadius, impactTick, target }) => {
+      const ticksRemaining = impactTick - frame.tick;
+      const dangerDistance = blastRadius + participant.radius + ROCK_ESCAPE_SEARCH_RADIUS;
+      return (
+        ticksRemaining <= ROCK_ESCAPE_LOOKAHEAD_TICKS &&
+        vectorLength(subtractVectors(participant.position, target)) <= dangerDistance
+      );
+    })
+    .toSorted((left, right) => left.impactTick - right.impactTick || left.shotId - right.shotId);
 
-  if (currentTile?.state === "Stable" && getEdgeDistance(participant, bounds) > 0.5) {
+  if (imminentShots.length === 0) {
     return undefined;
   }
 
-  const currentIsStable = currentTile?.state === "Stable";
-  let safeTile: TileState | undefined;
+  let destination: TileState | undefined;
   let bestScore = Number.NEGATIVE_INFINITY;
 
-  for (const tile of bounds.stableTiles) {
-    const position = Object.freeze({ x: tile.column + 0.5, y: tile.row + 0.5 });
-    const distance = vectorLength(subtractVectors(position, participant.position));
-    const depth = bounds.stableTileDepths.get(tile.tileId) ?? 0;
-
-    if (currentIsStable && (distance > 2.5 || depth === 0)) {
+  for (const tile of terrain.stableTiles) {
+    if (blockedTileIds.has(tile.tileId)) {
       continue;
     }
 
-    const score = currentIsStable ? depth * 4 - distance : depth * 0.1 - distance;
+    const position = Object.freeze({ x: tile.column + 0.5, y: tile.row + 0.5 });
+    const travelDistance = vectorLength(subtractVectors(position, participant.position));
+
+    if (travelDistance < 0.5 || travelDistance > ROCK_ESCAPE_SEARCH_RADIUS) {
+      continue;
+    }
+
+    const minimumClearance = Math.min(
+      ...imminentShots.map(
+        ({ blastRadius, target }) =>
+          vectorLength(subtractVectors(position, target)) - blastRadius - participant.radius,
+      ),
+    );
+    const depth = terrain.stableTileDepths.get(tile.tileId) ?? 0;
+    const score = minimumClearance * 8 + depth * 0.4 - travelDistance * 0.15;
 
     if (
       score > bestScore ||
-      (score === bestScore && tile.tileId.localeCompare(safeTile?.tileId ?? "") < 0)
+      (score === bestScore && tile.tileId.localeCompare(destination?.tileId ?? "") < 0)
     ) {
-      safeTile = tile;
+      destination = tile;
       bestScore = score;
     }
   }
 
-  return safeTile === undefined
-    ? undefined
-    : normalizeVector(
-        subtractVectors(
-          Object.freeze({ x: safeTile.column + 0.5, y: safeTile.row + 0.5 }),
-          participant.position,
-        ),
-      );
+  if (destination === undefined) {
+    const primaryShot = imminentShots[0];
+    return primaryShot === undefined
+      ? undefined
+      : normalizeVector(subtractVectors(participant.position, primaryShot.target));
+  }
+
+  return findBotNavigationDirection(
+    terrain,
+    blockedTileIds,
+    participant.position,
+    Object.freeze({ x: destination.column + 0.5, y: destination.row + 0.5 }),
+    participant.radius,
+  );
 }
 
 function rotateVector(vector: Vector2, radians: number): Vector2 {
@@ -306,25 +269,213 @@ function getChargedItemSlot(
 
 function createDecision(
   move: Vector2,
-  shovePressed = false,
+  grapplePressed = false,
   dodgePressed = false,
   useItemSlot: InventorySlotIndex | null = null,
+  useSkillSlot: SkillSlotIndex | null = null,
 ): BotDecision {
-  return Object.freeze({ move, shovePressed, dodgePressed, useItemSlot });
+  return Object.freeze({ move, grapplePressed, dodgePressed, useItemSlot, useSkillSlot });
+}
+
+function chooseReadySkillSlot(
+  participant: RenderParticipantV1,
+  tick: number,
+  purpose: "attack" | "escape",
+  allowMovementSkills = true,
+  attackContext?: Readonly<{
+    target: RenderParticipantV1 | undefined;
+    terrain: BotNavigationTerrain;
+    blockedTileIds: ReadonlySet<TileId>;
+  }>,
+): SkillSlotIndex | null {
+  const lowHealth = participant.combat.health / participant.combat.maximumHealth <= 0.42;
+  const preferred =
+    purpose === "escape"
+      ? allowMovementSkills
+        ? ["blink-step", "aegis"]
+        : ["aegis"]
+      : lowHealth
+        ? [
+            "aegis",
+            "meteor-mark",
+            "frost-field",
+            "arc-bolt",
+            "chain-bind",
+            "tidal-charge",
+            "force-palm",
+          ]
+        : [
+            "meteor-mark",
+            "frost-field",
+            "arc-bolt",
+            "chain-bind",
+            "tidal-charge",
+            "force-palm",
+            "aegis",
+          ];
+
+  let selected: { slotIndex: SkillSlotIndex; score: number } | undefined;
+  for (const definitionId of preferred) {
+    const slot = participant.skills.find((candidate) => candidate.definitionId === definitionId);
+    if (slot === undefined || tick < slot.readyTick) {
+      continue;
+    }
+    const rank = participant.progression.skillRanks[slot.slotIndex] ?? 0;
+    const manaCost = Math.ceil(
+      getSkillDefinition(slot.definitionId).manaCost * getSkillManaMultiplier(rank),
+    );
+    if (participant.combat.mana + 1e-9 < manaCost) {
+      continue;
+    }
+    if (purpose === "escape") {
+      return slot.slotIndex;
+    }
+
+    const definition = getSkillDefinition(slot.definitionId);
+    if (definition.castKind === "self") {
+      if (!lowHealth) {
+        continue;
+      }
+      const score = definition.shield * 1.5 - manaCost * 0.08;
+      if (selected === undefined || score > selected.score) {
+        selected = { slotIndex: slot.slotIndex, score };
+      }
+      continue;
+    }
+    if (definition.id === "blink-step" || attackContext?.target === undefined) {
+      continue;
+    }
+
+    const distance = vectorLength(
+      subtractVectors(attackContext.target.position, participant.position),
+    );
+    const requiresClearSegment =
+      definition.castKind === "melee" ||
+      definition.castKind === "line" ||
+      definition.castKind === "dash";
+    if (distance > definition.range + 0.15) {
+      continue;
+    }
+    if (
+      requiresClearSegment &&
+      !isBotNavigationSegmentClear(
+        attackContext.terrain,
+        attackContext.blockedTileIds,
+        participant.position,
+        attackContext.target.position,
+        participant.radius * 0.5,
+      )
+    ) {
+      continue;
+    }
+
+    const targetEdgePressure = Math.max(
+      0,
+      2.5 - getBotEdgeDistance(attackContext.target, attackContext.terrain),
+    );
+    const controlScore = (definition.stunTicks + definition.rootTicks) / 12;
+    const slowScore = (1 - definition.slowMultiplier) * (definition.durationTicks / 60) * 8;
+    const finishingScore = definition.damage >= attackContext.target.combat.health ? 24 : 0;
+    const score =
+      definition.damage +
+      controlScore +
+      slowScore +
+      definition.impulse * targetEdgePressure * 16 +
+      finishingScore -
+      manaCost * 0.08;
+    if (
+      selected === undefined ||
+      score > selected.score ||
+      (score === selected.score && slot.slotIndex < selected.slotIndex)
+    ) {
+      selected = { slotIndex: slot.slotIndex, score };
+    }
+  }
+
+  return selected?.slotIndex ?? null;
+}
+
+function getCrowdAvoidance(
+  current: RenderParticipantV1,
+  nearby: readonly RenderParticipantV1[],
+): Vector2 {
+  let avoidance = ZERO_VECTOR;
+  for (const candidate of nearby) {
+    if (candidate.actorId === current.actorId || !isControllable(candidate)) {
+      continue;
+    }
+    const away = subtractVectors(current.position, candidate.position);
+    const distance = vectorLength(away);
+    if (distance <= 0 || distance >= CROWD_AVOIDANCE_DISTANCE) {
+      continue;
+    }
+    avoidance = addVectors(
+      avoidance,
+      scaleVector(normalizeVector(away), 1 - distance / CROWD_AVOIDANCE_DISTANCE),
+    );
+  }
+  return avoidance;
+}
+
+function getSteeredMovement(
+  current: RenderParticipantV1,
+  desiredDirection: Vector2,
+  perceivedParticipants: readonly RenderParticipantV1[],
+  terrain: BotNavigationTerrain,
+  blockedTileIds: ReadonlySet<TileId>,
+  memory: BotMemory,
+): Vector2 {
+  const desired = normalizeVector(desiredDirection);
+  if (vectorLength(desired) === 0) {
+    return ZERO_VECTOR;
+  }
+  const stalled = memory.stalledDecisionCount >= STALL_DECISION_THRESHOLD;
+  const crowdAvoidance = getCrowdAvoidance(current, perceivedParticipants);
+  let steered = normalizeVector(
+    addVectors(desired, scaleVector(crowdAvoidance, stalled ? 1.2 : 0.38)),
+  );
+  const probeDistance = stalled ? 1.35 : 0.9;
+  const steeredEnd = addVectors(current.position, scaleVector(steered, probeDistance));
+  if (
+    !isBotNavigationSegmentClear(
+      terrain,
+      blockedTileIds,
+      current.position,
+      steeredEnd,
+      current.radius,
+    )
+  ) {
+    steered = desired;
+  }
+  if (!stalled) {
+    return steered;
+  }
+
+  const side = current.actorId % 2 === 0 ? 1 : -1;
+  for (const offset of [side * (Math.PI / 3), -side * (Math.PI / 3), side * (Math.PI / 2)]) {
+    const detour = normalizeVector(rotateVector(desired, offset));
+    const detourEnd = addVectors(current.position, scaleVector(detour, probeDistance));
+    if (
+      isBotNavigationSegmentClear(
+        terrain,
+        blockedTileIds,
+        current.position,
+        detourEnd,
+        current.radius,
+      )
+    ) {
+      return detour;
+    }
+  }
+  return steered;
 }
 
 function chooseEmergencyItemSlot(
   participant: RenderParticipantV1,
-  edgeDistance: number,
+  _edgeDistance: number,
 ): InventorySlotIndex | null {
   if (participant.unsupportedTicks > 0) {
-    return (
-      getChargedItemSlot(participant, "boat") ?? getChargedItemSlot(participant, "grappling-hook")
-    );
-  }
-
-  if (edgeDistance < EDGE_EMERGENCY_DISTANCE) {
-    return getChargedItemSlot(participant, "grappling-hook");
+    return getChargedItemSlot(participant, "boat");
   }
 
   return null;
@@ -339,7 +490,7 @@ export class BotDirector {
   readonly #memories = new Map<ActorId, BotMemory>();
   readonly #history: RenderFrameV1[] = [];
   readonly #personalityOverrides: ReadonlyMap<ActorId, BotPersonalityKind>;
-  readonly #arenaBoundsCache = new WeakMap<RenderFrameV1["tiles"], ArenaBounds>();
+  readonly #navigationTerrainCache = new WeakMap<RenderFrameV1["tiles"], BotNavigationTerrain>();
 
   public constructor(
     masterSeed: SeedInput,
@@ -392,7 +543,8 @@ export class BotDirector {
       this.#history.findLast((frame) => frame.tick <= perceptionTick) ??
       this.#history[0] ??
       currentFrame;
-    const bounds = this.#getArenaBounds(currentFrame);
+    const terrain = this.#getNavigationTerrain(currentFrame);
+    const blockedTileIds = createBotBlockedTileIds(currentFrame);
     const perceivedActors = new Map(
       perceptionFrame.participants.map(
         (participant) => [participant.actorId, participant] as const,
@@ -412,20 +564,51 @@ export class BotDirector {
         continue;
       }
 
-      const memory = this.#getMemory(current.actorId);
+      const memory = this.#getMemory(current);
+      this.#updateProgress(memory, current, tick);
       const perceived = perceivedActors.get(current.actorId) ?? current;
-      let shovePressed = false;
+      let grapplePressed = false;
       let dodgePressed = false;
       let useItemSlot: InventorySlotIndex | null = null;
+      let useSkillSlot: SkillSlotIndex | null = null;
       const upgradeStat = this.#chooseUpgrade(memory.personality, current);
-      const edgeDistance = getEdgeDistance(current, bounds);
-      const tileEscape = getImmediateTileEscape(current, bounds);
+      const edgeDistance = getBotEdgeDistance(current, terrain);
+      const rockEscape = getImmediateRockEscape(current, currentFrame, terrain, blockedTileIds);
+      const tileEscape = getImmediateBotTileEscape(current, terrain, blockedTileIds);
       const escapingOwnBomb =
         memory.bombEscapePosition !== null && tick < memory.bombEscapeUntilTick;
 
-      if (tileEscape !== undefined || edgeDistance < EDGE_EMERGENCY_DISTANCE) {
+      if (rockEscape !== undefined) {
+        const safeDodgeDirection = getSafeBotDodgeDirection(
+          current,
+          rockEscape,
+          terrain,
+          blockedTileIds,
+        );
+        memory.intent = safeDodgeDirection ?? rockEscape;
+        useSkillSlot =
+          current.action === "Ready"
+            ? chooseReadySkillSlot(current, tick, "escape", safeDodgeDirection !== undefined)
+            : null;
+        dodgePressed =
+          useSkillSlot === null &&
+          safeDodgeDirection !== undefined &&
+          current.action === "Ready" &&
+          tick >= current.dodgeReadyTick;
+        memory.nextDecisionTick = Math.min(memory.nextDecisionTick, tick + 1);
+      } else if (tileEscape !== undefined || edgeDistance < EDGE_EMERGENCY_DISTANCE) {
         memory.intent =
-          tileEscape ?? normalizeVector(subtractVectors(bounds.center, current.position));
+          tileEscape ??
+          findBotNavigationDirection(
+            terrain,
+            blockedTileIds,
+            current.position,
+            terrain.center,
+            current.radius,
+          ) ??
+          ZERO_VECTOR;
+        grapplePressed =
+          current.action === "Ready" && tick >= current.grappleReadyTick && edgeDistance < 1.2;
         useItemSlot =
           current.action === "Ready" &&
           tick - memory.lastItemUseTick >= Math.min(20, ACTIVE_ITEM_DECISION_COOLDOWN_TICKS)
@@ -443,7 +626,13 @@ export class BotDirector {
         memory.intent =
           vectorLength(awayFromBomb) > 0
             ? awayFromBomb
-            : normalizeVector(subtractVectors(bounds.center, current.position));
+            : (findBotNavigationDirection(
+                terrain,
+                blockedTileIds,
+                current.position,
+                terrain.center,
+                current.radius,
+              ) ?? ZERO_VECTOR);
         memory.nextDecisionTick = Math.min(memory.nextDecisionTick, tick + 1);
       } else if (tick >= memory.nextDecisionTick) {
         const decision = this.#decide(
@@ -452,13 +641,15 @@ export class BotDirector {
           current,
           perceivedSpatialHash,
           perceptionFrame,
-          bounds,
+          terrain,
+          blockedTileIds,
           memory,
         );
         memory.intent = decision.move;
-        shovePressed = decision.shovePressed;
+        grapplePressed = decision.grapplePressed;
         dodgePressed = decision.dodgePressed;
         useItemSlot = decision.useItemSlot;
+        useSkillSlot = decision.useSkillSlot;
 
         if (useItemSlot !== null) {
           memory.lastItemUseTick = tick;
@@ -476,9 +667,10 @@ export class BotDirector {
         Object.freeze({
           ...createNeutralCommand(tick, current.actorId),
           move: memory.intent,
-          shovePressed,
+          grapplePressed,
           dodgePressed,
           useItemSlot,
+          useSkillSlot,
           upgradeStat,
         }),
       );
@@ -487,7 +679,8 @@ export class BotDirector {
     return Object.freeze(commands.toSorted((left, right) => left.actorId - right.actorId));
   }
 
-  #getMemory(actorId: ActorId): BotMemory {
+  #getMemory(participant: RenderParticipantV1): BotMemory {
+    const actorId = participant.actorId;
     const existing = this.#memories.get(actorId);
 
     if (existing !== undefined) {
@@ -507,22 +700,43 @@ export class BotDirector {
       bombEscapeUntilTick: Number.NEGATIVE_INFINITY,
       intent: ZERO_VECTOR,
       lastItemUseTick: Number.NEGATIVE_INFINITY,
+      lastProgressPosition: participant.position,
+      lastProgressTick: 0,
       nextDecisionTick: (actorId * 3) % this.#decisionIntervalTicks,
+      stalledDecisionCount: 0,
+      targetActorId: null,
+      targetLockUntilTick: Number.NEGATIVE_INFINITY,
     };
     this.#memories.set(actorId, memory);
     return memory;
   }
 
-  #getArenaBounds(frame: RenderFrameV1): ArenaBounds {
-    const cached = this.#arenaBoundsCache.get(frame.tiles);
+  #updateProgress(memory: BotMemory, participant: RenderParticipantV1, tick: number): void {
+    if (tick - memory.lastProgressTick < this.#decisionIntervalTicks) {
+      return;
+    }
+    const progress = vectorLength(
+      subtractVectors(participant.position, memory.lastProgressPosition),
+    );
+    if (vectorLength(memory.intent) > 0.1 && progress < STALL_PROGRESS_DISTANCE) {
+      memory.stalledDecisionCount += 1;
+    } else {
+      memory.stalledDecisionCount = 0;
+    }
+    memory.lastProgressPosition = participant.position;
+    memory.lastProgressTick = tick;
+  }
+
+  #getNavigationTerrain(frame: RenderFrameV1): BotNavigationTerrain {
+    const cached = this.#navigationTerrainCache.get(frame.tiles);
 
     if (cached !== undefined) {
       return cached;
     }
 
-    const bounds = createArenaBounds(frame);
-    this.#arenaBoundsCache.set(frame.tiles, bounds);
-    return bounds;
+    const terrain = createBotNavigationTerrain(frame.tiles);
+    this.#navigationTerrainCache.set(frame.tiles, terrain);
+    return terrain;
   }
 
   #chooseUpgrade(
@@ -534,16 +748,15 @@ export class BotDirector {
     }
 
     const priorities: Readonly<Record<BotPersonalityKind, readonly UpgradeStatId[]>> = {
-      Aggressor: ["stability", "power", "mobility", "reflex"],
-      Survivor: ["stability", "reflex", "mobility", "power"],
-      Opportunist: ["mobility", "power", "reflex", "stability"],
-      Disruptor: ["power", "reflex", "stability", "mobility"],
-      Collector: ["mobility", "stability", "reflex", "power"],
+      Aggressor: ["power", "stability", "reflex", "mobility", "vitality", "focus"],
+      Survivor: ["vitality", "stability", "focus", "mobility", "reflex", "power"],
+      Opportunist: ["mobility", "power", "reflex", "focus", "stability", "vitality"],
+      Disruptor: ["power", "reflex", "focus", "stability", "mobility", "vitality"],
+      Collector: ["mobility", "focus", "vitality", "stability", "reflex", "power"],
     };
     return (
-      priorities[personality].find(
-        (stat) => participant.progression.stats[stat] < MAX_UPGRADE_LEVEL,
-      ) ?? null
+      priorities[personality].find((stat) => canSpendStatPoint(participant.progression, stat)) ??
+      null
     );
   }
 
@@ -553,7 +766,8 @@ export class BotDirector {
     current: RenderParticipantV1,
     perceivedSpatialHash: ParticipantSpatialHash<RenderParticipantV1>,
     perceptionFrame: RenderFrameV1,
-    bounds: ArenaBounds,
+    terrain: BotNavigationTerrain,
+    blockedTileIds: ReadonlySet<TileId>,
     memory: BotMemory,
   ): BotDecision {
     const personality = BOT_PERSONALITIES[memory.personality];
@@ -584,35 +798,56 @@ export class BotDirector {
     const threat = threats[0];
 
     if (threat !== undefined && tick >= current.dodgeReadyTick && current.action === "Ready") {
+      const preferredDirection = getPerpendicularTowardCenter(
+        threat.facing,
+        current.position,
+        terrain.center,
+      );
+      const safeDodgeDirection = getSafeBotDodgeDirection(
+        current,
+        preferredDirection,
+        terrain,
+        blockedTileIds,
+      );
       return createDecision(
-        getPerpendicularTowardCenter(threat.facing, current.position, bounds.center),
+        safeDodgeDirection ?? preferredDirection,
         false,
-        true,
+        safeDodgeDirection !== undefined,
       );
     }
 
-    let nearestItem: { item: RenderItemV1; distance: number } | undefined;
-
-    for (const item of perceivedItems) {
-      const distance = vectorLength(subtractVectors(item.position, perceived.position));
-
-      if (
-        nearestItem === undefined ||
-        distance < nearestItem.distance ||
-        (distance === nearestItem.distance && item.itemId < nearestItem.item.itemId)
-      ) {
-        nearestItem = { item, distance };
+    const itemCandidates = perceivedItems
+      .map((item) => ({
+        item,
+        distance: vectorLength(subtractVectors(item.position, perceived.position)),
+      }))
+      .filter(({ distance }) => distance <= 3.5 * personality.itemInterestWeight)
+      .toSorted(
+        (left, right) => left.distance - right.distance || left.item.itemId - right.item.itemId,
+      )
+      .slice(0, 4);
+    if (current.action === "Ready") {
+      for (const { item } of itemCandidates) {
+        const itemDirection = findBotNavigationDirection(
+          terrain,
+          blockedTileIds,
+          current.position,
+          item.position,
+          current.radius,
+        );
+        if (itemDirection !== undefined) {
+          return createDecision(
+            getSteeredMovement(
+              current,
+              itemDirection,
+              perceivedParticipants,
+              terrain,
+              blockedTileIds,
+              memory,
+            ),
+          );
+        }
       }
-    }
-
-    if (
-      nearestItem !== undefined &&
-      nearestItem.distance <= 3.5 * personality.itemInterestWeight &&
-      current.action === "Ready"
-    ) {
-      return createDecision(
-        normalizeVector(subtractVectors(nearestItem.item.position, current.position)),
-      );
     }
 
     const nearby = perceivedParticipants
@@ -626,38 +861,103 @@ export class BotDirector {
           left.distance - right.distance || left.candidate.actorId - right.candidate.actorId,
       )
       .slice(0, this.#nearbyCandidateLimit);
-    let bestTarget: RenderParticipantV1 | undefined;
-    let bestDistance = Number.POSITIVE_INFINITY;
-    let bestScore = Number.NEGATIVE_INFINITY;
-
-    for (const { candidate, distance } of nearby) {
-      const edgeOpportunity = Math.max(0, 2.2 - getEdgeDistance(candidate, bounds));
+    const scoredTargets = nearby.map(({ candidate, distance }) => {
+      const edgeOpportunity = Math.max(0, 2.2 - getBotEdgeDistance(candidate, terrain));
       const stumblingOpportunity = candidate.action === "Stumbling" ? 1 : 0;
       const massPenalty = Math.max(0, candidate.massFactor - perceived.massFactor);
+      const healthOpportunity =
+        1 - candidate.combat.health / Math.max(1, candidate.combat.maximumHealth);
       const score =
         -distance * personality.approachWeight +
         edgeOpportunity * personality.edgeOpportunityWeight +
         stumblingOpportunity * personality.stumblingTargetWeight -
-        massPenalty * personality.heavyTargetPenalty;
-
-      if (
-        score > bestScore ||
-        (score === bestScore && candidate.actorId < (bestTarget?.actorId ?? Infinity))
-      ) {
-        bestTarget = candidate;
-        bestDistance = distance;
-        bestScore = score;
-      }
-    }
+        massPenalty * personality.heavyTargetPenalty +
+        healthOpportunity * 0.8;
+      return Object.freeze({ candidate, distance, score });
+    });
+    const highestScored = scoredTargets.toSorted(
+      (left, right) => right.score - left.score || left.candidate.actorId - right.candidate.actorId,
+    )[0];
+    const retainedTarget = scoredTargets.find(
+      ({ candidate }) => candidate.actorId === memory.targetActorId,
+    );
+    const selectedTarget =
+      retainedTarget !== undefined &&
+      (tick < memory.targetLockUntilTick ||
+        retainedTarget.score >=
+          (highestScored?.score ?? Number.NEGATIVE_INFINITY) - TARGET_SWITCH_SCORE_MARGIN)
+        ? retainedTarget
+        : highestScored;
+    const bestTarget = selectedTarget?.candidate;
+    const bestDistance = selectedTarget?.distance ?? Number.POSITIVE_INFINITY;
 
     if (bestTarget === undefined) {
-      return createDecision(normalizeVector(subtractVectors(bounds.center, current.position)));
+      memory.targetActorId = null;
+      const centerDirection = findBotNavigationDirection(
+        terrain,
+        blockedTileIds,
+        current.position,
+        terrain.center,
+        current.radius,
+      );
+      return createDecision(
+        centerDirection === undefined
+          ? ZERO_VECTOR
+          : getSteeredMovement(
+              current,
+              centerDirection,
+              perceivedParticipants,
+              terrain,
+              blockedTileIds,
+              memory,
+            ),
+      );
+    }
+
+    if (memory.targetActorId !== bestTarget.actorId) {
+      memory.targetActorId = bestTarget.actorId;
+      memory.targetLockUntilTick = tick + TARGET_LOCK_TICKS;
     }
 
     const direct = normalizeVector(subtractVectors(bestTarget.position, perceived.position));
-    const jitter = (memory.jitter.nextFloat() * 2 - 1) * personality.jitterRadians;
-    const move = normalizeVector(rotateVector(direct, jitter));
-    const safetyPressure = Math.max(0, 1.45 - getEdgeDistance(current, bounds));
+    const pathDirection =
+      findBotNavigationDirection(
+        terrain,
+        blockedTileIds,
+        current.position,
+        bestTarget.position,
+        current.radius,
+      ) ??
+      findBotNavigationDirection(
+        terrain,
+        blockedTileIds,
+        current.position,
+        terrain.center,
+        current.radius,
+      ) ??
+      ZERO_VECTOR;
+    const jitter =
+      memory.stalledDecisionCount > 0
+        ? 0
+        : (memory.jitter.nextFloat() * 2 - 1) * personality.jitterRadians;
+    const jitteredPath = normalizeVector(rotateVector(pathDirection, jitter));
+    const move = getSteeredMovement(
+      current,
+      jitteredPath,
+      perceivedParticipants,
+      terrain,
+      blockedTileIds,
+      memory,
+    );
+    const safetyPressure = Math.max(0, 1.45 - getBotEdgeDistance(current, terrain));
+    const attackSkillSlot =
+      current.action === "Ready"
+        ? chooseReadySkillSlot(current, tick, "attack", true, {
+            target: bestTarget,
+            terrain,
+            blockedTileIds,
+          })
+        : null;
     if (canUseActiveItem) {
       const closeOpponents = nearby.filter(
         ({ distance }) => distance <= SIMULATION_TUNING.bomb.blastRadius * 0.9,
@@ -675,7 +975,7 @@ export class BotDirector {
           MINIMUM_BOMB_LOBBY_SURVIVORS &&
         closeOpponents.length >= 3 &&
         !nearbyBomb &&
-        getEdgeDistance(current, bounds) >= 3.25 &&
+        getBotEdgeDistance(current, terrain) >= 3.25 &&
         (memory.personality === "Aggressor" || memory.personality === "Disruptor")
       ) {
         const crowdCenter = closeOpponents.reduce(
@@ -697,18 +997,30 @@ export class BotDirector {
         windBlastSlot !== null &&
         bestDistance >= 1.1 &&
         bestDistance <= SIMULATION_TUNING.windBlast.range &&
-        getEdgeDistance(bestTarget, bounds) <= 3
+        getBotEdgeDistance(bestTarget, terrain) <= 3 &&
+        isBotNavigationSegmentClear(
+          terrain,
+          blockedTileIds,
+          current.position,
+          bestTarget.position,
+          current.radius * 0.5,
+        )
       ) {
         return createDecision(direct, false, false, windBlastSlot);
       }
 
       const brickBagSlot = getChargedItemSlot(current, "brick-bag");
+      const healthRatio = current.combat.health / current.combat.maximumHealth;
+      const needsBrickCover =
+        threat !== undefined ||
+        getBotEdgeDistance(current, terrain) <= BRICK_BAG_EDGE_PRESSURE_DISTANCE ||
+        healthRatio <= BRICK_BAG_HEALTH_PRESSURE_RATIO;
 
       if (
         brickBagSlot !== null &&
-        threat !== undefined &&
-        bestDistance <= 1.8 &&
-        getEdgeDistance(current, bounds) <= 2.5
+        needsBrickCover &&
+        bestDistance >= BRICK_BAG_MINIMUM_TARGET_DISTANCE &&
+        bestDistance <= BRICK_BAG_MAXIMUM_TARGET_DISTANCE
       ) {
         return createDecision(direct, false, false, brickBagSlot);
       }
@@ -723,7 +1035,13 @@ export class BotDirector {
           memory.personality === "Opportunist")
       ) {
         return createDecision(
-          normalizeVector(subtractVectors(bounds.center, current.position)),
+          findBotNavigationDirection(
+            terrain,
+            blockedTileIds,
+            current.position,
+            terrain.center,
+            current.radius,
+          ) ?? move,
           false,
           false,
           soapSlot,
@@ -732,22 +1050,23 @@ export class BotDirector {
     }
 
     if (safetyPressure * personality.safetyWeight > 1) {
+      const centerDirection =
+        findBotNavigationDirection(
+          terrain,
+          blockedTileIds,
+          current.position,
+          terrain.center,
+          current.radius,
+        ) ?? ZERO_VECTOR;
       return createDecision(
-        normalizeVector(
-          addVectors(
-            scaleVector(move, 0.35),
-            scaleVector(normalizeVector(subtractVectors(bounds.center, current.position)), 0.65),
-          ),
-        ),
+        normalizeVector(addVectors(scaleVector(move, 0.35), scaleVector(centerDirection, 0.65))),
+        false,
+        false,
+        null,
+        attackSkillSlot,
       );
     }
 
-    return createDecision(
-      move,
-      current.action === "Ready" &&
-        tick >= current.shoveReadyTick &&
-        bestDistance <= personality.shoveDistance,
-      false,
-    );
+    return createDecision(move, false, false, null, attackSkillSlot);
   }
 }

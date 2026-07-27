@@ -7,7 +7,7 @@ import {
   type TileStateKind,
 } from "./contracts";
 import type { XorShift32 } from "./random";
-import { getLandShoreDepths } from "./arena";
+import { getOuterCoastDepths } from "./arena";
 
 export const MINIMUM_REMAINING_LAND_RATIO = 0.2;
 
@@ -27,8 +27,8 @@ interface CollapseTiming {
 
 const COLLAPSE_TIMINGS: Readonly<Record<CollapseSpeed, CollapseTiming>> = Object.freeze({
   slow: Object.freeze({
-    startTick: 18 * 60,
-    waveIntervalTicks: 30,
+    startTick: 2 * 60,
+    waveIntervalTicks: 42,
     warningTicks: 60,
     collapsingTicks: 30,
   }),
@@ -74,7 +74,7 @@ export function createCollapsePlan(
 ): readonly CollapseWave[] {
   const timing = COLLAPSE_TIMINGS[speed];
   const landTiles = tiles.filter(({ state }) => state === "Stable");
-  const shoreDepths = getLandShoreDepths(tiles);
+  const shoreDepths = getOuterCoastDepths(tiles, _columns, _rows);
   const minimumRemainingTiles = Math.ceil(landTiles.length * MINIMUM_REMAINING_LAND_RATIO);
   const protectedIds = selectProtectedCore(landTiles, shoreDepths, minimumRemainingTiles);
   const centerX = landTiles.reduce((sum, tile) => sum + tile.column + 0.5, 0) / landTiles.length;

@@ -24,11 +24,11 @@ import {
 } from "../src/simulation/versions";
 import { SimulationWorld } from "../src/simulation/world";
 
-const PARTICIPANT_COUNTS = [50] as const;
+const PARTICIPANT_COUNTS = [60] as const;
 const SAMPLE_COUNT = 8;
 const ROUND_LIMIT_SECONDS = PUBLIC_ROUND_LIMIT_SECONDS;
 const PRESET_BY_COUNT: Readonly<Record<(typeof PARTICIPANT_COUNTS)[number], PresetName>> =
-  Object.freeze({ 50: "massive" });
+  Object.freeze({ 60: "massive" });
 
 type MassBand = "light" | "normal" | "heavy";
 
@@ -74,7 +74,6 @@ function createItemCounts(): Record<ItemDefinitionId, number> {
     boat: 0,
     bomb: 0,
     soap: 0,
-    "grappling-hook": 0,
   };
 }
 
@@ -149,7 +148,6 @@ const itemExposure: Record<ItemDefinitionId, { actorRounds: number; wins: number
   boat: { actorRounds: 0, wins: 0 },
   bomb: { actorRounds: 0, wins: 0 },
   soap: { actorRounds: 0, wins: 0 },
-  "grappling-hook": { actorRounds: 0, wins: 0 },
 };
 const itemUse: Record<ItemDefinitionId, ItemUseAggregate> = {
   "iron-boots": { actorRounds: 0, uses: 0, wins: 0 },
@@ -160,7 +158,6 @@ const itemUse: Record<ItemDefinitionId, ItemUseAggregate> = {
   boat: { actorRounds: 0, uses: 0, wins: 0 },
   bomb: { actorRounds: 0, uses: 0, wins: 0 },
   soap: { actorRounds: 0, uses: 0, wins: 0 },
-  "grappling-hook": { actorRounds: 0, uses: 0, wins: 0 },
 };
 const massExposure: Record<MassBand, { actorRounds: number; wins: number }> = {
   light: { actorRounds: 0, wins: 0 },

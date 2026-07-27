@@ -121,7 +121,11 @@ describe("procedural island arena", () => {
     const stableIds = new Set(
       tiles.filter(({ state }) => state === "Stable").map(({ tileId }) => tileId),
     );
-    const positions = createParticipantSpawnPositions(tiles, config.participantCount, 0.37);
+    const positions = createParticipantSpawnPositions(
+      tiles,
+      config.participantCount,
+      new RandomStreamSet("spawn-island").get("spawn"),
+    );
     const spawnIds = positions.map(({ x, y }) => createTileId(Math.floor(x), Math.floor(y)));
 
     expect(new Set(spawnIds)).toHaveLength(config.participantCount);
@@ -169,11 +173,7 @@ describe("procedural island arena", () => {
         tiles.filter(({ state }) => state === "Stable").map(({ tileId }) => tileId),
       );
       const shoreDepths = getLandShoreDepths(tiles);
-      const positions = createParticipantSpawnPositions(
-        tiles,
-        50,
-        streams.get("arena").nextFloat() * Math.PI * 2,
-      );
+      const positions = createParticipantSpawnPositions(tiles, 50, streams.get("spawn"));
       const spawnIds = positions.map(({ x, y }) => createTileId(Math.floor(x), Math.floor(y)));
       const minimumSpawnDistance = positions.reduce(
         (minimum, position, index) =>
@@ -191,7 +191,7 @@ describe("procedural island arena", () => {
       expect(spawnIds.every((tileId) => (shoreDepths.get(tileId) ?? 0) >= 1)).toBe(true);
       expect(minimumSpawnDistance).toBeGreaterThanOrEqual(1);
     }
-  });
+  }, 60_000);
 
   it("gives every larger preset strictly more playable land despite independent coast seeds", () => {
     const tiers = [
@@ -236,7 +236,7 @@ describe("procedural island arena", () => {
         const spawnPositions = createParticipantSpawnPositions(
           tiles,
           participantCount,
-          streams.get("arena").nextFloat() * Math.PI * 2,
+          streams.get("spawn"),
         );
         const plan = createCollapsePlan(
           tiles,

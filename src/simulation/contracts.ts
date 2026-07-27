@@ -1,5 +1,14 @@
-import { normalizeVector, SimulationContractError, type Vector2, ZERO_VECTOR } from "./math";
+import {
+  assertFiniteNumber,
+  normalizeVector,
+  SimulationContractError,
+  type Vector2,
+  ZERO_VECTOR,
+} from "./math";
 import { FIXED_TICKS_PER_SECOND } from "./versions";
+
+export const MINIMUM_PARTICIPANT_COUNT = 4;
+export const MAXIMUM_PARTICIPANT_COUNT = 60;
 
 export type RoundId = number;
 export type ActorId = number;
@@ -18,10 +27,28 @@ export type ItemDefinitionId =
   | "brick-bag"
   | "boat"
   | "bomb"
-  | "soap"
-  | "grappling-hook";
+  | "soap";
 export type InventorySlotIndex = 0 | 1;
-export type UpgradeStatId = "power" | "stability" | "mobility" | "reflex";
+export type SkillSlotIndex = 0 | 1 | 2;
+export type SkillDefinitionId =
+  | "force-palm"
+  | "blink-step"
+  | "arc-bolt"
+  | "chain-bind"
+  | "meteor-mark"
+  | "frost-field"
+  | "tidal-charge"
+  | "aegis";
+export type UpgradeStatId = "power" | "stability" | "mobility" | "reflex" | "vitality" | "focus";
+export type StartingAttributeId =
+  | "strength"
+  | "agility"
+  | "constitution"
+  | "spirit"
+  | "balance"
+  | "willpower";
+export type CombatStatusKind = "stun" | "root" | "slow" | "shield";
+export type SkillZoneKind = "delayed-blast" | "frost";
 
 export type ParticipantActionKind =
   | "Ready"
@@ -68,10 +95,13 @@ export interface ActorCommandV1 {
   readonly tick: Tick;
   readonly actorId: ActorId;
   readonly move: Vector2;
-  readonly shovePressed: boolean;
+  readonly targetPosition: Vector2 | null;
+  readonly grapplePressed: boolean;
   readonly dodgePressed: boolean;
+  readonly useSkillSlot: SkillSlotIndex | null;
   readonly useItemSlot: InventorySlotIndex | null;
   readonly upgradeStat: UpgradeStatId | null;
+  readonly upgradeSkillSlot: SkillSlotIndex | null;
 }
 
 export interface ParticipantStats {
@@ -79,12 +109,46 @@ export interface ParticipantStats {
   readonly stability: number;
   readonly mobility: number;
   readonly reflex: number;
+  readonly vitality: number;
+  readonly focus: number;
+}
+
+export interface StartingAttributes {
+  readonly strength: number;
+  readonly agility: number;
+  readonly constitution: number;
+  readonly spirit: number;
+  readonly balance: number;
+  readonly willpower: number;
 }
 
 export interface ParticipantProgression {
   readonly statPoints: number;
   readonly creditedEliminations: number;
   readonly stats: ParticipantStats;
+  readonly skillRanks: readonly [number, number, number];
+}
+
+export interface SkillSlotState {
+  readonly slotIndex: SkillSlotIndex;
+  readonly definitionId: SkillDefinitionId;
+  readonly readyTick: Tick;
+}
+
+export interface ParticipantCombatState {
+  readonly health: number;
+  readonly maximumHealth: number;
+  readonly mana: number;
+  readonly maximumMana: number;
+  readonly shield: number;
+  readonly shieldEndsTick: Tick;
+  readonly lastDamageTick: Tick | null;
+  readonly lastManaSpendTick: Tick | null;
+  readonly lastDamageSourceActorId: ActorId | null;
+  readonly stunnedUntilTick: Tick;
+  readonly rootedUntilTick: Tick;
+  readonly slowedUntilTick: Tick;
+  readonly slowMultiplier: number;
 }
 
 export interface ShoveCreditState {
@@ -112,6 +176,7 @@ export interface ActionState {
   readonly resolvedActorIds: readonly ActorId[];
   readonly lockedDirection: Vector2 | null;
   readonly springBoosted: boolean;
+  readonly skillDefinitionId: SkillDefinitionId | null;
 }
 
 export interface EffectInstance {
@@ -127,7 +192,7 @@ export interface InventorySlotState {
 }
 
 export interface CooldownState {
-  readonly shoveReadyTick: Tick;
+  readonly grappleReadyTick: Tick;
   readonly dodgeReadyTick: Tick;
 }
 
@@ -138,10 +203,26 @@ export interface ParticipantState {
   readonly action: ActionState;
   readonly cooldowns: CooldownState;
   readonly inventory: readonly InventorySlotState[];
+  readonly skills: readonly SkillSlotState[];
+  readonly combat: ParticipantCombatState;
   readonly effects: readonly EffectInstance[];
   readonly progression: ParticipantProgression;
+  readonly startingAttributes: StartingAttributes;
   readonly shoveCredit: ShoveCreditState;
   readonly active: boolean;
+}
+
+export interface SkillZoneState {
+  readonly zoneId: number;
+  readonly ownerActorId: ActorId;
+  readonly skillDefinitionId: SkillDefinitionId;
+  readonly kind: SkillZoneKind;
+  readonly position: Vector2;
+  readonly radius: number;
+  readonly placedTick: Tick;
+  readonly activateTick: Tick;
+  readonly endsTick: Tick;
+  readonly rank: number;
 }
 
 export interface ItemState {
@@ -159,6 +240,15 @@ export interface BrickWallState {
   readonly ownerActorId: ActorId;
   readonly placedTick: Tick;
 }
+
+export interface TreeObstacleState {
+  readonly definitionId: "tree";
+  readonly tileId: TileId;
+  readonly column: number;
+  readonly row: number;
+}
+
+export type BlockingObstacleState = BrickWallState | TreeObstacleState;
 
 export interface BombState {
   readonly ownerActorId: ActorId;
@@ -206,6 +296,21 @@ export interface RockShotState {
   readonly blastRadius: number;
 }
 
+export interface TreasureShipState {
+  readonly shipId: number;
+  readonly position: Vector2;
+}
+
+export interface GiftDeliveryState {
+  readonly deliveryId: number;
+  readonly itemId: ItemId;
+  readonly definitionId: ItemDefinitionId;
+  readonly origin: Vector2;
+  readonly target: Vector2;
+  readonly launchTick: Tick;
+  readonly impactTick: Tick;
+}
+
 export interface TileState {
   readonly tileId: TileId;
   readonly column: number;
@@ -231,12 +336,15 @@ export interface RenderParticipantV1 {
   readonly action: ParticipantActionKind;
   readonly active: boolean;
   readonly unsupportedTicks: number;
-  readonly shoveReadyTick: Tick;
+  readonly grappleReadyTick: Tick;
   readonly dodgeReadyTick: Tick;
   readonly inventory: readonly InventorySlotState[];
+  readonly skills: readonly SkillSlotState[];
+  readonly combat: ParticipantCombatState;
   readonly effects: readonly EffectInstance[];
   readonly springBoosted: boolean;
   readonly progression: ParticipantProgression;
+  readonly startingAttributes: StartingAttributes;
 }
 
 export interface RenderItemV1 {
@@ -254,11 +362,15 @@ export interface RenderFrameV1 {
   readonly participants: readonly RenderParticipantV1[];
   readonly items: readonly RenderItemV1[];
   readonly brickWalls: readonly BrickWallState[];
+  readonly trees: readonly TreeObstacleState[];
   readonly bombs: readonly BombState[];
   readonly soapPatches: readonly SoapPatchState[];
+  readonly skillZones: readonly SkillZoneState[];
   readonly pirateShips: readonly PirateShipState[];
   readonly cannonShots: readonly CannonShotState[];
   readonly rockShots: readonly RockShotState[];
+  readonly treasureShip: TreasureShipState;
+  readonly giftDeliveries: readonly GiftDeliveryState[];
   readonly tiles: readonly TileState[];
   readonly round: RoundStateV1;
 }
@@ -273,6 +385,14 @@ export type SimulationEventKind =
   | "falling-started"
   | "item-picked-up"
   | "item-used"
+  | "skill-used"
+  | "skill-hit"
+  | "skill-zone-created"
+  | "skill-zone-expired"
+  | "damage-applied"
+  | "healed"
+  | "shield-applied"
+  | "status-applied"
   | "wind-blast-hit"
   | "grappling-hook-hit"
   | "bomb-detonated"
@@ -303,9 +423,19 @@ export interface SimulationEventV1 {
   readonly tileId?: TileId;
   readonly itemId?: ItemId;
   readonly itemDefinitionId?: ItemDefinitionId;
+  readonly skillDefinitionId?: SkillDefinitionId;
+  readonly skillSlotIndex?: SkillSlotIndex;
   readonly upgradeStat?: UpgradeStatId;
+  readonly upgradeSkillSlot?: SkillSlotIndex;
   readonly shipId?: number;
   readonly projectileId?: number;
+  readonly zoneId?: number;
+  readonly amount?: number;
+  readonly absorbedAmount?: number;
+  readonly healthAfter?: number;
+  readonly manaAfter?: number;
+  readonly durationTicks?: number;
+  readonly statusKind?: CombatStatusKind;
   readonly winnerActorId?: ActorId;
   readonly vector?: Vector2;
   readonly position?: Vector2;
@@ -317,13 +447,14 @@ export interface ReplayCheckpointV1 {
   readonly stateHash: string;
 }
 
-export interface ReplayHumanSetupV2 {
-  readonly baseMassFactor: number;
+export interface ReplayHumanSetupV4 {
+  readonly startingAttributes: StartingAttributes;
   readonly startingItems: readonly ItemDefinitionId[];
+  readonly startingSkills: readonly SkillDefinitionId[];
 }
 
-export interface ReplayFixtureV2 {
-  readonly formatVersion: 2;
+export interface ReplayFixtureV4 {
+  readonly formatVersion: 5;
   readonly productVersion: string;
   readonly simulationVersion: string;
   readonly contentVersion: string;
@@ -331,7 +462,7 @@ export interface ReplayFixtureV2 {
   readonly config: GameConfigV1;
   readonly masterSeed: string | number;
   readonly humanActorId: ActorId;
-  readonly humanSetup: ReplayHumanSetupV2;
+  readonly humanSetup: ReplayHumanSetupV4;
   readonly endTick: Tick;
   readonly commands: readonly ActorCommandV1[];
   readonly checkpoints: readonly ReplayCheckpointV1[];
@@ -366,7 +497,12 @@ export function normalizeGameConfig(input: GameConfigInput): GameConfigV1 {
     : 0;
   const itemRespawnSeconds = itemsEnabled ? Math.round(input.itemRespawnSeconds ?? 5) : 0;
 
-  assertIntegerInRange(participantCount, "participantCount", 4, 50);
+  assertIntegerInRange(
+    participantCount,
+    "participantCount",
+    MINIMUM_PARTICIPANT_COUNT,
+    MAXIMUM_PARTICIPANT_COUNT,
+  );
   assertIntegerInRange(arenaColumns, "arenaColumns", 7, 48);
   assertIntegerInRange(arenaRows, "arenaRows", 7, 48);
   assertIntegerInRange(roundLimitSeconds, "roundLimitSeconds", 1, 120);
@@ -404,29 +540,60 @@ export function createNeutralCommand(tick: Tick, actorId: ActorId): ActorCommand
     tick,
     actorId,
     move: ZERO_VECTOR,
-    shovePressed: false,
+    targetPosition: null,
+    grapplePressed: false,
     dodgePressed: false,
+    useSkillSlot: null,
     useItemSlot: null,
     upgradeStat: null,
+    upgradeSkillSlot: null,
   });
 }
 
 export function normalizeActorCommand(command: ActorCommandV1): ActorCommandV1 {
   assertIntegerInRange(command.tick, "command.tick", 0, Number.MAX_SAFE_INTEGER);
-  assertIntegerInRange(command.actorId, "command.actorId", 1, 50);
+  assertIntegerInRange(command.actorId, "command.actorId", 1, 60);
+  if (command.targetPosition !== null) {
+    assertFiniteNumber(command.targetPosition.x, "command.targetPosition.x");
+    assertFiniteNumber(command.targetPosition.y, "command.targetPosition.y");
+  }
 
   if (
     command.upgradeStat !== null &&
     command.upgradeStat !== "power" &&
     command.upgradeStat !== "stability" &&
     command.upgradeStat !== "mobility" &&
-    command.upgradeStat !== "reflex"
+    command.upgradeStat !== "reflex" &&
+    command.upgradeStat !== "vitality" &&
+    command.upgradeStat !== "focus"
   ) {
     throw new SimulationContractError("command.upgradeStat is unsupported");
   }
 
+  if (command.upgradeStat !== null && command.upgradeSkillSlot !== null) {
+    throw new SimulationContractError("command cannot upgrade a stat and skill together");
+  }
+
   if (command.useItemSlot !== null && command.useItemSlot !== 0 && command.useItemSlot !== 1) {
     throw new SimulationContractError("command.useItemSlot is unsupported");
+  }
+
+  if (
+    command.useSkillSlot !== null &&
+    command.useSkillSlot !== 0 &&
+    command.useSkillSlot !== 1 &&
+    command.useSkillSlot !== 2
+  ) {
+    throw new SimulationContractError("command.useSkillSlot is unsupported");
+  }
+
+  if (
+    command.upgradeSkillSlot !== null &&
+    command.upgradeSkillSlot !== 0 &&
+    command.upgradeSkillSlot !== 1 &&
+    command.upgradeSkillSlot !== 2
+  ) {
+    throw new SimulationContractError("command.upgradeSkillSlot is unsupported");
   }
 
   return Object.freeze({
@@ -434,10 +601,16 @@ export function normalizeActorCommand(command: ActorCommandV1): ActorCommandV1 {
     tick: command.tick,
     actorId: command.actorId,
     move: normalizeVector(command.move),
-    shovePressed: command.shovePressed,
+    targetPosition:
+      command.targetPosition === null
+        ? null
+        : Object.freeze({ x: command.targetPosition.x, y: command.targetPosition.y }),
+    grapplePressed: command.grapplePressed,
     dodgePressed: command.dodgePressed,
+    useSkillSlot: command.useSkillSlot,
     useItemSlot: command.useItemSlot,
     upgradeStat: command.upgradeStat,
+    upgradeSkillSlot: command.upgradeSkillSlot,
   });
 }
 

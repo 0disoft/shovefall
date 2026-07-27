@@ -1,6 +1,8 @@
 # Design QA
 
-## Scope
+## Historical menu, camera, and projection QA
+
+### Scope
 
 - Request: replace the always-visible setup/arena layout with a simple menu, open settings only on demand, reveal the arena only after starting, reduce the title scale, enlarge supporting text, use a player-follow camera over a larger island, and add a concise version-history branch.
 - Reference screenshots:
@@ -13,14 +15,14 @@
 - Target: deployed GitHub Pages build at `https://0disoft.github.io/shovefall/`
 - Viewport: desktop Chrome, 1440 x 900 CSS pixels at DPR 1.
 
-## Full-view comparison
+### Full-view comparison
 
 - The reference exposed the configuration form and arena before play and gave the title most of the first viewport.
 - The rendered menu exposes only the reduced title, fullscreen guidance, `게임 시작`, `설정`, and `버전 기록`.
 - Supporting menu text and controls are larger and remain readable without competing with the title.
 - The arena is absent from the initial DOM presentation and becomes visible only after `게임 시작`.
 
-## Focused interaction evidence
+### Focused interaction evidence
 
 - Browser smoke inspection confirmed the initial menu contains one each of `게임 시작`, `설정`, and `버전 기록`, with no visible arena canvas.
 - Starting the game switches to the arena landmark and exposes the Pixi canvas, HUD, controls, restart, and menu return actions.
@@ -28,7 +30,7 @@
 - The renderer follows the local player and clamps the camera to the world plus ocean margin; browser smoke coverage checks that movement changes the camera frame.
 - The saved settings object is the only source used by `게임 시작`; opening and cancelling settings restores the saved values instead of leaking a draft.
 
-## Findings and iteration history
+### Findings and iteration history
 
 1. P1: title dominated the page and setup/arena competed for attention. Fixed by reducing the title to a 2.3rem maximum and introducing menu/settings/arena screen states.
 2. P1: the old arena fit the full island in one viewport. Fixed by enlarging every participant tier and adding a bounded player-follow camera.
@@ -37,7 +39,7 @@
 5. P2: the centered menu could become too tall on short screens. Bounded with `min(420px, 58dvh)` and responsive spacing.
 6. P3: final island art is intentionally still procedural gray-box artwork. Asset generation remains a separate visual-polish pass and does not block the requested navigation or camera behavior.
 
-## Version-history review
+### Version-history review
 
 - Product `0.25.0` adds a third menu action without weakening the visual priority of `게임 시작`; `설정` and `버전 기록` remain equal secondary actions.
 - The history is a separate DOM screen rather than an overlay, so long text uses normal page scrolling and never traps the arena or menu beneath a modal.
@@ -45,7 +47,7 @@
 - The current entry receives the only accent rail. Remaining entries share neutral surfaces, keeping the list readable without turning every version into a competing callout.
 - `메뉴로` and `Escape` both restore focus to `버전 기록`; the skip link retargets to the screen heading, and the pre-game canvas remains hidden.
 
-## 58-degree projection review
+### 58-degree projection review
 
 - Product `0.24.0` uses the GLM-recommended 58-degree camera elevation, verified at runtime through `data-projection-angle="58"` and `data-projection-scale-y="0.8480"`.
 - At 1440 x 900, the rendered 16-player arena uses a 1388 x 688 canvas and a bounded 6–14-pixel cliff front. The whole island remains outside one camera frame.
@@ -53,6 +55,33 @@
 - Characters and items remain upright. Their short angle-derived shadows, projected action lines, participant depth ordering, tile-top highlights, and unsupported southern cliff fronts provide depth without hiding shove timing or shoreline support.
 - The chosen 58 degrees compresses depth by about 15.2%, making the terrain angle visible while retaining more shove and shoreline readability than the lower 55-degree edge of the reviewed range.
 
-No P0, P1, or P2 findings remain for this request. A network response audit reproduced no HTTP 4xx/5xx resources, and the deployed production smoke suite passed.
+No P0, P1, or P2 findings remained for that request. A network response audit reproduced no HTTP 4xx/5xx resources, and the deployed production smoke suite passed.
 
-final result: passed
+Historical result: passed.
+
+## 0.40.0 arena and HUD QA
+
+- Reference: `C:\Users\cherr\AppData\Local\Temp\codex-clipboard-d120f65d-c5f8-4719-9df9-fae8915f2db1.png`
+- Target viewport/state: desktop active arena, upper combat and stat HUD visible.
+- Implementation evidence: production WebGL smoke passed all 13 browser paths; the run does not persist a same-state screenshot.
+
+## Review
+
+- P0: none found by automated boot, input, restart, and renderer recovery checks.
+- P1: the right HUD now uses four translucent cells and reports effective percentage bonuses instead of levels or pending points.
+- P1: the arena background uses the terrain atlas water texture rather than the renderer clear color.
+- P1: terrain sprites crop rectangular surface interiors; procedural geometry alone draws exposed southern cliffs.
+- P1: generated trees render in world-depth order and keep a procedural load-failure fallback.
+- P2: final tree scale, ocean repetition, coast seams, and HUD translucency still require a same-state human screenshot comparison.
+
+Final result: blocked — no persisted post-change screenshot exists for the required side-by-side visual comparison.
+
+## 0.41.0 terrain, audio, and scoreboard QA
+
+- References: `C:\Users\cherr\AppData\Local\Temp\codex-clipboard-69334221-9e81-4d22-9eb4-16546895f2a2.png` and the requested menu scoreboard flow.
+- Target viewport/state: desktop active arena plus menu-level local history.
+- Implemented review fixes: one stretched ocean surface replaces the visibly repeating ocean grid; gapless terrain crops and deterministic unsupported-shore fallbacks replace exposed dark squares; generated coasts no longer receive duplicate procedural black cliff bars; all procedural audio cues use 70% of their prior gain.
+- Scoreboard review: `설정` is followed by `점수표`; empty, populated, Escape, and return-focus states use semantic DOM outside the canvas. Completed-round entries expose rank first, then score, eliminations, survival time, and participant count. Storage is browser-local, bounded to fifty, and failure-safe.
+- Automated evidence: the complete non-browser check passed 202 tests, and the production artifact passed all 13 Playwright browser paths including the empty-scoreboard menu and focus flow.
+
+Final result: blocked — source implementation is complete, but a same-state post-change terrain screenshot and populated-scoreboard browser capture have not yet been retained.

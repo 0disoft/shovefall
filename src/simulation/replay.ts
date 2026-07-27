@@ -1,13 +1,15 @@
 import {
+  MAXIMUM_PARTICIPANT_COUNT,
   assertIntegerInRange,
   normalizeActorCommand,
   type ActorCommandV1,
   type GameConfigV1,
   type ItemDefinitionId,
   type ReplayCheckpointV1,
-  type ReplayFixtureV2,
-  type ReplayHumanSetupV2,
+  type ReplayFixtureV4,
+  type ReplayHumanSetupV4,
 } from "./contracts";
+import { DEFAULT_SKILL_LOADOUT, isSkillDefinitionId } from "../content/skills";
 import { SimulationContractError } from "./math";
 import { SimulationWorld } from "./world";
 import {
@@ -18,7 +20,7 @@ import {
   REPLAY_FORMAT_VERSION,
   SIMULATION_VERSION,
 } from "./versions";
-import { SIMULATION_TUNING } from "./tuning";
+import { assertStartingAttributes, DEFAULT_STARTING_ATTRIBUTES } from "./starting-attributes";
 
 const ITEM_DEFINITION_IDS = Object.freeze([
   "iron-boots",
@@ -29,7 +31,6 @@ const ITEM_DEFINITION_IDS = Object.freeze([
   "boat",
   "bomb",
   "soap",
-  "grappling-hook",
 ] as const satisfies readonly ItemDefinitionId[]);
 
 function isItemDefinitionId(value: string): value is ItemDefinitionId {
@@ -124,8 +125,10 @@ function parseConfig(value: unknown): GameConfigV1 {
     throw new SimulationContractError("configVersion is unsupported");
   }
 
-  if (config.participantCount < 4 || config.participantCount > 50) {
-    throw new SimulationContractError("config participant count is outside 4..50");
+  if (config.participantCount < 4 || config.participantCount > MAXIMUM_PARTICIPANT_COUNT) {
+    throw new SimulationContractError(
+      `config participant count is outside 4..${MAXIMUM_PARTICIPANT_COUNT}`,
+    );
   }
 
   assertIntegerInRange(config.arenaColumns, "config.arenaColumns", 7, 48);
@@ -177,8 +180,23 @@ function parseCommand(value: unknown): ActorCommandV1 {
       x: typeof value.move.x === "number" ? value.move.x : Number.NaN,
       y: typeof value.move.y === "number" ? value.move.y : Number.NaN,
     },
-    shovePressed: readBoolean(value, "shovePressed"),
+    targetPosition:
+      value.targetPosition === undefined || value.targetPosition === null
+        ? null
+        : isRecord(value.targetPosition)
+          ? {
+              x: typeof value.targetPosition.x === "number" ? value.targetPosition.x : Number.NaN,
+              y: typeof value.targetPosition.y === "number" ? value.targetPosition.y : Number.NaN,
+            }
+          : fail("command.targetPosition is unsupported"),
+    grapplePressed: readBoolean(value, "grapplePressed"),
     dodgePressed: readBoolean(value, "dodgePressed"),
+    useSkillSlot:
+      value.useSkillSlot === undefined || value.useSkillSlot === null
+        ? null
+        : value.useSkillSlot === 0 || value.useSkillSlot === 1 || value.useSkillSlot === 2
+          ? value.useSkillSlot
+          : fail("command.useSkillSlot is unsupported"),
     useItemSlot:
       value.useItemSlot === undefined || value.useItemSlot === null
         ? null
@@ -194,6 +212,14 @@ function parseCommand(value: unknown): ActorCommandV1 {
             value.upgradeStat === "reflex"
           ? value.upgradeStat
           : fail("command.upgradeStat is unsupported"),
+    upgradeSkillSlot:
+      value.upgradeSkillSlot === undefined || value.upgradeSkillSlot === null
+        ? null
+        : value.upgradeSkillSlot === 0 ||
+            value.upgradeSkillSlot === 1 ||
+            value.upgradeSkillSlot === 2
+          ? value.upgradeSkillSlot
+          : fail("command.upgradeSkillSlot is unsupported"),
   });
 }
 
@@ -208,21 +234,12 @@ function parseCheckpoint(value: unknown): ReplayCheckpointV1 {
   });
 }
 
-function parseHumanSetup(value: unknown): ReplayHumanSetupV2 {
+function parseHumanSetup(value: unknown): ReplayHumanSetupV4 {
   if (!isRecord(value) || !Array.isArray(value.startingItems)) {
     throw new SimulationContractError("humanSetup must contain a startingItems array");
   }
 
-  const baseMassFactor = value.baseMassFactor;
-
-  if (
-    typeof baseMassFactor !== "number" ||
-    !Number.isFinite(baseMassFactor) ||
-    baseMassFactor < SIMULATION_TUNING.mass.minimum ||
-    baseMassFactor > SIMULATION_TUNING.mass.maximum
-  ) {
-    throw new SimulationContractError("humanSetup.baseMassFactor is outside supported bounds");
-  }
+  assertStartingAttributes(value.startingAttributes);
 
   if (
     value.startingItems.length > 2 ||
@@ -240,14 +257,26 @@ function parseHumanSetup(value: unknown): ReplayHumanSetupV2 {
 
     return item;
   });
+  const rawStartingSkills = value.startingSkills;
+  if (
+    !Array.isArray(rawStartingSkills) ||
+    (rawStartingSkills.length !== 2 && rawStartingSkills.length !== 3) ||
+    new Set(rawStartingSkills).size !== rawStartingSkills.length ||
+    !rawStartingSkills.every(isSkillDefinitionId)
+  ) {
+    throw new SimulationContractError(
+      "humanSetup must contain two or three unique starting skills",
+    );
+  }
 
   return Object.freeze({
-    baseMassFactor,
+    startingAttributes: Object.freeze({ ...value.startingAttributes }),
     startingItems: Object.freeze(startingItems),
+    startingSkills: Object.freeze([...rawStartingSkills]),
   });
 }
 
-export function parseReplayFixtureJson(json: string): ReplayFixtureV2 {
+export function parseReplayFixtureJson(json: string): ReplayFixtureV4 {
   const byteLength = new TextEncoder().encode(json).byteLength;
 
   if (byteLength > MAX_REPLAY_BYTES) {
@@ -278,8 +307,8 @@ export function parseReplayFixtureJson(json: string): ReplayFixtureV2 {
 
   const commands = Object.freeze(parsed.commands.map(parseCommand));
   const checkpoints = Object.freeze(parsed.checkpoints.map(parseCheckpoint));
-  const fixture: ReplayFixtureV2 = Object.freeze({
-    formatVersion: 2,
+  const fixture: ReplayFixtureV4 = Object.freeze({
+    formatVersion: REPLAY_FORMAT_VERSION,
     productVersion: readString(parsed, "productVersion"),
     simulationVersion: readString(parsed, "simulationVersion"),
     contentVersion: readString(parsed, "contentVersion"),
@@ -307,7 +336,7 @@ export function parseReplayFixtureJson(json: string): ReplayFixtureV2 {
   return fixture;
 }
 
-function validateReplayTimeline(fixture: ReplayFixtureV2): void {
+function validateReplayTimeline(fixture: ReplayFixtureV4): void {
   assertIntegerInRange(fixture.humanActorId, "humanActorId", 1, fixture.config.participantCount);
   assertIntegerInRange(
     fixture.endTick,
@@ -353,14 +382,15 @@ function validateReplayTimeline(fixture: ReplayFixtureV2): void {
   }
 }
 
-export function runReplayFixture(fixture: ReplayFixtureV2): ReplayRunResult {
+export function runReplayFixture(fixture: ReplayFixtureV4): ReplayRunResult {
   const world = new SimulationWorld(fixture.config, fixture.masterSeed, {
     humanActorId: fixture.humanActorId,
     participantOverrides: [
       {
         actorId: fixture.humanActorId,
-        massFactor: fixture.humanSetup.baseMassFactor,
+        startingAttributes: fixture.humanSetup.startingAttributes,
         startingItems: fixture.humanSetup.startingItems,
+        startingSkills: fixture.humanSetup.startingSkills,
       },
     ],
   });
@@ -408,16 +438,17 @@ export function createReplayFixture(input: {
   readonly config: GameConfigV1;
   readonly masterSeed: string | number;
   readonly humanActorId: number;
-  readonly humanSetup?: ReplayHumanSetupV2;
+  readonly humanSetup?: ReplayHumanSetupV4;
   readonly endTick: number;
   readonly commands: readonly ActorCommandV1[];
   readonly checkpointTicks?: readonly number[];
-}): ReplayFixtureV2 {
+}): ReplayFixtureV4 {
   const normalizedCommands = Object.freeze(input.commands.map(normalizeActorCommand));
   const humanSetup = parseHumanSetup(
     input.humanSetup ?? {
-      baseMassFactor: SIMULATION_TUNING.mass.default,
+      startingAttributes: DEFAULT_STARTING_ATTRIBUTES,
       startingItems: [],
+      startingSkills: DEFAULT_SKILL_LOADOUT,
     },
   );
   const requestedCheckpointTicks = input.checkpointTicks ?? [];
@@ -432,8 +463,9 @@ export function createReplayFixture(input: {
     participantOverrides: [
       {
         actorId: input.humanActorId,
-        massFactor: humanSetup.baseMassFactor,
+        startingAttributes: humanSetup.startingAttributes,
         startingItems: humanSetup.startingItems,
+        startingSkills: humanSetup.startingSkills,
       },
     ],
   });
@@ -442,8 +474,8 @@ export function createReplayFixture(input: {
   );
   const checkpoints: ReplayCheckpointV1[] = [];
 
-  const provisionalFixture: ReplayFixtureV2 = {
-    formatVersion: 2,
+  const provisionalFixture: ReplayFixtureV4 = {
+    formatVersion: REPLAY_FORMAT_VERSION,
     productVersion: PRODUCT_VERSION,
     simulationVersion: SIMULATION_VERSION,
     contentVersion: CONTENT_VERSION,
@@ -476,7 +508,7 @@ export function createReplayFixture(input: {
   }
 
   return Object.freeze({
-    formatVersion: 2,
+    formatVersion: REPLAY_FORMAT_VERSION,
     productVersion: PRODUCT_VERSION,
     simulationVersion: SIMULATION_VERSION,
     contentVersion: CONTENT_VERSION,

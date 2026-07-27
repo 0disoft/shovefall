@@ -1,23 +1,20 @@
 import { createNeutralCommand, type ActorCommandV1 } from "../simulation/contracts";
 
 export const MOVEMENT_CODES = Object.freeze([
-  "KeyW",
-  "KeyA",
-  "KeyS",
-  "KeyD",
   "ArrowUp",
   "ArrowLeft",
   "ArrowDown",
   "ArrowRight",
 ] as const);
 
+export type MovementCode = (typeof MOVEMENT_CODES)[number];
+
 export const GAMEPLAY_CODES = Object.freeze([
   ...MOVEMENT_CODES,
-  "Space",
-  "ShiftLeft",
-  "ShiftRight",
   "KeyQ",
+  "KeyW",
   "KeyE",
+  "KeyD",
 ] as const);
 
 type GameplayCode = (typeof GAMEPLAY_CODES)[number];
@@ -29,7 +26,7 @@ export function isGameplayCode(code: string): code is GameplayCode {
   return GAMEPLAY_CODE_SET.has(code);
 }
 
-export function isMovementCode(code: string): code is GameplayCode {
+export function isMovementCode(code: string): code is MovementCode {
   return MOVEMENT_CODE_SET.has(code);
 }
 
@@ -39,32 +36,11 @@ export class InputState {
   #pointerMoveY = 0;
   #gamepadMoveX = 0;
   #gamepadMoveY = 0;
-  #shoveQueued = false;
-  #dodgeQueued = false;
-  #itemSlotQueued: 0 | 1 | null = null;
+  #skillSlotQueued: 0 | 1 | null = null;
+  #itemSlotQueued: 0 | null = null;
 
-  public press(code: GameplayCode, repeat = false): void {
+  public press(code: GameplayCode, _repeat = false): void {
     this.#heldCodes.add(code);
-
-    if (repeat) {
-      return;
-    }
-
-    if (code === "Space") {
-      this.#shoveQueued = true;
-    }
-
-    if (code === "ShiftLeft" || code === "ShiftRight") {
-      this.#dodgeQueued = true;
-    }
-
-    if (code === "KeyQ") {
-      this.queueItemSlot(0);
-    }
-
-    if (code === "KeyE") {
-      this.queueItemSlot(1);
-    }
   }
 
   public release(code: GameplayCode): void {
@@ -73,24 +49,28 @@ export class InputState {
 
   public clear(): void {
     this.#heldCodes.clear();
+    this.clearMovement();
+    this.#skillSlotQueued = null;
+    this.#itemSlotQueued = null;
+  }
+
+  public clearMovement(): void {
+    for (const code of MOVEMENT_CODES) {
+      this.#heldCodes.delete(code);
+    }
     this.#pointerMoveX = 0;
     this.#pointerMoveY = 0;
     this.#gamepadMoveX = 0;
     this.#gamepadMoveY = 0;
-    this.#shoveQueued = false;
-    this.#dodgeQueued = false;
-    this.#itemSlotQueued = null;
   }
 
-  public queueShove(): void {
-    this.#shoveQueued = true;
+  public queueSkillSlot(slotIndex: 0 | 1): void {
+    if (this.#skillSlotQueued === null || slotIndex < this.#skillSlotQueued) {
+      this.#skillSlotQueued = slotIndex;
+    }
   }
 
-  public queueDodge(): void {
-    this.#dodgeQueued = true;
-  }
-
-  public queueItemSlot(slotIndex: 0 | 1): void {
+  public queueItemSlot(slotIndex: 0): void {
     if (this.#itemSlotQueued === null || slotIndex < this.#itemSlotQueued) {
       this.#itemSlotQueued = slotIndex;
     }
@@ -108,11 +88,9 @@ export class InputState {
 
   public consumeCommand(tick: number, actorId: number): ActorCommandV1 {
     const keyboardX =
-      Number(this.#heldCodes.has("KeyD") || this.#heldCodes.has("ArrowRight")) -
-      Number(this.#heldCodes.has("KeyA") || this.#heldCodes.has("ArrowLeft"));
+      Number(this.#heldCodes.has("ArrowRight")) - Number(this.#heldCodes.has("ArrowLeft"));
     const keyboardY =
-      Number(this.#heldCodes.has("KeyS") || this.#heldCodes.has("ArrowDown")) -
-      Number(this.#heldCodes.has("KeyW") || this.#heldCodes.has("ArrowUp"));
+      Number(this.#heldCodes.has("ArrowDown")) - Number(this.#heldCodes.has("ArrowUp"));
     const pointerActive = this.#pointerMoveX !== 0 || this.#pointerMoveY !== 0;
     const gamepadActive = this.#gamepadMoveX !== 0 || this.#gamepadMoveY !== 0;
     const command = Object.freeze({
@@ -121,13 +99,13 @@ export class InputState {
         x: pointerActive ? this.#pointerMoveX : gamepadActive ? this.#gamepadMoveX : keyboardX,
         y: pointerActive ? this.#pointerMoveY : gamepadActive ? this.#gamepadMoveY : keyboardY,
       }),
-      shovePressed: this.#shoveQueued,
-      dodgePressed: this.#dodgeQueued,
+      grapplePressed: false,
+      useSkillSlot: this.#skillSlotQueued,
       useItemSlot: this.#itemSlotQueued,
       upgradeStat: null,
+      upgradeSkillSlot: null,
     });
-    this.#shoveQueued = false;
-    this.#dodgeQueued = false;
+    this.#skillSlotQueued = null;
     this.#itemSlotQueued = null;
     return command;
   }

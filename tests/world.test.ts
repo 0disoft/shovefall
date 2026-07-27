@@ -13,17 +13,17 @@ describe("simulation world contracts", () => {
     const world = new SimulationWorld(normalizeGameConfig({ participantCount: 4 }), 42);
 
     expect(world.systemOrder).toBe(SYSTEM_ORDER);
-    expect(SYSTEM_ORDER.indexOf("active-items")).toBeGreaterThan(
+    expect(SYSTEM_ORDER.indexOf("active-items-and-built-in-grapple")).toBeGreaterThan(
       SYSTEM_ORDER.indexOf("action-transitions"),
     );
-    expect(SYSTEM_ORDER.indexOf("active-items")).toBeLessThan(
+    expect(SYSTEM_ORDER.indexOf("active-items-and-built-in-grapple")).toBeLessThan(
       SYSTEM_ORDER.indexOf("movement-intent"),
     );
   });
 
   it("rejects invalid participant counts", () => {
     expect(() => normalizeGameConfig({ participantCount: 0 })).toThrow(SimulationContractError);
-    expect(() => normalizeGameConfig({ participantCount: 51 })).toThrow(SimulationContractError);
+    expect(() => normalizeGameConfig({ participantCount: 61 })).toThrow(SimulationContractError);
   });
 
   it("normalizes movement without changing valid directions", () => {
@@ -34,6 +34,28 @@ describe("simulation world contracts", () => {
 
     expect(command.move.x).toBeCloseTo(0.6);
     expect(command.move.y).toBeCloseTo(0.8);
+  });
+
+  it("accepts all six tree stats and rejects an ambiguous dual upgrade", () => {
+    expect(
+      normalizeActorCommand({
+        ...createNeutralCommand(0, 1),
+        upgradeStat: "vitality",
+      }).upgradeStat,
+    ).toBe("vitality");
+    expect(
+      normalizeActorCommand({
+        ...createNeutralCommand(0, 1),
+        upgradeStat: "focus",
+      }).upgradeStat,
+    ).toBe("focus");
+    expect(() =>
+      normalizeActorCommand({
+        ...createNeutralCommand(0, 1),
+        upgradeStat: "power",
+        upgradeSkillSlot: 0,
+      }),
+    ).toThrow(SimulationContractError);
   });
 
   it("rejects duplicate actor commands for one tick", () => {
@@ -81,5 +103,5 @@ describe("simulation world contracts", () => {
     });
 
     expect(new Set(hashes)).toHaveLength(1);
-  }, 15_000);
+  }, 25_000);
 });

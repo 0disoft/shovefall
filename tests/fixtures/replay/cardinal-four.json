@@ -1,8 +1,8 @@
 {
-  "formatVersion": 2,
-  "productVersion": "0.39.1",
-  "simulationVersion": "20.0.0",
-  "contentVersion": "14.0.0",
+  "formatVersion": 5,
+  "productVersion": "0.69.0",
+  "simulationVersion": "41.0.0",
+  "contentVersion": "25.0.0",
   "buildId": "fixture-v4",
   "config": {
     "configVersion": 1,
@@ -22,8 +22,16 @@
   "masterSeed": "cardinal-four-v1",
   "humanActorId": 1,
   "humanSetup": {
-    "baseMassFactor": 1,
-    "startingItems": ["wind-blast", "iron-boots"]
+    "startingAttributes": {
+      "strength": 4,
+      "agility": 4,
+      "constitution": 4,
+      "spirit": 4,
+      "balance": 4,
+      "willpower": 0
+    },
+    "startingItems": ["wind-blast", "iron-boots"],
+    "startingSkills": ["force-palm", "blink-step", "arc-bolt"]
   },
   "endTick": 180,
   "commands": [
@@ -35,10 +43,13 @@
         "x": 1,
         "y": 0
       },
-      "shovePressed": false,
+      "targetPosition": null,
+      "grapplePressed": false,
       "dodgePressed": false,
+      "useSkillSlot": null,
       "useItemSlot": 0,
-      "upgradeStat": null
+      "upgradeStat": null,
+      "upgradeSkillSlot": null
     },
     {
       "commandVersion": 1,
@@ -48,10 +59,13 @@
         "x": 0,
         "y": 1
       },
-      "shovePressed": false,
+      "targetPosition": null,
+      "grapplePressed": false,
       "dodgePressed": false,
+      "useSkillSlot": null,
       "useItemSlot": null,
-      "upgradeStat": null
+      "upgradeStat": null,
+      "upgradeSkillSlot": null
     },
     {
       "commandVersion": 1,
@@ -61,10 +75,13 @@
         "x": -1,
         "y": 0
       },
-      "shovePressed": false,
+      "targetPosition": null,
+      "grapplePressed": false,
       "dodgePressed": false,
+      "useSkillSlot": null,
       "useItemSlot": null,
-      "upgradeStat": null
+      "upgradeStat": null,
+      "upgradeSkillSlot": null
     },
     {
       "commandVersion": 1,
@@ -74,33 +91,36 @@
         "x": 0,
         "y": -1
       },
-      "shovePressed": false,
+      "targetPosition": null,
+      "grapplePressed": false,
       "dodgePressed": false,
+      "useSkillSlot": null,
       "useItemSlot": null,
-      "upgradeStat": null
+      "upgradeStat": null,
+      "upgradeSkillSlot": null
     }
   ],
   "checkpoints": [
     {
       "tick": 30,
-      "stateHash": "fnv1a32:9fb2013f"
+      "stateHash": "fnv1a32:2021d333"
     },
     {
       "tick": 60,
-      "stateHash": "fnv1a32:49df3bca"
+      "stateHash": "fnv1a32:f9601898"
     },
     {
       "tick": 90,
-      "stateHash": "fnv1a32:99c9b088"
+      "stateHash": "fnv1a32:2ffc347e"
     },
     {
       "tick": 120,
-      "stateHash": "fnv1a32:46dfdd18"
+      "stateHash": "fnv1a32:805eac9e"
     },
     {
       "tick": 180,
-      "stateHash": "fnv1a32:d03d4f42"
+      "stateHash": "fnv1a32:9a978f70"
     }
   ],
-  "finalHash": "fnv1a32:d03d4f42"
+  "finalHash": "fnv1a32:9a978f70"
 }

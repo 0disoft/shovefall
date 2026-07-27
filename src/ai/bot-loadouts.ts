@@ -1,25 +1,25 @@
-import type { ActorId, ItemDefinitionId } from "../simulation/contracts";
+import { SKILL_DEFINITION_IDS } from "../content/skills";
+import {
+  MAXIMUM_PARTICIPANT_COUNT,
+  type ActorId,
+  type ItemDefinitionId,
+  type SkillDefinitionId,
+} from "../simulation/contracts";
 import { RandomStreamSet, type SeedInput } from "../simulation/random";
 
-const PASSIVE_ITEMS = Object.freeze([
-  "iron-boots",
-  "feather",
-  "spring-glove",
-] as const satisfies readonly ItemDefinitionId[]);
 const ACTIVE_ITEMS = Object.freeze([
   "wind-blast",
   "brick-bag",
   "boat",
   "bomb",
   "soap",
-  "grappling-hook",
 ] as const satisfies readonly ItemDefinitionId[]);
-export type BotPassiveItemId = (typeof PASSIVE_ITEMS)[number];
 export type BotActiveItemId = (typeof ACTIVE_ITEMS)[number];
 
 export interface BotLoadoutAssignment {
   readonly actorId: ActorId;
-  readonly startingItems: readonly [BotPassiveItemId, BotActiveItemId];
+  readonly startingItems: readonly [BotActiveItemId];
+  readonly startingSkills: readonly [SkillDefinitionId, SkillDefinitionId];
 }
 
 export function createBotLoadoutAssignments(
@@ -27,12 +27,17 @@ export function createBotLoadoutAssignments(
   participantCount: number,
   humanActorId: ActorId | null,
 ): readonly BotLoadoutAssignment[] {
-  if (!Number.isSafeInteger(participantCount) || participantCount < 2 || participantCount > 50) {
-    throw new Error("bot loadout participantCount must be an integer from 2 through 50");
+  if (
+    !Number.isSafeInteger(participantCount) ||
+    participantCount < 2 ||
+    participantCount > MAXIMUM_PARTICIPANT_COUNT
+  ) {
+    throw new Error(
+      `bot loadout participantCount must be an integer from 2 through ${MAXIMUM_PARTICIPANT_COUNT}`,
+    );
   }
 
   const random = new RandomStreamSet(masterSeed).get("bot-loadouts");
-  const passiveOffset = random.nextUint32() % PASSIVE_ITEMS.length;
   const activeOffset = random.nextUint32() % ACTIVE_ITEMS.length;
   const activeStep = random.nextUint32() % 2 === 0 ? 1 : ACTIVE_ITEMS.length - 1;
   const assignments: BotLoadoutAssignment[] = [];
@@ -43,17 +48,20 @@ export function createBotLoadoutAssignments(
     }
 
     const botIndex = assignments.length;
-    const passive = PASSIVE_ITEMS[(botIndex + passiveOffset) % PASSIVE_ITEMS.length];
     const active = ACTIVE_ITEMS[(botIndex * activeStep + activeOffset) % ACTIVE_ITEMS.length];
 
-    if (passive === undefined || active === undefined) {
+    if (active === undefined) {
       throw new Error(`bot loadout assignment failed for actor ${actorId}`);
     }
 
     assignments.push(
       Object.freeze({
         actorId,
-        startingItems: Object.freeze([passive, active] as const),
+        startingItems: Object.freeze([active] as const),
+        startingSkills: Object.freeze([
+          SKILL_DEFINITION_IDS[botIndex % SKILL_DEFINITION_IDS.length]!,
+          SKILL_DEFINITION_IDS[(botIndex + 4) % SKILL_DEFINITION_IDS.length]!,
+        ] as const),
       }),
     );
   }
@@ -61,5 +69,4 @@ export function createBotLoadoutAssignments(
   return Object.freeze(assignments);
 }
 
-export const BOT_PASSIVE_ITEM_IDS = PASSIVE_ITEMS;
 export const BOT_ACTIVE_ITEM_IDS = ACTIVE_ITEMS;

@@ -1,14 +1,20 @@
-import { getItemDefinition, ITEM_DEFINITION_IDS, MAP_ITEM_DEFINITION_IDS } from "../content/items";
+import {
+  DROPPABLE_ITEM_DEFINITION_IDS,
+  getItemDefinition,
+  ITEM_DEFINITION_IDS,
+} from "../content/items";
 import type {
   ActorId,
   EffectInstance,
   GameConfigV1,
+  GiftDeliveryState,
   ItemDefinitionId,
   ItemId,
   ItemState,
   InventorySlotIndex,
   InventorySlotState,
   ParticipantState,
+  TreasureShipState,
   Tick,
   TileState,
 } from "./contracts";
@@ -31,12 +37,24 @@ const ITEM_SPAWN_WEIGHTS = Object.freeze({
   interior: 1,
 } as const);
 const ITEM_SPAWN_BANDS = Object.freeze(["edge", "near-edge", "interior"] as const);
+const TREASURE_SHIP_ID = 1;
+const TREASURE_SHIP_ORBIT_TICKS = 2_400;
+const TREASURE_SHIP_OFFSHORE_MARGIN = 3.5;
+const GIFT_DELIVERY_FLIGHT_TICKS = 72;
+const NEARBY_DELIVERY_CANDIDATE_COUNT = 16;
 
 export type ItemSpawnBand = keyof typeof ITEM_SPAWN_WEIGHTS;
 
 interface ItemSpawnCandidate {
   readonly position: Vector2;
   readonly band: ItemSpawnBand;
+}
+
+interface TreasureRouteBounds {
+  readonly centerX: number;
+  readonly centerY: number;
+  readonly radiusX: number;
+  readonly radiusY: number;
 }
 
 export interface ItemSpawnOverride {
@@ -48,9 +66,12 @@ export interface ItemSpawnOverride {
 
 export interface ItemSystemState {
   readonly items: readonly ItemState[];
+  readonly giftDeliveries: readonly GiftDeliveryState[];
   readonly nextItemId: ItemId;
+  readonly nextDeliveryId: number;
   readonly nextSpawnTick: Tick | null;
   readonly initialSafeTileCount: number;
+  readonly treasureRoute: TreasureRouteBounds;
 }
 
 export interface ItemEventFact {
@@ -75,7 +96,11 @@ function isItemEligibleParticipant(participant: ParticipantState): boolean {
   return (
     participant.active &&
     participant.action.kind !== "Falling" &&
-    participant.action.kind !== "Eliminated"
+    participant.action.kind !== "Eliminated" &&
+    ([0] as const).some((slotIndex) => {
+      const slot = participant.inventory.find((candidate) => candidate.slotIndex === slotIndex);
+      return slot === undefined || slot.charges === 0;
+    })
   );
 }
 
@@ -85,6 +110,35 @@ function getStableTiles(tiles: readonly TileState[]): readonly TileState[] {
 
 function getTileCenter(tile: TileState): Vector2 {
   return Object.freeze({ x: tile.column + 0.5, y: tile.row + 0.5 });
+}
+
+function createTreasureRoute(tiles: readonly TileState[]): TreasureRouteBounds {
+  const columns = tiles.map(({ column }) => column);
+  const rows = tiles.map(({ row }) => row);
+  const minimumColumn = Math.min(...columns);
+  const maximumColumn = Math.max(...columns);
+  const minimumRow = Math.min(...rows);
+  const maximumRow = Math.max(...rows);
+
+  return Object.freeze({
+    centerX: (minimumColumn + maximumColumn + 1) / 2,
+    centerY: (minimumRow + maximumRow + 1) / 2,
+    radiusX: (maximumColumn - minimumColumn + 1) / 2 + TREASURE_SHIP_OFFSHORE_MARGIN,
+    radiusY: (maximumRow - minimumRow + 1) / 2 + TREASURE_SHIP_OFFSHORE_MARGIN,
+  });
+}
+
+export function getTreasureShipState(state: ItemSystemState, tick: Tick): TreasureShipState {
+  const phase = ((tick % TREASURE_SHIP_ORBIT_TICKS) / TREASURE_SHIP_ORBIT_TICKS) * Math.PI * 2;
+  const { centerX, centerY, radiusX, radiusY } = state.treasureRoute;
+
+  return Object.freeze({
+    shipId: TREASURE_SHIP_ID,
+    position: Object.freeze({
+      x: centerX + Math.cos(phase - Math.PI / 2) * radiusX,
+      y: centerY + Math.sin(phase - Math.PI / 2) * radiusY,
+    }),
+  });
 }
 
 function getItemSpawnBandFromStableTiles(
@@ -151,6 +205,7 @@ function getSpawnCandidates(
 function chooseCandidate(
   candidates: readonly ItemSpawnCandidate[],
   random: XorShift32,
+  deliveryOrigin?: Vector2,
 ): Vector2 | undefined {
   if (candidates.length === 0) {
     return undefined;
@@ -169,7 +224,23 @@ function chooseCandidate(
     const weight = ITEM_SPAWN_WEIGHTS[band];
 
     if (selection < weight) {
-      return bandCandidates[random.nextUint32() % bandCandidates.length]?.position;
+      const selectableCandidates =
+        deliveryOrigin === undefined
+          ? bandCandidates
+          : bandCandidates
+              .toSorted((left, right) => {
+                const leftX = left.position.x - deliveryOrigin.x;
+                const leftY = left.position.y - deliveryOrigin.y;
+                const rightX = right.position.x - deliveryOrigin.x;
+                const rightY = right.position.y - deliveryOrigin.y;
+                return (
+                  leftX * leftX + leftY * leftY - (rightX * rightX + rightY * rightY) ||
+                  left.position.y - right.position.y ||
+                  left.position.x - right.position.x
+                );
+              })
+              .slice(0, NEARBY_DELIVERY_CANDIDATE_COUNT);
+      return selectableCandidates[random.nextUint32() % selectableCandidates.length]?.position;
     }
 
     selection -= weight;
@@ -178,9 +249,32 @@ function chooseCandidate(
   return candidates.at(-1)?.position;
 }
 
+function createGiftDelivery(
+  state: ItemSystemState,
+  target: Vector2,
+  origin: Vector2,
+  tick: Tick,
+  random: XorShift32,
+): GiftDeliveryState {
+  const definitionId =
+    DROPPABLE_ITEM_DEFINITION_IDS[random.nextUint32() % DROPPABLE_ITEM_DEFINITION_IDS.length] ??
+    "bomb";
+
+  return Object.freeze({
+    deliveryId: state.nextDeliveryId,
+    itemId: state.nextItemId,
+    definitionId,
+    origin: Object.freeze({ ...origin }),
+    target: Object.freeze({ ...target }),
+    launchTick: tick,
+    impactTick: tick + GIFT_DELIVERY_FLIGHT_TICKS,
+  });
+}
+
 function createItem(itemId: ItemId, position: Vector2, tick: Tick, random: XorShift32): ItemState {
   const definitionId =
-    MAP_ITEM_DEFINITION_IDS[random.nextUint32() % MAP_ITEM_DEFINITION_IDS.length] ?? "iron-boots";
+    DROPPABLE_ITEM_DEFINITION_IDS[random.nextUint32() % DROPPABLE_ITEM_DEFINITION_IDS.length] ??
+    "bomb";
   return Object.freeze({ itemId, definitionId, position, spawnedTick: tick });
 }
 
@@ -262,17 +356,21 @@ export function createItemSystem(
   participants: readonly ParticipantState[],
   random: XorShift32,
   overrides?: readonly ItemSpawnOverride[],
+  blockedTileIds: ReadonlySet<string> = new Set(),
 ): ItemSystemState {
   const initialSafeTileCount = getStableTiles(tiles).length;
   let state: ItemSystemState = Object.freeze({
     items: overrides === undefined ? Object.freeze([]) : validateOverrides(overrides),
+    giftDeliveries: Object.freeze([]),
     nextItemId:
       overrides === undefined ? 1 : Math.max(0, ...overrides.map(({ itemId }) => itemId)) + 1,
+    nextDeliveryId: 1,
     nextSpawnTick:
       config.itemsEnabled && config.itemSpawnIntervalTicks > 0
         ? config.itemSpawnIntervalTicks
         : null,
     initialSafeTileCount,
+    treasureRoute: createTreasureRoute(tiles),
   });
 
   if (!config.itemsEnabled || overrides !== undefined) {
@@ -280,7 +378,7 @@ export function createItemSystem(
   }
 
   for (let index = 0; index < config.initialItemCount; index += 1) {
-    const next = spawnOne(state, tiles, participants, 0, random);
+    const next = spawnOne(state, tiles, participants, 0, random, blockedTileIds);
 
     if (next.fact === undefined) {
       break;
@@ -341,21 +439,23 @@ export function expireEffects(
   });
 }
 
-function applyItemEffect(
+export function applyTimedDefinitionEffect(
   participant: ParticipantState,
   definitionId: ItemDefinitionId,
   tick: Tick,
+  durationTicks?: number,
 ): ParticipantState {
   const definition = getItemDefinition(definitionId);
-
-  if (!definition.mapSpawnEligible) {
-    throw new SimulationContractError(`item ${definitionId} cannot be applied as a map pickup`);
-  }
 
   const effect: EffectInstance = Object.freeze({
     definitionId,
     appliedTick: tick,
-    endsTick: definition.durationTicks === null ? null : tick + definition.durationTicks,
+    endsTick:
+      durationTicks === undefined
+        ? definition.durationTicks === null
+          ? null
+          : tick + definition.durationTicks
+        : tick + durationTicks,
   });
   const effects = Object.freeze(
     [
@@ -364,6 +464,48 @@ function applyItemEffect(
     ].toSorted((left, right) => left.definitionId.localeCompare(right.definitionId)),
   );
   return withEffectiveMass(Object.freeze({ ...participant, effects }));
+}
+
+function addMapItemToInventory(
+  participant: ParticipantState,
+  definitionId: ItemDefinitionId,
+): ParticipantState | undefined {
+  const availableSlots = [0] as const;
+  const slotIndex = availableSlots.find((candidate) => {
+    const slot = participant.inventory.find(
+      (inventorySlot) => inventorySlot.slotIndex === candidate,
+    );
+    return slot === undefined || slot.charges === 0;
+  });
+
+  if (slotIndex === undefined) {
+    return undefined;
+  }
+
+  const definition = getItemDefinition(definitionId);
+  if (definition.loadoutKind !== "active" || definition.startingCharges === null) {
+    return undefined;
+  }
+
+  return Object.freeze({
+    ...participant,
+    inventory: Object.freeze(
+      [
+        ...participant.inventory.filter((slot) => slot.slotIndex !== slotIndex),
+        Object.freeze({ slotIndex, definitionId, charges: definition.startingCharges }),
+      ].toSorted((left, right) => left.slotIndex - right.slotIndex),
+    ),
+  });
+}
+
+function applyMapPickup(
+  participant: ParticipantState,
+  definitionId: ItemDefinitionId,
+  tick: Tick,
+): ParticipantState | undefined {
+  return getItemDefinition(definitionId).loadoutKind === "passive"
+    ? applyTimedDefinitionEffect(participant, definitionId, tick)
+    : addMapItemToInventory(participant, definitionId);
 }
 
 export function applyStartingItems(
@@ -423,15 +565,13 @@ export function consumeInventoryCharge(
     return undefined;
   }
 
+  const nextCharges = slot.charges - 1;
   return Object.freeze({
     ...participant,
     inventory: Object.freeze(
       participant.inventory.map((candidate) =>
         candidate.slotIndex === slotIndex
-          ? Object.freeze({
-              ...candidate,
-              charges: candidate.charges === null ? null : candidate.charges - 1,
-            })
+          ? Object.freeze({ ...candidate, charges: nextCharges })
           : candidate,
       ),
     ),
@@ -565,7 +705,11 @@ export function resolveItemPickups(
     participantsById ??= new Map(
       participants.map((participant) => [participant.actorId, participant] as const),
     );
-    participantsById.set(winner.actorId, applyItemEffect(winner, item.definitionId, tick));
+    const updatedWinner = applyMapPickup(winner, item.definitionId, tick);
+    if (updatedWinner === undefined) {
+      continue;
+    }
+    participantsById.set(winner.actorId, updatedWinner);
     pickedItemIds.add(item.itemId);
     facts.push(
       Object.freeze({
@@ -616,8 +760,9 @@ export function advanceItemSpawns(
   blockedTileIds: ReadonlySet<string> = new Set(),
 ): ItemSpawnResult {
   const spawnDue = state.nextSpawnTick !== null && tick >= state.nextSpawnTick;
+  const deliveryDue = state.giftDeliveries.some(({ impactTick }) => tick >= impactTick);
 
-  if (!arenaChanged && !spawnDue) {
+  if (!arenaChanged && !spawnDue && !deliveryDue) {
     return Object.freeze({ state, facts: Object.freeze([]) });
   }
 
@@ -649,7 +794,51 @@ export function advanceItemSpawns(
     );
   }
 
-  let nextState: ItemSystemState = Object.freeze({ ...state, items: Object.freeze(retained) });
+  const stableTileIds = new Set(
+    tiles.filter(({ state: tileState }) => tileState === "Stable").map(({ tileId }) => tileId),
+  );
+  const futureDeliveries: GiftDeliveryState[] = [];
+  const landedItems: ItemState[] = [];
+
+  for (const delivery of state.giftDeliveries.toSorted(
+    (left, right) => left.impactTick - right.impactTick || left.deliveryId - right.deliveryId,
+  )) {
+    if (delivery.impactTick > tick) {
+      futureDeliveries.push(delivery);
+      continue;
+    }
+
+    const targetTileId: TileState["tileId"] = `${Math.floor(delivery.target.x)}:${Math.floor(delivery.target.y)}`;
+
+    if (
+      retained.length + landedItems.length >= cap ||
+      !stableTileIds.has(targetTileId) ||
+      blockedTileIds.has(targetTileId)
+    ) {
+      continue;
+    }
+
+    const item = Object.freeze({
+      itemId: delivery.itemId,
+      definitionId: delivery.definitionId,
+      position: delivery.target,
+      spawnedTick: tick,
+    });
+    landedItems.push(item);
+    facts.push(
+      Object.freeze({
+        kind: "item-spawned",
+        itemId: item.itemId,
+        itemDefinitionId: item.definitionId,
+      }),
+    );
+  }
+
+  let nextState: ItemSystemState = Object.freeze({
+    ...state,
+    items: Object.freeze([...retained, ...landedItems]),
+    giftDeliveries: Object.freeze(futureDeliveries),
+  });
 
   if (!config.itemsEnabled || nextState.nextSpawnTick === null || !spawnDue) {
     return Object.freeze({ state: nextState, facts: Object.freeze(facts) });
@@ -660,12 +849,22 @@ export function advanceItemSpawns(
     nextSpawnTick: tick + config.itemSpawnIntervalTicks,
   });
 
-  if (nextState.items.length < cap) {
-    const spawned = spawnOne(nextState, tiles, participants, tick, random, blockedTileIds);
-    nextState = spawned.state;
+  if (nextState.items.length + nextState.giftDeliveries.length < cap) {
+    const treasureShip = getTreasureShipState(nextState, tick);
+    const target = chooseCandidate(
+      getSpawnCandidates(tiles, participants, nextState.items, blockedTileIds),
+      random,
+      treasureShip.position,
+    );
 
-    if (spawned.fact !== undefined) {
-      facts.push(spawned.fact);
+    if (target !== undefined && nextState.giftDeliveries.length === 0) {
+      const delivery = createGiftDelivery(nextState, target, treasureShip.position, tick, random);
+      nextState = Object.freeze({
+        ...nextState,
+        giftDeliveries: Object.freeze([delivery]),
+        nextItemId: nextState.nextItemId + 1,
+        nextDeliveryId: nextState.nextDeliveryId + 1,
+      });
     }
   }
 

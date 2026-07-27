@@ -1,8 +1,8 @@
 {
-  "formatVersion": 2,
-  "productVersion": "0.39.1",
-  "simulationVersion": "20.0.0",
-  "contentVersion": "14.0.0",
+  "formatVersion": 5,
+  "productVersion": "0.69.0",
+  "simulationVersion": "41.0.0",
+  "contentVersion": "25.0.0",
   "buildId": "fixture-v4",
   "config": {
     "configVersion": 1,
@@ -22,24 +22,32 @@
   "masterSeed": "idle-four-v1",
   "humanActorId": 1,
   "humanSetup": {
-    "baseMassFactor": 1,
-    "startingItems": []
+    "startingAttributes": {
+      "strength": 4,
+      "agility": 4,
+      "constitution": 4,
+      "spirit": 4,
+      "balance": 4,
+      "willpower": 0
+    },
+    "startingItems": [],
+    "startingSkills": ["force-palm", "blink-step"]
   },
   "endTick": 180,
   "commands": [],
   "checkpoints": [
     {
       "tick": 60,
-      "stateHash": "fnv1a32:43ff7171"
+      "stateHash": "fnv1a32:8a26fbd0"
     },
     {
       "tick": 120,
-      "stateHash": "fnv1a32:7e7d581c"
+      "stateHash": "fnv1a32:1c9d3767"
     },
     {
       "tick": 180,
-      "stateHash": "fnv1a32:091b8eae"
+      "stateHash": "fnv1a32:44b7c33d"
     }
   ],
-  "finalHash": "fnv1a32:091b8eae"
+  "finalHash": "fnv1a32:44b7c33d"
 }

@@ -1,14 +1,14 @@
 # Round and strategy audit
 
-## Current `0.39.1` contract
+## Current `0.45.0` contract
 
-- Product/simulation/content: `0.39.1 / 20.0.0 / 14.0.0`
+- Product/simulation/content: `0.45.0 / 25.0.0 / 17.0.0`
 - Public mode: 50 participants, Hard AI, fixed Slow collapse
 - Public map: `48×40`, exactly 12 separated 5–9-tile lakes under a 96-tile budget
 - Public round limit: 120 seconds
-- Public item policy: 8 initial items and one spawn every 4 seconds
+- Public item policy: 8 pre-delivered initial items and one 72-tick treasure gift launched every 4 seconds when capacity permits
 
-Both `audit:strategy` and production `audit:rounds` consume the exported 120-second public limit instead of preserving their former 75-second copy. Controlled mass, item, and collapse experiments retain their bounded 75-second diagnostic horizon because they are not public-mode duration claims. All prior numeric tables below are historical evidence for their named versions and must not be relabeled as `0.39.1` results. Fresh strategy and production audit evidence remains pending after the final rules commit.
+Both `audit:strategy` and production `audit:rounds` consume the exported 120-second public limit instead of preserving their former 75-second copy. Controlled mass, item, and collapse experiments retain their bounded 75-second diagnostic horizon because they are not public-mode duration claims. All prior numeric tables below are historical evidence for their named versions and must not be relabeled as `0.45.0` results. Fresh strategy and production audit evidence remains pending after the health, skill, opening-collapse, treasure-delivery, and branching-progression contract changes. The browser-local scoreboard, tree connectors, and treasure-ship rendering are presentation state; delivery timing and bot upgrade eligibility alter audit outcomes.
 
 ## Protected-core pressure `0.34.0` status
 

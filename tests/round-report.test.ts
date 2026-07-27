@@ -9,7 +9,14 @@ const SETTINGS = normalizeSettings({
   initialItemCount: 6,
   itemRespawnSeconds: 5,
   collapseSpeed: "slow",
-  startingWeight: 75,
+  startingAttributes: {
+    strength: 4,
+    agility: 4,
+    constitution: 4,
+    spirit: 4,
+    balance: 4,
+    willpower: 0,
+  },
 });
 
 function createFrame(round: RenderFrameV1["round"]): RenderFrameV1 {
@@ -37,17 +44,25 @@ describe("playtest round reports", () => {
     );
 
     expect(report).toMatchObject({
-      schemaVersion: "shovefall-playtest-round/v6",
+      schemaVersion: "shovefall-playtest-round/v9",
       seed: "0000000800000000",
       settings: {
         preset: "massive",
-        participantCount: 50,
+        participantCount: 60,
         botDifficulty: "hard",
         collapseSpeed: "slow",
         initialItemCount: 8,
-        itemRespawnSeconds: 4,
-        startingWeight: 75,
-        startingItems: ["iron-boots", "spring-glove"],
+        itemRespawnSeconds: 7,
+        startingAttributes: {
+          strength: 4,
+          agility: 4,
+          constitution: 4,
+          spirit: 4,
+          balance: 4,
+          willpower: 0,
+        },
+        startingItems: ["bomb"],
+        startingSkills: ["force-palm", "blink-step"],
         roundLimitSeconds: 120,
       },
       gameplayTuning: DEFAULT_GAMEPLAY_TUNING,
@@ -61,14 +76,15 @@ describe("playtest round reports", () => {
           statPoints: 0,
           creditedEliminations: 0,
           stats: { power: 0, stability: 0, mobility: 0, reflex: 0 },
+          skillRanks: [0, 0, 0],
         },
         humanUpgradeSelections: [{ tick: 720, stat: "stability" }],
       },
     });
     expect(report.versions).toEqual({
-      product: "0.39.1",
-      simulation: "20.0.0",
-      content: "14.0.0",
+      product: "0.69.0",
+      simulation: "41.0.0",
+      content: "25.0.0",
     });
     expect(JSON.parse(serializePlaytestRoundReport(report))).toEqual(report);
   });

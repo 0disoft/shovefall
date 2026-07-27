@@ -4,7 +4,7 @@ import { createNeutralCommand, normalizeGameConfig } from "../src/simulation/con
 import { SimulationWorld } from "../src/simulation/world";
 
 const PROFILE_TICKS = 120 * 60;
-const PARTICIPANT_COUNTS = [50] as const;
+const PARTICIPANT_COUNTS = [60] as const;
 
 interface Percentiles {
   readonly p50: number;
@@ -117,7 +117,7 @@ function profileParticipantCount(participantCount: number) {
             y: Math.floor(arenaSize.rows / 2) + 4.5,
           },
           facing: { x: 1, y: 0 },
-          startingItems: ["grappling-hook"],
+          startingItems: ["soap"],
         },
       ],
     });
@@ -148,7 +148,7 @@ function profileParticipantCount(participantCount: number) {
               {
                 ...createNeutralCommand(world.tick, 4),
                 move: { x: 1, y: 0 },
-                useItemSlot: world.tick === 20 || world.tick === 33 ? (0 as const) : null,
+                grapplePressed: world.tick === 20,
               },
             ]
           : []),
@@ -231,7 +231,7 @@ function profileParticipantCount(participantCount: number) {
 }
 
 const profiles = PARTICIPANT_COUNTS.map(profileParticipantCount);
-const thresholds = new Map([[50, 10]]);
+const thresholds = new Map([[60, 10]]);
 const ok = profiles.every(
   (profile) =>
     profile.simulationMilliseconds.p95 <= (thresholds.get(profile.participantCount) ?? 0) &&
@@ -253,7 +253,7 @@ process.stdout.write(
       profiles,
       limitations: [
         "This measures hard-difficulty headless AI plus simulation on the current workstation, not browser rendering.",
-        "Each round gives actors 2 and 3 Bomb, keeps them neutral through tick 12, and forces both placements and detonations on the same ticks while actor 1 exercises Brick Bag and Soap and actor 4 attempts both Grappling Hook charges.",
+        "Each round gives actors 2 and 3 Bomb, keeps them neutral through tick 12, and forces both placements and detonations on the same ticks while actor 1 exercises Brick Bag and Soap and actor 4 attempts the built-in grapple.",
         "Heap deltas are observational because the harness does not force garbage collection.",
       ],
     },

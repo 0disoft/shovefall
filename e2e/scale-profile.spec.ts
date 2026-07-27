@@ -1,7 +1,7 @@
 import { expect, test, type CDPSession, type Page } from "@playwright/test";
 
 interface FrameProfile {
-  readonly workload: "brick-bomb" | "grappling-bomb";
+  readonly workload: "brick-grapple" | "grapple-bomb";
   readonly participantCount: number;
   readonly botDifficulty: "hard";
   readonly seed: string;
@@ -22,16 +22,16 @@ interface BrowserHeapUsage {
 
 const PROFILE_CASES = Object.freeze([
   {
-    workload: "brick-bomb",
-    participantCount: 50,
+    workload: "brick-grapple",
+    participantCount: 60,
     seed: "0000003200000000",
     seedWords: [50, 0],
     p95Budget: 25,
     tickRateBudget: 45,
   },
   {
-    workload: "grappling-bomb",
-    participantCount: 50,
+    workload: "grapple-bomb",
+    participantCount: 60,
     seed: "0000003200000001",
     seedWords: [50, 1],
     p95Budget: 25,
@@ -49,7 +49,6 @@ const STARTING_ITEM_IDS = Object.freeze([
   "boat",
   "bomb",
   "soap",
-  "grappling-hook",
 ] as const);
 
 function percentile(values: readonly number[], fraction: number): number {
@@ -156,7 +155,8 @@ async function useProfileBrickBag(
   await page.keyboard.down(direction);
   await page.waitForTimeout(80);
   await page.keyboard.up(direction);
-  await page.keyboard.press("KeyQ");
+  await page.keyboard.press("KeyD");
+  await page.keyboard.press("KeyD");
 
   if ((await page.locator("#use-item-slot-0").textContent())?.includes("3회") === true) {
     return;
@@ -165,9 +165,8 @@ async function useProfileBrickBag(
   return useProfileBrickBag(page, directions, index + 1);
 }
 
-async function useProfileGrapplingHook(
+async function useProfileGrapple(
   page: Page,
-  remainingCharges: 0 | 1,
   directions: readonly string[] = ["ArrowUp", "ArrowRight", "ArrowDown", "ArrowLeft"],
   index = 0,
 ): Promise<void> {
@@ -180,16 +179,16 @@ async function useProfileGrapplingHook(
   await page.keyboard.down(direction);
   await page.waitForTimeout(80);
   await page.keyboard.up(direction);
+  await expect(page.locator("#use-grapple")).toBeEnabled();
   await page.keyboard.press("KeyE");
+  await page.keyboard.press("KeyE");
+  await page.waitForTimeout(100);
 
-  if (
-    (await page.locator("#use-item-slot-1").textContent())?.includes(`${remainingCharges}회`) ===
-    true
-  ) {
+  if ((await page.locator("#use-grapple").getAttribute("data-state")) !== "ready") {
     return;
   }
 
-  return useProfileGrapplingHook(page, remainingCharges, directions, index + 1);
+  return useProfileGrapple(page, directions, index + 1);
 }
 
 async function profileCases(page: Page, index: number, profiles: FrameProfile[]): Promise<void> {
@@ -211,40 +210,28 @@ async function profileCases(page: Page, index: number, profiles: FrameProfile[])
     ),
   );
 
-  if (profileCase.workload === "brick-bomb") {
+  if (profileCase.workload === "brick-grapple") {
     await page.locator('input[name="startingItem"][value="brick-bag"]').check();
-    await page.locator('input[name="startingItem"][value="bomb"]').check();
   } else {
     await page.locator('input[name="startingItem"][value="bomb"]').check();
-    await page.locator('input[name="startingItem"][value="grappling-hook"]').check();
   }
   await page.getByRole("button", { name: "설정 저장" }).click();
   await page.getByRole("button", { name: "게임 시작" }).click();
   await expect(page.locator("#app")).toHaveAttribute("data-round", "active");
   await expect(page.locator("#app")).toHaveAttribute("data-bot-difficulty", "hard");
-  if (profileCase.workload === "brick-bomb") {
+  if (profileCase.workload === "brick-grapple") {
     await expect(page.locator("#use-item-slot-0")).toContainText("벽돌 가방 · 4회");
-    await expect(page.locator("#use-item-slot-1")).toContainText("시한폭탄 · 2회");
     await useProfileBrickBag(page);
     await expect(page.locator("#use-item-slot-0")).toContainText("벽돌 가방 · 3회");
-    await page.keyboard.press("KeyE");
-    await expect(page.locator("#use-item-slot-1")).toContainText("시한폭탄 · 1회");
   } else {
     await expect(page.locator("#use-item-slot-0")).toContainText("시한폭탄 · 2회");
-    await expect(page.locator("#use-item-slot-1")).toContainText("구조 갈고리 · 2회");
-    await useProfileGrapplingHook(page, 1);
-    await expect(page.locator("#use-item-slot-1")).toContainText("구조 갈고리 · 1회");
-    await expect(page.locator("#game-telemetry")).toHaveAttribute("data-action", "Ready");
-    await page.keyboard.press("KeyQ");
+    await page.keyboard.press("KeyD");
+    await page.keyboard.press("KeyD");
     await expect(page.locator("#use-item-slot-0")).toContainText("시한폭탄 · 1회");
+    await expect(page.getByText("폭탄을 놨어. 3.5초 뒤 터져.")).toBeVisible();
   }
-  await expect(page.getByText("폭탄을 놨어. 5초 뒤 터져.")).toBeVisible();
+  await useProfileGrapple(page);
   await page.waitForTimeout(PROFILE_CASE_STABILIZATION_MILLISECONDS);
-  if (profileCase.workload === "grappling-bomb") {
-    await expect(page.locator("#game-telemetry")).toHaveAttribute("data-action", "Ready");
-    await useProfileGrapplingHook(page, 0);
-    await expect(page.locator("#use-item-slot-1")).toContainText("구조 갈고리 · 0회");
-  }
   const profile = await collectFrameProfile(
     page,
     profileCase.workload,
@@ -272,7 +259,7 @@ async function collectHeapUsage(client: CDPSession): Promise<BrowserHeapUsage> {
   return client.send("Runtime.getHeapUsage");
 }
 
-test("@profile measures the production 50-participant browser budget", async ({
+test("@profile measures the production 60-participant browser budget", async ({
   page,
   context,
 }) => {

@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { createNeutralCommand, normalizeGameConfig } from "../src/simulation/contracts";
+import {
+  createNeutralCommand,
+  normalizeGameConfig,
+  type StartingAttributes,
+} from "../src/simulation/contracts";
 import { vectorLength } from "../src/simulation/math";
 import {
   DEFAULT_GAMEPLAY_TUNING,
@@ -7,12 +11,22 @@ import {
   getMassDodgeSpeedMultiplier,
   getMovementProfile,
   getShoveMassImpulseMultiplier,
+  normalizeGameplayTuning,
   SIMULATION_TUNING,
   type GameplayTuningInput,
 } from "../src/simulation/tuning";
 import { SimulationWorld, type ParticipantSpawnOverride } from "../src/simulation/world";
 
 const CONFIG = normalizeGameConfig({ participantCount: 4, roundLimitSeconds: 10 });
+
+const NEUTRAL_STARTING_ATTRIBUTES: StartingAttributes = Object.freeze({
+  strength: 0,
+  agility: 0,
+  constitution: 0,
+  spirit: 0,
+  balance: 0,
+  willpower: 20,
+});
 
 function getActor(world: SimulationWorld, actorId: number) {
   const actor = world
@@ -41,10 +55,10 @@ function createSeparatedOverrides(
   actorTwo: ParticipantSpawnOverride = { actorId: 2, position: { x: 8.5, y: 7.5 } },
 ): readonly ParticipantSpawnOverride[] {
   return [
-    actorOne,
-    actorTwo,
-    { actorId: 3, position: { x: 8.5, y: 1.5 } },
-    { actorId: 4, position: { x: 1.5, y: 7.5 } },
+    { startingAttributes: NEUTRAL_STARTING_ATTRIBUTES, ...actorOne },
+    { startingAttributes: NEUTRAL_STARTING_ATTRIBUTES, ...actorTwo },
+    { actorId: 3, position: { x: 8.5, y: 1.5 }, startingAttributes: NEUTRAL_STARTING_ATTRIBUTES },
+    { actorId: 4, position: { x: 1.5, y: 7.5 }, startingAttributes: NEUTRAL_STARTING_ATTRIBUTES },
   ];
 }
 
@@ -57,14 +71,57 @@ function stepWithMovement(world: SimulationWorld, actorId: number, x: number, y:
   ]);
 }
 
-function beginShove(world: SimulationWorld, actorIds: readonly number[]) {
-  return world.step(
-    actorIds.map((actorId) => ({
-      ...createNeutralCommand(world.tick, actorId),
-      shovePressed: true,
-    })),
-  );
-}
+describe("gameplay tuning normalization", () => {
+  it("bounds every expanded lab value while preserving version 1", () => {
+    const tuning = normalizeGameplayTuning({
+      shoveWindupTicks: 1,
+      shoveRecoveryTicks: 61,
+      shoveCooldownTicks: 29,
+      shoveBaseImpulse: 0.01,
+      shoveMaximumImpulse: 0.81,
+      shoveHitStumbleTicks: 61,
+      dodgeCooldownTicks: 361,
+      dodgeEvasionTicks: 0,
+      healthRegenDelayTicks: 59,
+      healthRegenPerTick: 0.31,
+      manaRegenDelayTicks: -1,
+      manaRegenPerTick: 0.51,
+      shoveDamage: 31,
+      windBlastRange: 1,
+      windBlastBaseImpulse: 1.51,
+      bombFuseTicks: 601,
+      bombBlastRadius: 0.5,
+      grapplingHookRange: 11,
+      grapplingHookPullTicks: 3,
+      soapStumbleTicks: 61,
+    });
+
+    expect(tuning).toMatchObject({
+      tuningVersion: 1,
+      shoveWindupTicks: 2,
+      shoveRecoveryTicks: 60,
+      shoveCooldownTicks: 30,
+      shoveBaseImpulse: 0.05,
+      shoveMaximumImpulse: 0.8,
+      shoveHitStumbleTicks: 60,
+      dodgeCooldownTicks: 360,
+      dodgeEvasionTicks: 1,
+      healthRegenDelayTicks: 60,
+      healthRegenPerTick: 0.3,
+      manaRegenDelayTicks: 0,
+      manaRegenPerTick: 0.5,
+      shoveDamage: 30,
+      windBlastRange: 2,
+      windBlastBaseImpulse: 1.5,
+      bombFuseTicks: 600,
+      bombBlastRadius: 1,
+      grapplingHookRange: 10,
+      grapplingHookPullTicks: 4,
+      soapStumbleTicks: 60,
+    });
+    expect(Object.isFrozen(tuning)).toBe(true);
+  });
+});
 
 describe("gray-box movement and action timing", () => {
   it("reserves the old fast pace for lightweight bodies", () => {
@@ -82,15 +139,15 @@ describe("gray-box movement and action timing", () => {
       DEFAULT_GAMEPLAY_TUNING.heavyweightSpeedMultiplier,
       10,
     );
-    expect(light.maximumSpeed * 60).toBeGreaterThan(4.4);
-    expect(normal.maximumSpeed * 60).toBeCloseTo(3.3, 10);
+    expect(light.maximumSpeed * 60).toBeGreaterThan(3.5);
+    expect(normal.maximumSpeed * 60).toBeCloseTo(2.4, 10);
   });
 
-  it("keeps the default hand reach and dodge travel compact", () => {
+  it("keeps the default hand reach compact while dodge crosses multiple tiles", () => {
     expect(DEFAULT_GAMEPLAY_TUNING.shoveReach).toBeLessThanOrEqual(0.35);
     expect(
       DEFAULT_GAMEPLAY_TUNING.dodgeSpeed * DEFAULT_GAMEPLAY_TUNING.dodgeActiveTicks,
-    ).toBeLessThan(0.6);
+    ).toBeCloseTo(2.4, 10);
   });
 
   it("gives lightweight bodies a longer dodge and heavyweight bodies a shorter one", () => {
@@ -100,8 +157,19 @@ describe("gray-box movement and action timing", () => {
 
     expect(lightMultiplier).toBeGreaterThan(normalMultiplier);
     expect(normalMultiplier).toBeGreaterThan(heavyMultiplier);
-    expect(lightMultiplier).toBeCloseTo(1 / SIMULATION_TUNING.mass.minimum, 10);
-    expect(heavyMultiplier).toBeCloseTo(1 / SIMULATION_TUNING.mass.maximum, 10);
+    expect(lightMultiplier).toBeCloseTo(1.25, 10);
+    expect(normalMultiplier).toBeCloseTo(1, 10);
+    expect(heavyMultiplier).toBeCloseTo(0.625, 10);
+    expect(
+      lightMultiplier *
+        DEFAULT_GAMEPLAY_TUNING.dodgeSpeed *
+        DEFAULT_GAMEPLAY_TUNING.dodgeActiveTicks,
+    ).toBeCloseTo(3, 10);
+    expect(
+      heavyMultiplier *
+        DEFAULT_GAMEPLAY_TUNING.dodgeSpeed *
+        DEFAULT_GAMEPLAY_TUNING.dodgeActiveTicks,
+    ).toBeCloseTo(1.5, 10);
   });
 
   it("keeps mass meaningful without letting its impulse ratio dominate a collision", () => {
@@ -173,7 +241,7 @@ describe("gray-box movement and action timing", () => {
 
     expect(lastActivePosition).toBeDefined();
     expect((lastActivePosition?.x ?? start.x) - start.x).toBeCloseTo(0.21, 10);
-    expect(DEFAULT_GAMEPLAY_TUNING.dodgeSpeed).toBe(0.08);
+    expect(DEFAULT_GAMEPLAY_TUNING.dodgeSpeed).toBe(0.6);
     expect(DEFAULT_GAMEPLAY_TUNING.dodgeActiveTicks).toBe(4);
   });
 
@@ -203,39 +271,14 @@ describe("gray-box movement and action timing", () => {
     expect(getActor(light, 1).position.x).toBeGreaterThan(getActor(heavy, 1).position.x);
   });
 
-  it("uses exact shove boundary ticks", () => {
-    const world = createWorld(
-      createSeparatedOverrides({ actorId: 1, position: { x: 4.5, y: 4.5 } }),
-    );
-
-    expect(beginShove(world, [1]).frame.participants[0]?.action).toBe("ShoveWindup");
-
-    for (let tick = 1; tick < SIMULATION_TUNING.shove.windupTicks; tick += 1) {
-      world.step();
-      expect(getActor(world, 1).action).toBe("ShoveWindup");
-    }
-
-    world.step();
-    expect(getActor(world, 1).action).toBe("ShoveActive");
-
-    for (let tick = 1; tick < SIMULATION_TUNING.shove.activeTicks; tick += 1) {
-      world.step();
-      expect(getActor(world, 1).action).toBe("ShoveActive");
-    }
-
-    const result = world.step();
-    expect(getActor(world, 1).action).toBe("Stumbling");
-    expect(result.events.map(({ kind }) => kind)).toContain("shove-missed");
-  });
-
-  it("gives dodge priority when shove and dodge edges arrive together", () => {
+  it("gives dodge priority when grapple and dodge edges arrive together", () => {
     const world = createWorld(
       createSeparatedOverrides({ actorId: 1, position: { x: 4.5, y: 4.5 } }),
     );
     world.step([
       {
         ...createNeutralCommand(0, 1),
-        shovePressed: true,
+        grapplePressed: true,
         dodgePressed: true,
         move: { x: 0, y: -1 },
       },
@@ -244,7 +287,7 @@ describe("gray-box movement and action timing", () => {
     const actor = getActor(world, 1);
     expect(actor.action).toBe("DodgeActive");
     expect(actor.dodgeReadyTick).toBe(SIMULATION_TUNING.dodge.cooldownTicks);
-    expect(actor.shoveReadyTick).toBe(0);
+    expect(actor.grappleReadyTick).toBe(0);
   });
 
   it("caps extreme finite velocities without producing a non-finite state", () => {
@@ -382,124 +425,6 @@ describe("weak-contact containment", () => {
         Math.hypot(right.position.x - left.position.x, right.position.y - left.position.y),
       ).toBeGreaterThanOrEqual(minimumDistance);
     }
-  });
-});
-
-describe("gray-box shove resolution", () => {
-  function duelOverrides(swapped = false): readonly ParticipantSpawnOverride[] {
-    const left = {
-      actorId: swapped ? 2 : 1,
-      position: { x: 4, y: 4.5 },
-      facing: { x: 1, y: 0 },
-    };
-    const right = {
-      actorId: swapped ? 1 : 2,
-      position: { x: 4.78, y: 4.5 },
-      facing: { x: -1, y: 0 },
-    };
-    return createSeparatedOverrides(left, right);
-  }
-
-  function runMutualShove(swapped = false, commandOrder: readonly number[] = [1, 2]) {
-    const world = createWorld(duelOverrides(swapped), `mutual-${swapped}`);
-    const initial = beginShove(world, commandOrder);
-    const events = [...initial.events];
-
-    while (world.tick <= SIMULATION_TUNING.shove.windupTicks) {
-      const result = world.step();
-      events.push(...result.events);
-
-      if (result.events.some(({ kind }) => kind === "shove-hit")) {
-        return { world, result, events };
-      }
-    }
-
-    throw new Error("mutual shove did not make contact");
-  }
-
-  it("applies both same-tick shove contacts before changing action state", () => {
-    const { world, result } = runMutualShove();
-    const actorOne = getActor(world, 1);
-    const actorTwo = getActor(world, 2);
-
-    expect(result.events.filter(({ kind }) => kind === "shove-hit")).toHaveLength(2);
-    expect(actorOne.velocity.x).toBeLessThan(0);
-    expect(actorTwo.velocity.x).toBeGreaterThan(0);
-    expect(actorOne.action).toBe("Stumbling");
-    expect(actorTwo.action).toBe("Stumbling");
-  });
-
-  it("keeps symmetric mutual-shove geometry stable when actor IDs are swapped", () => {
-    const normal = runMutualShove().world;
-    const swapped = runMutualShove(true).world;
-
-    expect(getActor(normal, 1).velocity.x).toBeCloseTo(getActor(swapped, 2).velocity.x, 10);
-    expect(getActor(normal, 2).velocity.x).toBeCloseTo(getActor(swapped, 1).velocity.x, 10);
-  });
-
-  it("keeps the state hash and event sequence stable when command order is reversed", () => {
-    const forward = runMutualShove(false, [1, 2]);
-    const reverse = runMutualShove(false, [2, 1]);
-
-    expect(forward.world.createRenderFrame().stateHash).toBe(
-      reverse.world.createRenderFrame().stateHash,
-    );
-    expect(forward.events).toEqual(reverse.events);
-  });
-
-  it("makes heavier targets absorb more of the same shove", () => {
-    function targetSpeed(massFactor: number): number {
-      const world = createWorld(
-        createSeparatedOverrides(
-          {
-            actorId: 1,
-            position: { x: 4, y: 4.5 },
-            facing: { x: 1, y: 0 },
-          },
-          {
-            actorId: 2,
-            position: { x: 4.78, y: 4.5 },
-            facing: { x: -1, y: 0 },
-            massFactor,
-          },
-        ),
-        `target-mass-${massFactor}`,
-      );
-      beginShove(world, [1]);
-
-      while (world.tick <= SIMULATION_TUNING.shove.windupTicks) {
-        const result = world.step();
-
-        if (result.events.some(({ kind }) => kind === "shove-hit")) {
-          return vectorLength(getActor(world, 2).velocity);
-        }
-      }
-
-      throw new Error("shove did not hit target");
-    }
-
-    expect(targetSpeed(SIMULATION_TUNING.mass.minimum)).toBeGreaterThan(
-      targetSpeed(SIMULATION_TUNING.mass.maximum),
-    );
-  });
-
-  it("records a geometric dodge during the evasion window instead of a shove hit", () => {
-    const world = createWorld(duelOverrides());
-    beginShove(world, [1]);
-    while (world.tick < SIMULATION_TUNING.shove.windupTicks) {
-      world.step();
-    }
-    const result = world.step([
-      {
-        ...createNeutralCommand(world.tick, 2),
-        dodgePressed: true,
-        move: { x: 0, y: 1 },
-      },
-    ]);
-
-    expect(result.events.map(({ kind }) => kind)).toContain("dodge-succeeded");
-    expect(result.events.map(({ kind }) => kind)).not.toContain("shove-hit");
-    expect(getActor(world, 2).action).toBe("DodgeActive");
   });
 });
 

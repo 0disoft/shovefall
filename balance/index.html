@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#0c0f0e" />
+    <title>바닥이 사라지는 술래잡기 · 자동 밸런스 통계</title>
+  </head>
+  <body>
+    <main id="balance-app" aria-labelledby="balance-title">
+      <header class="page-header">
+        <div>
+          <p class="eyebrow">40판 자동 검토</p>
+          <h1 id="balance-title">밸런스 통계</h1>
+          <p id="balance-error" class="page-error" role="alert" hidden></p>
+        </div>
+        <a href="../">게임으로</a>
+      </header>
+
+      <section class="analysis-panel" aria-labelledby="comparison-title">
+        <div class="section-heading">
+          <div>
+            <h2 id="comparison-title">비교</h2>
+            <p id="comparison-note"></p>
+          </div>
+          <label>
+            실행 조건
+            <select id="phase-filter">
+              <option value="controlled">제어 실험</option>
+              <option value="production">실제 규칙</option>
+            </select>
+          </label>
+        </div>
+        <nav id="category-tabs" class="category-tabs" aria-label="비교 대상"></nav>
+        <div class="table-scroll">
+          <table>
+            <caption id="comparison-caption"></caption>
+            <thead>
+              <tr>
+                <th scope="col">대상</th>
+                <th scope="col">표본</th>
+                <th scope="col">평균 순위</th>
+                <th scope="col">Top 10</th>
+                <th scope="col">Top 5</th>
+                <th scope="col">우승률</th>
+                <th scope="col">평균 생존</th>
+                <th scope="col">처치</th>
+                <th scope="col">피해</th>
+                <th scope="col">사용</th>
+                <th scope="col">신호</th>
+              </tr>
+            </thead>
+            <tbody id="comparison-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="analysis-panel" aria-labelledby="rounds-title">
+        <div class="section-heading">
+          <div>
+            <h2 id="rounds-title">라운드 흐름</h2>
+            <p>각 점은 한 판이 끝난 시간이다. 위로 갈수록 오래 걸렸다.</p>
+          </div>
+        </div>
+        <div id="duration-chart" class="chart-host"></div>
+        <details>
+          <summary>라운드 근거 펼치기</summary>
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">판</th>
+                  <th scope="col">시드</th>
+                  <th scope="col">시간</th>
+                  <th scope="col">종료</th>
+                  <th scope="col">우승 성향</th>
+                  <th scope="col">상태 해시</th>
+                </tr>
+              </thead>
+              <tbody id="round-body"></tbody>
+            </table>
+          </div>
+        </details>
+      </section>
+
+      <section class="analysis-panel" aria-labelledby="method-title">
+        <h2 id="method-title">방법과 한계</h2>
+        <div id="methodology" class="methodology"></div>
+      </section>
+    </main>
+    <script type="module" src="/src/balance/main.ts"></script>
+  </body>
+</html>

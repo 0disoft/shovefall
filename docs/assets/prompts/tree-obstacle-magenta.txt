@@ -1,0 +1,7 @@
+Create one production-ready game sprite of a sturdy tropical island tree for the 2.5D top-down web game "바닥이 사라지는 술래잡기".
+
+Output one isolated tree centered on a perfectly flat solid chroma-key magenta background (#ff00ff). Do not draw checkerboard pixels, scenery, a ground tile, border, frame, text, water, rocks, fruit, people, or additional trees. Keep the complete canopy and trunk at least 80 pixels from every edge.
+
+Use a three-quarter top-down camera matching a 58-degree elevated game view. The tree must read clearly at 56-96 CSS pixels: broad rounded green canopy, short thick brown trunk visible below it, compact dense silhouette, strong clean outer edge, friendly stylized hand-painted mobile-game rendering, moderate detail, no thin stray branches, no loose leaves or particles. Light from upper left with saturated natural green leaves, a warm brown trunk, and subtle dark teal ambient shading. A compact contact shadow may sit directly beneath the trunk.
+
+The sprite represents a solid collision obstacle that blocks walking and knockback, so it must look dense and immovable. Return a square 1024x1024 PNG with the magenta background perfectly uniform to support deterministic chroma-key alpha extraction.

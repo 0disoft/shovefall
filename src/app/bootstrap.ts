@@ -1,12 +1,16 @@
 import {
   FORCED_BOT_DIFFICULTY,
   getArenaSize,
-  getStartingMassFactor,
   normalizeSettings,
   PUBLIC_ROUND_LIMIT_SECONDS,
   type GameSettings,
 } from "./settings";
 import { createGameSession, type GameSession, type SessionTelemetry } from "./game-session";
+import {
+  createGrappleButtonViewModel,
+  createItemButtonViewModel,
+  createSkillButtonViewModel,
+} from "./action-hud";
 import { createDebugTuningController, type DebugTuningController } from "./debug-tuning";
 import { createPointerControls, type PointerControls } from "./pointer-controls";
 import {
@@ -15,17 +19,70 @@ import {
   serializePlaytestRoundReport,
 } from "./round-report";
 import { VERSION_HISTORY } from "./version-history";
-import type { SimulationEventV1, UpgradeStatId } from "../simulation/contracts";
+import {
+  createScoreboardEntry,
+  loadScoreboard,
+  saveScoreboardEntry,
+  type ScoreboardEntry,
+  type ScoreboardStorage,
+} from "./scoreboard";
+import type {
+  RenderFrameV1,
+  SimulationEventV1,
+  StartingAttributeId,
+  StartingAttributes,
+  UpgradeStatId,
+} from "../simulation/contracts";
 import { normalizeGameConfig } from "../simulation/contracts";
-import { DEFAULT_GAMEPLAY_TUNING, type GameplayTuningV1 } from "../simulation/tuning";
-import { isUpgradeStatId, MAX_UPGRADE_LEVEL, UPGRADE_STAT_IDS } from "../simulation/progression";
+import {
+  DEFAULT_GAMEPLAY_TUNING,
+  SIMULATION_TUNING,
+  type GameplayTuningV1,
+} from "../simulation/tuning";
+import {
+  getMobilityMultiplier,
+  getHealthRegenMultiplier,
+  getManaRegenMultiplier,
+  getMaximumHealth,
+  getMaximumMana,
+  getPowerMultiplier,
+  getReflexCooldownReduction,
+  getStabilityMultiplier,
+  isUpgradeStatId,
+  canSpendStatPoint,
+  MAX_UPGRADE_LEVEL,
+} from "../simulation/progression";
+import { formatSkillDescription, getSkillDefinition, isSkillDefinitionId } from "../content/skills";
+import {
+  formatItemEffectDescription,
+  getItemDefinition,
+  isItemDefinitionId,
+} from "../content/items";
 import { createArenaRenderer, type ArenaRenderer } from "../presentation/arena-renderer";
 import {
   createAudioFeedback,
   type AudioFeedback,
   type AudioFeedbackState,
 } from "../presentation/audio-feedback";
-import { PRODUCT_VERSION } from "../simulation/versions";
+import { FIXED_TICKS_PER_SECOND, PRODUCT_VERSION } from "../simulation/versions";
+import {
+  getStartingAttributePointTotal,
+  getStartingControlDurationMultiplier,
+  getStartingCooldownMultiplier,
+  getStartingDamageTakenMultiplier,
+  getStartingHealthRegenMultiplier,
+  getStartingIncomingImpulseMultiplier,
+  getStartingManaRegenMultiplier,
+  getStartingMassFactor,
+  getStartingMaximumHealthBonus,
+  getStartingMaximumManaBonus,
+  getStartingMovementMultiplier,
+  getStartingOutgoingMultiplier,
+  getStartingShieldMultiplier,
+  STARTING_ATTRIBUTE_IDS,
+  STARTING_ATTRIBUTE_LIMITS,
+  STARTING_ATTRIBUTE_POINT_TOTAL,
+} from "../simulation/starting-attributes";
 
 interface ElementConstructor<T extends Element> {
   new (): T;
@@ -57,24 +114,64 @@ const ACTION_LABELS = Object.freeze({
   Eliminated: "탈락",
 } as const);
 
-const ITEM_LABELS = Object.freeze({
-  "iron-boots": "철 장화",
-  feather: "깃털",
-  "spring-glove": "스프링 장갑",
-  "wind-blast": "장풍",
-  "brick-bag": "벽돌 가방",
-  boat: "배",
-  bomb: "시한폭탄",
-  soap: "비누",
-  "grappling-hook": "구조 갈고리",
-} as const);
-
 const UPGRADE_LABELS: Readonly<Record<UpgradeStatId, string>> = Object.freeze({
   power: "힘",
   stability: "중심",
   mobility: "발놀림",
   reflex: "반사신경",
+  vitality: "생명력",
+  focus: "집중력",
 });
+
+const SKILL_SLOT_INDICES = Object.freeze([0, 1] as const);
+const ITEM_SLOT_INDICES = Object.freeze([0] as const);
+const SETTINGS_TAB_IDS = Object.freeze(["attributes", "skills", "items", "lab"] as const);
+type SettingsTabId = (typeof SETTINGS_TAB_IDS)[number];
+const BASE_STARTING_HEALTH = 100;
+const BASE_STARTING_MANA = 100;
+const EMPTY_STARTING_ATTRIBUTES: StartingAttributes = Object.freeze({
+  strength: 0,
+  agility: 0,
+  constitution: 0,
+  spirit: 0,
+  balance: 0,
+  willpower: 0,
+});
+
+function formatPercentDelta(multiplier: number): string {
+  const percentage = Math.round((multiplier - 1) * 1_000) / 10;
+  if (percentage === 0) {
+    return "0%";
+  }
+  return `${percentage > 0 ? "+" : ""}${percentage}%`;
+}
+
+function formatResistance(multiplier: number): string {
+  const percentage = Math.round((1 - multiplier) * 1_000) / 10;
+  if (percentage === 0) {
+    return "0%";
+  }
+  return `${percentage > 0 ? "+" : ""}${percentage}%`;
+}
+
+function formatBaselineAdjustment(multiplier: number): string {
+  const adjustment = formatPercentDelta(multiplier);
+  return adjustment === "0%" ? "기본" : adjustment;
+}
+
+function incrementStartingAttribute(
+  attributes: StartingAttributes,
+  id: StartingAttributeId,
+): StartingAttributes {
+  return Object.freeze({
+    strength: attributes.strength + (id === "strength" ? 1 : 0),
+    agility: attributes.agility + (id === "agility" ? 1 : 0),
+    constitution: attributes.constitution + (id === "constitution" ? 1 : 0),
+    spirit: attributes.spirit + (id === "spirit" ? 1 : 0),
+    balance: attributes.balance + (id === "balance" ? 1 : 0),
+    willpower: attributes.willpower + (id === "willpower" ? 1 : 0),
+  });
+}
 
 function requireElement<T extends Element>(
   root: ParentNode,
@@ -88,6 +185,15 @@ function requireElement<T extends Element>(
   }
 
   return element;
+}
+
+function renderMetricChips(container: HTMLElement, labels: readonly string[]): void {
+  const chips = labels.map((label) => {
+    const chip = document.createElement("span");
+    chip.textContent = label;
+    return chip;
+  });
+  container.replaceChildren(...chips);
 }
 
 function createDeveloperTelemetry(anchor: HTMLElement): DeveloperTelemetryController {
@@ -170,6 +276,22 @@ function reportRendererFailure(status: HTMLElement): void {
 
 function getEventMessage(event: SimulationEventV1): string | undefined {
   switch (event.kind) {
+    case "skill-used":
+      return event.actorId === 1 && event.skillDefinitionId !== undefined
+        ? `${getSkillDefinition(event.skillDefinitionId).label}!`
+        : undefined;
+    case "skill-hit":
+      return event.actorId === 1 ? `적중 · ${Math.round(event.amount ?? 0)} 피해` : undefined;
+    case "shield-applied":
+      return event.actorId === 1 ? `보호막 ${Math.round(event.amount ?? 0)}` : undefined;
+    case "status-applied":
+      return event.targetActorId === 1
+        ? event.statusKind === "stun"
+          ? "기절했어!"
+          : event.statusKind === "root"
+            ? "움직일 수 없어!"
+            : "느려졌어!"
+        : undefined;
     case "shove-hit":
       return event.actorId === 1 ? "밀치기 적중!" : undefined;
     case "shove-missed":
@@ -180,7 +302,7 @@ function getEventMessage(event: SimulationEventV1): string | undefined {
       return event.actorId === 1 ? "발밑이 없어!" : undefined;
     case "item-picked-up":
       return event.actorId === 1 && event.itemDefinitionId !== undefined
-        ? `${ITEM_LABELS[event.itemDefinitionId]} 획득!`
+        ? `${getItemDefinition(event.itemDefinitionId).label} 획득!`
         : undefined;
     case "item-used":
       return event.actorId !== 1
@@ -190,9 +312,9 @@ function getEventMessage(event: SimulationEventV1): string | undefined {
           : event.itemDefinitionId === "brick-bag"
             ? "벽돌을 세웠어."
             : event.itemDefinitionId === "boat"
-              ? "배를 띄웠어. 5초 동안 물을 건널 수 있어."
+              ? `배를 띄웠어. ${(getItemDefinition("boat").durationTicks ?? 0) / 60}초 동안 물을 건널 수 있어.`
               : event.itemDefinitionId === "bomb"
-                ? "폭탄을 놨어. 5초 뒤 터져."
+                ? `폭탄을 놨어. ${getItemDefinition("bomb").fuseTicks / 60}초 뒤 터져.`
                 : event.itemDefinitionId === "soap"
                   ? "비누를 앞 칸에 놨어."
                   : undefined;
@@ -211,7 +333,11 @@ function getEventMessage(event: SimulationEventV1): string | undefined {
     case "stat-point-earned":
       return event.actorId === 1 ? "처치 인정! 스탯 포인트를 얻었어." : undefined;
     case "stat-upgraded":
-      return event.actorId === 1 ? "스탯을 올렸어." : undefined;
+      return event.actorId === 1
+        ? event.upgradeSkillSlot === undefined
+          ? "전투 성장을 올렸어."
+          : "스킬을 강화했어."
+        : undefined;
     case "rock-fired":
       return event.actorId === 1 ? "돌탄 표적이 됐어. 움직여!" : undefined;
     case "rock-impact":
@@ -225,6 +351,19 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   const skipLink = requireElement(document, ".skip-link", HTMLAnchorElement);
   const startGameButton = requireElement(root, "#start-game", HTMLButtonElement);
   const openSettingsButton = requireElement(root, "#open-settings", HTMLButtonElement);
+  const setupRequiredDialog = requireElement(root, "#setup-required-dialog", HTMLDialogElement);
+  const goToRequiredSettingsButton = requireElement(
+    root,
+    "#go-to-required-settings",
+    HTMLButtonElement,
+  );
+  const closeSetupRequiredButton = requireElement(root, "#close-setup-required", HTMLButtonElement);
+  const openScoreboardButton = requireElement(root, "#open-scoreboard", HTMLButtonElement);
+  const closeScoreboardButton = requireElement(root, "#close-scoreboard", HTMLButtonElement);
+  const scoreboardTitle = requireElement(root, "#scoreboard-title", HTMLElement);
+  const scoreboardSummary = requireElement(root, "#scoreboard-summary", HTMLOutputElement);
+  const scoreboardEmpty = requireElement(root, "#scoreboard-empty", HTMLElement);
+  const scoreboardList = requireElement(root, "#scoreboard-list", HTMLOListElement);
   const openVersionHistoryButton = requireElement(root, "#open-version-history", HTMLButtonElement);
   const closeVersionHistoryButton = requireElement(
     root,
@@ -236,16 +375,125 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   const currentVersion = requireElement(root, "#current-version", HTMLOutputElement);
   const cancelSettingsButton = requireElement(root, "#cancel-settings", HTMLButtonElement);
   const form = requireElement(root, "#game-settings", HTMLFormElement);
-  const startingWeight = requireElement(root, "#starting-weight", HTMLInputElement);
-  const startingWeightValue = requireElement(root, "#starting-weight-value", HTMLOutputElement);
-  const setupSummary = requireElement(root, "#setup-summary", HTMLElement);
-  const startingItemsHelp = requireElement(root, "#starting-items-help", HTMLElement);
+  const settingsTabButtons = new Map(
+    SETTINGS_TAB_IDS.map((id) => [
+      id,
+      requireElement(form, `[data-settings-tab="${id}"]`, HTMLButtonElement),
+    ]),
+  );
+  const settingsPanels = new Map(
+    SETTINGS_TAB_IDS.map((id) => [
+      id,
+      requireElement(form, `[data-settings-panel="${id}"]`, HTMLElement),
+    ]),
+  );
+  const startingAttributeRemaining = requireElement(
+    root,
+    "#starting-attribute-remaining",
+    HTMLOutputElement,
+  );
+  const startingAttributeRows = new Map(
+    STARTING_ATTRIBUTE_IDS.map((id) => {
+      const row = requireElement(root, `[data-starting-attribute="${id}"]`, HTMLElement);
+      return [
+        id,
+        Object.freeze({
+          row,
+          output: requireElement(row, `#starting-attribute-${id}`, HTMLOutputElement),
+          decrement: requireElement(row, '[data-attribute-step="-1"]', HTMLButtonElement),
+          increment: requireElement(row, '[data-attribute-step="1"]', HTMLButtonElement),
+        }),
+      ] as const;
+    }),
+  );
+  const getStartingAttributeControls = (id: StartingAttributeId) => {
+    const controls = startingAttributeRows.get(id);
+    if (controls === undefined) {
+      throw new Error(`Missing starting attribute controls for ${id}.`);
+    }
+    return controls;
+  };
+  const startingAttributeEffectOutputs = new Map(
+    STARTING_ATTRIBUTE_IDS.map((id) => [
+      id,
+      Object.freeze({
+        current: requireElement(root, `#starting-effect-${id}`, HTMLElement),
+        next: requireElement(root, `#starting-next-${id}`, HTMLElement),
+      }),
+    ]),
+  );
+  const getStartingAttributeEffectOutputs = (id: StartingAttributeId) => {
+    const outputs = startingAttributeEffectOutputs.get(id);
+    if (outputs === undefined) {
+      throw new Error(`Missing starting attribute effect outputs for ${id}.`);
+    }
+    return outputs;
+  };
+  const startingTotalOutputs = Object.freeze({
+    mass: requireElement(root, "#starting-total-mass", HTMLOutputElement),
+    health: requireElement(root, "#starting-total-health", HTMLOutputElement),
+    mana: requireElement(root, "#starting-total-mana", HTMLOutputElement),
+    movement: requireElement(root, "#starting-total-movement", HTMLOutputElement),
+    cooldown: requireElement(root, "#starting-total-cooldown", HTMLOutputElement),
+    power: requireElement(root, "#starting-total-power", HTMLOutputElement),
+    resistance: requireElement(root, "#starting-total-resistance", HTMLOutputElement),
+    control: requireElement(root, "#starting-total-control", HTMLOutputElement),
+    damageTaken: requireElement(root, "#starting-total-damage-taken", HTMLOutputElement),
+    shield: requireElement(root, "#starting-total-shield", HTMLOutputElement),
+    healthRegen: requireElement(root, "#starting-total-health-regen", HTMLOutputElement),
+    manaRegen: requireElement(root, "#starting-total-mana-regen", HTMLOutputElement),
+  });
+  const saveSettingsButton = requireElement(form, 'button[type="submit"]', HTMLButtonElement);
+  const startingItemCount = requireElement(root, "#starting-item-count", HTMLOutputElement);
+  const startingSkillCount = requireElement(root, "#starting-skill-count", HTMLOutputElement);
   const debugTuningPanel = requireElement(root, "#debug-tuning", HTMLDetailsElement);
   const startingItemInputs = [
     ...form.querySelectorAll<HTMLInputElement>('input[name="startingItem"]'),
   ];
+  const startingSkillInputs = [
+    ...form.querySelectorAll<HTMLInputElement>('input[name="startingSkill"]'),
+  ];
+
+  for (const input of startingSkillInputs) {
+    if (!isSkillDefinitionId(input.value)) {
+      throw new Error(`Unknown starting skill definition: ${input.value}`);
+    }
+    const card = requireElement(input.closest("label") ?? form, "span:last-child", HTMLSpanElement);
+    const definition = getSkillDefinition(input.value);
+    requireElement(card, "strong", HTMLElement).textContent = definition.label;
+    renderMetricChips(requireElement(card, ".skill-card__meta", HTMLElement), [
+      `마나 ${definition.manaCost}`,
+      `재사용 ${definition.cooldownTicks / 60}초`,
+    ]);
+    requireElement(card, ".skill-card__effect", HTMLElement).textContent =
+      formatSkillDescription(definition);
+  }
+
+  for (const input of startingItemInputs) {
+    if (!isItemDefinitionId(input.value)) {
+      throw new Error(`Unknown starting item definition: ${input.value}`);
+    }
+    const card = requireElement(input.closest("label") ?? form, "span:last-child", HTMLSpanElement);
+    const definition = getItemDefinition(input.value);
+    requireElement(card, "strong", HTMLElement).textContent = definition.label;
+    renderMetricChips(requireElement(card, ".item-card__meta", HTMLElement), [
+      definition.startingCharges === null ? "상시" : `${definition.startingCharges}회`,
+      definition.targetMode === "self"
+        ? "즉시 사용"
+        : definition.targetMode === "direction"
+          ? "방향 지정"
+          : "위치 지정",
+    ]);
+    requireElement(card, ".item-card__effect", HTMLElement).textContent =
+      formatItemEffectDescription(definition);
+  }
   const arenaActions = requireElement(root, "#arena-actions", HTMLElement);
   const readyMessage = requireElement(root, "#round-message", HTMLElement);
+  const targetingHelp = requireElement(root, "#targeting-help", HTMLElement);
+  const pauseMenu = requireElement(root, "#pause-menu", HTMLElement);
+  const pauseMenuTitle = requireElement(root, "#pause-menu-title", HTMLElement);
+  const pauseRoundButton = requireElement(root, "#pause-round", HTMLButtonElement);
+  const resumeRoundButton = requireElement(root, "#resume-round", HTMLButtonElement);
   const restartButton = requireElement(root, "#restart-round", HTMLButtonElement);
   const backButton = requireElement(root, "#back-to-settings", HTMLButtonElement);
   const copyRoundReportButton = requireElement(root, "#copy-round-report", HTMLButtonElement);
@@ -253,18 +501,36 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   const arenaHost = requireElement(root, "#arena-host", HTMLElement);
   const pointerJoystick = requireElement(root, "#pointer-joystick", HTMLElement);
   const pointerJoystickKnob = requireElement(root, "#pointer-joystick-knob", HTMLElement);
-  const touchShoveButton = requireElement(root, "#touch-shove", HTMLButtonElement);
-  const touchDodgeButton = requireElement(root, "#touch-dodge", HTMLButtonElement);
+  const touchSkillButtons = Object.freeze([
+    requireElement(root, "#touch-skill-0", HTMLButtonElement),
+    requireElement(root, "#touch-skill-1", HTMLButtonElement),
+  ] as const);
+  const touchGrappleButton = requireElement(root, "#touch-grapple", HTMLButtonElement);
+  const touchItemButtons = Object.freeze([
+    requireElement(root, "#touch-item-0", HTMLButtonElement),
+  ] as const);
+  const skillActions = requireElement(root, "#skill-actions", HTMLElement);
   const inventoryActions = requireElement(root, "#inventory-actions", HTMLElement);
-  const shoveStatusValue = requireElement(root, "#shove-status-value", HTMLOutputElement);
-  const dodgeStatusValue = requireElement(root, "#dodge-status-value", HTMLOutputElement);
   const statStatus = requireElement(root, "#stat-status", HTMLElement);
   const statUpgradeOverlay = requireElement(root, "#stat-upgrade-overlay", HTMLElement);
   const statUpgradeForm = requireElement(root, "#stat-upgrade-form", HTMLFormElement);
+  const saveTraitUpgradeButton = requireElement(root, "#save-trait-upgrade", HTMLButtonElement);
   const itemSlotButtons = Object.freeze([
     requireElement(root, "#use-item-slot-0", HTMLButtonElement),
-    requireElement(root, "#use-item-slot-1", HTMLButtonElement),
   ] as const);
+  const skillSlotButtons = Object.freeze([
+    requireElement(root, "#use-skill-slot-0", HTMLButtonElement),
+    requireElement(root, "#use-skill-slot-1", HTMLButtonElement),
+  ] as const);
+  const grappleButton = requireElement(root, "#use-grapple", HTMLButtonElement);
+  const traitRankOutputs: Readonly<Record<UpgradeStatId, HTMLOutputElement>> = Object.freeze({
+    power: requireElement(root, "#trait-rank-power", HTMLOutputElement),
+    stability: requireElement(root, "#trait-rank-stability", HTMLOutputElement),
+    mobility: requireElement(root, "#trait-rank-mobility", HTMLOutputElement),
+    reflex: requireElement(root, "#trait-rank-reflex", HTMLOutputElement),
+    vitality: requireElement(root, "#trait-rank-vitality", HTMLOutputElement),
+    focus: requireElement(root, "#trait-rank-focus", HTMLOutputElement),
+  });
   const rendererStatus = requireElement(root, "#renderer-status", HTMLElement);
   const telemetry = requireElement(root, "#game-telemetry", HTMLElement);
   const developerTelemetry = import.meta.env.DEV ? createDeveloperTelemetry(telemetry) : undefined;
@@ -273,12 +539,21 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   const effectValue = requireElement(root, "#effect-value", HTMLOutputElement);
   const itemValue = requireElement(root, "#item-value", HTMLOutputElement);
   const survivorValue = requireElement(root, "#survivor-value", HTMLOutputElement);
-  const statPointsValue = requireElement(root, "#stat-points-value", HTMLOutputElement);
-  const statLevelOutputs: Readonly<Record<UpgradeStatId, HTMLOutputElement>> = Object.freeze({
-    power: requireElement(root, "#power-level", HTMLOutputElement),
-    stability: requireElement(root, "#stability-level", HTMLOutputElement),
-    mobility: requireElement(root, "#mobility-level", HTMLOutputElement),
-    reflex: requireElement(root, "#reflex-level", HTMLOutputElement),
+  const roundDistanceMoved = requireElement(root, "#round-distance-moved", HTMLOutputElement);
+  const roundDamageDealt = requireElement(root, "#round-damage-dealt", HTMLOutputElement);
+  const roundDamageTaken = requireElement(root, "#round-damage-taken", HTMLOutputElement);
+  const roundDamageBlocked = requireElement(root, "#round-damage-blocked", HTMLOutputElement);
+  const roundSlowedTime = requireElement(root, "#round-slowed-time", HTMLOutputElement);
+  const roundSkillUses = requireElement(root, "#round-skill-uses", HTMLUListElement);
+  const healthValue = requireElement(root, "#health-value", HTMLOutputElement);
+  const manaValue = requireElement(root, "#mana-value", HTMLOutputElement);
+  const statBonusOutputs: Readonly<Record<UpgradeStatId, HTMLOutputElement>> = Object.freeze({
+    power: requireElement(root, "#power-bonus", HTMLOutputElement),
+    stability: requireElement(root, "#stability-bonus", HTMLOutputElement),
+    mobility: requireElement(root, "#mobility-bonus", HTMLOutputElement),
+    reflex: requireElement(root, "#reflex-bonus", HTMLOutputElement),
+    vitality: requireElement(root, "#vitality-bonus", HTMLOutputElement),
+    focus: requireElement(root, "#focus-bonus", HTMLOutputElement),
   });
 
   let renderer: ArenaRenderer | undefined;
@@ -286,32 +561,229 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   let audio: AudioFeedback | undefined;
   let debugTuning: DebugTuningController | undefined;
   let pointerControls: PointerControls | undefined;
-  let latestSettings = normalizeSettings();
+  let latestSettings: GameSettings | undefined;
+  let draftStartingAttributes: StartingAttributes = EMPTY_STARTING_ATTRIBUTES;
   let latestGameplayTuning: GameplayTuningV1 = DEFAULT_GAMEPLAY_TUNING;
   let latestDebugTuningEnabled = false;
   let latestMasterSeed: string | undefined;
   let latestRoundReport: string | undefined;
   let latestHumanUpgradeSelections: HumanUpgradeSelection[] = [];
+  let latestHumanFinalRank: number | undefined;
+  let latestHumanSurvivalTick: number | undefined;
+  let latestScoreSaved = false;
+  let roundSkillSignature = "";
+  const roundSkillUseOutputs = new Map<string, HTMLOutputElement>();
 
-  const setScreen = (screen: "menu" | "settings" | "history" | "arena"): void => {
+  const scoreboardStorage: ScoreboardStorage | undefined = (() => {
+    try {
+      return window.localStorage;
+    } catch {
+      return undefined;
+    }
+  })();
+
+  const setScreen = (screen: "menu" | "settings" | "scoreboard" | "history" | "arena"): void => {
     root.dataset.screen = screen;
+    document.body.classList.toggle("game-screen-active", screen === "arena");
     const target =
       screen === "menu"
         ? "#main-menu-title"
         : screen === "settings"
           ? "#setup-title"
-          : screen === "history"
-            ? "#version-history-title"
-            : "#arena-host";
+          : screen === "scoreboard"
+            ? "#scoreboard-title"
+            : screen === "history"
+              ? "#version-history-title"
+              : "#arena-host";
     skipLink.href = target;
     skipLink.textContent =
       screen === "menu"
         ? "메뉴로 이동"
         : screen === "settings"
           ? "게임 설정으로 이동"
-          : screen === "history"
-            ? "버전 기록으로 이동"
-            : "아레나로 이동";
+          : screen === "scoreboard"
+            ? "점수표로 이동"
+            : screen === "history"
+              ? "버전 기록으로 이동"
+              : "아레나로 이동";
+  };
+
+  const setPauseMenu = (
+    visible: boolean,
+    options: { readonly title?: string; readonly resumable?: boolean } = {},
+  ): void => {
+    const resumable = options.resumable !== false;
+    pauseMenu.hidden = !visible;
+    pauseRoundButton.setAttribute("aria-expanded", String(visible));
+    resumeRoundButton.hidden = !resumable;
+    resumeRoundButton.disabled = !resumable;
+
+    if (options.title !== undefined) {
+      pauseMenuTitle.textContent = options.title;
+    }
+
+    if (visible) {
+      root.dataset.pauseMenu = "open";
+    } else {
+      delete root.dataset.pauseMenu;
+    }
+  };
+
+  const getSettingsTabButton = (id: SettingsTabId): HTMLButtonElement => {
+    const button = settingsTabButtons.get(id);
+    if (button === undefined) {
+      throw new Error(`Missing settings tab button for ${id}.`);
+    }
+    return button;
+  };
+
+  const getSettingsPanel = (id: SettingsTabId): HTMLElement => {
+    const panel = settingsPanels.get(id);
+    if (panel === undefined) {
+      throw new Error(`Missing settings panel for ${id}.`);
+    }
+    return panel;
+  };
+
+  const getAvailableSettingsTabIds = (): readonly SettingsTabId[] =>
+    SETTINGS_TAB_IDS.filter((id) => !getSettingsTabButton(id).hidden);
+
+  const activateSettingsTab = (id: SettingsTabId, moveFocus = false): void => {
+    const availableIds = getAvailableSettingsTabIds();
+    const activeId = availableIds.includes(id) ? id : "attributes";
+    for (const candidateId of SETTINGS_TAB_IDS) {
+      const button = getSettingsTabButton(candidateId);
+      const active = candidateId === activeId;
+      button.setAttribute("aria-selected", String(active));
+      button.tabIndex = active ? 0 : -1;
+      getSettingsPanel(candidateId).hidden = !active;
+    }
+    root.dataset.settingsTab = activeId;
+    if (moveFocus) {
+      getSettingsTabButton(activeId).focus({ preventScroll: true });
+    }
+  };
+
+  for (const id of SETTINGS_TAB_IDS) {
+    const button = getSettingsTabButton(id);
+    button.addEventListener("click", () => activateSettingsTab(id));
+    button.addEventListener("keydown", (event) => {
+      const availableIds = getAvailableSettingsTabIds();
+      const currentIndex = availableIds.indexOf(id);
+      const nextId =
+        event.key === "Home"
+          ? availableIds[0]
+          : event.key === "End"
+            ? availableIds.at(-1)
+            : event.key === "ArrowRight" || event.key === "ArrowDown"
+              ? availableIds[(currentIndex + 1) % availableIds.length]
+              : event.key === "ArrowLeft" || event.key === "ArrowUp"
+                ? availableIds[(currentIndex - 1 + availableIds.length) % availableIds.length]
+                : undefined;
+      if (nextId === undefined) {
+        return;
+      }
+      event.preventDefault();
+      activateSettingsTab(nextId, true);
+    });
+  }
+
+  const renderScoreboard = (): void => {
+    const entries = loadScoreboard(scoreboardStorage);
+    scoreboardEmpty.hidden = entries.length > 0;
+    scoreboardList.hidden = entries.length === 0;
+
+    if (entries.length === 0) {
+      scoreboardSummary.value = "아직 기록 없음";
+      scoreboardList.replaceChildren();
+      return;
+    }
+
+    const bestScore = Math.max(...entries.map(({ score }) => score));
+    const bestRank = Math.min(...entries.map(({ rank }) => rank));
+    scoreboardSummary.value = `${entries.length}판 · 최고 ${bestRank}위 · ${bestScore.toLocaleString("ko-KR")}점`;
+    const fragment = document.createDocumentFragment();
+    const dateTimeFormatter = new Intl.DateTimeFormat("ko-KR", {
+      month: "numeric",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    for (const entry of entries) {
+      const item = document.createElement("li");
+      const article = document.createElement("article");
+      const header = document.createElement("header");
+      const placement = document.createElement("strong");
+      const playedAt = document.createElement("time");
+      const stats = document.createElement("dl");
+      const values: readonly [string, string][] = [
+        ["점수", entry.score.toLocaleString("ko-KR")],
+        ["처치", `${entry.eliminations}명`],
+        ["생존", `${entry.survivalSeconds}초`],
+        ["참가", `${entry.participantCount}명`],
+      ];
+
+      header.className = "scoreboard__entry-header";
+      placement.textContent = `${entry.rank}위`;
+      playedAt.dateTime = entry.playedAt;
+      playedAt.textContent = dateTimeFormatter.format(new Date(entry.playedAt));
+      header.append(placement, playedAt);
+      stats.className = "scoreboard__stats";
+
+      for (const [label, value] of values) {
+        const row = document.createElement("div");
+        const term = document.createElement("dt");
+        const description = document.createElement("dd");
+        term.textContent = label;
+        description.textContent = value;
+        row.append(term, description);
+        stats.append(row);
+      }
+
+      article.dataset.outcome = entry.outcome;
+      article.append(header, stats);
+      item.append(article);
+      fragment.append(item);
+    }
+
+    scoreboardList.replaceChildren(fragment);
+  };
+
+  const recordCompletedRound = (frame: RenderFrameV1): ScoreboardEntry | undefined => {
+    if (latestScoreSaved) {
+      return undefined;
+    }
+
+    const human = frame.participants.find(({ actorId }) => actorId === 1);
+    if (human === undefined) {
+      return undefined;
+    }
+
+    const standingOpponents = frame.participants.filter(
+      ({ actorId, active, action }) =>
+        actorId !== 1 && active && action !== "Falling" && action !== "Eliminated",
+    ).length;
+    const rank =
+      latestHumanFinalRank ?? (frame.round.winnerActorId === 1 ? 1 : standingOpponents + 1);
+    const outcome =
+      frame.round.winnerActorId === 1
+        ? "victory"
+        : frame.round.winnerActorId === null
+          ? "draw"
+          : "defeat";
+    const entry = createScoreboardEntry({
+      playedAt: new Date(),
+      roundId: frame.roundId,
+      rank,
+      participantCount: frame.participants.length,
+      eliminations: human.progression.creditedEliminations,
+      survivalSeconds: (latestHumanSurvivalTick ?? frame.tick) / FIXED_TICKS_PER_SECOND,
+      outcome,
+    });
+    saveScoreboardEntry(scoreboardStorage, entry);
+    latestScoreSaved = true;
+    return entry;
   };
 
   const renderVersionHistory = (): void => {
@@ -371,54 +843,204 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
 
   audio = createAudioFeedback(undefined, updateSoundControl);
 
+  const getSelectedStartingItems = (): readonly string[] =>
+    startingItemInputs.filter(({ checked }) => checked).map(({ value }) => value);
+
+  const getSelectedStartingSkills = (): readonly string[] =>
+    startingSkillInputs.filter(({ checked }) => checked).map(({ value }) => value);
+
+  const isSettingsDraftComplete = (): boolean =>
+    getStartingAttributePointTotal(draftStartingAttributes) === STARTING_ATTRIBUTE_POINT_TOTAL &&
+    getSelectedStartingItems().length === 1 &&
+    getSelectedStartingSkills().length === 2;
+
+  const updateSettingsValidity = (): void => {
+    saveSettingsButton.disabled = !isSettingsDraftComplete();
+  };
+
   const readSettings = (): GameSettings => {
+    if (!isSettingsDraftComplete()) {
+      throw new Error("Starting attributes, skills, and item must be selected before saving.");
+    }
     const data = new FormData(form);
     return normalizeSettings({
-      startingWeight: Number(startingWeight.value),
+      startingAttributes: draftStartingAttributes,
       startingItems: data
         .getAll("startingItem")
+        .filter((value): value is string => typeof value === "string"),
+      startingSkills: data
+        .getAll("startingSkill")
         .filter((value): value is string => typeof value === "string"),
     });
   };
 
-  const renderStartingItemSelection = (): void => {
-    const selectedCount = startingItemInputs.filter(({ checked }) => checked).length;
+  const renderStartingAttributes = (): void => {
+    const allocated = getStartingAttributePointTotal(draftStartingAttributes);
+    const remaining = STARTING_ATTRIBUTE_POINT_TOTAL - allocated;
+    startingAttributeRemaining.value = String(remaining);
+    startingAttributeRemaining.dataset.state = remaining === 0 ? "complete" : "incomplete";
+    startingTotalOutputs.mass.value = formatBaselineAdjustment(
+      getStartingMassFactor(draftStartingAttributes),
+    );
+    startingTotalOutputs.health.value = String(
+      BASE_STARTING_HEALTH + getStartingMaximumHealthBonus(draftStartingAttributes),
+    );
+    startingTotalOutputs.mana.value = String(
+      BASE_STARTING_MANA + getStartingMaximumManaBonus(draftStartingAttributes),
+    );
+    startingTotalOutputs.movement.value = formatPercentDelta(
+      getStartingMovementMultiplier(draftStartingAttributes),
+    );
+    startingTotalOutputs.cooldown.value = formatPercentDelta(
+      getStartingCooldownMultiplier(draftStartingAttributes),
+    );
+    startingTotalOutputs.power.value = formatPercentDelta(
+      getStartingOutgoingMultiplier(draftStartingAttributes),
+    );
+    startingTotalOutputs.resistance.value = formatResistance(
+      getStartingIncomingImpulseMultiplier(draftStartingAttributes),
+    );
+    startingTotalOutputs.control.value = formatPercentDelta(
+      getStartingControlDurationMultiplier(draftStartingAttributes),
+    );
+    startingTotalOutputs.damageTaken.value = formatPercentDelta(
+      getStartingDamageTakenMultiplier(draftStartingAttributes),
+    );
+    startingTotalOutputs.shield.value = formatPercentDelta(
+      getStartingShieldMultiplier(draftStartingAttributes),
+    );
+    startingTotalOutputs.healthRegen.value = formatPercentDelta(
+      getStartingHealthRegenMultiplier(draftStartingAttributes),
+    );
+    startingTotalOutputs.manaRegen.value = formatPercentDelta(
+      getStartingManaRegenMultiplier(draftStartingAttributes),
+    );
 
-    for (const input of startingItemInputs) {
-      input.disabled = selectedCount >= 2 && !input.checked;
+    for (const id of STARTING_ATTRIBUTE_IDS) {
+      const controls = getStartingAttributeControls(id);
+      const effects = getStartingAttributeEffectOutputs(id);
+      const value = draftStartingAttributes[id];
+      const nextAttributes =
+        value >= STARTING_ATTRIBUTE_LIMITS.maximum
+          ? undefined
+          : incrementStartingAttribute(draftStartingAttributes, id);
+      controls.output.value = String(value);
+      controls.decrement.disabled = value <= STARTING_ATTRIBUTE_LIMITS.minimum;
+      controls.increment.disabled = value >= STARTING_ATTRIBUTE_LIMITS.maximum || remaining <= 0;
+      effects.next.textContent =
+        nextAttributes === undefined
+          ? "최대치"
+          : id === "strength"
+            ? `다음 +1: 무게 보정 ${formatPercentDelta(
+                1 +
+                  getStartingMassFactor(nextAttributes) -
+                  getStartingMassFactor(draftStartingAttributes),
+              )} · 위력 +2.5%`
+            : id === "agility"
+              ? "다음 +1: 이동 +4% · 재사용 대기 -4%"
+              : id === "constitution"
+                ? "다음 +1: 최대 체력 +6 · 체력 재생 +4%"
+                : id === "spirit"
+                  ? "다음 +1: 최대 마나 +8 · 마나 재생 +8%"
+                  : id === "balance"
+                    ? "다음 +1: 밀침 저항 +3.5% · 제어 시간 -2.5%"
+                    : "다음 +1: 받는 피해 -2% · 보호막 +2%";
+      effects.current.textContent =
+        id === "strength"
+          ? `현재 무게 보정 ${formatBaselineAdjustment(
+              getStartingMassFactor(draftStartingAttributes),
+            )} · 위력 ${formatPercentDelta(getStartingOutgoingMultiplier(draftStartingAttributes))}`
+          : id === "agility"
+            ? `현재 이동 ${formatPercentDelta(
+                getStartingMovementMultiplier(draftStartingAttributes),
+              )} · 재사용 대기 ${formatPercentDelta(
+                getStartingCooldownMultiplier(draftStartingAttributes),
+              )}`
+            : id === "constitution"
+              ? `현재 체력 ${BASE_STARTING_HEALTH + getStartingMaximumHealthBonus(draftStartingAttributes)} · 재생 ${formatPercentDelta(
+                  getStartingHealthRegenMultiplier(draftStartingAttributes),
+                )}`
+              : id === "spirit"
+                ? `현재 마나 ${BASE_STARTING_MANA + getStartingMaximumManaBonus(draftStartingAttributes)} · 재생 ${formatPercentDelta(
+                    getStartingManaRegenMultiplier(draftStartingAttributes),
+                  )}`
+                : id === "balance"
+                  ? `현재 밀침 저항 ${formatResistance(
+                      getStartingIncomingImpulseMultiplier(draftStartingAttributes),
+                    )} · 제어 시간 ${formatPercentDelta(
+                      getStartingControlDurationMultiplier(draftStartingAttributes),
+                    )}`
+                  : `현재 받는 피해 ${formatPercentDelta(
+                      getStartingDamageTakenMultiplier(draftStartingAttributes),
+                    )} · 보호막 ${formatPercentDelta(
+                      getStartingShieldMultiplier(draftStartingAttributes),
+                    )}`;
     }
-
-    startingItemsHelp.textContent =
-      selectedCount === 2 ? "선택 완료. 다른 걸 고르려면 하나를 먼저 빼." : "하나를 더 골라.";
+    updateSettingsValidity();
   };
 
-  const renderSettingsSummary = (): void => {
-    const settings = readSettings();
-    startingWeight.value = String(settings.startingWeight);
-    startingWeightValue.value = String(settings.startingWeight);
-    const loadoutLabel = settings.startingItems.map((item) => ITEM_LABELS[item]).join(" + ");
-    setupSummary.textContent = `몸무게 ${settings.startingWeight} · ${loadoutLabel} · 맵 아이템 ${settings.initialItemCount}개 · ${settings.itemRespawnSeconds}초마다 1개`;
-    root.dataset.scale = "mayhem";
+  const changeStartingAttribute = (id: StartingAttributeId, delta: number): void => {
+    const current = draftStartingAttributes[id];
+    const allocated = getStartingAttributePointTotal(draftStartingAttributes);
+    const remaining = STARTING_ATTRIBUTE_POINT_TOTAL - allocated;
+    const clampedDelta =
+      delta > 0
+        ? Math.min(delta, remaining, STARTING_ATTRIBUTE_LIMITS.maximum - current)
+        : Math.max(delta, STARTING_ATTRIBUTE_LIMITS.minimum - current);
+    if (clampedDelta === 0) {
+      return;
+    }
+    draftStartingAttributes = Object.freeze({
+      ...draftStartingAttributes,
+      [id]: current + clampedDelta,
+    });
+    renderStartingAttributes();
+  };
+
+  const renderStartingItemSelection = (): void => {
+    const selectedCount = startingItemInputs.filter(({ checked }) => checked).length;
+    startingItemCount.value = String(selectedCount);
+    updateSettingsValidity();
+  };
+
+  const renderStartingSkillSelection = (): void => {
+    const selectedCount = startingSkillInputs.filter(({ checked }) => checked).length;
+
+    for (const input of startingSkillInputs) {
+      input.disabled = selectedCount >= 2 && !input.checked;
+    }
+    startingSkillCount.value = String(selectedCount);
+    updateSettingsValidity();
   };
 
   if (import.meta.env.DEV) {
-    debugTuningPanel.hidden = false;
+    getSettingsTabButton("lab").hidden = false;
     debugTuning = createDebugTuningController(root, { onChange(): void {} });
   } else {
+    getSettingsTabButton("lab").remove();
     debugTuningPanel.remove();
   }
+  activateSettingsTab("attributes");
 
   const hydrateSettingsForm = (): void => {
-    startingWeight.value = String(latestSettings.startingWeight);
-    startingWeightValue.value = String(latestSettings.startingWeight);
+    activateSettingsTab("attributes");
+    draftStartingAttributes = Object.freeze({
+      ...(latestSettings?.startingAttributes ?? EMPTY_STARTING_ATTRIBUTES),
+    });
 
     for (const input of startingItemInputs) {
-      input.checked = latestSettings.startingItems.some((item) => item === input.value);
+      input.checked = latestSettings?.startingItems.some((item) => item === input.value) ?? false;
+    }
+
+    for (const input of startingSkillInputs) {
+      input.checked =
+        latestSettings?.startingSkills.some((skill) => skill === input.value) ?? false;
     }
 
     debugTuning?.load(latestGameplayTuning, latestDebugTuningEnabled);
     renderStartingItemSelection();
-    renderSettingsSummary();
+    renderStartingSkillSelection();
+    renderStartingAttributes();
   };
 
   const updateTelemetry = (current: SessionTelemetry): void => {
@@ -435,84 +1057,57 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     telemetry.dataset.countdown = current.countdown === null ? "" : String(current.countdown);
     telemetry.dataset.roundId = String(current.frame.roundId);
     actionValue.value = ACTION_LABELS[human.action];
-    const renderActionStatus = (
-      output: HTMLOutputElement,
-      key: string,
-      label: string,
-      readyTick: number,
-    ): void => {
-      const cooldownTicks = Math.max(0, readyTick - current.frame.tick);
-      const unavailableReason =
-        current.countdown !== null
-          ? "준비 중"
-          : !human.active || human.action === "Falling" || human.action === "Eliminated"
-            ? "탈락"
-            : human.action === "Anchored"
-              ? "벽돌 위"
-              : human.action !== "Ready"
-                ? "행동 중"
-                : null;
-
-      if (unavailableReason !== null) {
-        output.dataset.state = "blocked";
-        output.value = `${key} · ${label} · ${unavailableReason}`;
-      } else if (cooldownTicks > 0) {
-        output.dataset.state = "cooldown";
-        output.value = `${key} · ${label} · ${(cooldownTicks / 60).toFixed(1)}초`;
-      } else {
-        output.dataset.state = "ready";
-        output.value = `${key} · ${label} · 사용 가능`;
-      }
-    };
-    renderActionStatus(shoveStatusValue, "Space", "밀치기", human.shoveReadyTick);
-    renderActionStatus(dodgeStatusValue, "Shift", "회피", human.dodgeReadyTick);
+    const actionHudContext = Object.freeze({
+      tick: current.frame.tick,
+      countdownActive: current.countdown !== null,
+      roundActive: current.frame.round.status === "Active",
+    });
+    const grappleModel = createGrappleButtonViewModel(human, actionHudContext);
+    grappleButton.dataset.state = grappleModel.state;
+    grappleButton.textContent = grappleModel.text;
+    grappleButton.disabled = grappleModel.disabled;
+    grappleButton.setAttribute("aria-label", grappleModel.ariaLabel ?? grappleModel.text);
+    touchGrappleButton.dataset.state = grappleModel.state;
+    touchGrappleButton.textContent =
+      grappleModel.state === "cooldown"
+        ? `E · ${grappleModel.text.split(" · ").at(-1) ?? "대기"}`
+        : "E";
+    touchGrappleButton.disabled = grappleModel.disabled;
+    touchGrappleButton.setAttribute("aria-label", grappleModel.ariaLabel ?? grappleModel.text);
+    for (const slotIndex of SKILL_SLOT_INDICES) {
+      const button = skillSlotButtons[slotIndex];
+      const model = createSkillButtonViewModel(human, slotIndex, actionHudContext);
+      button.dataset.state = model.state;
+      button.textContent = model.text;
+      button.disabled = model.disabled;
+    }
     massValue.value =
       human.massFactor < 0.9 ? "가벼움" : human.massFactor > 1.1 ? "무거움" : "보통";
     const inventoryLabel = human.inventory
       .map(({ definitionId, charges }) =>
-        charges === null ? ITEM_LABELS[definitionId] : `${ITEM_LABELS[definitionId]} ${charges}`,
+        charges === null
+          ? getItemDefinition(definitionId).label
+          : `${getItemDefinition(definitionId).label} ${charges}`,
       )
       .join(" · ");
     const effectLabel = human.effects
       .map(({ definitionId, endsTick }) =>
         definitionId === "boat" && endsTick !== null
           ? `배 ${Math.max(0, Math.ceil((endsTick - current.frame.tick) / 60))}초`
-          : ITEM_LABELS[definitionId],
+          : getItemDefinition(definitionId).label,
       )
       .join(" · ");
     effectValue.value =
       [inventoryLabel, effectLabel].filter((label) => label.length > 0).join(" · ") ||
       (human.springBoosted ? "스프링 발동" : "없음");
     itemValue.value = String(current.frame.items.length);
-    for (const [slotIndex, button] of itemSlotButtons.entries()) {
-      const slot = human.inventory.find((candidate) => candidate.slotIndex === slotIndex);
-      const label = slot === undefined ? `슬롯 ${slotIndex + 1}` : ITEM_LABELS[slot.definitionId];
-      const amount =
-        slot === undefined ? "비어 있음" : slot.charges === null ? "상시" : `${slot.charges}회`;
-      const key = slotIndex === 0 ? "Q" : "E";
-      button.textContent = `${key} · ${label} · ${amount}`;
-      button.setAttribute(
-        "aria-label",
-        slot === undefined
-          ? `${label}, 비어 있음`
-          : slot.charges === null
-            ? `${label}, 상시 효과`
-            : `${label} 사용, ${amount} 남음`,
-      );
-      button.disabled =
-        current.countdown !== null ||
-        current.frame.round.status !== "Active" ||
-        !human.active ||
-        human.action === "Falling" ||
-        human.action === "Eliminated" ||
-        (slot?.definitionId !== "wind-blast" &&
-          slot?.definitionId !== "brick-bag" &&
-          slot?.definitionId !== "boat" &&
-          slot?.definitionId !== "bomb" &&
-          slot?.definitionId !== "soap" &&
-          slot?.definitionId !== "grappling-hook") ||
-        slot.charges === null ||
-        slot.charges < 1;
+    for (const slotIndex of ITEM_SLOT_INDICES) {
+      const button = itemSlotButtons[slotIndex];
+      const model = createItemButtonViewModel(human, slotIndex, actionHudContext);
+      button.dataset.state = model.state;
+      button.textContent = model.text;
+      button.setAttribute("aria-label", model.ariaLabel ?? model.text);
+      button.disabled = model.disabled;
     }
     survivorValue.value = String(
       current.frame.participants.filter(
@@ -522,6 +1117,38 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
           participant.action !== "Eliminated",
       ).length,
     );
+    const statistics = current.roundStatistics;
+    roundDistanceMoved.value = `${statistics.distanceMoved.toFixed(1)}칸`;
+    roundDamageDealt.value = statistics.damageDealt.toFixed(1);
+    roundDamageTaken.value = statistics.damageTaken.toFixed(1);
+    const attemptedDamage = statistics.damageTaken + statistics.damageBlocked;
+    const blockedPercent =
+      attemptedDamage <= 0 ? 0 : Math.round((statistics.damageBlocked / attemptedDamage) * 100);
+    roundDamageBlocked.value = `${statistics.damageBlocked.toFixed(1)} · ${blockedPercent}%`;
+    roundSlowedTime.value = `${(statistics.slowedTicks / FIXED_TICKS_PER_SECOND).toFixed(1)}초`;
+    const skillSignature = human.skills.map(({ definitionId }) => definitionId).join("|");
+    if (skillSignature !== roundSkillSignature) {
+      roundSkillSignature = skillSignature;
+      roundSkillUseOutputs.clear();
+      roundSkillUses.replaceChildren(
+        ...human.skills.map(({ definitionId }) => {
+          const item = document.createElement("li");
+          const label = document.createElement("span");
+          const output = document.createElement("output");
+          label.textContent = getSkillDefinition(definitionId).label;
+          output.value = "0회";
+          item.append(label, output);
+          roundSkillUseOutputs.set(definitionId, output);
+          return item;
+        }),
+      );
+    }
+    for (const { definitionId } of human.skills) {
+      const output = roundSkillUseOutputs.get(definitionId);
+      if (output !== undefined) {
+        output.value = `${statistics.skillUses[definitionId]}회`;
+      }
+    }
     developerTelemetry?.update({
       tick: current.frame.tick,
       rate: current.simulationRate,
@@ -529,11 +1156,28 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
       seed: current.masterSeed,
       stateHash: current.frame.stateHash,
     });
-    statPointsValue.value = String(human.progression.statPoints);
-
-    for (const stat of UPGRADE_STAT_IDS) {
-      statLevelOutputs[stat].value = String(human.progression.stats[stat]);
-    }
+    const { stats } = human.progression;
+    healthValue.value = `${Math.ceil(human.combat.health)} / ${human.combat.maximumHealth}`;
+    manaValue.value = `${Math.floor(human.combat.mana)} / ${human.combat.maximumMana}`;
+    const cooldownReductionTicks = getReflexCooldownReduction(stats);
+    statBonusOutputs.power.value = `+${Math.round((getPowerMultiplier(stats) - 1) * 100)}%`;
+    statBonusOutputs.stability.value = `+${Math.round((1 - getStabilityMultiplier(stats)) * 100)}%`;
+    statBonusOutputs.mobility.value = `+${Math.round((getMobilityMultiplier(stats) - 1) * 100)}%`;
+    const shoveCooldownPercent = Math.round(
+      (cooldownReductionTicks / SIMULATION_TUNING.shove.cooldownTicks) * 100,
+    );
+    const dodgeCooldownPercent = Math.round(
+      (cooldownReductionTicks / SIMULATION_TUNING.dodge.cooldownTicks) * 100,
+    );
+    statBonusOutputs.reflex.value = `${shoveCooldownPercent === 0 ? "0%" : `-${shoveCooldownPercent}%`} / ${
+      dodgeCooldownPercent === 0 ? "0%" : `-${dodgeCooldownPercent}%`
+    }`;
+    statBonusOutputs.vitality.value = `+${getMaximumHealth(stats) - 100} · 재생 +${Math.round(
+      (getHealthRegenMultiplier(stats) - 1) * 100,
+    )}%`;
+    statBonusOutputs.focus.value = `+${getMaximumMana(stats) - 100} · 재생 +${Math.round(
+      (getManaRegenMultiplier(stats) - 1) * 100,
+    )}%`;
     if (current.countdown !== null) {
       root.dataset.round = "countdown";
       readyMessage.textContent = String(current.countdown);
@@ -577,9 +1221,21 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
         session?.setRendererAvailable(true);
         const countingDown = root.dataset.round === "countdown";
         rendererStatus.dataset.state =
-          session?.active === true ? (countingDown ? "countdown" : "playing") : "ready";
+          session?.active === true
+            ? session.paused
+              ? "paused"
+              : countingDown
+                ? "countdown"
+                : "playing"
+            : "ready";
         rendererStatus.textContent =
-          session?.active === true ? (countingDown ? "다시 준비" : "플레이 중") : "WebGL 준비됨";
+          session?.active === true
+            ? session.paused
+              ? "일시 정지"
+              : countingDown
+                ? "다시 준비"
+                : "플레이 중"
+            : "WebGL 준비됨";
       },
     });
     session = createGameSession(renderer, {
@@ -591,10 +1247,12 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
           if (
             event.kind === "stat-upgraded" &&
             event.actorId === 1 &&
-            event.upgradeStat !== undefined
+            (event.upgradeStat !== undefined || event.upgradeSkillSlot !== undefined)
           ) {
             latestHumanUpgradeSelections.push(
-              Object.freeze({ tick: event.tick, stat: event.upgradeStat }),
+              event.upgradeSkillSlot === undefined
+                ? Object.freeze({ tick: event.tick, stat: event.upgradeStat! })
+                : Object.freeze({ tick: event.tick, skillSlot: event.upgradeSkillSlot }),
             );
           }
         }
@@ -608,9 +1266,15 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
           readyMessage.textContent = message;
         }
       },
-      onHumanEliminated(): void {
+      onHumanEliminated(frame): void {
+        latestHumanFinalRank =
+          frame.participants.filter(
+            ({ actorId, active, action }) =>
+              actorId !== 1 && active && action !== "Falling" && action !== "Eliminated",
+          ).length + 1;
+        latestHumanSurvivalTick = frame.tick;
         root.dataset.humanEliminated = "true";
-        readyMessage.textContent = "떨어졌어. 남은 승부를 빠르게 돌리는 중.";
+        readyMessage.textContent = "탈락했어. 남은 승부를 빠르게 돌리는 중.";
       },
       onHumanUpgradeRequested(frame): void {
         const human = frame.participants.find(({ actorId }) => actorId === 1);
@@ -620,26 +1284,42 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
         }
 
         for (const input of statUpgradeForm.querySelectorAll<HTMLInputElement>(
-          'input[name="upgradeStat"]',
+          'input[name="upgradeChoice"]',
         )) {
-          const stat = input.value;
-          input.disabled =
-            !isUpgradeStatId(stat) || human.progression.stats[stat] >= MAX_UPGRADE_LEVEL;
+          input.checked = false;
+          const id = input.value;
+          if (!isUpgradeStatId(id)) {
+            input.disabled = true;
+            continue;
+          }
+
+          const ownedRank = human.progression.stats[id];
+          input.disabled = !canSpendStatPoint(human.progression, id);
+          traitRankOutputs[id].value = `${ownedRank}/${MAX_UPGRADE_LEVEL}`;
+          const choice = input.closest<HTMLElement>("[data-trait-choice]");
+          if (choice !== null) {
+            choice.dataset.state = input.disabled ? "capped" : "available";
+            choice.dataset.owned = ownedRank > 0 ? "true" : "false";
+            choice.setAttribute("aria-disabled", input.disabled ? "true" : "false");
+          }
         }
 
-        const firstAvailableInput = statUpgradeForm.querySelector<HTMLInputElement>(
-          'input[name="upgradeStat"]:not(:disabled)',
+        const selectedInput = statUpgradeForm.querySelector<HTMLInputElement>(
+          'input[name="upgradeChoice"]:checked:not(:disabled)',
         );
-        if (firstAvailableInput !== null) {
-          firstAvailableInput.checked = true;
-        }
+        const firstAvailableInput = statUpgradeForm.querySelector<HTMLInputElement>(
+          'input[name="upgradeChoice"]:not(:disabled)',
+        );
+        const focusInput = selectedInput ?? firstAvailableInput;
+        saveTraitUpgradeButton.disabled = true;
 
         statUpgradeOverlay.hidden = false;
+        setPauseMenu(false);
         root.dataset.upgrade = "pending";
         rendererStatus.dataset.state = "paused";
-        rendererStatus.textContent = "스탯 선택 중";
-        readyMessage.textContent = "처치 보상으로 스탯 하나를 골라.";
-        firstAvailableInput?.focus({ preventScroll: true });
+        rendererStatus.textContent = "전투 특성 선택 중";
+        readyMessage.textContent = "처치 보상으로 전투 특성 하나를 골라.";
+        focusInput?.focus({ preventScroll: true });
       },
       onRoundCompleted(frame): void {
         const { round } = frame;
@@ -648,6 +1328,9 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
           throw new Error("Completed round is missing its master seed.");
         }
 
+        if (latestSettings === undefined) {
+          throw new Error("Completed round is missing its saved settings.");
+        }
         latestRoundReport = serializePlaytestRoundReport(
           createPlaytestRoundReport(
             latestSettings,
@@ -657,6 +1340,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
             latestHumanUpgradeSelections,
           ),
         );
+        const scoreEntry = recordCompletedRound(frame);
         root.dataset.round = "completed";
         statUpgradeOverlay.hidden = true;
         delete root.dataset.upgrade;
@@ -665,18 +1349,30 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
         rendererStatus.textContent = round.winnerActorId === 1 ? "승리" : "라운드 종료";
         readyMessage.textContent =
           round.winnerActorId === 1
-            ? "끝까지 남았어. 한 판 더?"
+            ? `끝까지 남았어. ${scoreEntry?.score.toLocaleString("ko-KR") ?? 0}점!`
             : round.winnerActorId === null
-              ? "마지막 순간에 모두 떨어졌어. 다시 붙자."
-              : `${round.winnerActorId}번이 마지막까지 남았어.`;
+              ? `마지막 순간에 모두 떨어졌어. ${scoreEntry?.rank ?? 1}위.`
+              : `${scoreEntry?.rank ?? 1}위 · ${scoreEntry?.score.toLocaleString("ko-KR") ?? 0}점`;
+        setPauseMenu(true, { title: "라운드 종료", resumable: false });
         restartButton.focus();
       },
       onPauseChanged(paused): void {
         if (paused) {
           readyMessage.textContent = "잠시 멈췄어.";
+          if (root.dataset.upgrade !== "pending" && root.dataset.screen === "arena") {
+            setPauseMenu(true, { title: "일시정지", resumable: true });
+            resumeRoundButton.focus({ preventScroll: true });
+          }
         } else if (session?.active === true && root.dataset.round !== "countdown") {
           readyMessage.textContent = "계속";
+          setPauseMenu(false);
+          arenaHost.focus({ preventScroll: true });
+        } else {
+          setPauseMenu(false);
         }
+      },
+      onTargetingChanged(targeting): void {
+        targetingHelp.hidden = !targeting;
       },
       onFatalError(error): void {
         latestRoundReport = undefined;
@@ -687,6 +1383,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
         rendererStatus.dataset.state = "error";
         rendererStatus.textContent = "라운드를 멈췄어";
         readyMessage.textContent = "문제가 생겼어. 다시 시작해 줘.";
+        setPauseMenu(true, { title: "게임 중단", resumable: false });
         restartButton.focus();
         console.error("The Shovefall round stopped at its error boundary.", error);
       },
@@ -695,15 +1392,28 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
       arena: arenaHost,
       joystick: pointerJoystick,
       joystickKnob: pointerJoystickKnob,
-      shoveButton: touchShoveButton,
-      dodgeButton: touchDodgeButton,
+      grappleButton: touchGrappleButton,
+      actionButtons: [
+        ...SKILL_SLOT_INDICES.map((slotIndex) => ({
+          button: touchSkillButtons[slotIndex],
+          activate: () => session?.queueSkillSlot(slotIndex),
+        })),
+        ...touchItemButtons.map((button) => ({
+          button,
+          activate: () => session?.queueItemSlot(0),
+        })),
+      ],
       isActive: () =>
         session?.active === true &&
         root.dataset.round === "active" &&
         root.dataset.humanEliminated !== "true",
+      isTargetApproaching: () => session?.targetApproachPending === true,
+      isTargeting: () => session?.targeting === true,
       onMove: (x, y) => session?.setPointerMovement(x, y),
-      onShove: () => session?.queueShove(),
-      onDodge: () => session?.queueDodge(),
+      onGrapple: () => session?.queueGrapple(),
+      onTargetHover: (clientX, clientY) => session?.updateTargeting(clientX, clientY),
+      onTargetConfirm: (clientX, clientY) => session?.confirmTargeting(clientX, clientY),
+      onTargetCancel: () => session?.cancelTargeting(),
     });
     rendererStatus.dataset.state = "ready";
     rendererStatus.textContent = "WebGL 준비됨";
@@ -723,12 +1433,16 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     latestMasterSeed = createRoundSeed();
     latestRoundReport = undefined;
     latestHumanUpgradeSelections = [];
+    latestHumanFinalRank = undefined;
+    latestHumanSurvivalTick = undefined;
+    latestScoreSaved = false;
     copyRoundReportButton.hidden = true;
     copyRoundReportButton.textContent = "기록 복사";
     void audio?.unlock();
     setScreen("arena");
     root.dataset.round = "countdown";
     statUpgradeOverlay.hidden = true;
+    setPauseMenu(false);
     delete root.dataset.upgrade;
     delete root.dataset.humanEliminated;
     root.dataset.initialItems = String(settings.initialItemCount);
@@ -736,23 +1450,43 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     root.dataset.collapseSpeed = settings.collapseSpeed;
     root.dataset.gameplayTuning = latestDebugTuningEnabled ? "debug" : "default";
     arenaActions.hidden = false;
+    pauseRoundButton.hidden = false;
     inventoryActions.hidden = false;
+    skillActions.hidden = false;
     statStatus.hidden = false;
     telemetry.hidden = false;
     developerTelemetry?.setVisible(true);
     readyMessage.textContent = "3";
     arenaHost.setAttribute(
       "aria-label",
-      `${settings.playerCount}명이 참가하는 바닥이 사라지는 술래잡기 아레나. WASD, 방향키, 마우스 드래그 또는 터치 조이스틱으로 이동하고 Q와 E로 시작 아이템을 사용해.`,
+      `${settings.playerCount}명이 참가하는 바닥이 사라지는 술래잡기 아레나. 방향키, 마우스 드래그 또는 터치 조이스틱으로 이동해. Q와 W는 스킬, D는 아이템 조준을 시작하고, 방향키나 마우스로 조준한 뒤 같은 키, Enter 또는 좌클릭으로 확정해.`,
     );
-    session.start(createConfig(settings), latestMasterSeed, latestGameplayTuning, {
-      massFactor: getStartingMassFactor(settings.startingWeight),
-      startingItems: settings.startingItems,
-    });
-    arenaHost.focus();
+    try {
+      session.start(createConfig(settings), latestMasterSeed, latestGameplayTuning, {
+        startingAttributes: settings.startingAttributes,
+        startingItems: settings.startingItems,
+        startingSkills: settings.startingSkills,
+      });
+      arenaHost.focus();
+    } catch (error: unknown) {
+      latestRoundReport = undefined;
+      copyRoundReportButton.hidden = true;
+      root.dataset.round = "fatal";
+      rendererStatus.dataset.state = "error";
+      rendererStatus.textContent = "라운드를 시작하지 못했어";
+      readyMessage.textContent = "설정을 확인하고 다시 시작해 줘.";
+      setPauseMenu(true, { title: "게임 시작 실패", resumable: false });
+      restartButton.focus();
+      console.error("The Shovefall round failed during startup.", error);
+    }
   };
 
-  startingWeight.addEventListener("input", renderSettingsSummary);
+  for (const id of STARTING_ATTRIBUTE_IDS) {
+    const dec = getStartingAttributeControls(id).decrement;
+    const inc = getStartingAttributeControls(id).increment;
+    dec.addEventListener("click", (event) => changeStartingAttribute(id, event.ctrlKey ? -5 : -1));
+    inc.addEventListener("click", (event) => changeStartingAttribute(id, event.ctrlKey ? 5 : 1));
+  }
 
   form.addEventListener("change", (event) => {
     const target = event.target;
@@ -763,13 +1497,16 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
 
     if (target.name === "startingItem") {
       renderStartingItemSelection();
+    } else if (target.name === "startingSkill") {
+      renderStartingSkillSelection();
     }
-
-    renderSettingsSummary();
   });
 
   form.addEventListener("submit", (event) => {
     event.preventDefault();
+    if (!isSettingsDraftComplete()) {
+      return;
+    }
     latestSettings = readSettings();
     latestDebugTuningEnabled = debugTuning?.enabled ?? false;
     latestGameplayTuning = latestDebugTuningEnabled
@@ -779,18 +1516,49 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     startGameButton.focus();
   });
 
-  startGameButton.addEventListener("click", () => startRound(latestSettings));
-
-  openSettingsButton.addEventListener("click", () => {
+  const openSettings = (): void => {
     hydrateSettingsForm();
     setScreen("settings");
     requireElement(root, "#setup-title", HTMLElement).focus({ preventScroll: true });
+  };
+
+  startGameButton.addEventListener("click", () => {
+    if (latestSettings === undefined) {
+      setupRequiredDialog.showModal();
+      return;
+    }
+    startRound(latestSettings);
+  });
+
+  openSettingsButton.addEventListener("click", openSettings);
+
+  goToRequiredSettingsButton.addEventListener("click", () => {
+    setupRequiredDialog.close();
+    openSettings();
+  });
+
+  closeSetupRequiredButton.addEventListener("click", () => {
+    setupRequiredDialog.close();
+    startGameButton.focus({ preventScroll: true });
   });
 
   openVersionHistoryButton.addEventListener("click", () => {
     setScreen("history");
     versionHistoryTitle.focus({ preventScroll: true });
   });
+
+  openScoreboardButton.addEventListener("click", () => {
+    renderScoreboard();
+    setScreen("scoreboard");
+    scoreboardTitle.focus({ preventScroll: true });
+  });
+
+  const closeScoreboard = (): void => {
+    setScreen("menu");
+    openScoreboardButton.focus();
+  };
+
+  closeScoreboardButton.addEventListener("click", closeScoreboard);
 
   const closeVersionHistory = (): void => {
     setScreen("menu");
@@ -799,14 +1567,42 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
 
   closeVersionHistoryButton.addEventListener("click", closeVersionHistory);
 
-  const handleVersionHistoryEscape = (event: KeyboardEvent): void => {
-    if (event.key === "Escape" && root.dataset.screen === "history") {
+  const handleGlobalKeyboard = (event: KeyboardEvent): void => {
+    const isPauseKey = event.code === "KeyP";
+    if (
+      isPauseKey &&
+      !event.repeat &&
+      root.dataset.screen === "arena" &&
+      root.dataset.upgrade !== "pending" &&
+      session?.active === true
+    ) {
+      event.preventDefault();
+      session.setPaused(!session.paused);
+      return;
+    }
+
+    if (event.key !== "Escape") {
+      return;
+    }
+
+    if (root.dataset.screen === "scoreboard") {
+      event.preventDefault();
+      closeScoreboard();
+    } else if (root.dataset.screen === "history") {
       event.preventDefault();
       closeVersionHistory();
+    } else if (
+      root.dataset.screen === "arena" &&
+      !pauseMenu.hidden &&
+      root.dataset.upgrade !== "pending" &&
+      session?.active === true
+    ) {
+      event.preventDefault();
+      session.setPaused(false);
     }
   };
 
-  document.addEventListener("keydown", handleVersionHistoryEscape);
+  document.addEventListener("keydown", handleGlobalKeyboard);
 
   cancelSettingsButton.addEventListener("click", () => {
     hydrateSettingsForm();
@@ -814,34 +1610,69 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     startGameButton.focus();
   });
 
-  restartButton.addEventListener("click", () => startRound(latestSettings));
+  restartButton.addEventListener("click", () => {
+    if (latestSettings !== undefined) {
+      startRound(latestSettings);
+    }
+  });
+
+  pauseRoundButton.addEventListener("click", () => {
+    if (session?.active === true && root.dataset.upgrade !== "pending") {
+      session.setPaused(!session.paused);
+    }
+  });
+
+  resumeRoundButton.addEventListener("click", () => {
+    if (session?.active === true && session.paused) {
+      session.setPaused(false);
+    }
+  });
 
   statUpgradeForm.addEventListener("submit", (event) => {
     event.preventDefault();
-    const stat = new FormData(statUpgradeForm).get("upgradeStat");
+    const choice = new FormData(statUpgradeForm).get("upgradeChoice");
+    if (typeof choice !== "string" || !isUpgradeStatId(choice)) {
+      return;
+    }
+    const accepted = session?.chooseUpgrade({ stat: choice }) === true;
 
-    if (
-      typeof stat !== "string" ||
-      !isUpgradeStatId(stat) ||
-      session?.chooseUpgrade(stat) !== true
-    ) {
+    if (!accepted) {
       return;
     }
 
     statUpgradeOverlay.hidden = true;
+    setPauseMenu(false);
     delete root.dataset.upgrade;
     rendererStatus.dataset.state = "playing";
     rendererStatus.textContent = "플레이 중";
-    readyMessage.textContent = `${UPGRADE_LABELS[stat]} 상승!`;
+    readyMessage.textContent = `${UPGRADE_LABELS[choice]} 상승!`;
     arenaHost.focus({ preventScroll: true });
   });
 
-  for (const [slotIndex, button] of itemSlotButtons.entries()) {
+  statUpgradeForm.addEventListener("change", () => {
+    saveTraitUpgradeButton.disabled =
+      statUpgradeForm.querySelector('input[name="upgradeChoice"]:checked:not(:disabled)') === null;
+  });
+
+  for (const [_slotIndex, button] of itemSlotButtons.entries()) {
     button.addEventListener("click", () => {
-      session?.queueItemSlot(slotIndex === 0 ? 0 : 1);
+      session?.queueItemSlot(0);
       arenaHost.focus({ preventScroll: true });
     });
   }
+
+  for (const slotIndex of SKILL_SLOT_INDICES) {
+    const button = skillSlotButtons[slotIndex];
+    button.addEventListener("click", () => {
+      session?.queueSkillSlot(slotIndex);
+      arenaHost.focus({ preventScroll: true });
+    });
+  }
+
+  grappleButton.addEventListener("click", () => {
+    session?.queueGrapple();
+    arenaHost.focus({ preventScroll: true });
+  });
 
   const copyRoundReport = async (): Promise<void> => {
     if (latestRoundReport === undefined) {
@@ -894,8 +1725,11 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     copyRoundReportButton.hidden = true;
     setScreen("menu");
     delete root.dataset.round;
+    setPauseMenu(false);
+    pauseRoundButton.hidden = true;
     arenaActions.hidden = true;
     inventoryActions.hidden = true;
+    skillActions.hidden = true;
     telemetry.hidden = true;
     developerTelemetry?.setVisible(false);
     rendererStatus.dataset.state = "ready";
@@ -912,7 +1746,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
       audio?.destroy();
       debugTuning?.destroy();
       pointerControls?.destroy();
-      document.removeEventListener("keydown", handleVersionHistoryEscape);
+      document.removeEventListener("keydown", handleGlobalKeyboard);
 
       if (import.meta.env.DEV) {
         window.removeEventListener("shovefall:diagnostic-fatal", handleDiagnosticFatal);
@@ -921,7 +1755,9 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     { once: true },
   );
 
-  renderSettingsSummary();
+  renderStartingAttributes();
   renderStartingItemSelection();
+  renderStartingSkillSelection();
   renderVersionHistory();
+  renderScoreboard();
 }

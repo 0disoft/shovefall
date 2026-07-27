@@ -19,10 +19,41 @@
         <div class="main-menu__actions">
           <button id="start-game" class="primary-action" type="button">게임 시작</button>
           <button id="open-settings" class="secondary-action" type="button">설정</button>
+          <button id="open-scoreboard" class="secondary-action" type="button">점수표</button>
           <button id="open-version-history" class="secondary-action" type="button">
             버전 기록
           </button>
         </div>
+      </section>
+
+      <dialog
+        id="setup-required-dialog"
+        class="setup-required-dialog"
+        aria-labelledby="setup-required-title"
+        aria-describedby="setup-required-message"
+      >
+        <h2 id="setup-required-title">먼저 설정을 골라줘</h2>
+        <p id="setup-required-message">
+          기초 특성 20포인트, 스킬 2개, 아이템 1개를 골라야 시작할 수 있어.
+        </p>
+        <div class="setup-required-dialog__actions">
+          <button id="go-to-required-settings" class="primary-action" type="button">
+            설정하러 가기
+          </button>
+          <button id="close-setup-required" class="secondary-action" type="button">닫기</button>
+        </div>
+      </dialog>
+
+      <section id="scoreboard" class="scoreboard-panel" aria-labelledby="scoreboard-title">
+        <header class="scoreboard__header">
+          <h2 id="scoreboard-title" tabindex="-1">점수표</h2>
+          <output id="scoreboard-summary" aria-live="polite">아직 기록 없음</output>
+        </header>
+        <p id="scoreboard-empty" class="scoreboard__empty">
+          아직 끝낸 판이 없어. 한 판 끝내면 여기에 남아.
+        </p>
+        <ol id="scoreboard-list" class="scoreboard__list" aria-label="지난 게임 기록"></ol>
+        <button id="close-scoreboard" class="secondary-action" type="button">메뉴로</button>
       </section>
 
       <section
@@ -45,84 +76,368 @@
           </div>
 
           <form id="game-settings" class="settings-form">
-            <div class="player-control">
-              <div class="player-control__label">
-                <label for="starting-weight">몸무게</label>
-                <output id="starting-weight-value" for="starting-weight">75</output>
-              </div>
-              <input
-                id="starting-weight"
-                name="startingWeight"
-                type="range"
-                min="50"
-                max="100"
-                step="1"
-                value="75"
-              />
-              <div class="range-labels" aria-hidden="true">
-                <span>50</span>
-                <span>75</span>
-                <span>100</span>
-              </div>
+            <div class="settings-tabs" role="tablist" aria-label="게임 설정 종류">
+              <button
+                id="settings-tab-attributes"
+                class="settings-tab"
+                type="button"
+                role="tab"
+                aria-selected="true"
+                aria-controls="settings-panel-attributes"
+                data-settings-tab="attributes"
+              >
+                특성
+              </button>
+              <button
+                id="settings-tab-skills"
+                class="settings-tab"
+                type="button"
+                role="tab"
+                aria-selected="false"
+                aria-controls="starting-skills"
+                data-settings-tab="skills"
+                tabindex="-1"
+              >
+                스킬
+              </button>
+              <button
+                id="settings-tab-items"
+                class="settings-tab"
+                type="button"
+                role="tab"
+                aria-selected="false"
+                aria-controls="starting-items"
+                data-settings-tab="items"
+                tabindex="-1"
+              >
+                아이템
+              </button>
+              <button
+                id="settings-tab-lab"
+                class="settings-tab"
+                type="button"
+                role="tab"
+                aria-selected="false"
+                aria-controls="debug-tuning"
+                data-settings-tab="lab"
+                tabindex="-1"
+                hidden
+              >
+                실험실
+              </button>
             </div>
 
-            <fieldset id="starting-items" class="preset-fieldset loadout-fieldset">
-              <legend>시작 아이템 <span>2개 선택</span></legend>
-              <label class="preset-card">
-                <input type="checkbox" name="startingItem" value="iron-boots" checked />
-                <span class="item-art item-art--iron-boots" aria-hidden="true"></span>
-                <span><strong>철 장화</strong><small>패시브 · 더 묵직하게 버텨</small></span>
-              </label>
-              <label class="preset-card">
-                <input type="checkbox" name="startingItem" value="feather" />
-                <span class="item-art item-art--feather" aria-hidden="true"></span>
-                <span><strong>깃털</strong><small>패시브 · 더 빠르게 빠져나가</small></span>
-              </label>
-              <label class="preset-card">
-                <input type="checkbox" name="startingItem" value="spring-glove" checked />
-                <span class="item-art item-art--spring-glove" aria-hidden="true"></span>
-                <span><strong>스프링 장갑</strong><small>패시브 · 첫 밀치기를 더 멀리</small></span>
-              </label>
-              <label class="preset-card">
-                <input type="checkbox" name="startingItem" value="wind-blast" />
-                <span class="item-art item-art--wind-blast" aria-hidden="true"></span>
-                <span><strong>장풍</strong><small>2회 · 멀리 날려</small></span>
-              </label>
-              <label class="preset-card">
-                <input type="checkbox" name="startingItem" value="brick-bag" />
-                <span class="item-art item-art--brick-bag" aria-hidden="true"></span>
-                <span><strong>벽돌 가방</strong><small>4개 · 앞 칸에 벽</small></span>
-              </label>
-              <label class="preset-card">
-                <input type="checkbox" name="startingItem" value="boat" />
-                <span class="item-art item-art--boat" aria-hidden="true"></span>
-                <span><strong>배</strong><small>1회 · 5초 동안 물 위 이동</small></span>
-              </label>
-              <label class="preset-card">
-                <input type="checkbox" name="startingItem" value="bomb" />
-                <span class="item-art item-art--bomb" aria-hidden="true"></span>
-                <span><strong>시한폭탄</strong><small>2개 · 5초 뒤 적만 즉사</small></span>
-              </label>
-              <label class="preset-card">
-                <input type="checkbox" name="startingItem" value="soap" />
-                <span class="item-art item-art--soap" aria-hidden="true"></span>
-                <span><strong>비누</strong><small>3개 · 앞 칸에 미끄럼 함정</small></span>
-              </label>
-              <label class="preset-card">
-                <input type="checkbox" name="startingItem" value="grappling-hook" />
-                <span class="item-art item-art--grappling-hook" aria-hidden="true"></span>
-                <span><strong>구조 갈고리</strong><small>2회 · 땅이나 벽을 붙잡아</small></span>
-              </label>
-              <p id="starting-items-help" class="fieldset-help" aria-live="polite">
-                라운드를 시작할 때 들고 갈 두 개를 골라.
+            <fieldset
+              id="settings-panel-attributes"
+              class="starting-attributes settings-panel"
+              role="tabpanel"
+              aria-labelledby="settings-tab-attributes"
+              data-settings-panel="attributes"
+            >
+              <legend>기초 특성 <span>20포인트</span></legend>
+              <p class="starting-attributes__remaining" aria-live="polite">
+                <span>남은 포인트 <output id="starting-attribute-remaining">20</output></span>
+                <small>Ctrl+클릭은 5씩</small>
               </p>
+              <p class="starting-build-summary__title">적용 후 전투 수치</p>
+              <dl class="starting-build-summary" aria-label="적용 후 전투 수치">
+                <div>
+                  <dt>무게 보정</dt>
+                  <dd><output id="starting-total-mass">기본</output></dd>
+                </div>
+                <div>
+                  <dt>최대 체력</dt>
+                  <dd><output id="starting-total-health">100</output></dd>
+                </div>
+                <div>
+                  <dt>최대 마나</dt>
+                  <dd><output id="starting-total-mana">100</output></dd>
+                </div>
+                <div>
+                  <dt>이동 속도</dt>
+                  <dd><output id="starting-total-movement">0%</output></dd>
+                </div>
+                <div>
+                  <dt>재사용 대기</dt>
+                  <dd><output id="starting-total-cooldown">0%</output></dd>
+                </div>
+                <div>
+                  <dt>밀치기·스킬</dt>
+                  <dd><output id="starting-total-power">0%</output></dd>
+                </div>
+                <div>
+                  <dt>밀침 저항</dt>
+                  <dd><output id="starting-total-resistance">0%</output></dd>
+                </div>
+                <div>
+                  <dt>제어 시간</dt>
+                  <dd><output id="starting-total-control">0%</output></dd>
+                </div>
+                <div>
+                  <dt>받는 피해</dt>
+                  <dd><output id="starting-total-damage-taken">0%</output></dd>
+                </div>
+                <div>
+                  <dt>보호막</dt>
+                  <dd><output id="starting-total-shield">0%</output></dd>
+                </div>
+                <div>
+                  <dt>체력 재생</dt>
+                  <dd><output id="starting-total-health-regen">0%</output></dd>
+                </div>
+                <div>
+                  <dt>마나 재생</dt>
+                  <dd><output id="starting-total-mana-regen">0%</output></dd>
+                </div>
+              </dl>
+              <div class="starting-attributes__grid">
+                <div class="starting-attribute" data-starting-attribute="strength">
+                  <span class="starting-attribute__copy"
+                    ><strong>완력</strong><small>무게 보정 · 밀치기 · 스킬 위력</small
+                    ><small id="starting-effect-strength" class="starting-attribute__effect"></small
+                    ><small id="starting-next-strength" class="starting-attribute__next"></small
+                  ></span>
+                  <div class="starting-attribute__stepper">
+                    <button type="button" data-attribute-step="1" aria-label="완력 1 올리기">
+                      +
+                    </button>
+                    <output id="starting-attribute-strength">0</output>
+                    <button type="button" data-attribute-step="-1" aria-label="완력 1 내리기">
+                      −
+                    </button>
+                  </div>
+                </div>
+                <div class="starting-attribute" data-starting-attribute="agility">
+                  <span class="starting-attribute__copy"
+                    ><strong>민첩</strong><small>이동 속도 · 재사용 대기시간</small
+                    ><small id="starting-effect-agility" class="starting-attribute__effect"></small
+                    ><small id="starting-next-agility" class="starting-attribute__next"></small
+                  ></span>
+                  <div class="starting-attribute__stepper">
+                    <button type="button" data-attribute-step="1" aria-label="민첩 1 올리기">
+                      +
+                    </button>
+                    <output id="starting-attribute-agility">0</output>
+                    <button type="button" data-attribute-step="-1" aria-label="민첩 1 내리기">
+                      −
+                    </button>
+                  </div>
+                </div>
+                <div class="starting-attribute" data-starting-attribute="constitution">
+                  <span class="starting-attribute__copy"
+                    ><strong>체질</strong><small>최대 체력 · 체력 재생</small
+                    ><small
+                      id="starting-effect-constitution"
+                      class="starting-attribute__effect"
+                    ></small
+                    ><small id="starting-next-constitution" class="starting-attribute__next"></small
+                  ></span>
+                  <div class="starting-attribute__stepper">
+                    <button type="button" data-attribute-step="1" aria-label="체질 1 올리기">
+                      +
+                    </button>
+                    <output id="starting-attribute-constitution">0</output>
+                    <button type="button" data-attribute-step="-1" aria-label="체질 1 내리기">
+                      −
+                    </button>
+                  </div>
+                </div>
+                <div class="starting-attribute" data-starting-attribute="spirit">
+                  <span class="starting-attribute__copy"
+                    ><strong>정신</strong><small>최대 마나 · 마나 재생</small
+                    ><small id="starting-effect-spirit" class="starting-attribute__effect"></small
+                    ><small id="starting-next-spirit" class="starting-attribute__next"></small
+                  ></span>
+                  <div class="starting-attribute__stepper">
+                    <button type="button" data-attribute-step="1" aria-label="정신 1 올리기">
+                      +
+                    </button>
+                    <output id="starting-attribute-spirit">0</output>
+                    <button type="button" data-attribute-step="-1" aria-label="정신 1 내리기">
+                      −
+                    </button>
+                  </div>
+                </div>
+                <div class="starting-attribute" data-starting-attribute="balance">
+                  <span class="starting-attribute__copy"
+                    ><strong>균형</strong><small>밀침 저항 · 제어 시간 감소</small
+                    ><small id="starting-effect-balance" class="starting-attribute__effect"></small
+                    ><small id="starting-next-balance" class="starting-attribute__next"></small
+                  ></span>
+                  <div class="starting-attribute__stepper">
+                    <button type="button" data-attribute-step="1" aria-label="균형 1 올리기">
+                      +
+                    </button>
+                    <output id="starting-attribute-balance">0</output>
+                    <button type="button" data-attribute-step="-1" aria-label="균형 1 내리기">
+                      −
+                    </button>
+                  </div>
+                </div>
+                <div class="starting-attribute" data-starting-attribute="willpower">
+                  <span class="starting-attribute__copy"
+                    ><strong>의지</strong><small>받는 피해 · 보호막</small
+                    ><small
+                      id="starting-effect-willpower"
+                      class="starting-attribute__effect"
+                    ></small
+                    ><small id="starting-next-willpower" class="starting-attribute__next"></small
+                  ></span>
+                  <div class="starting-attribute__stepper">
+                    <button type="button" data-attribute-step="1" aria-label="의지 1 올리기">
+                      +
+                    </button>
+                    <output id="starting-attribute-willpower">0</output>
+                    <button type="button" data-attribute-step="-1" aria-label="의지 1 내리기">
+                      −
+                    </button>
+                  </div>
+                </div>
+              </div>
             </fieldset>
 
-            <p id="setup-summary" class="settings-summary" aria-live="polite">
-              50명 · 몸무게 75 · 맵 아이템 8개 · 4초마다 1개
-            </p>
+            <fieldset
+              id="starting-skills"
+              class="preset-fieldset skill-loadout-fieldset settings-panel"
+              role="tabpanel"
+              aria-labelledby="settings-tab-skills"
+              data-settings-panel="skills"
+              hidden
+            >
+              <legend>
+                시작 스킬
+                <span><output id="starting-skill-count" aria-live="polite">0</output>/2 선택</span>
+              </legend>
+              <label class="preset-card" data-skill-definition="force-palm">
+                <input type="checkbox" name="startingSkill" value="force-palm" />
+                <span class="skill-art skill-art--force-palm" aria-hidden="true"></span>
+                <span class="preset-card__copy"
+                  ><strong>충격 장타</strong><small class="skill-card__meta"></small
+                  ><small class="skill-card__effect"></small
+                ></span>
+              </label>
+              <label class="preset-card" data-skill-definition="blink-step">
+                <input type="checkbox" name="startingSkill" value="blink-step" />
+                <span class="skill-art skill-art--blink-step" aria-hidden="true"></span>
+                <span class="preset-card__copy"
+                  ><strong>잔상 회피</strong><small class="skill-card__meta"></small
+                  ><small class="skill-card__effect"></small
+                ></span>
+              </label>
+              <label class="preset-card" data-skill-definition="arc-bolt">
+                <input type="checkbox" name="startingSkill" value="arc-bolt" />
+                <span class="skill-art skill-art--arc-bolt" aria-hidden="true"></span>
+                <span class="preset-card__copy"
+                  ><strong>파동탄</strong><small class="skill-card__meta"></small
+                  ><small class="skill-card__effect"></small
+                ></span>
+              </label>
+              <label class="preset-card" data-skill-definition="chain-bind">
+                <input type="checkbox" name="startingSkill" value="chain-bind" />
+                <span class="skill-art skill-art--chain-bind" aria-hidden="true"></span>
+                <span class="preset-card__copy"
+                  ><strong>사슬 속박</strong><small class="skill-card__meta"></small
+                  ><small class="skill-card__effect"></small
+                ></span>
+              </label>
+              <label class="preset-card" data-skill-definition="meteor-mark">
+                <input type="checkbox" name="startingSkill" value="meteor-mark" />
+                <span class="skill-art skill-art--meteor-mark" aria-hidden="true"></span>
+                <span class="preset-card__copy"
+                  ><strong>낙석 표식</strong><small class="skill-card__meta"></small
+                  ><small class="skill-card__effect"></small
+                ></span>
+              </label>
+              <label class="preset-card" data-skill-definition="frost-field">
+                <input type="checkbox" name="startingSkill" value="frost-field" />
+                <span class="skill-art skill-art--frost-field" aria-hidden="true"></span>
+                <span class="preset-card__copy"
+                  ><strong>빙결 지대</strong><small class="skill-card__meta"></small
+                  ><small class="skill-card__effect"></small
+                ></span>
+              </label>
+              <label class="preset-card" data-skill-definition="tidal-charge">
+                <input type="checkbox" name="startingSkill" value="tidal-charge" />
+                <span class="skill-art skill-art--tidal-charge" aria-hidden="true"></span>
+                <span class="preset-card__copy"
+                  ><strong>파도 돌진</strong><small class="skill-card__meta"></small
+                  ><small class="skill-card__effect"></small
+                ></span>
+              </label>
+              <label class="preset-card" data-skill-definition="aegis">
+                <input type="checkbox" name="startingSkill" value="aegis" />
+                <span class="skill-art skill-art--aegis" aria-hidden="true"></span>
+                <span class="preset-card__copy"
+                  ><strong>수호 방패</strong><small class="skill-card__meta"></small
+                  ><small class="skill-card__effect"></small
+                ></span>
+              </label>
+            </fieldset>
 
-            <details id="debug-tuning" class="debug-tuning" data-debug-tuning="disabled" hidden>
+            <fieldset
+              id="starting-items"
+              class="preset-fieldset loadout-fieldset settings-panel"
+              role="tabpanel"
+              aria-labelledby="settings-tab-items"
+              data-settings-panel="items"
+              hidden
+            >
+              <legend>
+                시작 아이템
+                <span><output id="starting-item-count" aria-live="polite">0</output>/1 선택</span>
+              </legend>
+              <label class="preset-card" data-item-definition="wind-blast">
+                <input type="radio" name="startingItem" value="wind-blast" />
+                <span class="item-art item-art--wind-blast" aria-hidden="true"></span>
+                <span class="preset-card__copy"
+                  ><strong>장풍</strong><small class="item-card__meta"></small
+                  ><small class="item-card__effect"></small
+                ></span>
+              </label>
+              <label class="preset-card" data-item-definition="brick-bag">
+                <input type="radio" name="startingItem" value="brick-bag" />
+                <span class="item-art item-art--brick-bag" aria-hidden="true"></span>
+                <span class="preset-card__copy"
+                  ><strong>벽돌 가방</strong><small class="item-card__meta"></small
+                  ><small class="item-card__effect"></small
+                ></span>
+              </label>
+              <label class="preset-card" data-item-definition="boat">
+                <input type="radio" name="startingItem" value="boat" />
+                <span class="item-art item-art--boat" aria-hidden="true"></span>
+                <span class="preset-card__copy"
+                  ><strong>배</strong><small class="item-card__meta"></small
+                  ><small class="item-card__effect"></small
+                ></span>
+              </label>
+              <label class="preset-card" data-item-definition="bomb">
+                <input type="radio" name="startingItem" value="bomb" />
+                <span class="item-art item-art--bomb" aria-hidden="true"></span>
+                <span class="preset-card__copy"
+                  ><strong>시한폭탄</strong><small class="item-card__meta"></small
+                  ><small class="item-card__effect"></small
+                ></span>
+              </label>
+              <label class="preset-card" data-item-definition="soap">
+                <input type="radio" name="startingItem" value="soap" />
+                <span class="item-art item-art--soap" aria-hidden="true"></span>
+                <span class="preset-card__copy"
+                  ><strong>비누</strong><small class="item-card__meta"></small
+                  ><small class="item-card__effect"></small
+                ></span>
+              </label>
+            </fieldset>
+
+            <details
+              id="debug-tuning"
+              class="debug-tuning settings-panel"
+              data-debug-tuning="disabled"
+              data-settings-panel="lab"
+              role="tabpanel"
+              aria-labelledby="settings-tab-lab"
+              open
+              hidden
+            >
               <summary>
                 <span>
                   <strong>실험실</strong>
@@ -145,10 +460,10 @@
                     <div class="player-control__label">
                       <label for="debug-movement-speed">기본 이동속도</label>
                       <output id="debug-movement-speed-value" for="debug-movement-speed"
-                        >3.3칸/초</output
+                        >2.4칸/초</output
                       >
                     </div>
-                    <input id="debug-movement-speed" type="range" value="0.055" />
+                    <input id="debug-movement-speed" type="range" value="0.04" />
                   </div>
 
                   <div class="player-control">
@@ -202,6 +517,230 @@
                     </div>
                     <input id="debug-dodge-ticks" type="range" value="5" />
                   </div>
+
+                  <div class="player-control">
+                    <div class="player-control__label">
+                      <label for="debug-shove-windup-ticks">밀치기 준비</label>
+                      <output id="debug-shove-windup-ticks-value" for="debug-shove-windup-ticks"
+                        >8틱</output
+                      >
+                    </div>
+                    <input id="debug-shove-windup-ticks" type="range" value="8" />
+                  </div>
+
+                  <div class="player-control">
+                    <div class="player-control__label">
+                      <label for="debug-shove-recovery-ticks">밀치기 회복</label>
+                      <output id="debug-shove-recovery-ticks-value" for="debug-shove-recovery-ticks"
+                        >20틱</output
+                      >
+                    </div>
+                    <input id="debug-shove-recovery-ticks" type="range" value="20" />
+                  </div>
+
+                  <div class="player-control">
+                    <div class="player-control__label">
+                      <label for="debug-shove-cooldown-ticks">밀치기 쿨다운</label>
+                      <output id="debug-shove-cooldown-ticks-value" for="debug-shove-cooldown-ticks"
+                        >84틱</output
+                      >
+                    </div>
+                    <input id="debug-shove-cooldown-ticks" type="range" value="84" />
+                  </div>
+
+                  <div class="player-control">
+                    <div class="player-control__label">
+                      <label for="debug-shove-base-impulse">밀치기 충격량</label>
+                      <output id="debug-shove-base-impulse-value" for="debug-shove-base-impulse"
+                        >0.16</output
+                      >
+                    </div>
+                    <input id="debug-shove-base-impulse" type="range" value="0.16" />
+                  </div>
+
+                  <div class="player-control">
+                    <div class="player-control__label">
+                      <label for="debug-shove-maximum-impulse">밀치기 최대충격</label>
+                      <output
+                        id="debug-shove-maximum-impulse-value"
+                        for="debug-shove-maximum-impulse"
+                        >0.34</output
+                      >
+                    </div>
+                    <input id="debug-shove-maximum-impulse" type="range" value="0.34" />
+                  </div>
+
+                  <div class="player-control">
+                    <div class="player-control__label">
+                      <label for="debug-shove-hit-stumble-ticks">피격 휘청거림</label>
+                      <output
+                        id="debug-shove-hit-stumble-ticks-value"
+                        for="debug-shove-hit-stumble-ticks"
+                        >22틱</output
+                      >
+                    </div>
+                    <input id="debug-shove-hit-stumble-ticks" type="range" value="22" />
+                  </div>
+
+                  <div class="player-control">
+                    <div class="player-control__label">
+                      <label for="debug-dodge-cooldown-ticks">회피 쿨다운</label>
+                      <output id="debug-dodge-cooldown-ticks-value" for="debug-dodge-cooldown-ticks"
+                        >108틱</output
+                      >
+                    </div>
+                    <input id="debug-dodge-cooldown-ticks" type="range" value="108" />
+                  </div>
+
+                  <div class="player-control">
+                    <div class="player-control__label">
+                      <label for="debug-dodge-evasion-ticks">회피 무적</label>
+                      <output id="debug-dodge-evasion-ticks-value" for="debug-dodge-evasion-ticks"
+                        >4틱</output
+                      >
+                    </div>
+                    <input id="debug-dodge-evasion-ticks" type="range" value="4" />
+                  </div>
+
+                  <div class="player-control">
+                    <div class="player-control__label">
+                      <label for="debug-health-regen-delay-ticks">체력 재생 대기</label>
+                      <output
+                        id="debug-health-regen-delay-ticks-value"
+                        for="debug-health-regen-delay-ticks"
+                        >300틱</output
+                      >
+                    </div>
+                    <input id="debug-health-regen-delay-ticks" type="range" value="300" />
+                  </div>
+
+                  <div class="player-control">
+                    <div class="player-control__label">
+                      <label for="debug-health-regen-per-tick">체력 재생량</label>
+                      <output
+                        id="debug-health-regen-per-tick-value"
+                        for="debug-health-regen-per-tick"
+                        >0.04/틱</output
+                      >
+                    </div>
+                    <input id="debug-health-regen-per-tick" type="range" value="0.04" />
+                  </div>
+
+                  <div class="player-control">
+                    <div class="player-control__label">
+                      <label for="debug-mana-regen-delay-ticks">마나 재생 대기</label>
+                      <output
+                        id="debug-mana-regen-delay-ticks-value"
+                        for="debug-mana-regen-delay-ticks"
+                        >60틱</output
+                      >
+                    </div>
+                    <input id="debug-mana-regen-delay-ticks" type="range" value="60" />
+                  </div>
+
+                  <div class="player-control">
+                    <div class="player-control__label">
+                      <label for="debug-mana-regen-per-tick">마나 재생량</label>
+                      <output id="debug-mana-regen-per-tick-value" for="debug-mana-regen-per-tick"
+                        >0.100/틱</output
+                      >
+                    </div>
+                    <input id="debug-mana-regen-per-tick" type="range" value="0.1" />
+                  </div>
+
+                  <div class="player-control">
+                    <div class="player-control__label">
+                      <label for="debug-shove-damage">밀치기 피해</label>
+                      <output id="debug-shove-damage-value" for="debug-shove-damage">7피해</output>
+                    </div>
+                    <input id="debug-shove-damage" type="range" value="7" />
+                  </div>
+
+                  <div class="player-control">
+                    <div class="player-control__label">
+                      <label for="debug-wind-blast-range">장풍 사거리</label>
+                      <output id="debug-wind-blast-range-value" for="debug-wind-blast-range"
+                        >5.0칸</output
+                      >
+                    </div>
+                    <input id="debug-wind-blast-range" type="range" value="5" />
+                  </div>
+
+                  <div class="player-control">
+                    <div class="player-control__label">
+                      <label for="debug-wind-blast-base-impulse">장풍 충격량</label>
+                      <output
+                        id="debug-wind-blast-base-impulse-value"
+                        for="debug-wind-blast-base-impulse"
+                        >0.52</output
+                      >
+                    </div>
+                    <input id="debug-wind-blast-base-impulse" type="range" value="0.52" />
+                  </div>
+
+                  <div class="player-control">
+                    <div class="player-control__label">
+                      <label for="debug-bomb-fuse-ticks">폭탄 도화선</label>
+                      <output id="debug-bomb-fuse-ticks-value" for="debug-bomb-fuse-ticks"
+                        >300틱</output
+                      >
+                    </div>
+                    <input id="debug-bomb-fuse-ticks" type="range" value="300" />
+                  </div>
+
+                  <div class="player-control">
+                    <div class="player-control__label">
+                      <label for="debug-bomb-blast-radius">폭탄 반경</label>
+                      <output id="debug-bomb-blast-radius-value" for="debug-bomb-blast-radius"
+                        >3.0칸</output
+                      >
+                    </div>
+                    <input id="debug-bomb-blast-radius" type="range" value="3" />
+                  </div>
+
+                  <div class="player-control">
+                    <div class="player-control__label">
+                      <label for="debug-grappling-hook-cooldown-ticks">갈고리 재사용</label>
+                      <output
+                        id="debug-grappling-hook-cooldown-ticks-value"
+                        for="debug-grappling-hook-cooldown-ticks"
+                        >600틱</output
+                      >
+                    </div>
+                    <input id="debug-grappling-hook-cooldown-ticks" type="range" value="600" />
+                  </div>
+
+                  <div class="player-control">
+                    <div class="player-control__label">
+                      <label for="debug-grappling-hook-range">갈고리 사거리</label>
+                      <output id="debug-grappling-hook-range-value" for="debug-grappling-hook-range"
+                        >4.5칸</output
+                      >
+                    </div>
+                    <input id="debug-grappling-hook-range" type="range" value="4.5" />
+                  </div>
+
+                  <div class="player-control">
+                    <div class="player-control__label">
+                      <label for="debug-grappling-hook-pull-ticks">갈고리 당김</label>
+                      <output
+                        id="debug-grappling-hook-pull-ticks-value"
+                        for="debug-grappling-hook-pull-ticks"
+                        >12틱</output
+                      >
+                    </div>
+                    <input id="debug-grappling-hook-pull-ticks" type="range" value="12" />
+                  </div>
+
+                  <div class="player-control">
+                    <div class="player-control__label">
+                      <label for="debug-soap-stumble-ticks">비누 휘청거림</label>
+                      <output id="debug-soap-stumble-ticks-value" for="debug-soap-stumble-ticks"
+                        >60틱</output
+                      >
+                    </div>
+                    <input id="debug-soap-stumble-ticks" type="range" value="60" />
+                  </div>
                 </div>
 
                 <p id="debug-tuning-summary" class="debug-tuning__summary" aria-live="polite">
@@ -250,49 +789,80 @@
                 <span id="pointer-joystick-knob" class="pointer-joystick__knob"></span>
               </div>
               <div class="touch-actions">
-                <button id="touch-dodge" type="button">회피</button>
-                <button id="touch-shove" type="button">밀치기</button>
+                <button id="touch-skill-0" type="button">Q</button>
+                <button id="touch-skill-1" type="button">W</button>
+                <button id="touch-grapple" type="button" aria-label="구조 갈고리">E</button>
+                <button id="touch-item-0" type="button">D</button>
               </div>
             </div>
-            <div
-              id="inventory-actions"
-              class="inventory-actions"
-              aria-label="시작 아이템 사용"
-              hidden
-            >
-              <button id="use-item-slot-0" type="button" disabled>Q · 슬롯 1</button>
-              <button id="use-item-slot-1" type="button" disabled>E · 슬롯 2</button>
-              <div id="combat-status" class="combat-status" aria-label="전투 행동 상태">
-                <output id="shove-status-value" data-state="blocked"
-                  >Space · 밀치기 · 행동 불가</output
-                >
-                <output id="dodge-status-value" data-state="blocked"
-                  >Shift · 회피 · 행동 불가</output
-                >
+            <div class="action-hud" aria-label="스킬과 아이템 사용">
+              <div
+                id="skill-actions"
+                class="skill-actions"
+                aria-label="스킬과 구조 갈고리 사용"
+                hidden
+              >
+                <button id="use-skill-slot-0" type="button" disabled>Q · 스킬 1</button>
+                <button id="use-skill-slot-1" type="button" disabled>W · 스킬 2</button>
+                <button id="use-grapple" type="button" disabled>E · 구조 갈고리</button>
+              </div>
+              <div
+                id="inventory-actions"
+                class="inventory-actions"
+                aria-label="시작 아이템 사용"
+                hidden
+              >
+                <button id="use-item-slot-0" type="button" disabled>D · 슬롯 1</button>
               </div>
             </div>
+            <p id="targeting-help" class="targeting-help" role="status" hidden>
+              <strong>방향키·마우스 조준</strong>
+              <span>같은 키·Enter·좌클릭 확정 · Esc·우클릭 취소</span>
+            </p>
             <dl id="stat-status" class="stat-status" aria-label="스탯 상태" hidden>
               <div>
-                <dt>힘</dt>
-                <dd><output id="power-level">0</output></dd>
+                <dt>체력</dt>
+                <dd><output id="health-value">100 / 100</output></dd>
               </div>
               <div>
-                <dt>중심</dt>
-                <dd><output id="stability-level">0</output></dd>
+                <dt>마나</dt>
+                <dd><output id="mana-value">100 / 100</output></dd>
               </div>
               <div>
-                <dt>발놀림</dt>
-                <dd><output id="mobility-level">0</output></dd>
+                <dt>밀치기</dt>
+                <dd><output id="power-bonus">+0%</output></dd>
               </div>
               <div>
-                <dt>반사</dt>
-                <dd><output id="reflex-level">0</output></dd>
+                <dt>밀침 저항</dt>
+                <dd><output id="stability-bonus">+0%</output></dd>
               </div>
-              <div class="stat-status__points">
-                <dt>포인트</dt>
-                <dd><output id="stat-points-value">0</output></dd>
+              <div>
+                <dt>이동</dt>
+                <dd><output id="mobility-bonus">+0%</output></dd>
+              </div>
+              <div>
+                <dt>밀치기·회피 쿨</dt>
+                <dd><output id="reflex-bonus">0% / 0%</output></dd>
+              </div>
+              <div>
+                <dt>최대 체력</dt>
+                <dd><output id="vitality-bonus">+0%</output></dd>
+              </div>
+              <div>
+                <dt>마나 회복</dt>
+                <dd><output id="focus-bonus">+0%</output></dd>
               </div>
             </dl>
+            <button
+              id="pause-round"
+              class="pause-trigger"
+              type="button"
+              aria-controls="pause-menu"
+              aria-expanded="false"
+              hidden
+            >
+              P · 일시정지
+            </button>
             <section
               id="stat-upgrade-overlay"
               class="stat-upgrade"
@@ -302,86 +872,159 @@
               hidden
             >
               <form id="stat-upgrade-form" class="stat-upgrade__panel">
-                <h3 id="stat-upgrade-title">스탯 하나 고르기</h3>
-                <p>처치 보상이다. 저장하면 바로 계속된다.</p>
-                <div class="stat-upgrade__choices">
-                  <label
-                    ><input type="radio" name="upgradeStat" value="power" checked /><span
-                      ><strong>힘</strong><small>밀치기 +8%</small></span
-                    ></label
-                  >
-                  <label
-                    ><input type="radio" name="upgradeStat" value="stability" /><span
-                      ><strong>중심</strong><small>받는 밀침 -12%</small></span
-                    ></label
-                  >
-                  <label
-                    ><input type="radio" name="upgradeStat" value="mobility" /><span
-                      ><strong>발놀림</strong><small>이동 +5%</small></span
-                    ></label
-                  >
-                  <label
-                    ><input type="radio" name="upgradeStat" value="reflex" /><span
-                      ><strong>반사신경</strong><small>재사용 대기 감소</small></span
-                    ></label
-                  >
+                <h3 id="stat-upgrade-title">전투 특성 선택</h3>
+                <p>처치 보상 1포인트를 쓸 전투 특성을 골라.</p>
+                <div class="trait-upgrade__choices" aria-label="올릴 특성">
+                  <label class="trait-upgrade__choice" data-trait-choice="power">
+                    <input type="radio" name="upgradeChoice" value="power" />
+                    <span class="trait-upgrade__icon" aria-hidden="true">힘</span>
+                    <span><strong>압박</strong><small>밀치기 +8%</small></span>
+                    <output id="trait-rank-power">0/5</output>
+                  </label>
+                  <label class="trait-upgrade__choice" data-trait-choice="stability">
+                    <input type="radio" name="upgradeChoice" value="stability" />
+                    <span class="trait-upgrade__icon" aria-hidden="true">중</span>
+                    <span><strong>중심</strong><small>밀침 저항 +12% · 받는 피해 -5%</small></span>
+                    <output id="trait-rank-stability">0/5</output>
+                  </label>
+                  <label class="trait-upgrade__choice" data-trait-choice="mobility">
+                    <input type="radio" name="upgradeChoice" value="mobility" />
+                    <span class="trait-upgrade__icon" aria-hidden="true">발</span>
+                    <span><strong>기동</strong><small>이동 속도 +5%</small></span>
+                    <output id="trait-rank-mobility">0/5</output>
+                  </label>
+                  <label class="trait-upgrade__choice" data-trait-choice="reflex">
+                    <input type="radio" name="upgradeChoice" value="reflex" />
+                    <span class="trait-upgrade__icon" aria-hidden="true">반</span>
+                    <span><strong>반사</strong><small>밀치기·회피 재사용 대기 감소</small></span>
+                    <output id="trait-rank-reflex">0/5</output>
+                  </label>
+                  <label class="trait-upgrade__choice" data-trait-choice="vitality">
+                    <input type="radio" name="upgradeChoice" value="vitality" />
+                    <span class="trait-upgrade__icon" aria-hidden="true">생</span>
+                    <span><strong>생존</strong><small>최대 체력 +12 · 체력 재생 +10%</small></span>
+                    <output id="trait-rank-vitality">0/5</output>
+                  </label>
+                  <label class="trait-upgrade__choice" data-trait-choice="focus">
+                    <input type="radio" name="upgradeChoice" value="focus" />
+                    <span class="trait-upgrade__icon" aria-hidden="true">집</span>
+                    <span><strong>집중</strong><small>최대 마나 +10 · 마나 재생 +12%</small></span>
+                    <output id="trait-rank-focus">0/5</output>
+                  </label>
                 </div>
-                <button class="primary-action" type="submit">저장하고 계속</button>
+                <button id="save-trait-upgrade" class="primary-action" type="submit" disabled>
+                  저장하고 계속
+                </button>
               </form>
             </section>
-          </div>
-          <dl id="game-telemetry" class="game-telemetry" aria-label="현재 라운드 상태" hidden>
-            <div>
-              <dt>상태</dt>
-              <dd><output id="action-value">준비</output></dd>
-            </div>
-            <div>
-              <dt>몸무게</dt>
-              <dd><output id="mass-value">보통</output></dd>
-            </div>
-            <div>
-              <dt>효과</dt>
-              <dd><output id="effect-value">없음</output></dd>
-            </div>
-            <div>
-              <dt>맵 아이템</dt>
-              <dd><output id="item-value">0</output></dd>
-            </div>
-            <div>
-              <dt>생존</dt>
-              <dd><output id="survivor-value">16</output></dd>
-            </div>
-          </dl>
-          <dl class="control-guide" aria-label="조작법">
-            <div>
-              <dt>이동</dt>
-              <dd>WASD · 방향키 · 드래그 · 패드</dd>
-            </div>
-            <div>
-              <dt>밀치기</dt>
-              <dd>Space</dd>
-            </div>
-            <div>
-              <dt>회피</dt>
-              <dd>Shift</dd>
-            </div>
-            <div>
-              <dt>아이템</dt>
-              <dd>Q · E</dd>
-            </div>
-          </dl>
-          <div id="arena-actions" class="arena-actions" hidden>
-            <p id="round-message" class="ready-message" role="status">준비</p>
-            <div class="arena-actions__buttons">
-              <button id="restart-round" class="primary-action" type="button">다시 시작</button>
-              <button id="back-to-settings" class="secondary-action" type="button">메뉴로</button>
-              <button id="copy-round-report" class="secondary-action" type="button" hidden>
-                기록 복사
-              </button>
-              <button id="toggle-sound" class="secondary-action" type="button" aria-pressed="false">
-                소리 끄기
-              </button>
-            </div>
+            <section
+              id="pause-menu"
+              class="pause-menu"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="pause-menu-title"
+              hidden
+            >
+              <div class="pause-menu__panel">
+                <h3 id="pause-menu-title">일시정지</h3>
+                <dl id="game-telemetry" class="game-telemetry" aria-label="현재 라운드 상태" hidden>
+                  <div>
+                    <dt>상태</dt>
+                    <dd><output id="action-value">준비</output></dd>
+                  </div>
+                  <div>
+                    <dt>몸무게</dt>
+                    <dd><output id="mass-value">보통</output></dd>
+                  </div>
+                  <div>
+                    <dt>효과</dt>
+                    <dd><output id="effect-value">없음</output></dd>
+                  </div>
+                  <div>
+                    <dt>맵 아이템</dt>
+                    <dd><output id="item-value">0</output></dd>
+                  </div>
+                  <div>
+                    <dt>생존</dt>
+                    <dd><output id="survivor-value">16</output></dd>
+                  </div>
+                </dl>
+                <section class="round-statistics" aria-labelledby="round-statistics-title">
+                  <h4 id="round-statistics-title">이번 라운드</h4>
+                  <dl class="round-statistics__grid">
+                    <div>
+                      <dt>이동 거리</dt>
+                      <dd><output id="round-distance-moved">0칸</output></dd>
+                    </div>
+                    <div>
+                      <dt>준 피해</dt>
+                      <dd><output id="round-damage-dealt">0</output></dd>
+                    </div>
+                    <div>
+                      <dt>받은 피해</dt>
+                      <dd><output id="round-damage-taken">0</output></dd>
+                    </div>
+                    <div>
+                      <dt>막은 피해</dt>
+                      <dd><output id="round-damage-blocked">0 · 0%</output></dd>
+                    </div>
+                    <div>
+                      <dt>둔화 시간</dt>
+                      <dd><output id="round-slowed-time">0초</output></dd>
+                    </div>
+                  </dl>
+                  <div class="round-statistics__skills">
+                    <h5>스킬 사용</h5>
+                    <ul id="round-skill-uses"></ul>
+                  </div>
+                </section>
+                <dl class="control-guide" aria-label="조작법">
+                  <div>
+                    <dt>이동</dt>
+                    <dd>방향키 · 드래그 · 패드</dd>
+                  </div>
+                  <div>
+                    <dt>스킬</dt>
+                    <dd>Q · W → 방향키·마우스 조준 → 같은 키·Enter·좌클릭</dd>
+                  </div>
+                  <div>
+                    <dt>밀치기</dt>
+                    <dd>E</dd>
+                  </div>
+                  <div>
+                    <dt>아이템</dt>
+                    <dd>D → 방향키·마우스 조준 → D·Enter·좌클릭</dd>
+                  </div>
+                  <div>
+                    <dt>일시정지</dt>
+                    <dd>P</dd>
+                  </div>
+                </dl>
+                <div id="arena-actions" class="arena-actions" hidden>
+                  <p id="round-message" class="ready-message" role="status">준비</p>
+                  <div class="arena-actions__buttons">
+                    <button id="resume-round" class="primary-action" type="button">계속</button>
+                    <button id="restart-round" class="secondary-action" type="button">
+                      다시 시작
+                    </button>
+                    <button id="back-to-settings" class="secondary-action" type="button">
+                      메뉴로
+                    </button>
+                    <button id="copy-round-report" class="secondary-action" type="button" hidden>
+                      기록 복사
+                    </button>
+                    <button
+                      id="toggle-sound"
+                      class="secondary-action"
+                      type="button"
+                      aria-pressed="false"
+                    >
+                      소리 끄기
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </section>
           </div>
         </section>
       </div>

@@ -1,6 +1,10 @@
 # Performance Budget
 
-- Status: Budgets accepted; `0.34.0` fixed-50 headless result accepted and host-qualified browser baseline pending
+## Product 0.67.0 Fixed-60 Result
+
+The scale harness now measures the actual 60-participant public mode without weakening the `10 ms` simulation p95 gate. The first 7,200-tick run measured simulation p95 `14.143 ms`, AI p95 `11.642 ms`, no combined step above 100 ms, `1.42×` real-time throughput, and a `0.2628` spatial candidate/full-pair ratio. This is a failed budget observation, not a pass. Grappling Hook frequency is separately reduced from 10 to 15 seconds; that balance change does not excuse the 60-participant performance miss.
+
+- Status: `0.67.0` fixed-60 headless result exceeds the existing p95 budget; host-qualified browser baseline pending
 - Owner: Repository owner
 - Source of truth: `docs/product/02-spec.md` and this document
 
