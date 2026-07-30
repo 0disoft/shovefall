@@ -20,7 +20,7 @@ class MemoryStorage {
 }
 
 describe("user preferences", () => {
-  it("defaults to standard text, 50 percent effects, and 35 percent music", () => {
+  it("defaults to standard text and balanced 50 percent audio controls", () => {
     expect(loadUserPreferences(undefined)).toEqual(DEFAULT_USER_PREFERENCES);
   });
 
@@ -39,7 +39,7 @@ describe("user preferences", () => {
     expect(normalizeUserPreferences({ fontScale: "large", soundEffectsVolume: -4 })).toEqual({
       fontScale: "large",
       soundEffectsVolume: 0,
-      backgroundMusicVolume: 35,
+      backgroundMusicVolume: 50,
     });
   });
 

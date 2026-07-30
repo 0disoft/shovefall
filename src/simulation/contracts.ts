@@ -37,6 +37,11 @@ export type SkillDefinitionId =
   | "frost-field"
   | "aegis";
 export type UpgradeStatId = "power" | "stability" | "mobility" | "reflex" | "vitality" | "focus";
+
+export const MINIMUM_ARENA_COLUMNS = 7;
+export const MAXIMUM_ARENA_COLUMNS = 52;
+export const MINIMUM_ARENA_ROWS = 7;
+export const MAXIMUM_ARENA_ROWS = 48;
 export type StartingAttributeId =
   | "strength"
   | "agility"
@@ -486,6 +491,19 @@ export function assertIntegerInRange(
   }
 }
 
+export function assertArenaParticipantCapacity(
+  arenaColumns: number,
+  arenaRows: number,
+  participantCount: number,
+  name = "arena",
+): void {
+  if (arenaColumns * arenaRows < participantCount) {
+    throw new SimulationContractError(
+      `${name} must provide at least one spawn tile per participant`,
+    );
+  }
+}
+
 export function normalizeGameConfig(input: GameConfigInput): GameConfigV1 {
   const participantCount = Math.round(input.participantCount ?? 16);
   const arenaColumns = Math.round(input.arenaColumns ?? 12);
@@ -507,8 +525,9 @@ export function normalizeGameConfig(input: GameConfigInput): GameConfigV1 {
     MINIMUM_PARTICIPANT_COUNT,
     MAXIMUM_PARTICIPANT_COUNT,
   );
-  assertIntegerInRange(arenaColumns, "arenaColumns", 7, 52);
-  assertIntegerInRange(arenaRows, "arenaRows", 7, 48);
+  assertIntegerInRange(arenaColumns, "arenaColumns", MINIMUM_ARENA_COLUMNS, MAXIMUM_ARENA_COLUMNS);
+  assertIntegerInRange(arenaRows, "arenaRows", MINIMUM_ARENA_ROWS, MAXIMUM_ARENA_ROWS);
+  assertArenaParticipantCapacity(arenaColumns, arenaRows, participantCount);
   assertIntegerInRange(roundLimitSeconds, "roundLimitSeconds", 1, 120);
   assertIntegerInRange(initialItemCount, "initialItemCount", 0, maximumItemCount);
   assertIntegerInRange(itemRespawnSeconds, "itemRespawnSeconds", 0, 30);

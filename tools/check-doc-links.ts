@@ -59,7 +59,7 @@ const CURRENT_PRODUCT_CONTRACTS = [
       `${PUBLIC_LAKE_COUNT} separated ${PUBLIC_MINIMUM_LAKE_SIZE}–${PUBLIC_MAXIMUM_LAKE_SIZE}-tile lakes`,
       `${PUBLIC_TOTAL_LAKE_BUDGET}-tile budget`,
       `${PUBLIC_ROUND_LIMIT_SECONDS}-second limit`,
-      "reports remain v9",
+      "reports remain v10",
     ],
     forbidden: ["16-participant normal round", "32-participant Mayhem boot"],
   },

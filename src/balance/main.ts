@@ -1,4 +1,5 @@
 import {
+  assertCurrentBalanceDashboard,
   parseBalanceDashboardData,
   type BalanceAggregate,
   type BalanceCategory,
@@ -6,6 +7,7 @@ import {
   type BalancePhase,
   type BalancePhaseReport,
 } from "./contract";
+import { CONTENT_VERSION, PRODUCT_VERSION, SIMULATION_VERSION } from "../simulation/versions";
 import latestSnapshot from "../../balance/latest.json";
 import { ACTIVE_ITEM_DEFINITION_IDS } from "../content/items";
 import { SKILL_DEFINITION_IDS } from "../content/skills";
@@ -21,13 +23,13 @@ const CATEGORY_LABELS: Readonly<Record<BalanceCategory, string>> = Object.freeze
 
 const PHASE_NOTES: Readonly<Record<BalancePhase, string>> = Object.freeze({
   controlled:
-    "맵 추가 아이템을 끄고 20점을 4·4·3·3·3·3으로 균등 배분한 참가자들의 2스킬·시작 아이템·성향을 회전한 비교다.",
+    "맵 추가 아이템을 끄고 한 특성에 20점을 몰아준 참가자들의 2스킬·시작 아이템·성향을 회전한 비교다.",
   production:
     "실제 맵 아이템 8개와 7초 보급을 켠 결과다. 시작 아이템은 균등 배정했지만 추가 획득 기회는 관측치라 방향 확인에만 쓴다.",
 });
 
 let data: BalanceDashboardData;
-let selectedPhase: BalancePhase = "production";
+let selectedPhase: BalancePhase = "controlled";
 let selectedCategory: BalanceCategory = "skill";
 
 function requireElement<T extends Element>(selector: string, constructor: { new (): T }): T {
@@ -291,6 +293,11 @@ function initialize(dashboard: BalanceDashboardData): void {
 
 function loadDashboard(): void {
   data = parseBalanceDashboardData(latestSnapshot);
+  assertCurrentBalanceDashboard(data, {
+    productVersion: PRODUCT_VERSION,
+    simulationVersion: SIMULATION_VERSION,
+    contentVersion: CONTENT_VERSION,
+  });
   initialize(data);
 }
 

@@ -111,8 +111,16 @@ describe("deterministic item effects", () => {
     });
 
     expect(getActor(activeWorld, 1).inventory).toEqual([
-      { slotIndex: 0, definitionId: "soap", charges: 4 },
-      { slotIndex: 1, definitionId: "brick-bag", charges: 4 },
+      {
+        slotIndex: 0,
+        definitionId: "soap",
+        charges: getItemDefinition("soap").startingCharges,
+      },
+      {
+        slotIndex: 1,
+        definitionId: "brick-bag",
+        charges: getItemDefinition("brick-bag").startingCharges,
+      },
     ]);
     expect(getActor(activeWorld, 1).effects).toEqual([]);
     expect(getActor(activeWorld, 1).massFactor).toBe(1);
@@ -363,7 +371,7 @@ describe("deterministic item effects", () => {
     expect(forward.charges).toEqual([1, 2]);
   });
 
-  it("damages opponents through Dodge while keeping the Bomb owner damage-immune", () => {
+  it("damages opponents through Dodge while applying one fifth damage to the Bomb owner", () => {
     const world = new SimulationWorld(createItemConfig(), "bomb-dodge", {
       arenaLayout: "rectangular-fixture",
       participantOverrides: [
@@ -406,10 +414,20 @@ describe("deterministic item effects", () => {
     );
     expect(owner.active).toBe(true);
     expect(owner.action).toBe("Stumbling");
-    expect(owner.combat.health).toBe(ownerHealthBeforeBlast);
+    expect(owner.combat.health).toBe(
+      ownerHealthBeforeBlast -
+        getItemDefinition("bomb").damage *
+          getItemDefinition("bomb").ownerDamageMultiplier *
+          getStartingDamageTakenMultiplier(NEUTRAL_ATTRIBUTES),
+    );
     expect(owner.velocity.x).toBeGreaterThan(0);
-    expect(result.events).not.toContainEqual(
-      expect.objectContaining({ kind: "damage-applied", targetActorId: 1 }),
+    expect(result.events).toContainEqual(
+      expect.objectContaining({
+        kind: "damage-applied",
+        actorId: 1,
+        targetActorId: 1,
+        itemDefinitionId: "bomb",
+      }),
     );
   });
 
@@ -500,7 +518,9 @@ describe("deterministic item effects", () => {
     expect(result.events).toContainEqual(
       expect.objectContaining({ kind: "soap-placed", actorId: 1, itemDefinitionId: "soap" }),
     );
-    expect(getActor(world, 1).inventory[0]?.charges).toBe(3);
+    expect(getActor(world, 1).inventory[0]?.charges).toBe(
+      (getItemDefinition("soap").startingCharges ?? 0) - 1,
+    );
   });
 
   it("keeps the Soap owner safe and damages another actor after the slip ends", () => {
@@ -551,11 +571,16 @@ describe("deterministic item effects", () => {
     expect(getActor(world, 2).action).toBe("Stumbling");
     const healthBeforeDamage = getActor(world, 2).combat.health;
     let damageEvent;
+    let stunEvent;
     for (let index = 0; index <= getItemDefinition("soap").stumbleTicks; index += 1) {
       const result = world.step();
       damageEvent = result.events.find(
         ({ kind, itemDefinitionId, targetActorId }) =>
           kind === "damage-applied" && itemDefinitionId === "soap" && targetActorId === 2,
+      );
+      stunEvent = result.events.find(
+        ({ kind, itemDefinitionId, targetActorId }) =>
+          kind === "status-applied" && itemDefinitionId === "soap" && targetActorId === 2,
       );
       if (damageEvent !== undefined) {
         break;
@@ -564,6 +589,13 @@ describe("deterministic item effects", () => {
 
     expect(damageEvent).toMatchObject({ actorId: 1, targetActorId: 2 });
     expect(damageEvent?.amount).toBeGreaterThan(0);
+    expect(getActor(world, 2).combat.stunnedUntilTick).toBeGreaterThan(world.tick);
+    expect(stunEvent).toMatchObject({
+      actorId: 1,
+      targetActorId: 2,
+      statusKind: "stun",
+      durationTicks: getItemDefinition("soap").stunTicks,
+    });
     expect(getActor(world, 2).combat.health).toBeCloseTo(
       healthBeforeDamage - (damageEvent?.amount ?? 0),
       6,
@@ -776,7 +808,9 @@ describe("deterministic item effects", () => {
     expect(result.frame.brickWalls).toEqual([
       expect.objectContaining({ tileId: "5:4", ownerActorId: 1, placedTick: 0 }),
     ]);
-    expect(getActor(world, 1).inventory[0]?.charges).toBe(3);
+    expect(getActor(world, 1).inventory[0]?.charges).toBe(
+      (getItemDefinition("brick-bag").startingCharges ?? 0) - 1,
+    );
     expect(result.events).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -806,7 +840,7 @@ describe("deterministic item effects", () => {
           position: { x: 5.5, y: 4.5 },
           facing: { x: -1, y: 0 },
           startingAttributes: POWER_ATTRIBUTES,
-          startingSkills: ["arc-bolt", "blink-step"],
+          startingSkills: ["chain-bind", "blink-step"],
         },
         { actorId: 3, position: { x: 8.5, y: 1.5 } },
         { actorId: 4, position: { x: 1.5, y: 7.5 } },
@@ -815,7 +849,10 @@ describe("deterministic item effects", () => {
     world.step([{ ...createNeutralCommand(world.tick, 2), useSkillSlot: 0 }]);
     const damaged = getActor(world, 1);
 
-    while (world.tick < damaged.combat.stunnedUntilTick) {
+    while (
+      (world.tick < damaged.combat.rootedUntilTick || getActor(world, 1).action !== "Ready") &&
+      world.tick < 300
+    ) {
       world.step();
     }
 
@@ -864,7 +901,9 @@ describe("deterministic item effects", () => {
     ]);
 
     expect(result.frame.brickWalls).toHaveLength(0);
-    expect(getActor(world, 1).inventory[0]?.charges).toBe(4);
+    expect(getActor(world, 1).inventory[0]?.charges).toBe(
+      getItemDefinition("brick-bag").startingCharges,
+    );
   });
 
   it("does not spend Brick Bag charges when the target tile is invalid or occupied", () => {
@@ -889,7 +928,9 @@ describe("deterministic item effects", () => {
     ]);
 
     expect(invalidResult.frame.brickWalls).toHaveLength(0);
-    expect(getActor(outOfBounds, 1).inventory[0]?.charges).toBe(4);
+    expect(getActor(outOfBounds, 1).inventory[0]?.charges).toBe(
+      getItemDefinition("brick-bag").startingCharges,
+    );
 
     const occupied = new SimulationWorld(createItemConfig(), "brick-occupied", {
       arenaLayout: "rectangular-fixture",
@@ -910,7 +951,9 @@ describe("deterministic item effects", () => {
     ]);
 
     expect(occupiedResult.frame.brickWalls).toHaveLength(0);
-    expect(getActor(occupied, 1).inventory[0]?.charges).toBe(4);
+    expect(getActor(occupied, 1).inventory[0]?.charges).toBe(
+      getItemDefinition("brick-bag").startingCharges,
+    );
     expect(occupiedResult.events.some(({ kind }) => kind === "item-used")).toBe(false);
   });
 

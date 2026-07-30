@@ -103,7 +103,7 @@ describe("browser simulation clock", () => {
 
     expect(session.targeting).toBe(false);
     expect(preview).toBeNull();
-    expect(rejection).toBe("마나가 부족해. 38MP가 필요해.");
+    expect(rejection).toBe("마나가 부족해. 37MP가 필요해.");
     session.destroy();
   });
 

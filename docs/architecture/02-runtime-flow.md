@@ -16,23 +16,28 @@
 Each 60 Hz tick uses this versioned order:
 
 1. Validate and collect commands; fill missing actor commands with neutral input.
-2. Advance action-state transitions.
-3. Resolve Brick proposals, due opponent-lethal and owner-launching Bombs, new Bomb placements, Boat activations, and Wind targeting; batch Wind impulses.
-4. Convert ordinary movement commands directly into current mass-sensitive velocity while retaining explicit external-action physics.
-5. Apply dodge, Brick mounting, stumble, and other active displacement.
-6. Integrate positions and velocities.
-7. Rebuild the spatial index.
-8. Resolve overlapping and swept weak circular contacts, treating mounted actors as immovable walls.
-9. Collect all shove contacts from the same pre-impulse state.
-10. Sum and apply actor impulses, then arbitrate same-tick offensive credit.
-11. Evaluate tile support, grace ticks, falling, and elimination.
-12. Resolve map items and timed effects.
-13. Advance cannon-backed collapse warnings, tile state, treasure-gift launches, and gift landings.
-14. Resolve due lethal rock impacts and launch the next survivor-targeted rock when its interval is due.
-15. Decide round result.
-16. Emit ordered events, an immutable render frame, and a quantized state hash.
+2. Advance health and mana regeneration from the effective gameplay tuning.
+3. Advance expired actions, delayed Soap damage, timed effects, and direct trait upgrades.
+4. Start requested actions and resolve reusable skill casts.
+5. Resolve active items and the built-in Grappling Hook.
+6. Convert ordinary movement commands into current mass-sensitive movement intent.
+7. Apply dodge, Brick mounting, stumble, Grappling Hook, and other active displacement.
+8. Integrate positions and velocities.
+9. Resolve due lethal rock impacts before contact solving.
+10. Resolve blocking tree and Brick contacts.
+11. Build the participant spatial index and candidate pairs.
+12. Resolve overlapping and swept weak circular contacts, then recheck blocking obstacles.
+13. Resolve skill zones and Soap patches.
+14. Collect shove contacts from the shared pre-impulse state.
+15. Sum and apply actor impulses, then arbitrate same-tick offensive credit.
+16. Resolve health-based elimination.
+17. Evaluate tile support, Boat rescue, grace ticks, falling, and support-based elimination.
+18. Resolve map-item pickups and their ordered facts.
+19. Advance cannon-backed collapse, item replacement, treasure-gift launches, and gift landings.
+20. Decide the round result.
+21. Emit ordered events, an immutable render frame, and a quantized state hash.
 
-All sixteen stages are implemented. Active-item eligibility is decided from one pre-item participant snapshot; actor ID orders activation, charge spending, first-hit ray selection, and Wind impulses. Brick commits before Bomb placement. Due Bombs directly eliminate in-range bodies before new Bombs, Boat, and Wind resolve; same-tick Dodge can still evade the first Wind target but never a Bomb. Timed effects expire with action transitions before movement. Item pickup runs after support, so a valid pickup wins over a tile that begins collapsing later in the same tick. Scheduled replacements alternate between two opposite treasure ships, reserve an item ID at launch, target only stable land three to seven tiles from water, and join the item list only after a stable, unblocked landing; each ship owns at most one airborne gift. Collapse proposals advance from the actual outer ocean rather than the rectangular render bounds or enclosed lakes. A connected protected core equal to `max(1, floor(initial playable land × 0.10))` is never proposed, so pre-existing water never returns as land and collapse never crosses the 10%-or-lower floor. Only proposals backed by one full-flight cannon projectile enter the authoritative plan; an unreachable or unavailable proposal produces no warning and no Void transition. Sixty ticks after the final accepted impact, targeted rocks begin without deleting tiles; active shots and cursors enter the deterministic hash. Later work cannot reorder the pipeline or change contact meaning without a simulation-version decision and regenerated replay evidence.
+All twenty-one stages match the exported `SYSTEM_ORDER` and the calls in `SimulationWorld.step()`. Active-item eligibility is decided from one pre-item participant snapshot; actor ID orders activation, charge spending, first-hit ray selection, and impulses. Brick commits before Bomb placement. Due Bombs resolve before new Bombs, Boat, and other active-item requests. Timed effects expire before movement. Item pickup runs after support, so a valid pickup wins over a tile that begins collapsing later in the same tick. Scheduled replacements alternate between two opposite treasure ships, reserve an item ID at launch, target only stable land three to seven tiles from water, and join the item list only after a stable, unblocked landing; each ship owns at most one airborne gift. Collapse proposals advance from the actual outer ocean rather than the rectangular render bounds or enclosed lakes. A connected protected core equal to `max(1, floor(initial playable land × 0.10))` is never proposed, so pre-existing water never returns as land and collapse never crosses the 10%-or-lower floor. Only proposals backed by one full-flight cannon projectile enter the authoritative plan; an unreachable or unavailable proposal produces no warning and no Void transition. Sixty ticks after the final accepted impact, targeted rocks begin without deleting tiles; active shots and cursors enter the deterministic hash. Later work cannot reorder the pipeline or change contact meaning without a simulation-version decision and regenerated replay evidence.
 
 ## Browser Scheduling
 

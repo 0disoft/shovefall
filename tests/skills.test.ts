@@ -62,13 +62,14 @@ describe("mana-backed reusable skills", () => {
 
   it("derives every description from the skill's balance fields", () => {
     const expected = {
-      "blink-step": "지정 방향으로 최대 2.4칸 이동하고 0.7초 동안 공격 회피",
-      "arc-bolt": "전방 3.5칸 안의 첫 적을 조준 보정, 피해 20, 기준 넉백 약 4.8칸, 0.4초 휘청",
-      "chain-bind": "전방 5.5칸의 첫 적, 전방 약 15도까지 조준 보정, 피해 20, 1초 이동 봉쇄",
+      "blink-step": "지정 방향으로 최대 3칸 이동, 1초 동안 공격 회피",
+      "arc-bolt": "전방 3.5칸 안의 첫 적을 조준 보정, 피해 22, 기준 넉백 약 7.3칸, 1초 휘청",
+      "chain-bind":
+        "전방 5.5칸의 첫 적, 전방 약 15도까지 조준 보정, 피해 20, 1초 이동 봉쇄, 적중 시 마나 10 강탈",
       "meteor-mark":
         "5칸 앞에 표식, 1.5초 뒤 반경 3칸, 피해 36, 기준 넉백 약 2.3칸, 기본 0.8초 기절",
-      "frost-field": "3.5칸 앞에 5초간 피해 5와 25% 둔화 지대, 준 피해의 25% 체력 회복",
-      aegis: "5초간 피해 22 흡수, 제어 시간 30% 감소",
+      "frost-field": "3.5칸 앞에 4초간 초당 피해 4와 20% 둔화 지대, 준 피해의 15% 체력 회복",
+      aegis: "4초간 피해 22 흡수, 제어 시간 30% 감소",
     } as const;
 
     for (const definitionId of SKILL_DEFINITION_IDS) {
@@ -83,7 +84,7 @@ describe("mana-backed reusable skills", () => {
   it("derives displayed knockback distance from the same impulse, duration, drag, and speed cap as runtime", () => {
     expect(SIMULATION_TUNING.movement.stumbleDrag).toBe(STUMBLE_DRAG_PER_TICK);
     expect(SIMULATION_TUNING.body.maximumLaunchSpeed).toBe(MAXIMUM_LAUNCH_SPEED);
-    expect(getBaseSkillKnockbackDistance(getSkillDefinition("arc-bolt"))).toBeCloseTo(4.754, 3);
+    expect(getBaseSkillKnockbackDistance(getSkillDefinition("arc-bolt"))).toBeCloseTo(7.296, 3);
     expect(getBaseSkillKnockbackDistance(getSkillDefinition("meteor-mark"))).toBeCloseTo(2.35, 2);
 
     expect(
@@ -100,23 +101,25 @@ describe("mana-backed reusable skills", () => {
     expect(getSkillDefinition("aegis")).toMatchObject({
       manaCost: 40,
       cooldownTicks: 720,
-      durationTicks: 300,
+      durationTicks: 240,
       shield: 22,
       controlDurationMultiplier: 0.7,
     });
     expect(getSkillDefinition("arc-bolt")).toMatchObject({
-      manaCost: 32,
-      cooldownTicks: 360,
+      manaCost: 30,
+      cooldownTicks: 300,
       range: 3.5,
-      damage: 20,
+      damage: 22,
       impulse: 0.3,
-      stumbleTicks: 24,
+      stumbleTicks: 60,
     });
     expect(getSkillDefinition("chain-bind")).toMatchObject({
+      manaCost: 30,
       minimumAimDot: 0.966,
       range: 5.5,
       damage: 20,
       rootTicks: 60,
+      manaSteal: 10,
     });
     expect(getSkillDefinition("meteor-mark")).toMatchObject({
       manaCost: 36,
@@ -125,14 +128,71 @@ describe("mana-backed reusable skills", () => {
       delayTicks: 90,
     });
     expect(getSkillDefinition("frost-field")).toMatchObject({
-      manaCost: 30,
-      damage: 5,
-      damageHealingRatio: 0.25,
+      manaCost: 34,
+      cooldownTicks: 540,
+      damage: 4,
+      slowMultiplier: 0.8,
+      damageHealingRatio: 0.15,
+      durationTicks: 240,
     });
-    expect(getSkillDefinition("blink-step")).toMatchObject({ manaCost: 20 });
+    expect(getSkillDefinition("blink-step")).toMatchObject({
+      manaCost: 20,
+      range: 3,
+      durationTicks: 60,
+    });
   });
 
-  it("heals the Frost Field caster for one quarter of actual health damage dealt", () => {
+  it("moves up to ten mana from a Chain Bind target to its living caster", () => {
+    const world = new SimulationWorld(
+      normalizeGameConfig({
+        participantCount: 4,
+        arenaColumns: 12,
+        arenaRows: 10,
+        roundLimitSeconds: 10,
+        itemsEnabled: false,
+      }),
+      "chain-bind-mana-steal",
+      {
+        arenaLayout: "rectangular-fixture",
+        participantOverrides: [
+          {
+            actorId: 1,
+            position: { x: 4, y: 5 },
+            facing: { x: 1, y: 0 },
+            startingSkills: ["chain-bind", "blink-step"],
+          },
+          { actorId: 2, position: { x: 5, y: 5 }, facing: { x: -1, y: 0 } },
+          { actorId: 3, position: { x: 9, y: 2 } },
+          { actorId: 4, position: { x: 9, y: 8 } },
+        ],
+      },
+    );
+    const targetManaBefore = getParticipantMana(world, 2);
+    const controlManaBefore = getParticipantMana(world, 3);
+
+    const result = world.step([
+      { ...createNeutralCommand(world.tick, 1), useSkillSlot: 0, targetPosition: { x: 5, y: 5 } },
+    ]);
+    const skillUsed = result.events.find(
+      ({ kind, actorId, skillDefinitionId }) =>
+        kind === "skill-used" && actorId === 1 && skillDefinitionId === "chain-bind",
+    );
+    const passiveManaRegeneration = getParticipantMana(world, 3) - controlManaBefore;
+
+    expect(result.events).toContainEqual(
+      expect.objectContaining({
+        kind: "skill-hit",
+        actorId: 1,
+        targetActorId: 2,
+        skillDefinitionId: "chain-bind",
+      }),
+    );
+    expect(skillUsed?.manaAfter).toEqual(expect.any(Number));
+    expect(getParticipantMana(world, 1) - (skillUsed?.manaAfter ?? 0)).toBe(10);
+    expect(targetManaBefore + passiveManaRegeneration - getParticipantMana(world, 2)).toBe(10);
+  });
+
+  it("heals the Frost Field caster for fifteen percent of actual health damage dealt", () => {
     const world = new SimulationWorld(
       normalizeGameConfig({
         participantCount: 4,
@@ -162,6 +222,8 @@ describe("mana-backed reusable skills", () => {
         ],
       },
     );
+
+    waitForMana(world, 1, getSkillDefinition("frost-field").manaCost);
 
     const result = world.step([
       {
@@ -201,7 +263,7 @@ describe("mana-backed reusable skills", () => {
     );
   });
 
-  it("keeps Blink Step evasion active for 0.7 seconds without extending its travel", () => {
+  it("keeps Blink Step evasion active for one second without extending its travel", () => {
     const world = new SimulationWorld(
       normalizeGameConfig({
         participantCount: 4,
@@ -259,7 +321,7 @@ describe("mana-backed reusable skills", () => {
       expect.objectContaining({ kind: "skill-hit", targetActorId: 1 }),
     );
 
-    while (world.tick < 42) {
+    while (world.tick < 60) {
       world.step([]);
     }
     expect(
@@ -320,7 +382,7 @@ describe("mana-backed reusable skills", () => {
         actorId: 1,
         skillDefinitionId: "arc-bolt",
         skillSlotIndex: 0,
-        manaAfter: 0.14,
+        manaAfter: 2.14,
       }),
     );
     expect(humanAfterFirst?.skills[0]?.readyTick).toBe(
@@ -329,7 +391,7 @@ describe("mana-backed reusable skills", () => {
           getStartingCooldownMultiplier(DEFAULT_STARTING_ATTRIBUTES),
       ),
     );
-    expect(humanAfterFirst?.combat.mana).toBe(0.14);
+    expect(humanAfterFirst?.combat.mana).toBe(2.14);
 
     const second = world.step([{ ...createNeutralCommand(world.tick, 1), useSkillSlot: 0 }]);
     expect(second.events).not.toContainEqual(
@@ -365,7 +427,7 @@ describe("mana-backed reusable skills", () => {
         kind: "skill-used",
         actorId: 1,
         skillDefinitionId: "arc-bolt",
-        manaAfter: 9.1,
+        manaAfter: 11.1,
       }),
     );
   });
@@ -390,8 +452,8 @@ describe("mana-backed reusable skills", () => {
     const human = result.frame.participants.find(({ actorId }) => actorId === 1);
 
     expect(human?.combat.shield).toBe(22);
-    expect(human?.combat.shieldEndsTick).toBe(castTick + 300);
-    expect(human?.combat.mana).toBeLessThan(3);
+    expect(human?.combat.shieldEndsTick).toBe(castTick + getSkillDefinition("aegis").durationTicks);
+    expect(human?.combat.mana).toBeLessThan(4);
     expect(human?.inventory[0]).toMatchObject({ definitionId: "bomb", charges: 2 });
     expect(human?.skills[0]?.readyTick).toBe(castTick + 605);
   });

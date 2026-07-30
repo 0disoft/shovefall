@@ -1,8 +1,66 @@
 # Static Release Procedure
 
-- Status: `0.98.0` background-music candidate; hosted proof pending
+- Status: `0.104.0` contract-hardening candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.98.0`
+- Current product version: `0.104.0`
+
+Product `0.104.0`, simulation `68.0.0`, and content `42.0.0` reject arena
+bounds that cannot provide one unique tile per participant, accept the public
+52-column arena in replay parsing, and preserve all six direct trait commands.
+Bots consume the same effective Dodge and Bomb tuning as the world. Balance
+snapshots from another product, simulation, or content version fail closed
+instead of rendering as current evidence. Replay stays v8 and reports remain
+v10. Hosted CI, Pages, browser performance, and a fresh balance audit are
+pending.
+
+Product `0.103.1`, simulation `67.0.0`, and content `42.0.0` render Blink Step's
+three-tile movement and one-second evasion as two separate effect rows, matching
+the other skill cards without changing combat. Replay stays v8 and reports stay
+v10. Hosted CI, Pages, and browser smoke evidence are pending.
+
+Product `0.103.0`, simulation `67.0.0`, and content `42.0.0` raise Agility's
+mana-cost reduction to 2% per point, lower Chain Bind to 30 mana, and extend
+Blink Step to three tiles with one second of evasion. Frost Field now lasts four
+seconds, and its definition-derived copy explicitly labels four damage per
+second. Changed combat outcomes require replay fixture regeneration under replay
+v8; reports remain v10. Hosted CI, Pages, and human balance evidence are pending.
+
+Product `0.102.0`, simulation `66.0.0`, and content `41.0.0` raise Agility
+movement to 3.5% per point and Balance to 5% impulse resistance plus 4% control
+reduction per point. Chain Bind now transfers up to 10 actual current mana from a
+hit target to its living caster. Arc Bolt falls to 30 mana and a five-second
+cooldown. The content definitions own the values used by simulation, AI, and
+descriptions. Changed combat outcomes require replay fixture regeneration under
+replay v8; reports remain v10. Hosted CI, Pages, and human balance evidence are
+pending.
+
+Product `0.101.0`, simulation `65.0.0`, and content `40.0.0` give Soap five
+charges and a two-second post-slide stun, raise Arc Bolt to 22 damage with a
+one-second stumble, and move Frost Field to 34 mana with a nine-second cooldown.
+The effects and music controls now share a perceptual decibel curve; the music
+bus carries a fixed 0.08 reference trim and ducks by 5 dB for short player combat
+impacts. New users start both controls at 50 while persisted choices remain
+unchanged. Changed combat outcomes require replay fixture regeneration under
+replay v8; reports remain v10. Hosted CI, Pages, and human balance evidence are
+pending.
+
+Product `0.100.0`, simulation `64.0.0`, and content `39.0.0` apply the reviewed
+skill and item balance pass. Soap keeps its two-second slip and then applies a
+separate 1.2-second stun before control returns. Brick Bag falls from four to
+three charges. Bomb owners take 20% of the definition-owned 65 damage while
+retaining the existing blast impulse. Frost Field deals four damage per pulse,
+slows by 20%, and heals 15% of actual damage; Aegis keeps 22 shield but lasts
+four seconds. Descriptions derive from the same item and skill definitions.
+Changed combat outcomes require replay fixture regeneration under replay v8;
+reports remain v10. Hosted CI, Pages, and human balance evidence are pending.
+
+Product `0.99.0`, simulation `63.0.0`, and content `38.0.0` make every kill-reward level identical to one matching pre-round trait point. The progression table now derives from the starting-attribute coefficients and includes previously missing mass, mana-cost, stumble, skill-damage, control-duration, and shield effects. Browser reward names match setup names, while legacy progression IDs remain unchanged for replay and report compatibility. Combat outcomes and hashes change, so replay fixtures regenerate under v8; reports remain v10. Hosted CI, Pages, and human balance evidence are pending.
+
+Product `0.98.3`, simulation `62.0.0`, and content `38.0.0` add a short two-layer procedural click cue to enabled non-gameplay buttons. Skill, Grappling Hook, and item action buttons remain excluded so their action-specific sounds stay legible. The background-music default falls from 35 to 10 for users without a stored value; explicit persisted values remain unchanged. Effects volume, mute behavior, optional-audio failure, simulation, replay hashes, reports, and content remain unchanged.
+
+Product `0.98.2`, simulation `62.0.0`, and content `38.0.0` replace the shared single-oscillator skill cue with definition-specific layered procedural audio. Blink Step, Arc Bolt, Chain Bind, Meteor Mark, Frost Field, and Aegis use distinct pitch contours and timbres; damaging skills also receive distinct impact cues. Human casts and hits receive a bounded voice-priority boost so nearby bot activity cannot consistently mask player feedback. Voice limits, independent effects volume, mute state, optional-audio failure, simulation, replay hashes, reports, and content remain unchanged.
+
+Product `0.98.1`, simulation `62.0.0`, and content `38.0.0` restore readable walking motion for the loaded character atlases. Animated sprites now retain most of the deterministic stride offset, lift, squash, stretch, and rotation instead of suppressing those transforms after artwork loads. The simulation, combat rules, replay hashes, reports, and content remain unchanged.
 
 Product `0.98.0`, simulation `62.0.0`, and content `38.0.0` add the officially distributed `HYP - Catch Me If You Can` MP3 as same-origin looping background music. The first accepted pointer or keyboard gesture starts playback without waiting for a round; menu, setup, and arena transitions keep the same element alive. Browser-local settings persist independent effects (default 50) and music (default 35) volume, while the existing global sound control mutes both channels. Audio rejection remains non-blocking. Replay, reports, simulation, and content remain unchanged.
 

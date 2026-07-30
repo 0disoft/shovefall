@@ -14,7 +14,11 @@ import {
   vectorLength,
 } from "../simulation/math";
 import { getStartingMovementMultiplier } from "../simulation/starting-attributes";
-import { getMassDodgeSpeedMultiplier, SIMULATION_TUNING } from "../simulation/tuning";
+import {
+  DEFAULT_GAMEPLAY_TUNING,
+  getMassDodgeSpeedMultiplier,
+  type GameplayTuningV1,
+} from "../simulation/tuning";
 
 export interface BotNavigationTerrain {
   readonly columns: number;
@@ -384,10 +388,13 @@ export function findBotNavigationDirection(
   return normalizeVector(subtractVectors(waypoint, start));
 }
 
-function getBotDodgeDistance(participant: RenderParticipantV1): number {
+function getBotDodgeDistance(
+  participant: RenderParticipantV1,
+  gameplayTuning: GameplayTuningV1,
+): number {
   return (
-    SIMULATION_TUNING.dodge.speed *
-    SIMULATION_TUNING.dodge.activeTicks *
+    gameplayTuning.dodgeSpeed *
+    gameplayTuning.dodgeActiveTicks *
     getMassDodgeSpeedMultiplier(participant.massFactor) *
     getStartingMovementMultiplier(participant.startingAttributes)
   );
@@ -398,12 +405,13 @@ function getDodgeLandingDepth(
   direction: Vector2,
   terrain: BotNavigationTerrain,
   blockedTileIds: ReadonlySet<TileId>,
+  gameplayTuning: GameplayTuningV1,
 ): number | undefined {
   const normalizedDirection = normalizeVector(direction);
   if (vectorLength(normalizedDirection) === 0) {
     return undefined;
   }
-  const distance = getBotDodgeDistance(participant);
+  const distance = getBotDodgeDistance(participant, gameplayTuning);
   const sampleCount = Math.max(1, Math.ceil(distance / DODGE_SAFETY_SAMPLE_DISTANCE));
   for (let sample = 1; sample <= sampleCount; sample += 1) {
     const position = addVectors(
@@ -423,6 +431,7 @@ export function getSafeBotDodgeDirection(
   preferredDirection: Vector2,
   terrain: BotNavigationTerrain,
   blockedTileIds: ReadonlySet<TileId>,
+  gameplayTuning: GameplayTuningV1 = DEFAULT_GAMEPLAY_TUNING,
 ): Vector2 | undefined {
   const preferred = normalizeVector(preferredDirection);
   if (vectorLength(preferred) === 0) {
@@ -432,7 +441,13 @@ export function getSafeBotDodgeDirection(
   let bestScore = Number.NEGATIVE_INFINITY;
   for (const radians of DODGE_DIRECTION_OFFSETS) {
     const candidate = normalizeVector(rotateVector(preferred, radians));
-    const landingDepth = getDodgeLandingDepth(participant, candidate, terrain, blockedTileIds);
+    const landingDepth = getDodgeLandingDepth(
+      participant,
+      candidate,
+      terrain,
+      blockedTileIds,
+      gameplayTuning,
+    );
     if (landingDepth === undefined) {
       continue;
     }

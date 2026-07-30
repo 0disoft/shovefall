@@ -1,7 +1,7 @@
 import type { ItemDefinitionId } from "../simulation/contracts";
 
 export interface ItemDefinition {
-  readonly definitionVersion: 3;
+  readonly definitionVersion: 4;
   readonly id: ItemDefinitionId;
   readonly label: string;
   readonly visualKey: string;
@@ -23,6 +23,8 @@ export interface ItemDefinition {
   readonly fuseTicks: number;
   readonly healing: number;
   readonly stumbleTicks: number;
+  readonly stunTicks: number;
+  readonly ownerDamageMultiplier: number;
   readonly aiTags: readonly (
     | "mass"
     | "mobility"
@@ -38,9 +40,20 @@ export interface ItemDefinition {
 
 type ItemDefinitionInput = Omit<
   ItemDefinition,
-  "definitionVersion" | "damage" | "fuseTicks" | "healing" | "stumbleTicks"
+  | "definitionVersion"
+  | "damage"
+  | "fuseTicks"
+  | "healing"
+  | "stumbleTicks"
+  | "stunTicks"
+  | "ownerDamageMultiplier"
 > &
-  Partial<Pick<ItemDefinition, "damage" | "fuseTicks" | "healing" | "stumbleTicks">>;
+  Partial<
+    Pick<
+      ItemDefinition,
+      "damage" | "fuseTicks" | "healing" | "stumbleTicks" | "stunTicks" | "ownerDamageMultiplier"
+    >
+  >;
 
 export const ITEM_DEFINITION_IDS = [
   "iron-boots",
@@ -71,11 +84,13 @@ function formatNumber(value: number): string {
 
 function defineItem(input: ItemDefinitionInput): ItemDefinition {
   return Object.freeze({
-    definitionVersion: 3,
+    definitionVersion: 4,
     damage: 0,
     fuseTicks: 0,
     healing: 0,
     stumbleTicks: 0,
+    stunTicks: 0,
+    ownerDamageMultiplier: 0,
     ...input,
   });
 }
@@ -101,10 +116,15 @@ export function formatItemEffectDescription(item: ItemDefinition): string {
           : undefined;
       const damage =
         item.damage > 0 ? `미끄러짐이 끝나면 피해 ${formatNumber(item.damage)}` : undefined;
+      const stun =
+        item.stunTicks > 0
+          ? `피해를 받은 뒤 ${formatNumber(item.stunTicks / 60)}초 기절`
+          : undefined;
       return [
         formatGroundPlacement(item, "비누"),
         stumble,
         damage,
+        stun,
         "내가 설치한 비누에는 미끄러지지 않음",
       ]
         .filter((effect): effect is string => effect !== undefined)
@@ -130,13 +150,11 @@ export function formatItemEffectDescription(item: ItemDefinition): string {
       const radius =
         item.effectRadius > 0 ? `폭발 반경 ${formatNumber(item.effectRadius)}칸` : undefined;
       const damage = item.damage > 0 ? `피해 ${formatNumber(item.damage)}` : undefined;
-      return [
-        formatGroundPlacement(item, "폭탄"),
-        fuse,
-        radius,
-        damage,
-        "나는 폭발 피해를 받지 않음",
-      ]
+      const ownerDamage =
+        item.ownerDamageMultiplier > 0
+          ? `설치자는 피해의 ${formatNumber(item.ownerDamageMultiplier * 100)}%를 받음`
+          : "설치자는 폭발 피해를 받지 않음";
+      return [formatGroundPlacement(item, "폭탄"), fuse, radius, damage, ownerDamage]
         .filter((effect): effect is string => effect !== undefined)
         .join(" · ");
     }
@@ -253,7 +271,7 @@ export const ITEM_DEFINITIONS: Readonly<Record<ItemDefinitionId, ItemDefinition>
     visualKey: "item.soap",
     audioKey: "item.use.soap",
     loadoutKind: "active",
-    startingCharges: 4,
+    startingCharges: 5,
     mapSpawnEligible: true,
     durationTicks: null,
     consumePolicy: "inventory-charge",
@@ -267,6 +285,7 @@ export const ITEM_DEFINITIONS: Readonly<Record<ItemDefinitionId, ItemDefinition>
     effectRadius: 0.5,
     damage: 25,
     stumbleTicks: 120,
+    stunTicks: 120,
     aiTags: Object.freeze(["trap", "mobility"] as const),
   }),
   "brick-bag": defineItem({
@@ -275,7 +294,7 @@ export const ITEM_DEFINITIONS: Readonly<Record<ItemDefinitionId, ItemDefinition>
     visualKey: "item.brick-bag",
     audioKey: "item.use.brick",
     loadoutKind: "active",
-    startingCharges: 4,
+    startingCharges: 3,
     mapSpawnEligible: true,
     durationTicks: null,
     consumePolicy: "inventory-charge",
@@ -330,6 +349,7 @@ export const ITEM_DEFINITIONS: Readonly<Record<ItemDefinitionId, ItemDefinition>
     effectRadius: 3,
     damage: 65,
     fuseTicks: 195,
+    ownerDamageMultiplier: 0.2,
     aiTags: Object.freeze(["area", "shove"] as const),
   }),
 });

@@ -80,10 +80,14 @@ import {
 } from "./items";
 import {
   awardStatPoint,
+  combineLinearAttributeMultipliers,
   createParticipantProgression,
   getMobilityMultiplier,
+  getMobilityCooldownMultiplier,
+  getMobilityStumbleDurationMultiplier,
+  getFocusSkillDamageMultiplier,
+  getPowerMassMultiplier,
   getPowerMultiplier,
-  getReflexCooldownReduction,
   getSkillDamageMultiplier,
   getSkillImpulseMultiplier,
   getStabilityMultiplier,
@@ -105,9 +109,11 @@ import {
   applyCombatStatus,
   applyShield,
   createParticipantCombat,
+  drainParticipantMana,
   healParticipant,
   isRooted,
   isStunned,
+  restoreParticipantMana,
   synchronizeCombatCapacities,
 } from "./combat";
 import {
@@ -813,7 +819,13 @@ function getMissedStumbleTicks(participant: ParticipantState): number {
 function getStumbleTicks(participant: ParticipantState, baseTicks: number): number {
   return Math.max(
     1,
-    Math.round(baseTicks * getStartingStumbleDurationMultiplier(participant.startingAttributes)),
+    Math.round(
+      baseTicks *
+        combineLinearAttributeMultipliers(
+          getStartingStumbleDurationMultiplier(participant.startingAttributes),
+          getMobilityStumbleDurationMultiplier(participant.progression.stats),
+        ),
+    ),
   );
 }
 
@@ -1191,9 +1203,23 @@ export class SimulationWorld {
               upgradeSkillSlot: requestedSkillSlot!,
             }),
       );
+      const previousPowerMassMultiplier = getPowerMassMultiplier(participant.progression.stats);
+      const nextPowerMassMultiplier = getPowerMassMultiplier(progression.stats);
+      const baseMassFactor = normalizeMassFactor(
+        participant.body.baseMassFactor + (nextPowerMassMultiplier - previousPowerMassMultiplier),
+      );
+      const itemMassMultiplier =
+        participant.body.baseMassFactor === 0
+          ? 1
+          : participant.body.massFactor / participant.body.baseMassFactor;
       return Object.freeze({
         ...participant,
         progression,
+        body: Object.freeze({
+          ...participant.body,
+          baseMassFactor,
+          massFactor: normalizeMassFactor(baseMassFactor * itemMassMultiplier),
+        }),
         combat: synchronizeCombatCapacities(
           participant.combat,
           progression.stats,
@@ -1492,8 +1518,11 @@ export class SimulationWorld {
             30,
             Math.round(
               this.#gameplayTuning.dodgeCooldownTicks *
-                getStartingCooldownMultiplier(participant.startingAttributes),
-            ) - getReflexCooldownReduction(participant.progression.stats),
+                combineLinearAttributeMultipliers(
+                  getStartingCooldownMultiplier(participant.startingAttributes),
+                  getMobilityCooldownMultiplier(participant.progression.stats),
+                ),
+            ),
           );
 
         if (landingWall !== undefined) {
@@ -1746,8 +1775,10 @@ export class SimulationWorld {
         const rawImpulse =
           cast.metrics.impulse *
           getIncomingMassImpulseMultiplier(updatedTarget.body.massFactor) *
-          getStartingIncomingImpulseMultiplier(updatedTarget.startingAttributes) *
-          getStabilityMultiplier(updatedTarget.progression.stats);
+          combineLinearAttributeMultipliers(
+            getStartingIncomingImpulseMultiplier(updatedTarget.startingAttributes),
+            getStabilityMultiplier(updatedTarget.progression.stats),
+          );
         const impulse = scaleVector(targetHit.direction, rawImpulse);
         if (updatedTarget.action.kind !== "Anchored") {
           updatedTarget = Object.freeze({
@@ -1803,6 +1834,19 @@ export class SimulationWorld {
             durationTicks: cast.metrics.rootTicks,
           }),
         );
+      }
+      if (definition.manaSteal > 0) {
+        const currentAttacker = participantsById.get(attacker.actorId) ?? attacker;
+        if (currentAttacker.active && currentAttacker.combat.health > 0) {
+          const manaDrain = drainParticipantMana(updatedTarget, definition.manaSteal);
+          updatedTarget = manaDrain.participant;
+          if (manaDrain.drained > 0) {
+            participantsById.set(
+              attacker.actorId,
+              restoreParticipantMana(currentAttacker, manaDrain.drained),
+            );
+          }
+        }
       }
       participantsById.set(target.actorId, updatedTarget);
       events.push(
@@ -1978,8 +2022,10 @@ export class SimulationWorld {
             SIMULATION_TUNING.bomb.ownerBaseImpulse *
             falloff *
             getIncomingMassImpulseMultiplier(target.body.massFactor) *
-            getStartingIncomingImpulseMultiplier(target.startingAttributes) *
-            getStabilityMultiplier(target.progression.stats);
+            combineLinearAttributeMultipliers(
+              getStartingIncomingImpulseMultiplier(target.startingAttributes),
+              getStabilityMultiplier(target.progression.stats),
+            );
           const impulse = scaleVector(
             direction,
             Math.min(rawImpulse, SIMULATION_TUNING.bomb.ownerMaximumImpulse),
@@ -1989,16 +2035,13 @@ export class SimulationWorld {
             addVectors(bombImpulses.get(target.actorId) ?? ZERO_VECTOR, impulse),
           );
 
-          if (target.actorId === bomb.ownerActorId) {
-            continue;
-          }
+          const bombDefinition = getItemDefinition("bomb");
+          const damage =
+            target.actorId === bomb.ownerActorId
+              ? bombDefinition.damage * bombDefinition.ownerDamageMultiplier
+              : bombDefinition.damage;
 
-          const damageResult = applyCombatDamage(
-            target,
-            getItemDefinition("bomb").damage,
-            bomb.ownerActorId,
-            this.#tick,
-          );
+          const damageResult = applyCombatDamage(target, damage, bomb.ownerActorId, this.#tick);
           ordered = ordered.map((participant) =>
             participant.actorId === target.actorId ? damageResult.participant : participant,
           );
@@ -2325,8 +2368,11 @@ export class SimulationWorld {
                 60,
                 Math.round(
                   this.#gameplayTuning.grapplingHookCooldownTicks *
-                    getStartingCooldownMultiplier(current.startingAttributes),
-                ) - getReflexCooldownReduction(current.progression.stats),
+                    combineLinearAttributeMultipliers(
+                      getStartingCooldownMultiplier(current.startingAttributes),
+                      getMobilityCooldownMultiplier(current.progression.stats),
+                    ),
+                ),
               ),
           }),
         }),
@@ -2687,8 +2733,13 @@ export class SimulationWorld {
         continue;
       }
 
+      const definition = getItemDefinition("soap");
       const result = applyCombatDamage(target, pending.damage, pending.ownerActorId, this.#tick);
-      byId.set(target.actorId, result.participant);
+      const updatedParticipant =
+        result.participant.combat.health > 0 && definition.stunTicks > 0
+          ? applyCombatStatus(result.participant, "stun", definition.stunTicks, this.#tick)
+          : result.participant;
+      byId.set(target.actorId, updatedParticipant);
       if (result.damage > 0 || result.absorbed > 0) {
         events.push(
           this.#createEvent("damage-applied", {
@@ -2697,7 +2748,18 @@ export class SimulationWorld {
             itemDefinitionId: "soap",
             amount: result.damage,
             absorbedAmount: result.absorbed,
-            healthAfter: result.participant.combat.health,
+            healthAfter: updatedParticipant.combat.health,
+          }),
+        );
+      }
+      if (updatedParticipant.combat.stunnedUntilTick > result.participant.combat.stunnedUntilTick) {
+        events.push(
+          this.#createEvent("status-applied", {
+            actorId: pending.ownerActorId,
+            targetActorId: target.actorId,
+            itemDefinitionId: "soap",
+            statusKind: "stun",
+            durationTicks: definition.stunTicks,
           }),
         );
       }
@@ -3038,9 +3100,16 @@ export class SimulationWorld {
       const damage =
         definition.damage *
         getSkillDamageMultiplier(zone.rank) *
-        getPowerMultiplier(owner?.progression.stats ?? createParticipantProgression().stats) *
-        (owner === undefined ? 1 : getStartingOutgoingMultiplier(owner.startingAttributes)) *
-        (owner === undefined ? 1 : getStartingSkillDamageMultiplier(owner.startingAttributes));
+        combineLinearAttributeMultipliers(
+          owner === undefined ? 1 : getStartingOutgoingMultiplier(owner.startingAttributes),
+          getPowerMultiplier(owner?.progression.stats ?? createParticipantProgression().stats),
+        ) *
+        combineLinearAttributeMultipliers(
+          owner === undefined ? 1 : getStartingSkillDamageMultiplier(owner.startingAttributes),
+          getFocusSkillDamageMultiplier(
+            owner?.progression.stats ?? createParticipantProgression().stats,
+          ),
+        );
       const impulseStrength = definition.impulse * getSkillImpulseMultiplier(zone.rank);
       const pulseDamage =
         zone.kind === "delayed-blast"
@@ -3089,8 +3158,10 @@ export class SimulationWorld {
             direction,
             impulseStrength *
               getIncomingMassImpulseMultiplier(participant.body.massFactor) *
-              getStartingIncomingImpulseMultiplier(participant.startingAttributes) *
-              getStabilityMultiplier(participant.progression.stats),
+              combineLinearAttributeMultipliers(
+                getStartingIncomingImpulseMultiplier(participant.startingAttributes),
+                getStabilityMultiplier(participant.progression.stats),
+              ),
           );
           if (participant.action.kind !== "Anchored") {
             participant = Object.freeze({
@@ -3413,10 +3484,14 @@ export class SimulationWorld {
           (SIMULATION_TUNING.shove.baseImpulse +
             forwardSpeed * SIMULATION_TUNING.shove.velocityImpulseScale) *
           getShoveMassImpulseMultiplier(attacker.body.massFactor, target.body.massFactor) *
-          getPowerMultiplier(attacker.progression.stats) *
-          getStartingOutgoingMultiplier(attacker.startingAttributes) *
-          getStabilityMultiplier(target.progression.stats) *
-          getStartingIncomingImpulseMultiplier(target.startingAttributes) *
+          combineLinearAttributeMultipliers(
+            getStartingOutgoingMultiplier(attacker.startingAttributes),
+            getPowerMultiplier(attacker.progression.stats),
+          ) *
+          combineLinearAttributeMultipliers(
+            getStartingIncomingImpulseMultiplier(target.startingAttributes),
+            getStabilityMultiplier(target.progression.stats),
+          ) *
           (attacker.action.springBoosted
             ? getItemDefinition("spring-glove").shoveImpulseMultiplier
             : 1);

@@ -91,6 +91,12 @@ export interface BalanceDashboardData {
   readonly phases: readonly BalancePhaseReport[];
 }
 
+export interface BalanceSourceVersions {
+  readonly productVersion: string;
+  readonly simulationVersion: string;
+  readonly contentVersion: string;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -129,6 +135,12 @@ export function parseBalanceDashboardData(value: unknown): BalanceDashboardData 
   if (value.schemaVersion !== BALANCE_DASHBOARD_SCHEMA_VERSION) {
     throw new Error("balance dashboard schemaVersion is unsupported");
   }
+  if (!isRecord(value.source)) {
+    throw new Error("balance dashboard must contain source versions");
+  }
+  requireString(value.source.productVersion, "balance dashboard source.productVersion");
+  requireString(value.source.simulationVersion, "balance dashboard source.simulationVersion");
+  requireString(value.source.contentVersion, "balance dashboard source.contentVersion");
   if (!isRecord(value.methodology) || typeof value.methodology.roundCount !== "number") {
     throw new Error("balance dashboard must contain a valid methodology");
   }
@@ -178,4 +190,18 @@ export function parseBalanceDashboardData(value: unknown): BalanceDashboardData 
   }
 
   return value as unknown as BalanceDashboardData;
+}
+
+export function assertCurrentBalanceDashboard(
+  dashboard: BalanceDashboardData,
+  current: BalanceSourceVersions,
+): void {
+  const source = dashboard.source;
+  if (
+    source.productVersion !== current.productVersion ||
+    source.simulationVersion !== current.simulationVersion ||
+    source.contentVersion !== current.contentVersion
+  ) {
+    throw new Error("현재 게임과 다른 버전의 통계다. 통계를 다시 실행해 줘.");
+  }
 }

@@ -219,7 +219,7 @@ async function profileCases(page: Page, index: number, profiles: FrameProfile[])
   await expect(page.locator("#app")).toHaveAttribute("data-round", "active");
   await expect(page.locator("#app")).toHaveAttribute("data-bot-difficulty", "hard");
   if (profileCase.workload === "brick-grapple") {
-    await expect(page.locator("#use-item-slot-0")).toContainText("벽돌 가방 · 4회");
+    await expect(page.locator("#use-item-slot-0")).toContainText("벽돌 가방 · 3회");
     await useProfileBrickBag(page);
     await expect(page.locator("#use-item-slot-0")).toContainText("벽돌 가방 · 3회");
   } else {

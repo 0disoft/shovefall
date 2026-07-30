@@ -5,15 +5,28 @@ import {
   canSpendStatPoint,
   canSpendSkillPoint,
   createParticipantProgression,
+  getDamageTakenMultiplier,
+  getFocusSkillDamageMultiplier,
+  getHealthRegenMultiplier,
+  getManaRegenMultiplier,
+  getMaximumHealth,
+  getMaximumMana,
+  getMobilityCooldownMultiplier,
+  getMobilityManaCostMultiplier,
   getSkillCooldownMultiplier,
   getNextPlannedUpgrade,
   getMobilityMultiplier,
+  getMobilityStumbleDurationMultiplier,
+  getPowerMassMultiplier,
   getPowerMultiplier,
+  getReflexShieldMultiplier,
+  getStabilityControlDurationMultiplier,
   getStabilityMultiplier,
   normalizeUpgradePlan,
   spendSkillPoint,
   spendStatPoint,
 } from "../src/simulation/progression";
+import { STARTING_ATTRIBUTE_EFFECTS } from "../src/simulation/starting-attributes";
 import { SimulationWorld } from "../src/simulation/world";
 
 describe("elimination progression", () => {
@@ -49,15 +62,71 @@ describe("elimination progression", () => {
       creditedEliminations: 1,
       stats: { power: 1, stability: 0, mobility: 0, reflex: 0 },
     });
-    expect(getPowerMultiplier(upgraded?.stats ?? earned.stats)).toBeCloseTo(1.08, 10);
-    expect(getStabilityMultiplier({ ...earned.stats, stability: 5 })).toBeCloseTo(0.5, 10);
-    expect(getMobilityMultiplier({ ...earned.stats, mobility: 5 })).toBeCloseTo(1.25, 10);
+    expect(getPowerMultiplier(upgraded?.stats ?? earned.stats)).toBeCloseTo(1.0375, 10);
+    expect(getStabilityMultiplier({ ...earned.stats, stability: 5 })).toBeCloseTo(0.75, 10);
+    expect(getMobilityMultiplier({ ...earned.stats, mobility: 5 })).toBeCloseTo(1.175, 10);
 
     let capped = earned;
     for (let level = 0; level < 5; level += 1) {
       capped = spendStatPoint(awardStatPoint(capped), "power") ?? capped;
     }
     expect(spendStatPoint(awardStatPoint(capped), "power")).toBeUndefined();
+  });
+
+  it("gives one kill-reward level exactly one starting-trait point of every effect", () => {
+    const zero = createParticipantProgression().stats;
+    const power = { ...zero, power: 1 };
+    const mobility = { ...zero, mobility: 1 };
+    const vitality = { ...zero, vitality: 1 };
+    const focus = { ...zero, focus: 1 };
+    const stability = { ...zero, stability: 1 };
+    const reflex = { ...zero, reflex: 1 };
+
+    expect(getPowerMassMultiplier(power) - 1).toBeCloseTo(
+      STARTING_ATTRIBUTE_EFFECTS.strength.massPerPoint,
+    );
+    expect(getPowerMultiplier(power) - 1).toBeCloseTo(
+      STARTING_ATTRIBUTE_EFFECTS.strength.outgoingPerPoint,
+    );
+    expect(getMobilityMultiplier(mobility) - 1).toBeCloseTo(
+      STARTING_ATTRIBUTE_EFFECTS.agility.movementPerPoint,
+    );
+    expect(1 - getMobilityCooldownMultiplier(mobility)).toBeCloseTo(
+      STARTING_ATTRIBUTE_EFFECTS.agility.cooldownReductionPerPoint,
+    );
+    expect(1 - getMobilityManaCostMultiplier(mobility)).toBeCloseTo(
+      STARTING_ATTRIBUTE_EFFECTS.agility.manaCostReductionPerPoint,
+    );
+    expect(1 - getMobilityStumbleDurationMultiplier(mobility)).toBeCloseTo(
+      STARTING_ATTRIBUTE_EFFECTS.agility.stumbleReductionPerPoint,
+    );
+    expect(getMaximumHealth(vitality) - getMaximumHealth(zero)).toBeCloseTo(
+      STARTING_ATTRIBUTE_EFFECTS.constitution.maximumHealthPerPoint,
+    );
+    expect(getHealthRegenMultiplier(vitality) - 1).toBeCloseTo(
+      STARTING_ATTRIBUTE_EFFECTS.constitution.healthRegenPerPoint,
+    );
+    expect(getMaximumMana(focus) - getMaximumMana(zero)).toBeCloseTo(
+      STARTING_ATTRIBUTE_EFFECTS.spirit.maximumManaPerPoint,
+    );
+    expect(getManaRegenMultiplier(focus) - 1).toBeCloseTo(
+      STARTING_ATTRIBUTE_EFFECTS.spirit.manaRegenPerPoint,
+    );
+    expect(getFocusSkillDamageMultiplier(focus) - 1).toBeCloseTo(
+      STARTING_ATTRIBUTE_EFFECTS.spirit.skillDamagePerPoint,
+    );
+    expect(1 - getStabilityMultiplier(stability)).toBeCloseTo(
+      STARTING_ATTRIBUTE_EFFECTS.balance.impulseReductionPerPoint,
+    );
+    expect(1 - getStabilityControlDurationMultiplier(stability)).toBeCloseTo(
+      STARTING_ATTRIBUTE_EFFECTS.balance.controlReductionPerPoint,
+    );
+    expect(1 - getDamageTakenMultiplier(reflex)).toBeCloseTo(
+      STARTING_ATTRIBUTE_EFFECTS.willpower.damageReductionPerPoint,
+    );
+    expect(getReflexShieldMultiplier(reflex) - 1).toBeCloseTo(
+      STARTING_ATTRIBUTE_EFFECTS.willpower.shieldPerPoint,
+    );
   });
 
   it("spends the same kill reward through prerequisite-gated skill ranks", () => {

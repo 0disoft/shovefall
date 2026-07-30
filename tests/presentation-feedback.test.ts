@@ -3,6 +3,7 @@ import {
   createAudioFeedback,
   MASTER_GAIN_SCALE,
   type AudioContextPort,
+  volumeToGain,
 } from "../src/presentation/audio-feedback";
 import { SimulationEventLedger } from "../src/presentation/event-ledger";
 import type { SimulationEventKind, SimulationEventV1 } from "../src/simulation/contracts";
@@ -132,7 +133,10 @@ describe("optional Web Audio feedback", () => {
 
     audio.setVolume(50);
     audio.consumeEvents([createEvent(1, 2, 2)]);
-    expect(context.gains[1]?.gain.values[0]).toBeCloseTo(0.11 * MASTER_GAIN_SCALE * 0.5, 10);
+    expect(context.gains[1]?.gain.values[0]).toBeCloseTo(
+      0.11 * MASTER_GAIN_SCALE * volumeToGain(50),
+      10,
+    );
 
     audio.setMuted(true);
     audio.consumeEvents([createEvent(1, 3, 3)]);
@@ -140,6 +144,24 @@ describe("optional Web Audio feedback", () => {
     audio.setMuted(false);
     audio.consumeEvents([createEvent(1, 4, 4)]);
     expect(context.oscillators).toHaveLength(3);
+  });
+
+  it("requests short music ducking for player combat impacts", async () => {
+    const context = new FakeAudioContext();
+    const duckingRequests: number[] = [];
+    const audio = createAudioFeedback(
+      () => context,
+      () => undefined,
+      (duration) => duckingRequests.push(duration),
+    );
+    await audio.unlock();
+
+    audio.consumeEvents([
+      { ...createEvent(1, 0, 0, "skill-hit"), skillDefinitionId: "arc-bolt" },
+      createEvent(1, 1, 1, "rock-impact"),
+    ]);
+
+    expect(duckingRequests).toEqual([350, 350]);
   });
 
   it("plays a dedicated Soap trigger cue", async () => {
@@ -205,6 +227,67 @@ describe("optional Web Audio feedback", () => {
     expect(context.oscillators).toHaveLength(1);
     expect(context.oscillators[0]?.type).toBe("square");
     expect(context.oscillators[0]?.frequency.values).toEqual([1_080, 540]);
+  });
+
+  it("gives each reusable skill a layered and distinct cast cue", async () => {
+    const skillDefinitionIds = [
+      "blink-step",
+      "arc-bolt",
+      "chain-bind",
+      "meteor-mark",
+      "frost-field",
+      "aegis",
+    ] as const;
+
+    const signatures = await Promise.all(
+      skillDefinitionIds.map(async (skillDefinitionId, index) => {
+        const context = new FakeAudioContext();
+        const audio = createAudioFeedback(() => context);
+        await audio.unlock();
+        audio.consumeEvents([
+          {
+            ...createEvent(1, index, index, "skill-used"),
+            skillDefinitionId,
+          },
+        ]);
+
+        expect(context.oscillators).toHaveLength(2);
+        return context.oscillators
+          .map((oscillator) => `${oscillator.type}:${oscillator.frequency.values.join("-")}`)
+          .join("|");
+      }),
+    );
+
+    expect(new Set(signatures).size).toBe(6);
+  });
+
+  it("uses a heavier layered impact for Meteor Mark", async () => {
+    const context = new FakeAudioContext();
+    const audio = createAudioFeedback(() => context);
+    await audio.unlock();
+
+    audio.consumeEvents([
+      {
+        ...createEvent(1, 0, 0, "skill-hit"),
+        skillDefinitionId: "meteor-mark",
+      },
+    ]);
+
+    expect(context.oscillators).toHaveLength(2);
+    expect(context.oscillators.map(({ type }) => type)).toEqual(["sawtooth", "triangle"]);
+    expect(context.oscillators[0]?.frequency.values).toEqual([90, 28]);
+  });
+
+  it("plays a short layered click for ordinary interface buttons", async () => {
+    const context = new FakeAudioContext();
+    const audio = createAudioFeedback(() => context);
+    await audio.unlock();
+
+    audio.playUiClick();
+
+    expect(context.oscillators).toHaveLength(2);
+    expect(context.oscillators.map(({ type }) => type)).toEqual(["triangle", "sine"]);
+    expect(context.oscillators[0]?.frequency.values).toEqual([560, 420]);
   });
 
   it("caps concurrent voices and lets a higher-priority result replace a low voice", async () => {

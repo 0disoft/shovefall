@@ -10,8 +10,11 @@ import type {
 import { SimulationContractError } from "./math";
 import { spendMana } from "./combat";
 import {
+  combineLinearAttributeMultipliers,
   getPowerMultiplier,
-  getReflexCooldownReduction,
+  getFocusSkillDamageMultiplier,
+  getMobilityCooldownMultiplier,
+  getMobilityManaCostMultiplier,
   getSkillCooldownMultiplier,
   getSkillDamageMultiplier,
   getSkillDurationMultiplier,
@@ -80,8 +83,11 @@ export function startSkillCooldown(
     Math.round(
       definition.cooldownTicks *
         getSkillCooldownMultiplier(rank) *
-        getStartingCooldownMultiplier(participant.startingAttributes),
-    ) - getReflexCooldownReduction(participant.progression.stats),
+        combineLinearAttributeMultipliers(
+          getStartingCooldownMultiplier(participant.startingAttributes),
+          getMobilityCooldownMultiplier(participant.progression.stats),
+        ),
+    ),
   );
   return Object.freeze({
     ...participant,
@@ -111,13 +117,19 @@ export function getSkillManaCost(
   definitionId: SkillDefinitionId,
   rank: number,
   startingAttributes: StartingAttributes,
+  progressionStats?: ParticipantState["progression"]["stats"],
 ): number {
   return Math.max(
     0,
     Math.ceil(
       getSkillDefinition(definitionId).manaCost *
         getSkillManaMultiplier(rank) *
-        getStartingManaCostMultiplier(startingAttributes),
+        (progressionStats === undefined
+          ? getStartingManaCostMultiplier(startingAttributes)
+          : combineLinearAttributeMultipliers(
+              getStartingManaCostMultiplier(startingAttributes),
+              getMobilityManaCostMultiplier(progressionStats),
+            )),
     ),
   );
 }
@@ -136,18 +148,30 @@ export function getSkillCastMetrics(
   const durationMultiplier = getSkillDurationMultiplier(rank);
   return Object.freeze({
     rank,
-    manaCost: getSkillManaCost(slot.definitionId, rank, participant.startingAttributes),
+    manaCost: getSkillManaCost(
+      slot.definitionId,
+      rank,
+      participant.startingAttributes,
+      participant.progression.stats,
+    ),
     damage:
       definition.damage *
       getSkillDamageMultiplier(rank) *
-      getPowerMultiplier(participant.progression.stats) *
-      getStartingOutgoingMultiplier(participant.startingAttributes) *
-      getStartingSkillDamageMultiplier(participant.startingAttributes),
+      combineLinearAttributeMultipliers(
+        getStartingOutgoingMultiplier(participant.startingAttributes),
+        getPowerMultiplier(participant.progression.stats),
+      ) *
+      combineLinearAttributeMultipliers(
+        getStartingSkillDamageMultiplier(participant.startingAttributes),
+        getFocusSkillDamageMultiplier(participant.progression.stats),
+      ),
     impulse:
       definition.impulse *
       getSkillImpulseMultiplier(rank) *
-      getPowerMultiplier(participant.progression.stats) *
-      getStartingOutgoingMultiplier(participant.startingAttributes),
+      combineLinearAttributeMultipliers(
+        getStartingOutgoingMultiplier(participant.startingAttributes),
+        getPowerMultiplier(participant.progression.stats),
+      ),
     stumbleTicks: Math.round(definition.stumbleTicks * durationMultiplier),
     stunTicks: Math.round(definition.stunTicks * durationMultiplier),
     rootTicks: Math.round(definition.rootTicks * durationMultiplier),

@@ -9,11 +9,14 @@ import type {
   Tick,
 } from "./contracts";
 import {
+  combineLinearAttributeMultipliers,
   getDamageTakenMultiplier,
   getHealthRegenMultiplier,
   getManaRegenMultiplier,
   getMaximumHealth,
   getMaximumMana,
+  getReflexShieldMultiplier,
+  getStabilityControlDurationMultiplier,
 } from "./progression";
 import {
   getStartingControlDurationMultiplier,
@@ -28,12 +31,7 @@ import type { GameplayTuningV1 } from "./tuning";
 
 export const COMBAT_TUNING = Object.freeze({
   initialMana: 30,
-  healthRegenDelayTicks: 300,
-  healthRegenPerTick: 0.04,
-  manaRegenDelayTicks: 60,
-  manaRegenPerTick: 0.1,
   shieldControlDurationMultiplier: getSkillDefinition("aegis").controlDurationMultiplier,
-  legacyShoveDamage: 7,
 });
 
 function bounded(value: number, minimum: number, maximum: number): number {
@@ -128,8 +126,10 @@ export function advanceCombatResources(
         stable(
           synchronized.health +
             tuning.healthRegenPerTick *
-              getHealthRegenMultiplier(participant.progression.stats) *
-              getStartingHealthRegenMultiplier(participant.startingAttributes),
+              combineLinearAttributeMultipliers(
+                getStartingHealthRegenMultiplier(participant.startingAttributes),
+                getHealthRegenMultiplier(participant.progression.stats),
+              ),
         ),
         0,
         synchronized.maximumHealth,
@@ -140,8 +140,10 @@ export function advanceCombatResources(
         stable(
           synchronized.mana +
             tuning.manaRegenPerTick *
-              getManaRegenMultiplier(participant.progression.stats) *
-              getStartingManaRegenMultiplier(participant.startingAttributes),
+              combineLinearAttributeMultipliers(
+                getStartingManaRegenMultiplier(participant.startingAttributes),
+                getManaRegenMultiplier(participant.progression.stats),
+              ),
         ),
         0,
         synchronized.maximumMana,
@@ -180,6 +182,32 @@ export function spendMana(
   });
 }
 
+export interface CombatManaDrainResult {
+  readonly participant: ParticipantState;
+  readonly drained: number;
+}
+
+export function drainParticipantMana(
+  participant: ParticipantState,
+  amount: number,
+): CombatManaDrainResult {
+  if (!participant.active || amount <= 0 || participant.combat.mana <= 0) {
+    return Object.freeze({ participant, drained: 0 });
+  }
+
+  const drained = stable(Math.min(amount, participant.combat.mana));
+  return Object.freeze({
+    participant: Object.freeze({
+      ...participant,
+      combat: Object.freeze({
+        ...participant.combat,
+        mana: stable(participant.combat.mana - drained),
+      }),
+    }),
+    drained,
+  });
+}
+
 export interface CombatDamageResult {
   readonly participant: ParticipantState;
   readonly damage: number;
@@ -198,8 +226,10 @@ export function applyCombatDamage(
 
   const reduced = stable(
     rawAmount *
-      getDamageTakenMultiplier(participant.progression.stats) *
-      getStartingDamageTakenMultiplier(participant.startingAttributes),
+      combineLinearAttributeMultipliers(
+        getStartingDamageTakenMultiplier(participant.startingAttributes),
+        getDamageTakenMultiplier(participant.progression.stats),
+      ),
   );
   const activeShield = participant.combat.shieldEndsTick > tick ? participant.combat.shield : 0;
   const absorbed = Math.min(activeShield, reduced);
@@ -267,7 +297,11 @@ export function applyShield(
   }
 
   const adjustedAmount = stable(
-    amount * getStartingShieldMultiplier(participant.startingAttributes),
+    amount *
+      combineLinearAttributeMultipliers(
+        getStartingShieldMultiplier(participant.startingAttributes),
+        getReflexShieldMultiplier(participant.progression.stats),
+      ),
   );
   return Object.freeze({
     ...participant,
@@ -296,7 +330,10 @@ export function applyCombatStatus(
     Math.round(
       durationTicks *
         (shieldActive ? COMBAT_TUNING.shieldControlDurationMultiplier : 1) *
-        getStartingControlDurationMultiplier(participant.startingAttributes),
+        combineLinearAttributeMultipliers(
+          getStartingControlDurationMultiplier(participant.startingAttributes),
+          getStabilityControlDurationMultiplier(participant.progression.stats),
+        ),
     ),
   );
   const untilTick = tick + adjustedDuration;

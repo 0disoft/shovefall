@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   createCharacterMotionPose,
+  createCharacterSpriteMotionTransform,
   selectCharacterAnimationState,
 } from "../src/presentation/character-motion";
 
@@ -116,5 +117,26 @@ describe("character motion presentation", () => {
         reducedMotion: false,
       }),
     ).toBe("hit");
+  });
+
+  it("preserves visible walk motion when motion-atlas artwork is loaded", () => {
+    const motionPose = createCharacterMotionPose({
+      action: "Ready",
+      actorId: 1,
+      castProgress: null,
+      facing: { x: 1, y: 0 },
+      frameTick: 5,
+      reducedMotion: false,
+      velocity: { x: 2.4, y: 0 },
+    });
+
+    const transform = createCharacterSpriteMotionTransform(motionPose, true);
+
+    expect(motionPose.moving).toBe(true);
+    expect(transform.liftRatio).not.toBe(0);
+    expect(transform.offsetXRatio).not.toBe(0);
+    expect(transform.rotation).not.toBe(0);
+    expect(transform.scaleX).not.toBe(1);
+    expect(transform.scaleY).not.toBe(1);
   });
 });

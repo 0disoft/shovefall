@@ -8,6 +8,7 @@ import {
 } from "../src/ai/bot-navigation";
 import { normalizeGameConfig } from "../src/simulation/contracts";
 import { addVectors, scaleVector } from "../src/simulation/math";
+import { normalizeGameplayTuning } from "../src/simulation/tuning";
 import { SimulationWorld } from "../src/simulation/world";
 
 function createTreeCorridorWorld(): SimulationWorld {
@@ -82,5 +83,24 @@ describe("bot navigation", () => {
     );
     expect(direction).toBeDefined();
     expect(Math.abs(direction?.y ?? 0)).toBeGreaterThan(0.2);
+  });
+
+  it("uses the effective gameplay tuning when predicting a dodge landing", () => {
+    const frame = createTreeCorridorWorld().createRenderFrame();
+    const terrain = createBotNavigationTerrain(frame.tiles);
+    const blockedTileIds = createBotBlockedTileIds(frame);
+    const actor = frame.participants.find(({ actorId }) => actorId === 2);
+    expect(actor).toBeDefined();
+
+    const direction = getSafeBotDodgeDirection(
+      actor ?? frame.participants[0]!,
+      { x: 1, y: 0 },
+      terrain,
+      blockedTileIds,
+      normalizeGameplayTuning({ dodgeSpeed: 0.07, dodgeActiveTicks: 3 }),
+    );
+
+    expect(direction?.x).toBeGreaterThan(0.99);
+    expect(Math.abs(direction?.y ?? 1)).toBeLessThan(0.01);
   });
 });

@@ -55,6 +55,62 @@ describe("replay fixture contract", () => {
     });
   });
 
+  it("round-trips the supported 52-column arena contract", () => {
+    const fixture = createReplayFixture({
+      buildId: "wide-arena",
+      config: normalizeGameConfig({
+        participantCount: 4,
+        arenaColumns: 52,
+        arenaRows: 44,
+        roundLimitSeconds: 1,
+      }),
+      masterSeed: "wide-arena",
+      humanActorId: 1,
+      endTick: 1,
+      commands: [],
+      checkpointTicks: [1],
+    });
+    const parsed = parseReplayFixtureJson(JSON.stringify(fixture));
+
+    expect(parsed.config.arenaColumns).toBe(52);
+    expect(runReplayFixture(parsed).finalHash).toBe(fixture.finalHash);
+  });
+
+  it("rejects a replay config without enough unique spawn tiles", () => {
+    const fixture = createFixture();
+
+    expect(() =>
+      parseReplayFixtureJson(
+        JSON.stringify({
+          ...fixture,
+          config: {
+            ...fixture.config,
+            participantCount: 60,
+            arenaColumns: 7,
+            arenaRows: 7,
+            maximumItemCount: 30,
+          },
+        }),
+      ),
+    ).toThrow(/one spawn tile per participant/u);
+  });
+
+  it.each(["vitality", "focus"] as const)("round-trips the %s upgrade command", (upgradeStat) => {
+    const fixture = createReplayFixture({
+      buildId: `upgrade-${upgradeStat}`,
+      config: normalizeGameConfig({ participantCount: 4, roundLimitSeconds: 1 }),
+      masterSeed: `upgrade-${upgradeStat}`,
+      humanActorId: 1,
+      endTick: 1,
+      commands: [{ ...createNeutralCommand(0, 1), upgradeStat }],
+      checkpointTicks: [1],
+    });
+
+    expect(parseReplayFixtureJson(JSON.stringify(fixture)).commands[0]?.upgradeStat).toBe(
+      upgradeStat,
+    );
+  });
+
   it("rejects unknown format majors", () => {
     const fixture = createFixture();
 

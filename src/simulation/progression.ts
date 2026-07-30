@@ -1,4 +1,5 @@
 import type { ParticipantProgression, ParticipantStats, UpgradeStatId } from "./contracts";
+import { STARTING_ATTRIBUTE_EFFECTS } from "./starting-attributes";
 
 export const UPGRADE_STAT_IDS = [
   "power",
@@ -15,16 +16,29 @@ export const DEFAULT_UPGRADE_PLAN: readonly UpgradeStatId[] = Object.freeze(
 );
 
 export const UPGRADE_EFFECTS = Object.freeze({
-  powerImpulsePerLevel: 0.08,
-  stabilityImpulseReductionPerLevel: 0.12,
-  stabilityDamageReductionPerLevel: 0.05,
-  mobilitySpeedPerLevel: 0.05,
-  reflexCooldownTicksPerLevel: 5,
-  vitalityHealthPerLevel: 12,
-  vitalityRegenPerLevel: 0.1,
-  focusManaPerLevel: 10,
-  focusRegenPerLevel: 0.12,
+  powerMassPerLevel: STARTING_ATTRIBUTE_EFFECTS.strength.massPerPoint,
+  powerOutgoingPerLevel: STARTING_ATTRIBUTE_EFFECTS.strength.outgoingPerPoint,
+  mobilitySpeedPerLevel: STARTING_ATTRIBUTE_EFFECTS.agility.movementPerPoint,
+  mobilityCooldownReductionPerLevel: STARTING_ATTRIBUTE_EFFECTS.agility.cooldownReductionPerPoint,
+  mobilityManaCostReductionPerLevel: STARTING_ATTRIBUTE_EFFECTS.agility.manaCostReductionPerPoint,
+  mobilityStumbleReductionPerLevel: STARTING_ATTRIBUTE_EFFECTS.agility.stumbleReductionPerPoint,
+  vitalityHealthPerLevel: STARTING_ATTRIBUTE_EFFECTS.constitution.maximumHealthPerPoint,
+  vitalityRegenPerLevel: STARTING_ATTRIBUTE_EFFECTS.constitution.healthRegenPerPoint,
+  focusManaPerLevel: STARTING_ATTRIBUTE_EFFECTS.spirit.maximumManaPerPoint,
+  focusRegenPerLevel: STARTING_ATTRIBUTE_EFFECTS.spirit.manaRegenPerPoint,
+  focusSkillDamagePerLevel: STARTING_ATTRIBUTE_EFFECTS.spirit.skillDamagePerPoint,
+  stabilityImpulseReductionPerLevel: STARTING_ATTRIBUTE_EFFECTS.balance.impulseReductionPerPoint,
+  stabilityControlReductionPerLevel: STARTING_ATTRIBUTE_EFFECTS.balance.controlReductionPerPoint,
+  reflexDamageReductionPerLevel: STARTING_ATTRIBUTE_EFFECTS.willpower.damageReductionPerPoint,
+  reflexShieldPerLevel: STARTING_ATTRIBUTE_EFFECTS.willpower.shieldPerPoint,
 });
+
+export function combineLinearAttributeMultipliers(
+  startingMultiplier: number,
+  progressionMultiplier: number,
+): number {
+  return startingMultiplier + progressionMultiplier - 1;
+}
 
 const ZERO_STATS: ParticipantStats = Object.freeze({
   power: 0,
@@ -238,23 +252,39 @@ export function spendStatPoint(
 }
 
 export function getPowerMultiplier(stats: ParticipantStats): number {
-  return 1 + stats.power * UPGRADE_EFFECTS.powerImpulsePerLevel;
+  return 1 + stats.power * UPGRADE_EFFECTS.powerOutgoingPerLevel;
+}
+
+export function getPowerMassMultiplier(stats: ParticipantStats): number {
+  return 1 + stats.power * UPGRADE_EFFECTS.powerMassPerLevel;
 }
 
 export function getStabilityMultiplier(stats: ParticipantStats): number {
-  return Math.max(0.5, 1 - stats.stability * UPGRADE_EFFECTS.stabilityImpulseReductionPerLevel);
+  return 1 - stats.stability * UPGRADE_EFFECTS.stabilityImpulseReductionPerLevel;
 }
 
 export function getDamageTakenMultiplier(stats: ParticipantStats): number {
-  return Math.max(0.75, 1 - stats.stability * UPGRADE_EFFECTS.stabilityDamageReductionPerLevel);
+  return 1 - stats.reflex * UPGRADE_EFFECTS.reflexDamageReductionPerLevel;
 }
 
 export function getMobilityMultiplier(stats: ParticipantStats): number {
   return 1 + stats.mobility * UPGRADE_EFFECTS.mobilitySpeedPerLevel;
 }
 
-export function getReflexCooldownReduction(stats: ParticipantStats): number {
-  return stats.reflex * UPGRADE_EFFECTS.reflexCooldownTicksPerLevel;
+export function getMobilityCooldownMultiplier(stats: ParticipantStats): number {
+  return 1 - stats.mobility * UPGRADE_EFFECTS.mobilityCooldownReductionPerLevel;
+}
+
+export function getMobilityManaCostMultiplier(stats: ParticipantStats): number {
+  return 1 - stats.mobility * UPGRADE_EFFECTS.mobilityManaCostReductionPerLevel;
+}
+
+export function getMobilityStumbleDurationMultiplier(stats: ParticipantStats): number {
+  return 1 - stats.mobility * UPGRADE_EFFECTS.mobilityStumbleReductionPerLevel;
+}
+
+export function getStabilityControlDurationMultiplier(stats: ParticipantStats): number {
+  return 1 - stats.stability * UPGRADE_EFFECTS.stabilityControlReductionPerLevel;
 }
 
 export function getMaximumHealth(stats: ParticipantStats): number {
@@ -271,4 +301,12 @@ export function getMaximumMana(stats: ParticipantStats): number {
 
 export function getManaRegenMultiplier(stats: ParticipantStats): number {
   return 1 + stats.focus * UPGRADE_EFFECTS.focusRegenPerLevel;
+}
+
+export function getFocusSkillDamageMultiplier(stats: ParticipantStats): number {
+  return 1 + stats.focus * UPGRADE_EFFECTS.focusSkillDamagePerLevel;
+}
+
+export function getReflexShieldMultiplier(stats: ParticipantStats): number {
+  return 1 + stats.reflex * UPGRADE_EFFECTS.reflexShieldPerLevel;
 }

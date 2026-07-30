@@ -24,6 +24,7 @@ export interface SkillDefinition {
   readonly shield: number;
   readonly controlDurationMultiplier: number;
   readonly damageHealingRatio: number;
+  readonly manaSteal: number;
 }
 
 export const SKILL_DEFINITION_IDS = [
@@ -40,13 +41,14 @@ export const DEFAULT_SKILL_LOADOUT = Object.freeze([
   "arc-bolt",
 ] as const satisfies readonly SkillDefinitionId[]);
 
-type SkillDefinitionInput = Omit<SkillDefinition, "damageHealingRatio"> &
-  Partial<Pick<SkillDefinition, "damageHealingRatio">>;
+type SkillDefinitionInput = Omit<SkillDefinition, "damageHealingRatio" | "manaSteal"> &
+  Partial<Pick<SkillDefinition, "damageHealingRatio" | "manaSteal">>;
 
 function defineSkill(definition: SkillDefinitionInput): SkillDefinition {
   return Object.freeze({
     ...definition,
     damageHealingRatio: definition.damageHealingRatio ?? 0,
+    manaSteal: definition.manaSteal ?? 0,
   });
 }
 
@@ -112,7 +114,7 @@ export function formatSkillDescription(skill: SkillDefinition): string {
     case "dash":
       const distance = skill.range > 0 ? ` 최대 ${formatNumber(skill.range)}칸` : "";
       const evasion = formatTicksAsSeconds(skill.durationTicks);
-      return `지정 방향으로${distance} 이동하고 ${evasion}초 동안 공격 회피`;
+      return `지정 방향으로${distance} 이동, ${evasion}초 동안 공격 회피`;
     case "line": {
       if (skill.id === "chain-bind") {
         const target =
@@ -124,6 +126,7 @@ export function formatSkillDescription(skill: SkillDefinition): string {
           skill.rootTicks > 0
             ? `${formatTicksAsSeconds(skill.rootTicks)}초 이동 봉쇄`
             : "이동 봉쇄",
+          skill.manaSteal > 0 ? `적중 시 마나 ${formatNumber(skill.manaSteal)} 강탈` : undefined,
         ]
           .filter((part): part is string => part !== undefined)
           .join(", ");
@@ -160,7 +163,7 @@ export function formatSkillDescription(skill: SkillDefinition): string {
         case "frost": {
           const duration =
             skill.durationTicks > 0 ? `${formatTicksAsSeconds(skill.durationTicks)}초간 ` : "";
-          const damage = skill.damage > 0 ? `피해 ${formatNumber(skill.damage)}` : "";
+          const damage = skill.damage > 0 ? `초당 피해 ${formatNumber(skill.damage)}` : "";
           const slowPercent = Math.round((1 - skill.slowMultiplier) * 10_000) / 100;
           const slow =
             slowPercent > 0
@@ -199,7 +202,7 @@ export const SKILL_DEFINITIONS: Readonly<Record<SkillDefinitionId, SkillDefiniti
       zoneKind: null,
       cooldownTicks: 132,
       manaCost: 20,
-      range: 2.4,
+      range: 3,
       minimumAimDot: 1,
       radius: 0,
       damage: 0,
@@ -208,7 +211,7 @@ export const SKILL_DEFINITIONS: Readonly<Record<SkillDefinitionId, SkillDefiniti
       stunTicks: 0,
       rootTicks: 0,
       slowMultiplier: 1,
-      durationTicks: 42,
+      durationTicks: 60,
       delayTicks: 0,
       shield: 0,
       controlDurationMultiplier: 1,
@@ -218,14 +221,14 @@ export const SKILL_DEFINITIONS: Readonly<Record<SkillDefinitionId, SkillDefiniti
       label: "파동탄",
       castKind: "line",
       zoneKind: null,
-      cooldownTicks: 360,
-      manaCost: 32,
+      cooldownTicks: 300,
+      manaCost: 30,
       range: 3.5,
       minimumAimDot: 0.94,
       radius: 0,
-      damage: 20,
+      damage: 22,
       impulse: 0.3,
-      stumbleTicks: 24,
+      stumbleTicks: 60,
       stunTicks: 0,
       rootTicks: 0,
       slowMultiplier: 1,
@@ -240,7 +243,7 @@ export const SKILL_DEFINITIONS: Readonly<Record<SkillDefinitionId, SkillDefiniti
       castKind: "line",
       zoneKind: null,
       cooldownTicks: 360,
-      manaCost: 32,
+      manaCost: 30,
       range: 5.5,
       minimumAimDot: 0.966,
       radius: 0,
@@ -254,6 +257,7 @@ export const SKILL_DEFINITIONS: Readonly<Record<SkillDefinitionId, SkillDefiniti
       delayTicks: 0,
       shield: 0,
       controlDurationMultiplier: 1,
+      manaSteal: 10,
     }),
     "meteor-mark": defineSkill({
       id: "meteor-mark",
@@ -281,22 +285,22 @@ export const SKILL_DEFINITIONS: Readonly<Record<SkillDefinitionId, SkillDefiniti
       label: "빙결 지대",
       castKind: "zone",
       zoneKind: "frost",
-      cooldownTicks: 480,
-      manaCost: 30,
+      cooldownTicks: 540,
+      manaCost: 34,
       range: 3.5,
       minimumAimDot: 1,
       radius: 2.3,
-      damage: 5,
+      damage: 4,
       impulse: 0,
       stumbleTicks: 0,
       stunTicks: 0,
       rootTicks: 0,
-      slowMultiplier: 0.75,
-      durationTicks: 300,
+      slowMultiplier: 0.8,
+      durationTicks: 240,
       delayTicks: 0,
       shield: 0,
       controlDurationMultiplier: 1,
-      damageHealingRatio: 0.25,
+      damageHealingRatio: 0.15,
     }),
     aegis: defineSkill({
       id: "aegis",
@@ -314,7 +318,7 @@ export const SKILL_DEFINITIONS: Readonly<Record<SkillDefinitionId, SkillDefiniti
       stunTicks: 0,
       rootTicks: 0,
       slowMultiplier: 1,
-      durationTicks: 300,
+      durationTicks: 240,
       delayTicks: 0,
       shield: 22,
       controlDurationMultiplier: 0.7,

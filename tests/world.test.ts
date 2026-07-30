@@ -26,6 +26,12 @@ describe("simulation world contracts", () => {
     expect(() => normalizeGameConfig({ participantCount: 61 })).toThrow(SimulationContractError);
   });
 
+  it("rejects an arena that cannot provide one unique tile per participant", () => {
+    expect(() =>
+      normalizeGameConfig({ participantCount: 60, arenaColumns: 7, arenaRows: 7 }),
+    ).toThrow(/one spawn tile per participant/u);
+  });
+
   it("normalizes movement without changing valid directions", () => {
     const command = normalizeActorCommand({
       ...createNeutralCommand(0, 1),

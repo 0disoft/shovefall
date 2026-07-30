@@ -828,7 +828,10 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
         ],
       });
       nextRoundId += 1;
-      bots = new BotDirector(masterSeed, HUMAN_ACTOR_ID, { difficulty: config.difficulty });
+      bots = new BotDirector(masterSeed, HUMAN_ACTOR_ID, {
+        difficulty: config.difficulty,
+        ...(gameplayTuning === undefined ? {} : { gameplayTuning }),
+      });
       setLatestFrame(world.createRenderFrame());
       roundStatistics.reset();
       accumulatorMilliseconds = 0;

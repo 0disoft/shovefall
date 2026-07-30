@@ -21,7 +21,18 @@ export interface CharacterMotionPose {
   readonly stridePhase: number;
 }
 
+export interface CharacterSpriteMotionTransform {
+  readonly liftRatio: number;
+  readonly offsetXRatio: number;
+  readonly rotation: number;
+  readonly scaleX: number;
+  readonly scaleY: number;
+}
+
 export type CharacterAnimationState = "idle" | "walk" | "cast" | "hit";
+
+const MOTION_ARTWORK_POSE_STRENGTH = 0.82;
+const MOTION_ARTWORK_ROTATION_STRENGTH = 0.68;
 
 export interface CharacterAnimationStateInput {
   readonly action: ParticipantActionKind;
@@ -120,4 +131,27 @@ export function selectCharacterAnimationState(
     return input.motionPose.stridePhase >= 0 ? "walk" : "idle";
   }
   return "idle";
+}
+
+export function createCharacterSpriteMotionTransform(
+  motionPose: CharacterMotionPose,
+  hasMotionArtwork: boolean,
+): CharacterSpriteMotionTransform {
+  if (!hasMotionArtwork) {
+    return {
+      liftRatio: motionPose.liftRatio,
+      offsetXRatio: motionPose.offsetXRatio,
+      rotation: motionPose.rotation,
+      scaleX: motionPose.scaleX,
+      scaleY: motionPose.scaleY,
+    };
+  }
+
+  return {
+    liftRatio: motionPose.liftRatio * MOTION_ARTWORK_POSE_STRENGTH,
+    offsetXRatio: motionPose.offsetXRatio * MOTION_ARTWORK_POSE_STRENGTH,
+    rotation: motionPose.rotation * MOTION_ARTWORK_ROTATION_STRENGTH,
+    scaleX: 1 + (motionPose.scaleX - 1) * MOTION_ARTWORK_POSE_STRENGTH,
+    scaleY: 1 + (motionPose.scaleY - 1) * MOTION_ARTWORK_POSE_STRENGTH,
+  };
 }

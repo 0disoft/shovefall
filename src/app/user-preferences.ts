@@ -21,7 +21,7 @@ export const USER_PREFERENCES_STORAGE_KEY = "shovefall:user-preferences:v1";
 export const DEFAULT_USER_PREFERENCES: UserPreferences = Object.freeze({
   fontScale: "standard",
   soundEffectsVolume: 50,
-  backgroundMusicVolume: 35,
+  backgroundMusicVolume: 50,
 });
 
 export function isFontScaleId(value: unknown): value is FontScaleId {

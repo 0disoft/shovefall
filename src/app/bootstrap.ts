@@ -40,15 +40,22 @@ import type {
   UpgradeStatId,
 } from "../simulation/contracts";
 import { normalizeGameConfig } from "../simulation/contracts";
-import { DEFAULT_GAMEPLAY_TUNING, SIMULATION_TUNING } from "../simulation/tuning";
+import { DEFAULT_GAMEPLAY_TUNING } from "../simulation/tuning";
 import {
   getMobilityMultiplier,
+  getMobilityCooldownMultiplier,
+  getMobilityManaCostMultiplier,
+  getMobilityStumbleDurationMultiplier,
   getHealthRegenMultiplier,
+  getFocusSkillDamageMultiplier,
+  getDamageTakenMultiplier,
   getManaRegenMultiplier,
   getMaximumHealth,
   getMaximumMana,
+  getPowerMassMultiplier,
   getPowerMultiplier,
-  getReflexCooldownReduction,
+  getReflexShieldMultiplier,
+  getStabilityControlDurationMultiplier,
   getStabilityMultiplier,
   UPGRADE_EFFECTS,
   isUpgradeStatId,
@@ -122,12 +129,12 @@ const ACTION_LABELS = Object.freeze({
 } as const);
 
 const UPGRADE_LABELS: Readonly<Record<UpgradeStatId, string>> = Object.freeze({
-  power: "힘",
-  stability: "중심",
-  mobility: "발놀림",
-  reflex: "반사신경",
-  vitality: "생명력",
-  focus: "집중력",
+  power: "완력",
+  stability: "균형",
+  mobility: "민첩",
+  reflex: "의지",
+  vitality: "체질",
+  focus: "정신",
 });
 
 const STARTING_ATTRIBUTE_LABELS: Readonly<Record<StartingAttributeId, string>> = Object.freeze({
@@ -156,9 +163,14 @@ function getUpgradeEffectViews(id: UpgradeStatId, rank: number): readonly Upgrad
     case "power":
       return [
         {
+          label: "무게 보정",
+          current: formatSignedPercent(rank * UPGRADE_EFFECTS.powerMassPerLevel),
+          next: formatSignedPercent(nextRank * UPGRADE_EFFECTS.powerMassPerLevel),
+        },
+        {
           label: "공격 위력",
-          current: formatSignedPercent(rank * UPGRADE_EFFECTS.powerImpulsePerLevel),
-          next: formatSignedPercent(nextRank * UPGRADE_EFFECTS.powerImpulsePerLevel),
+          current: formatSignedPercent(rank * UPGRADE_EFFECTS.powerOutgoingPerLevel),
+          next: formatSignedPercent(nextRank * UPGRADE_EFFECTS.powerOutgoingPerLevel),
         },
       ];
     case "stability":
@@ -169,9 +181,9 @@ function getUpgradeEffectViews(id: UpgradeStatId, rank: number): readonly Upgrad
           next: formatSignedPercent(nextRank * UPGRADE_EFFECTS.stabilityImpulseReductionPerLevel),
         },
         {
-          label: "받는 피해",
-          current: formatSignedPercent(-rank * UPGRADE_EFFECTS.stabilityDamageReductionPerLevel),
-          next: formatSignedPercent(-nextRank * UPGRADE_EFFECTS.stabilityDamageReductionPerLevel),
+          label: "제어 시간",
+          current: formatSignedPercent(-rank * UPGRADE_EFFECTS.stabilityControlReductionPerLevel),
+          next: formatSignedPercent(-nextRank * UPGRADE_EFFECTS.stabilityControlReductionPerLevel),
         },
       ];
     case "mobility":
@@ -181,13 +193,33 @@ function getUpgradeEffectViews(id: UpgradeStatId, rank: number): readonly Upgrad
           current: formatSignedPercent(rank * UPGRADE_EFFECTS.mobilitySpeedPerLevel),
           next: formatSignedPercent(nextRank * UPGRADE_EFFECTS.mobilitySpeedPerLevel),
         },
+        {
+          label: "재사용 대기",
+          current: formatSignedPercent(-rank * UPGRADE_EFFECTS.mobilityCooldownReductionPerLevel),
+          next: formatSignedPercent(-nextRank * UPGRADE_EFFECTS.mobilityCooldownReductionPerLevel),
+        },
+        {
+          label: "마나 소모",
+          current: formatSignedPercent(-rank * UPGRADE_EFFECTS.mobilityManaCostReductionPerLevel),
+          next: formatSignedPercent(-nextRank * UPGRADE_EFFECTS.mobilityManaCostReductionPerLevel),
+        },
+        {
+          label: "휘청 시간",
+          current: formatSignedPercent(-rank * UPGRADE_EFFECTS.mobilityStumbleReductionPerLevel),
+          next: formatSignedPercent(-nextRank * UPGRADE_EFFECTS.mobilityStumbleReductionPerLevel),
+        },
       ];
     case "reflex":
       return [
         {
-          label: "재사용 대기",
-          current: `-${rank * UPGRADE_EFFECTS.reflexCooldownTicksPerLevel}틱`,
-          next: `-${nextRank * UPGRADE_EFFECTS.reflexCooldownTicksPerLevel}틱`,
+          label: "받는 피해",
+          current: formatSignedPercent(-rank * UPGRADE_EFFECTS.reflexDamageReductionPerLevel),
+          next: formatSignedPercent(-nextRank * UPGRADE_EFFECTS.reflexDamageReductionPerLevel),
+        },
+        {
+          label: "보호막",
+          current: formatSignedPercent(rank * UPGRADE_EFFECTS.reflexShieldPerLevel),
+          next: formatSignedPercent(nextRank * UPGRADE_EFFECTS.reflexShieldPerLevel),
         },
       ];
     case "vitality":
@@ -214,6 +246,11 @@ function getUpgradeEffectViews(id: UpgradeStatId, rank: number): readonly Upgrad
           label: "마나 재생",
           current: formatSignedPercent(rank * UPGRADE_EFFECTS.focusRegenPerLevel),
           next: formatSignedPercent(nextRank * UPGRADE_EFFECTS.focusRegenPerLevel),
+        },
+        {
+          label: "스킬 피해",
+          current: formatSignedPercent(rank * UPGRADE_EFFECTS.focusSkillDamagePerLevel),
+          next: formatSignedPercent(nextRank * UPGRADE_EFFECTS.focusSkillDamagePerLevel),
         },
       ];
   }
@@ -1055,14 +1092,18 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     soundButton.setAttribute("aria-pressed", String(muted));
   };
 
-  audio = createAudioFeedback(undefined, (state) => {
-    audioState = state;
-    updateSoundControl();
-  });
   backgroundMusic = createBackgroundMusic(undefined, (state) => {
     backgroundMusicState = state;
     updateSoundControl();
   });
+  audio = createAudioFeedback(
+    undefined,
+    (state) => {
+      audioState = state;
+      updateSoundControl();
+    },
+    (durationMilliseconds) => backgroundMusic?.duck(durationMilliseconds),
+  );
   applyUserPreferences(userPreferences);
   updateSoundControl();
 
@@ -1083,8 +1124,24 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     void unlockAudio();
   }
 
+  const handleUiButtonClick = (event: MouseEvent): void => {
+    const target = event.target;
+    const button = target instanceof Element ? target.closest("button") : null;
+
+    if (
+      !(button instanceof HTMLButtonElement) ||
+      button.disabled ||
+      button.closest(".action-hud, .touch-actions") !== null
+    ) {
+      return;
+    }
+
+    void unlockAudio().then(() => audio?.playUiClick());
+  };
+
   document.addEventListener("pointerdown", handleAudioGesture, true);
   document.addEventListener("keydown", handleAudioGesture, true);
+  root.addEventListener("click", handleUiButtonClick);
 
   const getSelectedStartingItems = (): readonly string[] =>
     startingItemInputs.filter(({ checked }) => checked).map(({ value }) => value);
@@ -1374,20 +1431,16 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     const { stats } = human.progression;
     healthValue.value = `${Math.ceil(human.combat.health)} / ${human.combat.maximumHealth}`;
     manaValue.value = `${Math.floor(human.combat.mana)} / ${human.combat.maximumMana}`;
-    const cooldownReductionTicks = getReflexCooldownReduction(stats);
-    statBonusOutputs.power.value = `+${Math.round((getPowerMultiplier(stats) - 1) * 100)}%`;
-    statBonusOutputs.stability.value = `+${Math.round((1 - getStabilityMultiplier(stats)) * 100)}%`;
-    statBonusOutputs.mobility.value = `+${Math.round((getMobilityMultiplier(stats) - 1) * 100)}%`;
-    const dodgeCooldownPercent = Math.round(
-      (cooldownReductionTicks / SIMULATION_TUNING.dodge.cooldownTicks) * 100,
-    );
-    statBonusOutputs.reflex.value = dodgeCooldownPercent === 0 ? "0%" : `-${dodgeCooldownPercent}%`;
+    statBonusOutputs.power.value = `무게 +${Math.round((getPowerMassMultiplier(stats) - 1) * 100)}% · 위력 +${Math.round((getPowerMultiplier(stats) - 1) * 100)}%`;
+    statBonusOutputs.stability.value = `밀침 +${Math.round((1 - getStabilityMultiplier(stats)) * 100)}% · 제어 -${Math.round((1 - getStabilityControlDurationMultiplier(stats)) * 100)}%`;
+    statBonusOutputs.mobility.value = `이동 +${Math.round((getMobilityMultiplier(stats) - 1) * 100)}% · 재사용 -${Math.round((1 - getMobilityCooldownMultiplier(stats)) * 100)}% · 마나 -${Math.round((1 - getMobilityManaCostMultiplier(stats)) * 100)}% · 휘청 -${Math.round((1 - getMobilityStumbleDurationMultiplier(stats)) * 100)}%`;
+    statBonusOutputs.reflex.value = `피해 -${Math.round((1 - getDamageTakenMultiplier(stats)) * 100)}% · 보호막 +${Math.round((getReflexShieldMultiplier(stats) - 1) * 100)}%`;
     statBonusOutputs.vitality.value = `+${getMaximumHealth(stats) - 100} · 재생 +${Math.round(
       (getHealthRegenMultiplier(stats) - 1) * 100,
     )}%`;
     statBonusOutputs.focus.value = `+${getMaximumMana(stats) - 100} · 재생 +${Math.round(
       (getManaRegenMultiplier(stats) - 1) * 100,
-    )}%`;
+    )}% · 피해 +${Math.round((getFocusSkillDamageMultiplier(stats) - 1) * 100)}%`;
     if (current.countdown !== null) {
       root.dataset.round = "countdown";
       readyMessage.textContent = String(current.countdown);
@@ -2068,6 +2121,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
       pointerControls?.destroy();
       removeAudioGestureListeners();
       document.removeEventListener("keydown", handleGlobalKeyboard);
+      root.removeEventListener("click", handleUiButtonClick);
 
       if (import.meta.env.DEV) {
         window.removeEventListener("shovefall:diagnostic-fatal", handleDiagnosticFatal);

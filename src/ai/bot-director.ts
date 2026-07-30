@@ -26,7 +26,12 @@ import {
 } from "../simulation/math";
 import { RandomStreamSet, type SeedInput, type XorShift32 } from "../simulation/random";
 import { ParticipantSpatialHash } from "../simulation/spatial-hash";
-import { SIMULATION_TUNING } from "../simulation/tuning";
+import {
+  normalizeGameplayTuning,
+  SIMULATION_TUNING,
+  type GameplayTuningInput,
+  type GameplayTuningV1,
+} from "../simulation/tuning";
 import { canSpendStatPoint } from "../simulation/progression";
 import { getSkillManaCost } from "../simulation/skills";
 import { getItemDefinition } from "../content/items";
@@ -48,6 +53,7 @@ export interface BotDirectorOptions {
   readonly decisionIntervalTicks?: number;
   readonly nearbyCandidateLimit?: number;
   readonly personalityOverrides?: readonly BotAssignment[];
+  readonly gameplayTuning?: GameplayTuningInput;
 }
 
 export interface BotDifficultyProfile {
@@ -114,7 +120,6 @@ const BRICK_BAG_MINIMUM_TARGET_DISTANCE = 1.35;
 const BRICK_BAG_MAXIMUM_TARGET_DISTANCE = 3.2;
 const BRICK_BAG_EDGE_PRESSURE_DISTANCE = 3.25;
 const BRICK_BAG_HEALTH_PRESSURE_RATIO = 0.65;
-const BOMB_ESCAPE_TICKS = 120;
 const MINIMUM_BOMB_LOBBY_SURVIVORS = 10;
 const ROCK_ESCAPE_LOOKAHEAD_TICKS = 72;
 const ROCK_ESCAPE_SEARCH_RADIUS = 3.5;
@@ -588,6 +593,7 @@ export class BotDirector {
   readonly #memories = new Map<ActorId, BotMemory>();
   readonly #history: RenderFrameV1[] = [];
   readonly #personalityOverrides: ReadonlyMap<ActorId, BotPersonalityKind>;
+  readonly #gameplayTuning: GameplayTuningV1;
   readonly #navigationTerrainCache = new WeakMap<RenderFrameV1["tiles"], BotNavigationTerrain>();
 
   public constructor(
@@ -599,6 +605,7 @@ export class BotDirector {
     this.#reactionDelayTicks = options.reactionDelayTicks ?? profile.reactionDelayTicks;
     this.#decisionIntervalTicks = options.decisionIntervalTicks ?? profile.decisionIntervalTicks;
     this.#nearbyCandidateLimit = options.nearbyCandidateLimit ?? profile.nearbyCandidateLimit;
+    this.#gameplayTuning = normalizeGameplayTuning(options.gameplayTuning);
     assertPositiveInteger(this.#reactionDelayTicks, "reactionDelayTicks", true);
     assertPositiveInteger(this.#decisionIntervalTicks, "decisionIntervalTicks");
     assertPositiveInteger(this.#nearbyCandidateLimit, "nearbyCandidateLimit");
@@ -682,6 +689,7 @@ export class BotDirector {
           rockEscape,
           terrain,
           blockedTileIds,
+          this.#gameplayTuning,
         );
         memory.intent = safeDodgeDirection ?? rockEscape;
         useSkillSlot =
@@ -755,7 +763,7 @@ export class BotDirector {
 
           if (usedSlot?.definitionId === "bomb") {
             memory.bombEscapePosition = current.position;
-            memory.bombEscapeUntilTick = tick + BOMB_ESCAPE_TICKS;
+            memory.bombEscapeUntilTick = tick + this.#gameplayTuning.bombFuseTicks;
           }
         }
         memory.nextDecisionTick = tick + this.#decisionIntervalTicks;
@@ -900,6 +908,7 @@ export class BotDirector {
         preferredDirection,
         terrain,
         blockedTileIds,
+        this.#gameplayTuning,
       );
       return createDecision(
         safeDodgeDirection ?? preferredDirection,
@@ -1075,12 +1084,12 @@ export class BotDirector {
         : null;
     if (canUseActiveItem) {
       const closeOpponents = nearby.filter(
-        ({ distance }) => distance <= SIMULATION_TUNING.bomb.blastRadius * 0.9,
+        ({ distance }) => distance <= this.#gameplayTuning.bombBlastRadius * 0.9,
       );
       const nearbyBomb = perceptionFrame.bombs.some(
         (bomb) =>
           vectorLength(subtractVectors(bomb.position, perceived.position)) <=
-          SIMULATION_TUNING.bomb.blastRadius * 2,
+          this.#gameplayTuning.bombBlastRadius * 2,
       );
       const bombSlot = getChargedItemSlot(current, "bomb");
 

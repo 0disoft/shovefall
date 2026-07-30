@@ -47,7 +47,11 @@ import {
   type ArenaVisualAssets,
 } from "./arena-assets";
 import { createActionFeedbackGeometry } from "./action-feedback";
-import { createCharacterMotionPose, selectCharacterAnimationState } from "./character-motion";
+import {
+  createCharacterMotionPose,
+  createCharacterSpriteMotionTransform,
+  selectCharacterAnimationState,
+} from "./character-motion";
 
 const CAMERA_OCEAN_MARGIN_TILES = 7.25;
 
@@ -1553,18 +1557,18 @@ function syncParticipantSprites(
       animatedTexture === undefined ? (assets.characterDisplayScales[textureIndex] ?? 1) : 1;
     const targetHeight = Math.max(28, collisionRadius * visualScale * 3.45) * frameDisplayScale;
     const baseWidth = targetHeight * (texture.width / texture.height);
-    const poseStrength = animatedTexture === undefined ? 1 : 0.28;
-    sprite.position.set(
-      point.x + collisionRadius * motionPose.offsetXRatio * poseStrength,
-      point.y + collisionRadius * 0.82 - collisionRadius * motionPose.liftRatio * poseStrength,
+    const spriteMotion = createCharacterSpriteMotionTransform(
+      motionPose,
+      animatedTexture !== undefined,
     );
-    sprite.width = baseWidth * (animatedTexture === undefined ? motionPose.scaleX : 1);
-    sprite.height = targetHeight * (animatedTexture === undefined ? motionPose.scaleY : 1);
+    sprite.position.set(
+      point.x + collisionRadius * spriteMotion.offsetXRatio,
+      point.y + collisionRadius * 0.82 - collisionRadius * spriteMotion.liftRatio,
+    );
+    sprite.width = baseWidth * spriteMotion.scaleX;
+    sprite.height = targetHeight * spriteMotion.scaleY;
     sprite.alpha = participant.action === "Falling" ? 0.42 : 1;
-    sprite.rotation =
-      animatedTexture === undefined || participant.action === "Falling"
-        ? motionPose.rotation
-        : motionPose.rotation * 0.2;
+    sprite.rotation = spriteMotion.rotation;
     sprite.zIndex = Math.round(worldY * 1_000) + participant.actorId;
     sprite.visible = true;
 

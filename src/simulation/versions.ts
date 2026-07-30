@@ -1,6 +1,6 @@
-export const PRODUCT_VERSION = "0.98.0";
-export const SIMULATION_VERSION = "62.0.0";
-export const CONTENT_VERSION = "38.0.0";
+export const PRODUCT_VERSION = "0.104.0";
+export const SIMULATION_VERSION = "68.0.0";
+export const CONTENT_VERSION = "42.0.0";
 export const REPLAY_FORMAT_VERSION = 8;
 export const FIXED_TICKS_PER_SECOND = 60;
 export const MAX_REPLAY_TICKS = FIXED_TICKS_PER_SECOND * 120;

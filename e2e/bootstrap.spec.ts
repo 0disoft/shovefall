@@ -659,6 +659,12 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await expect(page.locator('#starting-skills input[name="startingSkill"]')).toHaveCount(6);
   await expect(page.locator("#starting-skills .skill-art")).toHaveCount(6);
   await expectAlignedLoadoutCards(page.locator("#starting-skills .preset-card"));
+  const blinkStepRows = page.locator(
+    '[data-skill-definition="blink-step"] .loadout-card__effect-row',
+  );
+  await expect(blinkStepRows).toHaveCount(2);
+  await expect(blinkStepRows.nth(0)).toHaveText("지정 방향으로 최대 3칸 이동");
+  await expect(blinkStepRows.nth(1)).toHaveText("1초 동안 공격 회피");
   await expect(page.getByText("바위 감옥", { exact: true })).toHaveCount(0);
   await expect(page.locator(".skill-art--arc-bolt")).toHaveCSS(
     "background-image",
@@ -687,7 +693,7 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await expect(bombEffect).toContainText("3.25초 뒤 폭발");
   await expect(bombEffect).toContainText("폭발 반경 3칸");
   await expect(bombEffect).toContainText("피해 65");
-  await expect(bombEffect).toContainText("나는 폭발 피해를 받지 않음");
+  await expect(bombEffect).toContainText("설치자는 피해의 20%를 받음");
   await expect(page.locator("#starting-items .item-art")).toHaveCount(4);
   await expectAlignedLoadoutCards(page.locator("#starting-items .preset-card"));
   await expect(page.locator(".item-art--soap")).toHaveCSS("background-image", /item-icons/u);
@@ -778,7 +784,7 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await expect(page.locator("#use-skill-slot-0")).toContainText("Q · 잔상 회피");
   await expect(page.locator("#use-skill-slot-1")).toContainText("W · 파동탄");
   await expect(page.locator("#use-grapple")).toContainText("E · 구조 갈고리");
-  await expect(page.locator("#use-item-slot-0")).toContainText("D · 비누 · 4회");
+  await expect(page.locator("#use-item-slot-0")).toContainText("D · 비누 · 5회");
   const actionHudButtons = page.locator(".action-hud button");
   await expect(actionHudButtons).toHaveCount(4);
   const actionHudPositions = await actionHudButtons.evaluateAll((buttons) =>
@@ -968,14 +974,16 @@ test("equips Brick Bag in a live production round", async ({ page }) => {
   await startGame(page);
   await expect(page.locator("#app")).toHaveAttribute("data-round", "active", { timeout: 5_000 });
   await expect(page.locator("#stat-status")).toBeVisible();
-  await expect(page.locator("#power-bonus")).toHaveText("+0%");
-  await expect(page.locator("#stability-bonus")).toHaveText("+0%");
-  await expect(page.locator("#mobility-bonus")).toHaveText("+0%");
-  await expect(page.locator("#reflex-bonus")).toHaveText("0%");
+  await expect(page.locator("#power-bonus")).toHaveText("무게 +0% · 위력 +0%");
+  await expect(page.locator("#stability-bonus")).toHaveText("밀침 +0% · 제어 -0%");
+  await expect(page.locator("#mobility-bonus")).toHaveText(
+    "이동 +0% · 재사용 -0% · 마나 -0% · 휘청 -0%",
+  );
+  await expect(page.locator("#reflex-bonus")).toHaveText("피해 -0% · 보호막 +0%");
   await expect(page.locator("#use-skill-slot-0")).toContainText("Q · 잔상 회피");
   await expect(page.locator("#use-skill-slot-0")).toHaveAttribute("data-state", "ready");
   await expect(page.locator("#use-skill-slot-1")).toContainText("W · 파동탄");
-  await expect(page.locator("#use-item-slot-0")).toContainText("D · 벽돌 가방 · 4회");
+  await expect(page.locator("#use-item-slot-0")).toContainText("D · 벽돌 가방 · 3회");
 });
 
 test("equips and preserves a Boat while standing on land", async ({ page }) => {
@@ -1112,7 +1120,7 @@ test("persists four-step text size and sound-effect volume settings", async ({ p
   const volume = page.getByLabel("효과음");
   const musicVolume = page.getByLabel("배경음악");
   await expect(volume).toHaveValue("50");
-  await expect(musicVolume).toHaveValue("35");
+  await expect(musicVolume).toHaveValue("50");
   await expect(page.getByRole("link", { name: "HYP - Catch Me If You Can" })).toHaveAttribute(
     "href",
     "https://youtu.be/LrTkfYqNJFU",

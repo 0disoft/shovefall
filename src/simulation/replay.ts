@@ -1,14 +1,19 @@
 import {
+  MAXIMUM_ARENA_COLUMNS,
+  MAXIMUM_ARENA_ROWS,
   MAXIMUM_PARTICIPANT_COUNT,
+  MINIMUM_ARENA_COLUMNS,
+  MINIMUM_ARENA_ROWS,
+  assertArenaParticipantCapacity,
   assertIntegerInRange,
   normalizeActorCommand,
   type ActorCommandV1,
   type GameConfigV1,
-  type ItemDefinitionId,
   type ReplayCheckpointV1,
   type ReplayFixtureV4,
   type ReplayHumanSetupV4,
 } from "./contracts";
+import { isItemDefinitionId } from "../content/items";
 import { DEFAULT_SKILL_LOADOUT, isSkillDefinitionId } from "../content/skills";
 import { SimulationContractError } from "./math";
 import { SimulationWorld } from "./world";
@@ -21,20 +26,7 @@ import {
   SIMULATION_VERSION,
 } from "./versions";
 import { assertStartingAttributes, DEFAULT_STARTING_ATTRIBUTES } from "./starting-attributes";
-
-const ITEM_DEFINITION_IDS = Object.freeze([
-  "iron-boots",
-  "feather",
-  "spring-glove",
-  "soap",
-  "brick-bag",
-  "boat",
-  "bomb",
-] as const satisfies readonly ItemDefinitionId[]);
-
-function isItemDefinitionId(value: string): value is ItemDefinitionId {
-  return ITEM_DEFINITION_IDS.some((definitionId) => definitionId === value);
-}
+import { isUpgradeStatId } from "./progression";
 
 export interface ReplayRunResult {
   readonly checkpoints: readonly ReplayCheckpointV1[];
@@ -130,8 +122,24 @@ function parseConfig(value: unknown): GameConfigV1 {
     );
   }
 
-  assertIntegerInRange(config.arenaColumns, "config.arenaColumns", 7, 48);
-  assertIntegerInRange(config.arenaRows, "config.arenaRows", 7, 48);
+  assertIntegerInRange(
+    config.arenaColumns,
+    "config.arenaColumns",
+    MINIMUM_ARENA_COLUMNS,
+    MAXIMUM_ARENA_COLUMNS,
+  );
+  assertIntegerInRange(
+    config.arenaRows,
+    "config.arenaRows",
+    MINIMUM_ARENA_ROWS,
+    MAXIMUM_ARENA_ROWS,
+  );
+  assertArenaParticipantCapacity(
+    config.arenaColumns,
+    config.arenaRows,
+    config.participantCount,
+    "config arena",
+  );
 
   if (config.roundLimitTicks < 1 || config.roundLimitTicks > MAX_REPLAY_TICKS) {
     throw new SimulationContractError("config round limit is outside replay bounds");
@@ -205,10 +213,7 @@ function parseCommand(value: unknown): ActorCommandV1 {
     upgradeStat:
       value.upgradeStat === undefined || value.upgradeStat === null
         ? null
-        : value.upgradeStat === "power" ||
-            value.upgradeStat === "stability" ||
-            value.upgradeStat === "mobility" ||
-            value.upgradeStat === "reflex"
+        : isUpgradeStatId(value.upgradeStat)
           ? value.upgradeStat
           : fail("command.upgradeStat is unsupported"),
     upgradeSkillSlot:

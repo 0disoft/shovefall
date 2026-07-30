@@ -57,6 +57,7 @@ const WORKER_COUNT = Math.min(
   TOTAL_ROUNDS,
 );
 const OUTPUT_PATH = new URL("../balance/latest.json", import.meta.url);
+const RANDOMIZED_ATTRIBUTES = process.argv.includes("--random-attributes");
 
 const ITEM_LABELS: Readonly<Record<BotActiveItemId, string>> = Object.freeze({
   soap: "비누",
@@ -67,7 +68,7 @@ const ITEM_LABELS: Readonly<Record<BotActiveItemId, string>> = Object.freeze({
 
 interface LoadoutAssignment {
   readonly actorId: ActorId;
-  readonly attributeProfileId: string;
+  readonly attributeProfileId: string | null;
   readonly attributes: StartingAttributes;
   readonly item: BotActiveItemId;
   readonly skills: readonly [SkillDefinitionId, SkillDefinitionId];
@@ -202,41 +203,92 @@ const SKILL_ITEM_LOADOUTS = Object.freeze(
   ),
 );
 
-interface EvenAttributeProfile {
+interface FocusedAttributeProfile {
   readonly id: string;
+  readonly label: string;
   readonly attributes: StartingAttributes;
 }
 
-const EVEN_ATTRIBUTE_PROFILES: readonly EvenAttributeProfile[] = Object.freeze(
-  STARTING_ATTRIBUTE_IDS.flatMap((left, leftIndex) =>
-    STARTING_ATTRIBUTE_IDS.slice(leftIndex + 1).map((right) => {
-      const boosted = new Set<StartingAttributeId>([left, right]);
-      return Object.freeze({
-        id: `${left}+${right}`,
-        attributes: Object.freeze(
-          Object.fromEntries(
-            STARTING_ATTRIBUTE_IDS.map((attributeId) => [
-              attributeId,
-              boosted.has(attributeId) ? 4 : 3,
-            ]),
-          ) as unknown as StartingAttributes,
-        ),
-      });
+const ATTRIBUTE_LABELS: Readonly<Record<StartingAttributeId, string>> = Object.freeze({
+  strength: "완력",
+  agility: "민첩",
+  constitution: "체질",
+  spirit: "정신",
+  balance: "균형",
+  willpower: "의지",
+});
+
+const FOCUSED_ATTRIBUTE_PROFILES: readonly FocusedAttributeProfile[] = Object.freeze(
+  STARTING_ATTRIBUTE_IDS.map((focusedAttributeId) =>
+    Object.freeze({
+      id: focusedAttributeId,
+      label: ATTRIBUTE_LABELS[focusedAttributeId],
+      attributes: Object.freeze(
+        Object.fromEntries(
+          STARTING_ATTRIBUTE_IDS.map((attributeId) => [
+            attributeId,
+            attributeId === focusedAttributeId ? 20 : 0,
+          ]),
+        ) as unknown as StartingAttributes,
+      ),
     }),
   ),
 );
 
+function createRandomAttributeBuild(random: XorShift32): StartingAttributes {
+  const points = new Map<StartingAttributeId, number>(
+    STARTING_ATTRIBUTE_IDS.map((attributeId) => [attributeId, 0]),
+  );
+  for (let point = 0; point < 20; point += 1) {
+    const attributeId =
+      STARTING_ATTRIBUTE_IDS[random.nextUint32() % STARTING_ATTRIBUTE_IDS.length]!;
+    points.set(attributeId, (points.get(attributeId) ?? 0) + 1);
+  }
+  return Object.freeze(
+    Object.fromEntries(
+      STARTING_ATTRIBUTE_IDS.map((attributeId) => [attributeId, points.get(attributeId) ?? 0]),
+    ) as unknown as StartingAttributes,
+  );
+}
+
+function rotateAttributeBuild(attributes: StartingAttributes, offset: number): StartingAttributes {
+  return Object.freeze(
+    Object.fromEntries(
+      STARTING_ATTRIBUTE_IDS.map((attributeId, index) => [
+        attributeId,
+        attributes[STARTING_ATTRIBUTE_IDS[(index + offset) % STARTING_ATTRIBUTE_IDS.length]!],
+      ]),
+    ) as unknown as StartingAttributes,
+  );
+}
+
+function createRandomAttributeRoster(streams: RandomStreamSet): readonly StartingAttributes[] {
+  if (PARTICIPANT_COUNT % STARTING_ATTRIBUTE_IDS.length !== 0) {
+    throw new Error("random attribute roster requires complete six-actor rotation groups");
+  }
+  const random = streams.get("attributes");
+  const roster = Array.from({ length: PARTICIPANT_COUNT / STARTING_ATTRIBUTE_IDS.length }, () => {
+    const base = createRandomAttributeBuild(random);
+    return STARTING_ATTRIBUTE_IDS.map((_, offset) => rotateAttributeBuild(base, offset));
+  }).flat();
+  return Object.freeze(shuffle(roster, streams.get("attribute-roster")));
+}
+
 function createAssignments(roundIndex: number): readonly LoadoutAssignment[] {
-  const streams = new RandomStreamSet(`even-trait-loadout-roster-v4-${roundIndex}`);
+  const mode = RANDOMIZED_ATTRIBUTES ? "random-trait" : "focused-trait";
+  const streams = new RandomStreamSet(`${mode}-loadout-roster-v1-${roundIndex}`);
+  const randomAttributeRoster = RANDOMIZED_ATTRIBUTES
+    ? createRandomAttributeRoster(streams)
+    : undefined;
   const assignments = SKILL_ITEM_LOADOUTS.map((loadout, loadoutIndex) => {
     const skills = loadout.skills;
     const attributeProfile =
-      EVEN_ATTRIBUTE_PROFILES[(loadoutIndex + roundIndex) % EVEN_ATTRIBUTE_PROFILES.length]!;
+      FOCUSED_ATTRIBUTE_PROFILES[(loadoutIndex + roundIndex) % FOCUSED_ATTRIBUTE_PROFILES.length]!;
     const combinationIndex = Math.floor(loadoutIndex / BOT_ACTIVE_ITEM_IDS.length);
     return {
       actorId: 0,
-      attributeProfileId: attributeProfile.id,
-      attributes: attributeProfile.attributes,
+      attributeProfileId: RANDOMIZED_ATTRIBUTES ? null : attributeProfile.id,
+      attributes: randomAttributeRoster?.[loadoutIndex] ?? attributeProfile.attributes,
       item: loadout.item,
       skills,
       skillCombinationId: [...skills].toSorted().join("+"),
@@ -257,7 +309,8 @@ function getPhase(_roundIndex: number): BalancePhase {
 
 function getRoundSeed(roundIndex: number): string {
   const seedFamily = Math.floor(roundIndex / 2);
-  return `even-trait-skill-item-audit-v3-${seedFamily.toString().padStart(3, "0")}`;
+  const mode = RANDOMIZED_ATTRIBUTES ? "random-trait" : "focused-trait";
+  return `${mode}-skill-item-audit-v1-${seedFamily.toString().padStart(3, "0")}`;
 }
 
 function createConfig(_phase: BalancePhase) {
@@ -375,18 +428,19 @@ function addObservation(
   damageDealt: number,
   uses: number,
   hits: number,
+  weight = 1,
 ): void {
   const rank = observation.rank ?? PARTICIPANT_COUNT;
-  aggregate.exposures += 1;
-  aggregate.wins += won ? 1 : 0;
-  aggregate.rankTotal += rank;
-  aggregate.top10 += rank <= 10 ? 1 : 0;
-  aggregate.top5 += rank <= 5 ? 1 : 0;
-  aggregate.survivalTicks += observation.activeTicks;
-  aggregate.creditedEliminations += observation.creditedEliminations;
-  aggregate.damageDealt += damageDealt;
-  aggregate.uses += uses;
-  aggregate.hits += hits;
+  aggregate.exposures += weight;
+  aggregate.wins += won ? weight : 0;
+  aggregate.rankTotal += rank * weight;
+  aggregate.top10 += rank <= 10 ? weight : 0;
+  aggregate.top5 += rank <= 5 ? weight : 0;
+  aggregate.survivalTicks += observation.activeTicks * weight;
+  aggregate.creditedEliminations += observation.creditedEliminations * weight;
+  aggregate.damageDealt += damageDealt * weight;
+  aggregate.uses += uses * weight;
+  aggregate.hits += hits * weight;
 }
 
 function recordActor(
@@ -403,14 +457,46 @@ function recordActor(
     (sum, skill) => sum + observation.skillHits[skill],
     0,
   );
-  addObservation(
-    getAggregate(phase, "attribute", "even-20", "균등 배분 20"),
-    observation,
-    won,
-    observation.damageDealt,
-    totalSkillUses,
-    totalSkillHits,
-  );
+  if (RANDOMIZED_ATTRIBUTES) {
+    for (const attributeId of STARTING_ATTRIBUTE_IDS) {
+      const investedPoints = assignment.attributes[attributeId];
+      if (investedPoints === 0) {
+        continue;
+      }
+      addObservation(
+        getAggregate(
+          phase,
+          "attribute",
+          attributeId,
+          `${ATTRIBUTE_LABELS[attributeId]} 투자 포인트`,
+        ),
+        observation,
+        won,
+        observation.damageDealt,
+        totalSkillUses,
+        totalSkillHits,
+        investedPoints,
+      );
+    }
+  } else {
+    const profileId = assignment.attributeProfileId;
+    if (profileId === null) {
+      throw new Error("focused attribute assignment is missing its profile");
+    }
+    addObservation(
+      getAggregate(
+        phase,
+        "attribute",
+        profileId,
+        FOCUSED_ATTRIBUTE_PROFILES.find(({ id }) => id === profileId)?.label ?? profileId,
+      ),
+      observation,
+      won,
+      observation.damageDealt,
+      totalSkillUses,
+      totalSkillHits,
+    );
+  }
   addObservation(
     getAggregate(phase, "item", assignment.item, ITEM_LABELS[assignment.item]),
     observation,
@@ -852,7 +938,6 @@ function assertCoverage(report: WorkerResult): void {
 
 function assertAssignmentCoverage(): void {
   const counts = {
-    attributeProfile: new Map<string, number>(EVEN_ATTRIBUTE_PROFILES.map(({ id }) => [id, 0])),
     item: new Map<string, number>(BOT_ACTIVE_ITEM_IDS.map((id) => [id, 0])),
     skill: new Map<string, number>(SKILL_DEFINITION_IDS.map((id) => [id, 0])),
     combination: new Map<string, number>(
@@ -874,24 +959,48 @@ function assertAssignmentCoverage(): void {
     SKILL_COMBINATIONS.flatMap((skills) =>
       BOT_ACTIVE_ITEM_IDS.map((item) => [
         [...skills].toSorted().join("+") + `:${item}`,
-        new Map<string, number>(EVEN_ATTRIBUTE_PROFILES.map(({ id }) => [id, 0])),
+        new Map<string, number>(FOCUSED_ATTRIBUTE_PROFILES.map(({ id }) => [id, 0])),
       ]),
     ),
   );
+  const attributePointTotals = new Map<StartingAttributeId, number>(
+    STARTING_ATTRIBUTE_IDS.map((attributeId) => [attributeId, 0]),
+  );
+  const randomBuilds = new Set<string>();
+  let multiTraitActors = 0;
   for (let roundIndex = 0; roundIndex < TOTAL_ROUNDS; roundIndex += 1) {
     for (const assignment of createAssignments(roundIndex)) {
       const attributeValues = STARTING_ATTRIBUTE_IDS.map((id) => assignment.attributes[id]);
-      if (
-        attributeValues.reduce((sum, value) => sum + value, 0) !== 20 ||
-        attributeValues.filter((value) => value === 4).length !== 2 ||
-        attributeValues.filter((value) => value === 3).length !== 4
-      ) {
-        throw new Error(`actor ${assignment.actorId} does not have an even 20-point build`);
+      if (attributeValues.reduce((sum, value) => sum + value, 0) !== 20) {
+        throw new Error(`actor ${assignment.actorId} does not have a 20-point build`);
       }
-      counts.attributeProfile.set(
-        assignment.attributeProfileId,
-        (counts.attributeProfile.get(assignment.attributeProfileId) ?? 0) + 1,
-      );
+      if (RANDOMIZED_ATTRIBUTES) {
+        randomBuilds.add(attributeValues.join("/"));
+        if (attributeValues.filter((value) => value > 0).length >= 2) {
+          multiTraitActors += 1;
+        }
+        for (const attributeId of STARTING_ATTRIBUTE_IDS) {
+          attributePointTotals.set(
+            attributeId,
+            (attributePointTotals.get(attributeId) ?? 0) + assignment.attributes[attributeId],
+          );
+        }
+      } else {
+        if (
+          attributeValues.filter((value) => value === 20).length !== 1 ||
+          attributeValues.filter((value) => value === 0).length !== 5
+        ) {
+          throw new Error(`actor ${assignment.actorId} does not have a focused 20-point build`);
+        }
+        const profileId = assignment.attributeProfileId;
+        if (profileId === null) {
+          throw new Error(`actor ${assignment.actorId} is missing a focused attribute profile`);
+        }
+        const profileCounts = perLoadoutProfiles.get(
+          `${assignment.skillCombinationId}:${assignment.item}`,
+        )!;
+        profileCounts.set(profileId, (profileCounts.get(profileId) ?? 0) + 1);
+      }
       counts.item.set(assignment.item, (counts.item.get(assignment.item) ?? 0) + 1);
       counts.personality.set(
         assignment.personality,
@@ -920,11 +1029,6 @@ function assertAssignmentCoverage(): void {
         combinationItemKey,
         (counts.combinationItem.get(combinationItemKey) ?? 0) + 1,
       );
-      const profileCounts = perLoadoutProfiles.get(combinationItemKey)!;
-      profileCounts.set(
-        assignment.attributeProfileId,
-        (profileCounts.get(assignment.attributeProfileId) ?? 0) + 1,
-      );
       for (const skill of assignment.skills) {
         counts.skill.set(skill, (counts.skill.get(skill) ?? 0) + 1);
       }
@@ -939,12 +1043,26 @@ function assertAssignmentCoverage(): void {
       );
     }
   }
-  for (const [loadoutId, profileCounts] of perLoadoutProfiles) {
-    const exposures = [...profileCounts.values()];
-    if (Math.max(...exposures) !== Math.min(...exposures)) {
+  if (RANDOMIZED_ATTRIBUTES) {
+    const expectedPoints = (TOTAL_ROUNDS * PARTICIPANT_COUNT * 20) / STARTING_ATTRIBUTE_IDS.length;
+    for (const [attributeId, points] of attributePointTotals) {
+      if (points !== expectedPoints) {
+        throw new Error(
+          `${attributeId} random point exposure is ${points}, expected ${expectedPoints}`,
+        );
+      }
+    }
+    if (randomBuilds.size < 100 || multiTraitActors < TOTAL_ROUNDS * PARTICIPANT_COUNT * 0.95) {
+      throw new Error(
+        `random attribute coverage is too narrow: builds=${randomBuilds.size}, multiTrait=${multiTraitActors}`,
+      );
+    }
+  } else {
+    for (const [loadoutId, profileCounts] of perLoadoutProfiles) {
+      const exposures = [...profileCounts.values()];
       if (Math.max(...exposures) - Math.min(...exposures) > 1) {
         throw new Error(
-          `even-trait profile exposure differs for ${loadoutId}: ${Math.min(...exposures)}..${Math.max(...exposures)}`,
+          `focused-trait profile exposure differs for ${loadoutId}: ${Math.min(...exposures)}..${Math.max(...exposures)}`,
         );
       }
     }
@@ -974,7 +1092,13 @@ async function executeWorkers(): Promise<readonly WorkerResult[]> {
     workers.map(async ({ start, count }) => {
       const child = spawn(
         process.execPath,
-        [fileURLToPath(import.meta.url), "--worker", String(start), String(count)],
+        [
+          fileURLToPath(import.meta.url),
+          "--worker",
+          String(start),
+          String(count),
+          ...(RANDOMIZED_ATTRIBUTES ? ["--random-attributes"] : []),
+        ],
         { stdio: ["ignore", "pipe", "pipe"] },
       );
       const [stdout, stderr, exitCode] = await Promise.all([
@@ -1045,12 +1169,16 @@ async function main(): Promise<void> {
       productionRoundCount: PRODUCTION_ROUNDS,
       seedFamilyCount: SEED_FAMILY_COUNT,
       workerCount: WORKER_COUNT,
-      assignment: `모든 참가자는 여섯 특성에 3점씩 배분하고 남은 2점은 서로 다른 두 특성에 1점씩 더한다. 가능한 ${EVEN_ATTRIBUTE_PROFILES.length}개 4·4·3·3·3·3 조합은 매 판 4명씩 배정한다. ${SKILL_COMBINATIONS.length}개 2스킬 조합과 ${BOT_ACTIVE_ITEM_IDS.length}개 시작 아이템의 모든 조합은 매 판 한 번씩 등장하며 좌석만 독립적으로 섞는다.`,
+      assignment: RANDOMIZED_ATTRIBUTES
+        ? `각 참가자의 20포인트를 여섯 특성에 결정론적으로 무작위 배분한다. 여섯 회전본을 한 묶음으로 사용해 매 판 각 특성의 총투자량은 정확히 200포인트다. ${SKILL_COMBINATIONS.length}개 2스킬 조합과 ${BOT_ACTIVE_ITEM_IDS.length}개 시작 아이템의 모든 조합은 매 판 한 번씩 등장하고, 특성 조합과 좌석을 별도로 섞는다.`
+        : `매 판 여섯 특성 각각에 20포인트를 몰아준 참가자를 정확히 10명씩 배정한다. ${SKILL_COMBINATIONS.length}개 2스킬 조합과 ${BOT_ACTIVE_ITEM_IDS.length}개 시작 아이템의 모든 조합은 매 판 한 번씩 등장하고, 특성·성격·좌석을 순환해 특정 장비 조합에 한 특성이 고정되지 않게 한다.`,
       rankTiePolicy:
         "같은 틱에 탈락한 참가자는 해당 틱 종료 후 생존자 수에 1을 더한 공동 순위를 받는다.",
       limitations: Object.freeze([
         "고정 시드 어려움 AI 결과는 사람 플레이 밸런스를 증명하지 않는다.",
-        "20포인트는 여섯 특성으로 정확히 나눌 수 없어 두 특성만 4점, 나머지는 3점이며 추가 2점의 위치를 모든 조합으로 순환한다.",
+        RANDOMIZED_ATTRIBUTES
+          ? "특성 행은 해당 특성에 투자된 포인트로 가중한 성적이다. 다른 다섯 특성과 함께 투자된 관측치이므로 한 포인트의 독립적인 인과 효과를 증명하지 않는다."
+          : "한 특성에 20포인트를 몰아준 극단 빌드 비교이므로 여러 특성에 나눠 찍는 일반 플레이의 한 포인트 효율을 직접 증명하지 않는다.",
         "시작 아이템의 효과를 분리하려고 보물선과 맵 추가 아이템을 끈 제어 실험이다.",
         "개별 스킬 결과에는 함께 선택된 다른 스킬의 영향이 섞여 있다.",
         "사망 원인은 eliminated 이벤트에 직접 원인이 없어 주변 전투 이벤트로 분류한다.",

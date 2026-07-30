@@ -14,9 +14,9 @@ export const STARTING_ATTRIBUTE_LIMITS = Object.freeze({ minimum: 0, maximum: 20
 export const STARTING_ATTRIBUTE_EFFECTS = Object.freeze({
   strength: Object.freeze({ massPerPoint: 0.025, outgoingPerPoint: 0.0375 }),
   agility: Object.freeze({
-    movementPerPoint: 0.025,
+    movementPerPoint: 0.035,
     cooldownReductionPerPoint: 0.04,
-    manaCostReductionPerPoint: 0.0175,
+    manaCostReductionPerPoint: 0.02,
     stumbleReductionPerPoint: 0.025,
   }),
   constitution: Object.freeze({ maximumHealthPerPoint: 1.75, healthRegenPerPoint: 0.0125 }),
@@ -26,8 +26,8 @@ export const STARTING_ATTRIBUTE_EFFECTS = Object.freeze({
     skillDamagePerPoint: 0.02,
   }),
   balance: Object.freeze({
-    impulseReductionPerPoint: 0.04,
-    controlReductionPerPoint: 0.03,
+    impulseReductionPerPoint: 0.05,
+    controlReductionPerPoint: 0.04,
   }),
   willpower: Object.freeze({
     damageReductionPerPoint: 0.0125,
