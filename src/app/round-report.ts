@@ -16,7 +16,7 @@ export interface HumanUpgradeSelection {
 }
 
 export interface PlaytestRoundReportV9 {
-  readonly schemaVersion: "shovefall-playtest-round/v9";
+  readonly schemaVersion: "shovefall-playtest-round/v10";
   readonly versions: {
     readonly product: string;
     readonly simulation: string;
@@ -76,7 +76,7 @@ export function createPlaytestRoundReport(
   }
 
   return Object.freeze({
-    schemaVersion: "shovefall-playtest-round/v9",
+    schemaVersion: "shovefall-playtest-round/v10",
     versions: Object.freeze({
       product: PRODUCT_VERSION,
       simulation: SIMULATION_VERSION,

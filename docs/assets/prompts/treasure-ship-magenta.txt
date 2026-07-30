@@ -1,0 +1,9 @@
+Use case: stylized-concept
+Asset type: single transparent game sprite for a PixiJS top-down/isometric island action game
+Input image: use pirate-ship-galleon.png only as the visual style, material quality, camera angle, scale, and lighting reference; create a distinct treasure ship, not a recolor.
+Primary request: Create one polished fantasy treasure merchant ship sprite. It must clearly read as a valuable treasure vessel at small game size: elegant wooden hull, bright turquoise/teal sails, restrained warm gold trim, a visible open cargo area containing several gold-bound treasure chests and gift crates, a small golden pennant, no cannons, no threatening weapons.
+Composition/framing: one complete ship centered in a square canvas, same elevated three-quarter isometric camera angle and same facing direction as the reference, bow toward lower-left, stern toward upper-right, upright ship, generous even padding, nothing cropped.
+Style/medium: premium hand-painted 3D fantasy RPG game asset, crisp readable silhouette, detailed but not noisy, matching the existing pirate ship render quality.
+Lighting/mood: soft neutral studio game lighting, cheerful valuable merchant mood.
+Background: perfectly flat solid #ff00ff chroma-key background for background removal. The background must be one uniform color with no shadows, gradients, texture, reflections, floor plane, or lighting variation.
+Constraints: do not use #ff00ff anywhere in the ship; opaque subject with crisp edges; no cast shadow, no contact shadow, no water, no wake, no island, no characters, no labels, no letters, no numbers, no watermark. Do not make a sailboat icon, flat vector, diamond hull, or simple geometric placeholder.

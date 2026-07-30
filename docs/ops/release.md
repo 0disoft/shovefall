@@ -1,8 +1,79 @@
 # Static Release Procedure
 
-- Status: `0.69.0` round-statistics candidate; hosted proof pending
+- Status: `0.98.0` background-music candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.69.0`
+- Current product version: `0.98.0`
+
+Product `0.98.0`, simulation `62.0.0`, and content `38.0.0` add the officially distributed `HYP - Catch Me If You Can` MP3 as same-origin looping background music. The first accepted pointer or keyboard gesture starts playback without waiting for a round; menu, setup, and arena transitions keep the same element alive. Browser-local settings persist independent effects (default 50) and music (default 35) volume, while the existing global sound control mutes both channels. Audio rejection remains non-blocking. Replay, reports, simulation, and content remain unchanged.
+
+Product `0.97.1`, simulation `62.0.0`, and content `38.0.0` add diagonal-only shoreline cutouts derived from the same four cardinal coast sources. Interior tiles beside diagonal water no longer use terrain overscan, preventing rectangular grass shelves from covering lakes and inlets. Simulation topology, replay, reports, and content remain unchanged.
+
+Product `0.97.0`, simulation `62.0.0`, and content `38.0.0` replace desktop mouse-drag joystick movement with right-click ground destinations. New destinations replace old ones; arrow, gamepad, and touch-joystick movement cancel destination travel; unsupported destinations stop movement. Left-click remains reserved for aim confirmation, while right-click still cancels an active aim. The centered fullscreen menu and player-preference rules from `0.96.x` remain unchanged; replay stays v8 and reports stay v10.
+
+Product `0.94.6`, simulation `60.0.0`, and content `36.0.0` replace the six active skill-card icons with individually generated, role-colored RGBA cutouts: violet movement, gold projectile, crimson control, orange impact, blue-white zone, and emerald-gold defense. Replay stays v8 and reports stay v10 because the change is presentation-only.
+
+Product `0.94.5`, simulation `60.0.0`, and content `36.0.0` label the paired Skill Efficiency values as cooldown wait and mana consumption on one line, with hover and keyboard-focus help. Replay stays v8 and reports stay v10 because the change is presentation-only.
+
+Product `0.94.4`, simulation `60.0.0`, and content `36.0.0` add a menu-owned source-code link to the public GitHub repository with a new-tab opener boundary. Replay stays v8 and reports stay v10 because the change is presentation-only.
+
+Product `0.94.3`, simulation `60.0.0`, and content `36.0.0` replace developer-facing target-tile wording with range-derived placement instructions for Soap, Brick Bag, and Bomb. Replay stays v8 and reports stay v10 because the change affects presentation copy only.
+
+Product `0.94.2`, simulation `60.0.0`, and content `36.0.0` place the twelve derived combat values in a three-column grid and the six starting traits in a matching three-column grid on wide screens. Both grids step down to two columns on tablets and one column on narrow phones. Replay stays v8 and reports stay v10 because the change is presentation-only.
+
+Product `0.94.1`, simulation `60.0.0`, and content `36.0.0` keep pickup Soap as an upright generated item with a yellow pickup marker, while installed Soap becomes a flat translucent foam hazard with an exclamation mark and installer-colored rim. Replay stays v8 and reports stay v10 because the change is presentation-only.
+
+Product `0.94.0`, simulation `60.0.0`, and content `36.0.0` restore Soap as a four-charge ground trap with owner immunity, a one-second stumble, and delayed ordinary damage. Wind Blast leaves the item contract and Force Palm leaves the skill contract, including setup, bots, renderer effects, statistics, and generated replay fixtures. Replay advances to v8 and local round reports to v10 so payloads naming retired identifiers are rejected instead of silently reinterpreted.
+
+Product `0.93.1`, simulation `59.0.0`, and content `35.0.0` keep the `0.93.0` item-contention and Soap-removal rules, then make every pair of desktop skill or item cards stretch to the intrinsic height of the longer card. Replay stays v7 because the change affects only DOM and CSS presentation.
+
+Product `0.92.0`, simulation `58.0.0`, and content `34.0.0` retire Tidal Charge from setup, runtime, bots, effects, and statistics. Replay advances to v6 because older setup payloads may name the retired skill. The seven active skills form 21 pairs. Skill and item settings use two-column content-height cards; the retained Tidal Charge art remains provenance-only and is not loaded.
+
+Product `0.91.1`, simulation `57.0.0`, and content `33.0.0` align every starting skill and item card to shared title, metadata, artwork, and effect-panel tracks. Description length no longer vertically recenters one card away from its siblings. Definition-derived copy, selection behavior, simulation, and content remain unchanged.
+
+Product `0.91.0`, simulation `57.0.0`, and content `33.0.0` reduce the built-in Grappling Hook cooldown from 900 ticks (15 seconds) to 630 ticks (10.5 seconds). Human input, bot readiness, HUD copy, lab defaults, and command acceptance continue to derive from the same definition. Replay fixtures are regenerated under the new simulation envelope.
+
+Product `0.90.1`, simulation `56.0.0`, and content `33.0.0` remove obsolete hand-shove sliders from the development-only tuning contract after public `E` became the built-in Grappling Hook. The lab now exposes only values reachable by current commands, while HUD and pause copy name attack power, Dodge reuse, and the Grappling Hook directly. Authoritative round behavior is unchanged.
+
+Product `0.90.0`, simulation `56.0.0`, and content `33.0.0` derive player-facing base knockback tiles from each skill's impulse and stumble duration plus the same launch-speed cap and stumble drag used by runtime movement. Stun and stumble durations are shown in seconds, including Meteor Mark's previously unlabeled duration. Rules and deterministic state remain unchanged.
+
+Product `0.89.1`, simulation `56.0.0`, and content `33.0.0` separate Meteor Mark's dark stone-and-chain silhouette from the settings card with a bounded warm halo and slightly larger art scale. Other skill art and all game rules remain unchanged.
+
+Product `0.89.0`, simulation `56.0.0`, and content `33.0.0` replace the lightweight SVG skill strip with eight owner-generated 256×256 transparent PNG cutouts. Settings retain text fallbacks and game rules remain unchanged.
+
+Product `0.88.3`, simulation `56.0.0`, and content `33.0.0` compose multi-edge shoreline corners from the same cardinal coast sources used by straight edges, removing mismatched atlas-corner seams around lakes and inlets.
+
+Product `0.88.2`, simulation `56.0.0`, and content `33.0.0` increase the shared arena camera zoom from 1.08× to 1.15× while keeping rendering, targeting, and spectator coordinates on one projection.
+
+Product `0.88.1`, simulation `56.0.0`, and content `33.0.0` preserve held arrow state while keyboard targeting suppresses movement commands, so a cast or cancellation resumes an uninterrupted held direction without requiring another keydown.
+
+Product `0.88.0`, simulation `56.0.0`, and content `33.0.0` expand the public arena from 48×40 to 52×44, increasing the rectangular tile budget by 19.2% while preserving the twelve-lake policy and connected 10%-or-lower core. The shared Pixi projection applies an 8% camera zoom so rendering, targeting, and spectator bounds stay aligned. Existing balance and performance reports predate this candidate.
+
+Product `0.84.0`, simulation `55.0.0`, and content `33.0.0` replace static-body transform theater with sixty-four generated idle, walk, cast, and hit frames across all sixteen participant appearances. Four reviewed chroma sources are converted to validated 768×768 alpha atlases; runtime failure falls back to the original static atlas. Browser-scale crowd readability, payload cost, and physical-device motion remain promotion gates.
+
+Product `0.86.0`, simulation `55.0.0`, and content `33.0.0` remove duplicate Pixi scene submissions from targeting, stop paused-frame redraws, redraw countdowns only on visible changes, limit HUD telemetry to 10 Hz, and harden pointer/gamepad targeting ownership. Simulation, balance, replay, and report contracts remain unchanged.
+
+Product `0.86.1`, simulation `55.0.0`, and content `33.0.0` prevent long derived-combat values from collapsing Korean labels into vertical fragments and place each attribute's decrease, value, and increase controls on one horizontal row. Simulation, balance, replay, and report contracts remain unchanged.
+
+Product `0.87.0`, simulation `55.0.0`, and content `33.0.0` keep Tidal Charge combat numbers unchanged while Hard AI rejects unsafe nonlethal landings using actual contact depth, health, and nearby-opponent pressure. Focused balance reports require both winner and placement evidence for a nerf signal and label winner-heavy, survival-poor results as high variance. Simulation, content, replay, and report contracts remain unchanged.
+
+Product `0.83.0`, simulation `55.0.0`, and content `32.0.0` increase Spirit's skill-damage return, rebalance Force Palm, Meteor Mark, and Tidal Charge, and replace instant support loss with a continuous half-second recovery window. Tidal Charge's ordinary-hit and killing-hit mana rewards are mutually exclusive. The existing eighty-round balance report predates these values and is not current evidence for this candidate.
+
+Product `0.81.0`, simulation `54.0.0`, and content `31.0.0` apply the agreed trait, skill, and item balance follow-up. Tidal Charge kill mana and Frost Field damage healing are driven by the shared skill definitions; the existing 80-round report predates these values and must be regenerated before it is used as current balance evidence.
+
+Product `0.81.1`, simulation `54.0.0`, and content `31.0.0` render starting-attribute summaries, current effects, and next-point deltas with one effect per visual line instead of joining separate values with middle dots.
+
+Product `0.81.2`, simulation `54.0.0`, and content `31.0.0` keep skill and item values in their existing definition registries while presenting costs and targeting as chips and rendering each concrete effect on its own row inside the card.
+
+Product `0.82.0`, simulation `54.0.0`, and content `31.0.0` add renderer-only per-actor walk phases, alternating footstep marks, weight shift, and event-timed skill-cast anticipation and release. Reduced-motion mode suppresses continuous walk and cast motion, and simulation state remains unchanged.
+
+Product `0.79.0`, simulation `52.0.0`, and content `29.0.0` give all sixteen pirate ships independent deterministic firing clocks. Each ship launches every 120 through 180 ticks rather than waiting for a fleet-wide turn, and impact-time coastline updates prevent an airborne shot from exposing deeper land early. Multiple ships and consecutive shots from one ship may remain airborne together.
+
+Product `0.78.0`, simulation `51.0.0`, and content `29.0.0` lower the connected collapse floor from 20% to at most 10% of tick-zero playable land. Integer rounding uses a floor with a one-tile minimum, so the protected core never exceeds the requested ratio. Cannon pacing remains one accepted shot every two seconds rather than forcing 90% removal before the round limit.
+
+Product `0.77.0`, simulation `50.0.0`, and content `29.0.0` fix the public Slow fleet to one launch every 120 ticks and shorten cannon flight from 240 to 185 ticks, approximately 30% faster. Accepted impacts extend the outer-water frontier so later planned targets can remain reachable as the coast erodes.
+
+Product `0.76.1`, simulation `49.0.0`, and content `29.0.0` reject unavailable skills before targeting. Mana and cooldown failures keep the range preview hidden and show the exact mana requirement or remaining cooldown through the live round message.
+
 - Validation source: [../../VALIDATION.md](../../VALIDATION.md)
 - Submission package: [../product/05-submission-package.md](../product/05-submission-package.md)
 - Asset ledger: [../assets/README.md](../assets/README.md)
@@ -16,6 +87,28 @@ Product `0.67.2`, simulation `39.0.0`, and content `25.0.0` preserve generated a
 Product `0.68.0`, simulation `40.0.0`, and content `25.0.0` separate boundary-connected outer ocean from enclosed lakes for collapse and artillery planning. Ships sit 1.4 tiles offshore, fire only along a sampled clear-water approach at a current outer-coast tile, target a 210-tick flight, and cannot fire again until 120 ticks after their prior impact. Replay and report schemas remain unchanged, but deterministic fixtures advance to the new simulation envelope.
 
 Product `0.69.0`, simulation `41.0.0`, and content `25.0.0` move manual pause from Shift to `P` and leave Shift unbound. Session-local round statistics accumulate actual path distance, health damage dealt and received, shield-absorbed damage, slowed ticks, and selected-skill use counts from authoritative frames and events. The pause layer renders that live snapshot without changing replay or report schemas; deterministic fixtures advance because `damage-applied` events can now include absorbed damage.
+
+Product `0.70.0`, simulation `42.0.0`, and content `26.0.0` reject Boat use on supported land and automatically consume a charged Boat when its owner enters generated-arena water. Slow collapse and ship reload are paced to reduce cannon clutter without lowering the protected 20% endpoint. Pirate ships follow real outer-coast sectors and remain upright; public island generation bridges diagonal outer-ocean cuts; the renderer adds generated stunned-state feedback, terrain seam overscan, and a slightly closer camera. Replay fixtures require regeneration. Browser, hosted, and human coast/readability proof remain pending.
+
+Product `0.70.1`, simulation `42.0.0`, and content `26.0.0` add bounded arrow-key and pointer-drag spectator panning to eliminated and completed-round views, reset on every new round. Completed results expose `맵 보기`, and `P` restores the result panel. The P panel adds elapsed time, standing count or final rank, eliminations, remaining land, skill hits, item uses, and shove-hit count to its existing movement, damage, block, slow, and skill-use values. Unit, browser, hosted, and physical-input proof must be refreshed for this candidate.
+
+Product `0.71.0`, simulation `43.0.0`, and content `26.0.0` replace multi-tile collapse waves with one warned tile and one cannonball per accepted wave. Sixteen pirate ships divide the accepted coast-target ammunition, attempt the next fleet shot after a deterministic one-to-three-second interval, and retain per-ship flight plus a sixty-tick reload exclusion. A proposal without a clear full-flight assignment is omitted from both warnings and flooding; the 20% core is a floor rather than a 120-second removal target. Replay fixtures require regeneration; browser, pacing, hosted, and human-readable artillery proof remain pending.
+
+Product `0.71.1`, simulation `43.0.0`, and content `26.0.0` complete browser terrain preparation for all sixteen north/east/south/west water-neighbor masks using the accepted cardinal coast art. Opposite shores, three-sided coast cells, isolated remnants, and corners therefore stop borrowing unrelated single-edge frames. Unit, browser, hosted, and human visual proof remain separate gates.
+
+Product `0.71.2`, simulation `43.0.0`, and content `26.0.0` keep deterministic game rules unchanged. Completed results move the outcome and restart/map actions above detailed statistics, omit the developer and control sections, and widen repeated information cards. Active pause retains controls and live data in a responsive layout. Unit, browser, hosted, short-viewport, and human visual proof remain separate gates.
+
+Product `0.72.0`, simulation `44.0.0`, and content `26.0.0` move all sixteen pirate ship centers from 0.9 to 5.25 tiles offshore along the local outer-water direction, leaving roughly 3-4 visible water tiles between hull and shore. The camera ocean margin grows to 7.25 tiles. Ship origins and target assignments change deterministic state, so replay fixtures and browser evidence must be refreshed.
+
+Product `0.72.1`, simulation `45.0.0`, and content `26.0.0` synchronize every accepted tile warning with its cannon launch tick. Danger, impact, and flooding timing remain unchanged. Replay fixtures must be regenerated because tile state and event timing change.
+
+Product `0.72.2`, simulation `45.0.0`, and content `27.0.0` replace the procedural treasure-ship presentation with an accepted transparent teal-and-gold merchant-vessel sprite while retaining the old geometry as a load-failure fallback. Delivery rules remain unchanged. Replay fixtures refresh for the content version; browser and hosted visual proof remain pending.
+
+Product `0.73.0`, simulation `46.0.0`, and content `27.0.0` start every participant at 30 current mana while retaining attribute-derived maximum mana and existing regeneration. Opening bot skill bursts and deterministic outcomes change, so replay fixtures and balance evidence must be refreshed. Browser, hosted, performance, and human pacing proof remain pending.
+
+Product `0.74.0`, simulation `47.0.0`, and content `27.0.0` rebalance the six linear starting attributes after an 80-round, 60-participant focused-build audit. Strength grants 3.25% outgoing power per point, Agility grants 3% movement, 4% cooldown reduction, and 1% mana-cost reduction, Constitution grants 4 health and 2.5% health regeneration, Balance grants 4% impulse resistance and 3% control-duration reduction, and Willpower grants 1.5% damage reduction and shield strength. Spirit remains unchanged. Skill commits, bot affordability checks, the action HUD, settings projections, deterministic replay fixtures, and balance evidence all consume the same attribute rules.
+
+Product `0.76.0`, simulation `49.0.0`, and content `29.0.0` apply the next deterministic balance pass. Agility grants 2.5% movement and 2% shorter stumble per point, Constitution grants 2 health and 1.5% health regeneration, and Spirit adds 0.5% skill damage per point. Arc Bolt cools down for 7 seconds, Force Palm for 2 seconds, Chain Bind reaches 4.75 tiles, and Tidal Charge deals 26 damage. Boat support lasts 2 seconds, Brick Bag heals 10, and Soap deals 20 ordinary mitigated damage after its stumble completes. All card copy remains derived from these shared definitions.
 
 Product `0.20.0`, simulation `6.0.0`, and content `4.0.0` introduce starting loadouts, larger arenas, hand-reach shove physics, credited-elimination stat growth, and local debug tuning. Local unit, browser, focused strategy, headless scale, and production Chrome profiles pass. The legacy full controlled round audit timed out twice and hosted proof for this exact candidate remains pending; older hosted SHA evidence does not prove these rules.
 

@@ -21,12 +21,15 @@ import {
   getStartingCooldownMultiplier,
   getStartingDamageTakenMultiplier,
   getStartingIncomingImpulseMultiplier,
+  getStartingManaCostMultiplier,
   getStartingMassFactor,
   getStartingMaximumHealthBonus,
   getStartingMaximumManaBonus,
   getStartingMovementMultiplier,
   getStartingOutgoingMultiplier,
   getStartingShieldMultiplier,
+  getStartingSkillDamageMultiplier,
+  getStartingStumbleDurationMultiplier,
   normalizeStartingAttributes,
 } from "../src/simulation/starting-attributes";
 
@@ -89,15 +92,18 @@ describe("settings normalization", () => {
       willpower: 0,
     });
     expect(getStartingMassFactor(DEFAULT_STARTING_ATTRIBUTES)).toBe(1.1);
-    expect(getStartingMovementMultiplier(DEFAULT_STARTING_ATTRIBUTES)).toBe(1.16);
+    expect(getStartingMovementMultiplier(DEFAULT_STARTING_ATTRIBUTES)).toBe(1.1);
     expect(getStartingCooldownMultiplier(DEFAULT_STARTING_ATTRIBUTES)).toBe(0.84);
-    expect(getStartingOutgoingMultiplier(DEFAULT_STARTING_ATTRIBUTES)).toBe(1.1);
-    expect(getStartingIncomingImpulseMultiplier(DEFAULT_STARTING_ATTRIBUTES)).toBe(0.86);
-    expect(getStartingControlDurationMultiplier(DEFAULT_STARTING_ATTRIBUTES)).toBe(0.9);
-    expect(getStartingMaximumHealthBonus(DEFAULT_STARTING_ATTRIBUTES)).toBe(24);
+    expect(getStartingManaCostMultiplier(DEFAULT_STARTING_ATTRIBUTES)).toBe(0.93);
+    expect(getStartingOutgoingMultiplier(DEFAULT_STARTING_ATTRIBUTES)).toBe(1.15);
+    expect(getStartingIncomingImpulseMultiplier(DEFAULT_STARTING_ATTRIBUTES)).toBe(0.84);
+    expect(getStartingControlDurationMultiplier(DEFAULT_STARTING_ATTRIBUTES)).toBe(0.88);
+    expect(getStartingMaximumHealthBonus(DEFAULT_STARTING_ATTRIBUTES)).toBe(7);
     expect(getStartingMaximumManaBonus(DEFAULT_STARTING_ATTRIBUTES)).toBe(32);
     expect(getStartingDamageTakenMultiplier(DEFAULT_STARTING_ATTRIBUTES)).toBe(1);
     expect(getStartingShieldMultiplier(DEFAULT_STARTING_ATTRIBUTES)).toBe(1);
+    expect(getStartingStumbleDurationMultiplier(DEFAULT_STARTING_ATTRIBUTES)).toBe(0.9);
+    expect(getStartingSkillDamageMultiplier(DEFAULT_STARTING_ATTRIBUTES)).toBe(1.08);
   });
 
   it("allows a full twenty-point specialization without a soft cap", () => {
@@ -126,11 +132,13 @@ describe("settings normalization", () => {
       willpower: 20,
     });
     expect(getStartingMassFactor(strength)).toBe(1.5);
-    expect(getStartingOutgoingMultiplier(strength)).toBe(1.5);
-    expect(getStartingMovementMultiplier(agility)).toBe(1.8);
+    expect(getStartingOutgoingMultiplier(strength)).toBe(1.75);
+    expect(getStartingMovementMultiplier(agility)).toBe(1.5);
     expect(getStartingCooldownMultiplier(agility)).toBe(0.2);
-    expect(getStartingDamageTakenMultiplier(willpower)).toBe(0.6);
-    expect(getStartingShieldMultiplier(willpower)).toBe(1.4);
+    expect(getStartingManaCostMultiplier(agility)).toBe(0.65);
+    expect(getStartingStumbleDurationMultiplier(agility)).toBe(0.5);
+    expect(getStartingDamageTakenMultiplier(willpower)).toBe(0.75);
+    expect(getStartingShieldMultiplier(willpower)).toBe(1.25);
   });
 
   it("derives and bounds the item policy for fifty participants", () => {
@@ -148,7 +156,8 @@ describe("settings normalization", () => {
     expect(getArenaSize(16)).toEqual({ columns: 25, rows: 20 });
     expect(getArenaSize(24)).toEqual({ columns: 28, rows: 23 });
     expect(getArenaSize(32)).toEqual({ columns: 31, rows: 26 });
-    expect(getArenaSize(50)).toEqual({ columns: 48, rows: 40 });
+    expect(getArenaSize(50)).toEqual({ columns: 52, rows: 44 });
+    expect((52 * 44) / (48 * 40)).toBeCloseTo(1.2, 1);
   });
 
   it("keeps one active item and two unique skills", () => {
@@ -162,7 +171,7 @@ describe("settings normalization", () => {
           balance: 4,
           willpower: 0,
         },
-        startingItems: ["soap"],
+        startingItems: ["boat"],
         startingSkills: ["blink-step", "chain-bind"],
       }),
     ).toMatchObject({
@@ -174,12 +183,12 @@ describe("settings normalization", () => {
         balance: 4,
         willpower: 0,
       },
-      startingItems: ["soap"],
+      startingItems: ["boat"],
       startingSkills: ["blink-step", "chain-bind"],
     });
     expect(normalizeSettings({ startingItems: ["feather", "feather", "unknown"] })).toMatchObject({
       startingItems: ["bomb"],
-      startingSkills: ["force-palm", "blink-step"],
+      startingSkills: ["blink-step", "arc-bolt"],
     });
     expect(normalizeSettings({ startingItems: ["grappling-hook"] })).toMatchObject({
       startingItems: ["bomb"],
@@ -187,7 +196,7 @@ describe("settings normalization", () => {
     expect(
       normalizeSettings({ startingSkills: ["blink-step", "blink-step", "unknown"] }),
     ).toMatchObject({
-      startingSkills: ["force-palm", "blink-step"],
+      startingSkills: ["blink-step", "arc-bolt"],
     });
   });
 });

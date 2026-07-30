@@ -4,16 +4,20 @@ import {
   type PirateShipState,
   type RockShotState,
   type Tick,
+  type TileId,
   type TileState,
 } from "./contracts";
-import type { CollapseWave } from "./collapse";
+import { COLLAPSE_COAST_SECTOR_COUNT, type CollapseWave } from "./collapse";
 import type { Vector2 } from "./math";
+import type { XorShift32 } from "./random";
 import { getOuterOceanTileIds } from "./arena";
 
-export const PIRATE_SHIP_COUNT = 8;
-export const CANNON_FLIGHT_TICKS = 210;
-export const CANNON_RELOAD_TICKS = 120;
-export const PIRATE_SHIP_OFFSHORE_DISTANCE = 1.4;
+export const PIRATE_SHIP_COUNT = COLLAPSE_COAST_SECTOR_COUNT;
+export const CANNON_FLIGHT_TICKS = 185;
+export const CANNON_MINIMUM_LAUNCH_INTERVAL_TICKS = 120;
+export const CANNON_MAXIMUM_LAUNCH_INTERVAL_TICKS = 180;
+export const PIRATE_SHIP_OFFSHORE_DISTANCE = 5.25;
+export const CANNON_LANDING_APPROACH_TILES = 1.25;
 export const ROCK_FLIGHT_TICKS = 90;
 export const ROCK_BLAST_RADIUS = 0.72;
 
@@ -25,6 +29,7 @@ export interface ArtilleryPlan {
   }>[];
   readonly cannonShots: readonly CannonShotState[];
   readonly cannonLaunchTicksByShip: readonly (readonly Tick[])[];
+  readonly collapseWaves: readonly CollapseWave[];
   readonly rockPhaseStartTick: Tick;
 }
 
@@ -45,26 +50,81 @@ function countLaunchedShots(launchTicks: readonly Tick[], tick: Tick): number {
   return low;
 }
 
-function createShipPositions(columns: number, rows: number): readonly Vector2[] {
-  const outside = PIRATE_SHIP_OFFSHORE_DISTANCE;
-  return Object.freeze([
-    Object.freeze({ x: columns * 0.25, y: -outside }),
-    Object.freeze({ x: columns * 0.75, y: -outside }),
-    Object.freeze({ x: columns + outside, y: rows * 0.25 }),
-    Object.freeze({ x: columns + outside, y: rows * 0.75 }),
-    Object.freeze({ x: columns * 0.75, y: rows + outside }),
-    Object.freeze({ x: columns * 0.25, y: rows + outside }),
-    Object.freeze({ x: -outside, y: rows * 0.75 }),
-    Object.freeze({ x: -outside, y: rows * 0.25 }),
-  ]);
-}
-
 const ORTHOGONAL_OFFSETS = Object.freeze([
   Object.freeze({ column: 0, row: -1 }),
   Object.freeze({ column: 1, row: 0 }),
   Object.freeze({ column: 0, row: 1 }),
   Object.freeze({ column: -1, row: 0 }),
 ]);
+
+function createShipPositions(
+  tiles: readonly TileState[],
+  columns: number,
+  rows: number,
+): readonly Vector2[] {
+  const outerWaterIds = getOuterOceanTileIds(tiles, columns, rows);
+  const coastTiles = tiles.filter(
+    (tile) => tile.state !== "Void" && isCurrentOuterCoast(tile, outerWaterIds, columns, rows),
+  );
+  const center = Object.freeze({ x: columns / 2, y: rows / 2 });
+  const orderedCoast = coastTiles.toSorted((left, right) => {
+    const leftAngle = Math.atan2(left.row + 0.5 - center.y, left.column + 0.5 - center.x);
+    const rightAngle = Math.atan2(right.row + 0.5 - center.y, right.column + 0.5 - center.x);
+    return leftAngle - rightAngle || left.tileId.localeCompare(right.tileId);
+  });
+
+  return Object.freeze(
+    Array.from({ length: PIRATE_SHIP_COUNT }, (_, index) => {
+      const coast =
+        orderedCoast[Math.floor(((index + 0.5) * orderedCoast.length) / PIRATE_SHIP_COUNT)];
+
+      if (coast === undefined) {
+        const angle = -Math.PI / 2 + (index * Math.PI * 2) / PIRATE_SHIP_COUNT;
+        const direction = Object.freeze({ x: Math.cos(angle), y: Math.sin(angle) });
+        return Object.freeze({
+          x: center.x + direction.x * (columns / 2 + PIRATE_SHIP_OFFSHORE_DISTANCE),
+          y: center.y + direction.y * (rows / 2 + PIRATE_SHIP_OFFSHORE_DISTANCE),
+        });
+      }
+
+      const radialOffset = Object.freeze({
+        x: coast.column + 0.5 - center.x,
+        y: coast.row + 0.5 - center.y,
+      });
+      const outerWaterDirection = ORTHOGONAL_OFFSETS.reduce(
+        (direction, offset) => {
+          const neighborColumn = coast.column + offset.column;
+          const neighborRow = coast.row + offset.row;
+          const outsideArena =
+            neighborColumn < 0 ||
+            neighborColumn >= columns ||
+            neighborRow < 0 ||
+            neighborRow >= rows;
+          if (outsideArena || outerWaterIds.has(createTileId(neighborColumn, neighborRow))) {
+            direction.x += offset.column;
+            direction.y += offset.row;
+          }
+          return direction;
+        },
+        { x: 0, y: 0 },
+      );
+      const directionSource =
+        Math.hypot(outerWaterDirection.x, outerWaterDirection.y) > 0.001
+          ? outerWaterDirection
+          : radialOffset;
+      const directionLength = Math.max(0.001, Math.hypot(directionSource.x, directionSource.y));
+      const direction = Object.freeze({
+        x: directionSource.x / directionLength,
+        y: directionSource.y / directionLength,
+      });
+
+      return Object.freeze({
+        x: coast.column + 0.5 + direction.x * PIRATE_SHIP_OFFSHORE_DISTANCE,
+        y: coast.row + 0.5 + direction.y * PIRATE_SHIP_OFFSHORE_DISTANCE,
+      });
+    }),
+  );
+}
 
 function isCurrentOuterCoast(
   tile: TileState,
@@ -97,7 +157,7 @@ function hasClearOceanApproach(
   for (let index = 1; index < steps; index += 1) {
     const progress = index / steps;
 
-    if (distance * (1 - progress) <= 0.55) {
+    if (distance * (1 - progress) <= CANNON_LANDING_APPROACH_TILES) {
       break;
     }
 
@@ -118,68 +178,150 @@ export function createArtilleryPlan(
   collapsePlan: readonly CollapseWave[],
   columns: number,
   rows: number,
+  random: XorShift32,
 ): ArtilleryPlan {
   const tilesById = new Map(tiles.map((tile) => [tile.tileId, tile] as const));
-  const shipPositions = createShipPositions(columns, rows);
+  const shipPositions = createShipPositions(tiles, columns, rows);
   const outerWaterIds = new Set(getOuterOceanTileIds(tiles, columns, rows));
   const supportedTileIds = new Set(
     tiles.filter(({ state }) => state !== "Void").map(({ tileId }) => tileId),
   );
   const ammoByShip = Array.from({ length: PIRATE_SHIP_COUNT }, () => 0);
   const cannonLaunchTicksByShip = Array.from({ length: PIRATE_SHIP_COUNT }, (): Tick[] => []);
-  const availableTickByShip = Array.from({ length: PIRATE_SHIP_COUNT }, () => 0);
   const cannonShots: CannonShotState[] = [];
+  const collapseWaves: CollapseWave[] = [];
+  const scheduledImpacts: { tick: Tick; tileId: TileId }[] = [];
+  const reservedTileIds = new Set<TileId>();
   let shotId = 1;
+  const openingLaunchTick = Math.max(
+    0,
+    (collapsePlan[0]?.voidTick ?? CANNON_FLIGHT_TICKS) - CANNON_FLIGHT_TICKS,
+  );
+  const nextInterval = (): number =>
+    CANNON_MINIMUM_LAUNCH_INTERVAL_TICKS +
+    (random.nextUint32() %
+      (CANNON_MAXIMUM_LAUNCH_INTERVAL_TICKS - CANNON_MINIMUM_LAUNCH_INTERVAL_TICKS + 1));
+  const nextLaunchTickByShip = Array.from(
+    { length: PIRATE_SHIP_COUNT },
+    () => openingLaunchTick + (random.nextUint32() % CANNON_MAXIMUM_LAUNCH_INTERVAL_TICKS),
+  );
 
-  for (const wave of collapsePlan) {
-    const preferredLaunchTick = Math.max(0, wave.voidTick - CANNON_FLIGHT_TICKS);
-    const outerCoastTiles = wave.tileIds
-      .map((tileId) => tilesById.get(tileId))
-      .filter((tile): tile is TileState => tile !== undefined)
-      .filter((tile) => isCurrentOuterCoast(tile, outerWaterIds, columns, rows));
-    const targetChoices = outerCoastTiles
-      .flatMap((tile) =>
-        shipPositions
-          .map((origin, shipIndex) => ({
-            tile,
-            origin,
-            shipIndex,
-            distance: Math.hypot(tile.column + 0.5 - origin.x, tile.row + 0.5 - origin.y),
-          }))
-          .filter(({ origin }) => hasClearOceanApproach(origin, tile, supportedTileIds)),
+  const pendingByTileId = new Map(
+    collapsePlan.flatMap((wave, priority) =>
+      wave.tileIds.map((tileId) => [tileId, { wave, priority }] as const),
+    ),
+  );
+  const frontierTileIds = new Set(
+    [...pendingByTileId.keys()].filter((tileId) => {
+      const tile = tilesById.get(tileId);
+      return tile !== undefined && isCurrentOuterCoast(tile, outerWaterIds, columns, rows);
+    }),
+  );
+
+  const exposeNeighbors = (tile: TileState): void => {
+    supportedTileIds.delete(tile.tileId);
+    outerWaterIds.add(tile.tileId);
+    for (const offset of ORTHOGONAL_OFFSETS) {
+      const neighborId = createTileId(tile.column + offset.column, tile.row + offset.row);
+      const neighbor = tilesById.get(neighborId);
+
+      if (
+        pendingByTileId.has(neighborId) &&
+        neighbor !== undefined &&
+        isCurrentOuterCoast(neighbor, outerWaterIds, columns, rows)
+      ) {
+        frontierTileIds.add(neighborId);
+      }
+    }
+  };
+  let impactCursor = 0;
+  let consecutiveMisses = 0;
+
+  while (pendingByTileId.size > 0) {
+    const shipIndex = nextLaunchTickByShip.reduce(
+      (selected, tick, index, ticks) =>
+        tick < (ticks[selected] ?? Number.MAX_SAFE_INTEGER) ? index : selected,
+      0,
+    );
+    const launchTick = nextLaunchTickByShip[shipIndex] ?? openingLaunchTick;
+
+    while ((scheduledImpacts[impactCursor]?.tick ?? Number.MAX_SAFE_INTEGER) <= launchTick) {
+      const impact = scheduledImpacts[impactCursor];
+      const impactedTile = impact === undefined ? undefined : tilesById.get(impact.tileId);
+      if (impact !== undefined) {
+        reservedTileIds.delete(impact.tileId);
+      }
+      if (impactedTile !== undefined) {
+        exposeNeighbors(impactedTile);
+      }
+      impactCursor += 1;
+    }
+
+    const origin = shipPositions[shipIndex];
+    if (origin === undefined) {
+      break;
+    }
+    const targetChoice = [...frontierTileIds]
+      .filter((tileId) => !reservedTileIds.has(tileId))
+      .map((tileId) => ({
+        pending: pendingByTileId.get(tileId),
+        tile: tilesById.get(tileId),
+      }))
+      .filter(
+        (
+          choice,
+        ): choice is {
+          pending: { wave: CollapseWave; priority: number };
+          tile: TileState;
+        } =>
+          choice.pending !== undefined &&
+          choice.tile !== undefined &&
+          hasClearOceanApproach(origin, choice.tile, supportedTileIds),
       )
       .toSorted(
         (left, right) =>
-          left.distance - right.distance ||
-          left.shipIndex - right.shipIndex ||
+          Math.hypot(left.tile.column + 0.5 - origin.x, left.tile.row + 0.5 - origin.y) -
+            Math.hypot(right.tile.column + 0.5 - origin.x, right.tile.row + 0.5 - origin.y) ||
+          left.pending.priority - right.pending.priority ||
           left.tile.tileId.localeCompare(right.tile.tileId),
-      );
-    const targetChoice =
-      targetChoices.find(
-        ({ shipIndex }) => (availableTickByShip[shipIndex] ?? 0) <= preferredLaunchTick,
-      ) ??
-      targetChoices.find(({ shipIndex }) => (availableTickByShip[shipIndex] ?? 0) < wave.voidTick);
-
-    for (const tileId of wave.tileIds) {
-      supportedTileIds.delete(tileId);
-      outerWaterIds.add(tileId);
-    }
+      )[0];
 
     if (targetChoice === undefined) {
+      consecutiveMisses += 1;
+      const nextImpactTick = scheduledImpacts[impactCursor]?.tick;
+      nextLaunchTickByShip[shipIndex] =
+        nextImpactTick === undefined
+          ? launchTick + nextInterval()
+          : Math.max(launchTick + 1, nextImpactTick);
+      if (consecutiveMisses >= PIRATE_SHIP_COUNT && nextImpactTick === undefined) {
+        break;
+      }
       continue;
     }
 
-    const { tile, origin, shipIndex } = targetChoice;
-    const launchTick = Math.max(preferredLaunchTick, availableTickByShip[shipIndex] ?? 0);
-    const visibleWarningTick = Math.max(wave.warningTick, launchTick);
-    const remainingFlightTicks = Math.max(1, wave.voidTick - visibleWarningTick);
+    consecutiveMisses = 0;
+    const { wave } = targetChoice.pending;
+    const { tile } = targetChoice;
+    const impactTick = launchTick + CANNON_FLIGHT_TICKS;
+    const collapsingDurationTicks = Math.max(1, wave.voidTick - wave.collapsingTick);
+    const collapsingTick = Math.max(launchTick, impactTick - collapsingDurationTicks);
     const dangerTick = Math.min(
-      wave.voidTick,
-      visibleWarningTick + Math.max(1, Math.floor(remainingFlightTicks * 0.45)),
+      impactTick,
+      launchTick + Math.max(1, Math.floor(CANNON_FLIGHT_TICKS * 0.45)),
     );
+    const acceptedWave = Object.freeze({
+      ...wave,
+      warningTick: launchTick,
+      collapsingTick,
+      voidTick: impactTick,
+    });
+    collapseWaves.push(acceptedWave);
     ammoByShip[shipIndex] = (ammoByShip[shipIndex] ?? 0) + 1;
     cannonLaunchTicksByShip[shipIndex]?.push(launchTick);
-    availableTickByShip[shipIndex] = wave.voidTick + CANNON_RELOAD_TICKS;
+    pendingByTileId.delete(tile.tileId);
+    frontierTileIds.delete(tile.tileId);
+    reservedTileIds.add(tile.tileId);
+    scheduledImpacts.push({ tick: impactTick, tileId: tile.tileId });
     cannonShots.push(
       Object.freeze({
         shotId,
@@ -188,12 +330,13 @@ export function createArtilleryPlan(
         origin,
         target: Object.freeze({ x: tile.column + 0.5, y: tile.row + 0.5 }),
         launchTick,
-        warningTick: visibleWarningTick,
+        warningTick: launchTick,
         dangerTick,
-        impactTick: wave.voidTick,
+        impactTick,
       }),
     );
     shotId += 1;
+    nextLaunchTickByShip[shipIndex] = launchTick + nextInterval();
   }
 
   const ships = shipPositions.map((position, index) =>
@@ -203,13 +346,14 @@ export function createArtilleryPlan(
       initialCannonAmmo: ammoByShip[index] ?? 0,
     }),
   );
-  const finalImpactTick = collapsePlan.at(-1)?.voidTick ?? 0;
+  const finalImpactTick = collapseWaves.at(-1)?.voidTick ?? 0;
   return Object.freeze({
     ships: Object.freeze(ships),
     cannonShots: Object.freeze(cannonShots),
     cannonLaunchTicksByShip: Object.freeze(
       cannonLaunchTicksByShip.map((launchTicks) => Object.freeze(launchTicks)),
     ),
+    collapseWaves: Object.freeze(collapseWaves),
     rockPhaseStartTick: finalImpactTick + 60,
   });
 }

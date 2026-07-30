@@ -69,11 +69,10 @@ function createItemCounts(): Record<ItemDefinitionId, number> {
     "iron-boots": 0,
     feather: 0,
     "spring-glove": 0,
-    "wind-blast": 0,
+    soap: 0,
     "brick-bag": 0,
     boat: 0,
     bomb: 0,
-    soap: 0,
   };
 }
 
@@ -143,21 +142,19 @@ const itemExposure: Record<ItemDefinitionId, { actorRounds: number; wins: number
   "iron-boots": { actorRounds: 0, wins: 0 },
   feather: { actorRounds: 0, wins: 0 },
   "spring-glove": { actorRounds: 0, wins: 0 },
-  "wind-blast": { actorRounds: 0, wins: 0 },
+  soap: { actorRounds: 0, wins: 0 },
   "brick-bag": { actorRounds: 0, wins: 0 },
   boat: { actorRounds: 0, wins: 0 },
   bomb: { actorRounds: 0, wins: 0 },
-  soap: { actorRounds: 0, wins: 0 },
 };
 const itemUse: Record<ItemDefinitionId, ItemUseAggregate> = {
   "iron-boots": { actorRounds: 0, uses: 0, wins: 0 },
   feather: { actorRounds: 0, uses: 0, wins: 0 },
   "spring-glove": { actorRounds: 0, uses: 0, wins: 0 },
-  "wind-blast": { actorRounds: 0, uses: 0, wins: 0 },
+  soap: { actorRounds: 0, uses: 0, wins: 0 },
   "brick-bag": { actorRounds: 0, uses: 0, wins: 0 },
   boat: { actorRounds: 0, uses: 0, wins: 0 },
   bomb: { actorRounds: 0, uses: 0, wins: 0 },
-  soap: { actorRounds: 0, uses: 0, wins: 0 },
 };
 const massExposure: Record<MassBand, { actorRounds: number; wins: number }> = {
   light: { actorRounds: 0, wins: 0 },

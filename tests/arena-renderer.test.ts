@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createArenaRenderer } from "../src/presentation/arena-renderer";
-import { normalizeGameConfig } from "../src/simulation/contracts";
+import { TERRAIN_DIAGONAL_VARIANT_START } from "../src/presentation/arena-assets";
+import { createArenaRenderer, getTerrainTextureIndex } from "../src/presentation/arena-renderer";
+import { normalizeGameConfig, type TileState } from "../src/simulation/contracts";
 import { SimulationWorld } from "../src/simulation/world";
 
 const applicationRender = vi.hoisted(() => vi.fn<() => void>());
@@ -51,6 +52,10 @@ vi.mock("pixi.js", () => {
     }
 
     public poly(): this {
+      return this;
+    }
+
+    public quadraticCurveTo(): this {
       return this;
     }
 
@@ -206,7 +211,6 @@ vi.mock("pixi.js", () => {
     Texture: FakeTexture,
   };
 });
-
 function isHTMLElement(value: unknown): value is HTMLElement {
   return (
     typeof value === "object" &&
@@ -219,10 +223,19 @@ function isHTMLElement(value: unknown): value is HTMLElement {
 }
 
 function createHost(): HTMLElement {
+  const dataset: Record<string, string | undefined> = {};
   const host: unknown = {
     clientHeight: 430,
     clientWidth: 640,
-    dataset: {},
+    dataset,
+    removeAttribute(name: string): void {
+      if (name.startsWith("data-")) {
+        const key = name
+          .slice(5)
+          .replace(/-([a-z])/g, (_match, letter: string) => letter.toUpperCase());
+        delete dataset[key];
+      }
+    },
     replaceChildren(): void {},
   };
 
@@ -234,18 +247,32 @@ function createHost(): HTMLElement {
 }
 
 describe("arena renderer presentation", () => {
+  it("selects a rounded diagonal coast texture for an otherwise interior tile", () => {
+    const tile: TileState = Object.freeze({
+      tileId: "4:4",
+      column: 4,
+      row: 4,
+      state: "Stable",
+    });
+    const supportedTileIds = new Set(["4:4", "4:3", "5:4", "4:5", "3:4", "5:5", "3:5", "3:3"]);
+
+    expect(getTerrainTextureIndex(tile, supportedTileIds)).toBe(TERRAIN_DIAGONAL_VARIANT_START);
+  });
+
   beforeEach(() => {
     applicationRender.mockClear();
     graphicsFill.mockClear();
     graphicsStroke.mockClear();
     spriteTint.mockClear();
     vi.stubGlobal("window", {
+      cancelAnimationFrame(): void {},
       devicePixelRatio: 1,
       matchMedia: () => ({
         addEventListener(): void {},
         matches: false,
         removeEventListener(): void {},
       }),
+      requestAnimationFrame: () => 1,
     });
   });
 
@@ -267,6 +294,33 @@ describe("arena renderer presentation", () => {
     expect(host.dataset.projectionAngle).toBe("58");
     expect(Number(host.dataset.projectionScaleY)).toBeCloseTo(Math.sin((58 * Math.PI) / 180), 4);
     expect(Number(host.dataset.cliffDepth)).toBeGreaterThanOrEqual(6);
+  });
+
+  it("keeps aim setters state-only so a session frame submits the Pixi scene once", async () => {
+    const host = createHost();
+    const renderer = await createArenaRenderer(host);
+    const frame = new SimulationWorld(
+      normalizeGameConfig({ participantCount: 8 }),
+      "single-frame-present",
+    ).createRenderFrame();
+
+    renderer.setAimPreview({
+      targetMode: "ground",
+      source: { x: 4, y: 4 },
+      target: { x: 6, y: 5 },
+      castRange: 5,
+      effectRadius: 1.5,
+      valid: true,
+      approaching: false,
+      visualKind: "bomb",
+    });
+    expect(applicationRender).not.toHaveBeenCalled();
+
+    renderer.render(frame, 0, 1);
+    expect(applicationRender).toHaveBeenCalledTimes(1);
+
+    renderer.setAimPreview(null);
+    expect(applicationRender).toHaveBeenCalledTimes(1);
   });
 
   it("keeps warning terrain untinted and draws a separate hazard marker", async () => {
@@ -310,6 +364,67 @@ describe("arena renderer presentation", () => {
     );
     expect(graphicsStroke).toHaveBeenCalledWith(
       expect.objectContaining({ color: 0xffc857, alpha: 0.96 }),
+    );
+  });
+
+  it("keeps loaded character art off procedural body discs and uses a small human chevron", async () => {
+    const host = createHost();
+    const renderer = await createArenaRenderer(host);
+    const frame = new SimulationWorld(
+      normalizeGameConfig({ participantCount: 50 }),
+      "character-art-without-ground-discs",
+    ).createRenderFrame();
+
+    await vi.waitFor(() => expect(host.dataset.visualAssets).not.toBe("loading"));
+    graphicsFill.mockClear();
+    graphicsStroke.mockClear();
+    renderer.render(frame, 0, 1);
+
+    const proceduralBodyColors = new Set([
+      0xf6f5ef, 0xb8c1bd, 0xd5aaa7, 0xc9bd91, 0xaab8d5, 0xc0a8cf,
+    ]);
+    expect(
+      graphicsFill.mock.calls.some(([options]) =>
+        options?.color === undefined ? false : proceduralBodyColors.has(options.color),
+      ),
+    ).toBe(false);
+    expect(graphicsStroke).toHaveBeenCalledWith(
+      expect.objectContaining({ color: 0x3b8cff, alpha: 0.92 }),
+    );
+  });
+
+  it("draws an installed Soap trap as a flat owner-marked hazard instead of a pickup", async () => {
+    const host = createHost();
+    const renderer = await createArenaRenderer(host);
+    const baseFrame = new SimulationWorld(
+      normalizeGameConfig({ participantCount: 8 }),
+      "installed-soap-presentation",
+    ).createRenderFrame();
+    const frame = Object.freeze({
+      ...baseFrame,
+      soapPatches: Object.freeze([
+        Object.freeze({
+          ownerActorId: 1,
+          tileId: "4:4",
+          column: 4,
+          row: 4,
+          placedTick: baseFrame.tick,
+        }),
+      ]),
+    });
+
+    graphicsFill.mockClear();
+    graphicsStroke.mockClear();
+    renderer.render(frame, 0, 1);
+
+    expect(graphicsFill).toHaveBeenCalledWith(
+      expect.objectContaining({ color: 0xa8edf2, alpha: 0.38 }),
+    );
+    expect(graphicsStroke).toHaveBeenCalledWith(
+      expect.objectContaining({ color: 0x3b8cff, alpha: 0.92 }),
+    );
+    expect(graphicsStroke).toHaveBeenCalledWith(
+      expect.objectContaining({ color: 0xf4ffff, alpha: 0.92 }),
     );
   });
 
@@ -403,7 +518,46 @@ describe("arena renderer presentation", () => {
     expect(Number(host.dataset.cameraY)).toBeLessThan(centerCameraY);
   });
 
-  it("renders Wind Blast activation and impact feedback without changing simulation state", async () => {
+  it("pans and resets the camera after the human is eliminated", async () => {
+    const host = createHost();
+    const renderer = await createArenaRenderer(host);
+    const frame = new SimulationWorld(
+      normalizeGameConfig({
+        participantCount: 50,
+        arenaColumns: 48,
+        arenaRows: 40,
+      }),
+      "spectator-camera",
+    ).createRenderFrame();
+    const eliminatedFrame = Object.freeze({
+      ...frame,
+      participants: Object.freeze(
+        frame.participants.map((participant) =>
+          participant.actorId === 1
+            ? Object.freeze({ ...participant, active: false, action: "Eliminated" as const })
+            : participant,
+        ),
+      ),
+    });
+
+    renderer.render(eliminatedFrame, 1, 1);
+    const initialCameraX = Number(host.dataset.cameraX);
+
+    expect(host.dataset.cameraMode).toBe("spectator");
+    expect(renderer.panSpectatorByScreen(-80, 0)).toBe(true);
+    renderer.render(eliminatedFrame, 1, 1);
+    expect(Number(host.dataset.cameraX)).toBeLessThan(initialCameraX);
+
+    renderer.resetSpectatorCamera();
+    renderer.render(eliminatedFrame, 1, 1);
+    expect(Number(host.dataset.cameraX)).toBeCloseTo(initialCameraX);
+
+    renderer.render(frame, 1, 1);
+    expect(host.dataset.cameraMode).toBe("follow");
+    expect(renderer.panSpectatorByScreen(-80, 0)).toBe(false);
+  });
+
+  it("renders Soap placement and trigger feedback without changing simulation state", async () => {
     const host = createHost();
     const renderer = await createArenaRenderer(host);
     const frame = new SimulationWorld(
@@ -421,7 +575,7 @@ describe("arena renderer presentation", () => {
           sequence: 0,
           kind: "item-used",
           actorId: 1,
-          itemDefinitionId: "wind-blast",
+          itemDefinitionId: "soap",
           vector: { x: 1, y: 0 },
         },
         {
@@ -429,10 +583,10 @@ describe("arena renderer presentation", () => {
           roundId: frame.roundId,
           tick: frame.tick,
           sequence: 1,
-          kind: "wind-blast-hit",
+          kind: "soap-triggered",
           actorId: 1,
           targetActorId: 2,
-          itemDefinitionId: "wind-blast",
+          itemDefinitionId: "soap",
           vector: { x: 0.315, y: 0 },
         },
       ],
@@ -484,69 +638,6 @@ describe("arena renderer presentation", () => {
     renderer.render(frame, 1, 1);
 
     expect(applicationRender).toHaveBeenCalledTimes(1);
-    expect(frame.stateHash).toBe(stateHash);
-  });
-
-  it("renders a low Soap patch plus placement and trigger feedback without changing simulation", async () => {
-    const host = createHost();
-    const renderer = await createArenaRenderer(host);
-    const baseFrame = new SimulationWorld(
-      normalizeGameConfig({ participantCount: 4 }),
-      "soap-presentation",
-    ).createRenderFrame();
-    const stateHash = baseFrame.stateHash;
-    const tile = baseFrame.tiles.find(({ state }) => state === "Stable");
-
-    expect(tile).toBeDefined();
-
-    if (tile === undefined) {
-      throw new Error("Soap renderer test requires one stable tile.");
-    }
-
-    const frame = Object.freeze({
-      ...baseFrame,
-      soapPatches: Object.freeze([
-        Object.freeze({
-          ownerActorId: 1,
-          tileId: tile.tileId,
-          column: tile.column,
-          row: tile.row,
-          placedTick: baseFrame.tick,
-        }),
-      ]),
-    });
-
-    renderer.consumeEvents(
-      [
-        {
-          eventVersion: 1,
-          roundId: frame.roundId,
-          tick: frame.tick,
-          sequence: 0,
-          kind: "soap-placed",
-          actorId: 1,
-          itemDefinitionId: "soap",
-          tileId: tile.tileId,
-        },
-        {
-          eventVersion: 1,
-          roundId: frame.roundId,
-          tick: frame.tick,
-          sequence: 1,
-          kind: "soap-triggered",
-          actorId: 1,
-          targetActorId: 2,
-          itemDefinitionId: "soap",
-          tileId: tile.tileId,
-        },
-      ],
-      frame,
-    );
-    renderer.render(frame, 1, 1);
-
-    expect(applicationRender).toHaveBeenCalledTimes(1);
-    expect(graphicsFill).toHaveBeenCalledWith(expect.objectContaining({ color: 0xc37adf }));
-    expect(graphicsStroke).toHaveBeenCalledWith(expect.objectContaining({ color: 0xf2b8ff }));
     expect(frame.stateHash).toBe(stateHash);
   });
 

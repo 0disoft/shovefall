@@ -6,7 +6,7 @@ import type {
   RenderParticipantV1,
   SkillSlotIndex,
 } from "../simulation/contracts";
-import { getSkillManaMultiplier } from "../simulation/progression";
+import { getSkillManaCost } from "../simulation/skills";
 import { FIXED_TICKS_PER_SECOND } from "../simulation/versions";
 
 export type ActionButtonState = "blocked" | "cooldown" | "mana" | "ready";
@@ -16,6 +16,7 @@ export interface ActionButtonViewModel {
   readonly text: string;
   readonly disabled: boolean;
   readonly ariaLabel?: string;
+  readonly rejectionMessage?: string;
 }
 
 export interface ActionHudContext {
@@ -79,7 +80,7 @@ export function createSkillButtonViewModel(
   const manaCost =
     definition === undefined
       ? 0
-      : Math.ceil(definition.manaCost * getSkillManaMultiplier(skillRank));
+      : getSkillManaCost(definition.id, skillRank, participant.startingAttributes);
   const cooldownTicks = Math.max(0, (slot?.readyTick ?? 0) - context.tick);
   const blocked =
     context.countdownActive ||
@@ -110,6 +111,13 @@ export function createSkillButtonViewModel(
             : `${manaCost}MP`
     }`,
     disabled: blocked || cooldownTicks > 0 || lacksMana || slot === undefined,
+    ...(state === "cooldown"
+      ? { rejectionMessage: `재사용 대기시간 중이야. ${formatCooldown(cooldownTicks)} 남았어.` }
+      : state === "mana"
+        ? { rejectionMessage: `마나가 부족해. ${manaCost}MP가 필요해.` }
+        : state === "blocked"
+          ? { rejectionMessage: "지금은 이 스킬을 사용할 수 없어." }
+          : {}),
   });
 }
 

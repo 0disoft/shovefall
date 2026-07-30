@@ -4,6 +4,7 @@ import type {
   SkillDefinitionId,
   SkillSlotIndex,
   SkillSlotState,
+  StartingAttributes,
   Tick,
 } from "./contracts";
 import { SimulationContractError } from "./math";
@@ -19,7 +20,9 @@ import {
 } from "./progression";
 import {
   getStartingCooldownMultiplier,
+  getStartingManaCostMultiplier,
   getStartingOutgoingMultiplier,
+  getStartingSkillDamageMultiplier,
 } from "./starting-attributes";
 
 export function applyStartingSkills(
@@ -104,6 +107,21 @@ export interface SkillCastMetrics {
   readonly shield: number;
 }
 
+export function getSkillManaCost(
+  definitionId: SkillDefinitionId,
+  rank: number,
+  startingAttributes: StartingAttributes,
+): number {
+  return Math.max(
+    0,
+    Math.ceil(
+      getSkillDefinition(definitionId).manaCost *
+        getSkillManaMultiplier(rank) *
+        getStartingManaCostMultiplier(startingAttributes),
+    ),
+  );
+}
+
 export function getSkillCastMetrics(
   participant: ParticipantState,
   slotIndex: SkillSlotIndex,
@@ -118,12 +136,13 @@ export function getSkillCastMetrics(
   const durationMultiplier = getSkillDurationMultiplier(rank);
   return Object.freeze({
     rank,
-    manaCost: Math.max(0, Math.ceil(definition.manaCost * getSkillManaMultiplier(rank))),
+    manaCost: getSkillManaCost(slot.definitionId, rank, participant.startingAttributes),
     damage:
       definition.damage *
       getSkillDamageMultiplier(rank) *
       getPowerMultiplier(participant.progression.stats) *
-      getStartingOutgoingMultiplier(participant.startingAttributes),
+      getStartingOutgoingMultiplier(participant.startingAttributes) *
+      getStartingSkillDamageMultiplier(participant.startingAttributes),
     impulse:
       definition.impulse *
       getSkillImpulseMultiplier(rank) *

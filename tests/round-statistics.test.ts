@@ -47,7 +47,7 @@ describe("round statistics", () => {
         sequence: 0,
         kind: "skill-used",
         actorId: 1,
-        skillDefinitionId: "force-palm",
+        skillDefinitionId: "arc-bolt",
       }),
       Object.freeze({
         eventVersion: 1,
@@ -71,6 +71,34 @@ describe("round statistics", () => {
         amount: 7,
         absorbedAmount: 5,
       }),
+      Object.freeze({
+        eventVersion: 1,
+        roundId: frame.roundId,
+        tick: frame.tick,
+        sequence: 3,
+        kind: "skill-hit",
+        actorId: 1,
+        targetActorId: 2,
+        skillDefinitionId: "arc-bolt",
+      }),
+      Object.freeze({
+        eventVersion: 1,
+        roundId: frame.roundId,
+        tick: frame.tick,
+        sequence: 4,
+        kind: "item-used",
+        actorId: 1,
+        itemDefinitionId: "bomb",
+      }),
+      Object.freeze({
+        eventVersion: 1,
+        roundId: frame.roundId,
+        tick: frame.tick,
+        sequence: 5,
+        kind: "shove-hit",
+        actorId: 1,
+        targetActorId: 2,
+      }),
     ]);
 
     tracker.recordStep(previousFrame, frame, events, 1);
@@ -81,9 +109,12 @@ describe("round statistics", () => {
       damageDealt: 18,
       damageTaken: 7,
       damageBlocked: 5,
+      itemUses: 1,
+      shoveHits: 1,
       slowedTicks: 1,
     });
-    expect(statistics.skillUses["force-palm"]).toBe(1);
+    expect(statistics.skillUses["arc-bolt"]).toBe(1);
+    expect(statistics.skillHits["arc-bolt"]).toBe(1);
   });
 
   it("resets every accumulated field for a fresh round", () => {
@@ -95,6 +126,8 @@ describe("round statistics", () => {
       damageDealt: 0,
       damageTaken: 0,
       damageBlocked: 0,
+      itemUses: 0,
+      shoveHits: 0,
       slowedTicks: 0,
     });
   });

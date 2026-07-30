@@ -7,7 +7,7 @@ export interface GamepadMovementVector {
 
 export interface GamepadInput {
   clear(state: InputState): void;
-  sample(state: InputState, actions?: GamepadActions): void;
+  sample(state: InputState, actions?: GamepadActions, timestamp?: number): void;
 }
 
 export interface GamepadActions {
@@ -27,6 +27,8 @@ export interface GamepadSnapshot {
 export type GamepadSource = () => readonly (GamepadSnapshot | null)[];
 
 const AXIS_DEAD_ZONE = 0.18;
+const AIM_REPEAT_INITIAL_DELAY_MILLISECONDS = 280;
+const AIM_REPEAT_INTERVAL_MILLISECONDS = 120;
 
 function readButton(buttons: readonly GamepadButton[], index: number): boolean {
   return buttons[index]?.pressed === true || (buttons[index]?.value ?? 0) > 0.5;
@@ -60,18 +62,22 @@ export function createGamepadInput(
   let secondSkillHeld = false;
   let grappleHeld = false;
   let firstItemHeld = false;
+  let aimDirection = "";
+  let nextAimRepeatTimestamp = 0;
 
   const clear = (state: InputState): void => {
     firstSkillHeld = false;
     secondSkillHeld = false;
     grappleHeld = false;
     firstItemHeld = false;
+    aimDirection = "";
+    nextAimRepeatTimestamp = 0;
     state.setGamepadMovement(0, 0);
   };
 
   return Object.freeze({
     clear,
-    sample(state: InputState, actions?: GamepadActions): void {
+    sample(state: InputState, actions?: GamepadActions, timestamp = performance.now()): void {
       const gamepads = source();
       const gamepad = [...gamepads].find((candidate) => candidate?.connected === true);
 
@@ -88,9 +94,23 @@ export function createGamepadInput(
       if (actions?.isTargeting?.() === true) {
         state.setGamepadMovement(0, 0);
         if (movement.x !== 0 || movement.y !== 0) {
-          actions.onTargetingMoved?.(movement.x, movement.y);
+          const nextDirection = `${Math.sign(movement.x)}:${Math.sign(movement.y)}`;
+          if (nextDirection !== aimDirection || timestamp >= nextAimRepeatTimestamp) {
+            actions.onTargetingMoved?.(movement.x, movement.y);
+            nextAimRepeatTimestamp =
+              timestamp +
+              (nextDirection === aimDirection
+                ? AIM_REPEAT_INTERVAL_MILLISECONDS
+                : AIM_REPEAT_INITIAL_DELAY_MILLISECONDS);
+          }
+          aimDirection = nextDirection;
+        } else {
+          aimDirection = "";
+          nextAimRepeatTimestamp = 0;
         }
       } else {
+        aimDirection = "";
+        nextAimRepeatTimestamp = 0;
         state.setGamepadMovement(movement.x, movement.y);
       }
 

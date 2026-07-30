@@ -11,6 +11,29 @@ export const STARTING_ATTRIBUTE_IDS = Object.freeze([
 ] as const satisfies readonly StartingAttributeId[]);
 export const STARTING_ATTRIBUTE_POINT_TOTAL = 20;
 export const STARTING_ATTRIBUTE_LIMITS = Object.freeze({ minimum: 0, maximum: 20 });
+export const STARTING_ATTRIBUTE_EFFECTS = Object.freeze({
+  strength: Object.freeze({ massPerPoint: 0.025, outgoingPerPoint: 0.0375 }),
+  agility: Object.freeze({
+    movementPerPoint: 0.025,
+    cooldownReductionPerPoint: 0.04,
+    manaCostReductionPerPoint: 0.0175,
+    stumbleReductionPerPoint: 0.025,
+  }),
+  constitution: Object.freeze({ maximumHealthPerPoint: 1.75, healthRegenPerPoint: 0.0125 }),
+  spirit: Object.freeze({
+    maximumManaPerPoint: 8,
+    manaRegenPerPoint: 0.1,
+    skillDamagePerPoint: 0.02,
+  }),
+  balance: Object.freeze({
+    impulseReductionPerPoint: 0.04,
+    controlReductionPerPoint: 0.03,
+  }),
+  willpower: Object.freeze({
+    damageReductionPerPoint: 0.0125,
+    shieldPerPoint: 0.0125,
+  }),
+});
 export const DEFAULT_STARTING_ATTRIBUTES: StartingAttributes = Object.freeze({
   strength: 4,
   agility: 4,
@@ -71,49 +94,75 @@ export function assertStartingAttributes(value: unknown): asserts value is Start
 }
 
 export function getStartingMassFactor(attributes: StartingAttributes): number {
-  return stable(1 + attributes.strength * 0.025);
+  return stable(1 + attributes.strength * STARTING_ATTRIBUTE_EFFECTS.strength.massPerPoint);
 }
 
 export function getStartingOutgoingMultiplier(attributes: StartingAttributes): number {
-  return stable(1 + attributes.strength * 0.025);
+  return stable(1 + attributes.strength * STARTING_ATTRIBUTE_EFFECTS.strength.outgoingPerPoint);
 }
 
 export function getStartingMovementMultiplier(attributes: StartingAttributes): number {
-  return stable(1 + attributes.agility * 0.04);
+  return stable(1 + attributes.agility * STARTING_ATTRIBUTE_EFFECTS.agility.movementPerPoint);
 }
 
 export function getStartingCooldownMultiplier(attributes: StartingAttributes): number {
-  return stable(1 - attributes.agility * 0.04);
+  return stable(
+    1 - attributes.agility * STARTING_ATTRIBUTE_EFFECTS.agility.cooldownReductionPerPoint,
+  );
+}
+
+export function getStartingManaCostMultiplier(attributes: StartingAttributes): number {
+  return stable(
+    1 - attributes.agility * STARTING_ATTRIBUTE_EFFECTS.agility.manaCostReductionPerPoint,
+  );
+}
+
+export function getStartingStumbleDurationMultiplier(attributes: StartingAttributes): number {
+  return stable(
+    1 - attributes.agility * STARTING_ATTRIBUTE_EFFECTS.agility.stumbleReductionPerPoint,
+  );
 }
 
 export function getStartingMaximumHealthBonus(attributes: StartingAttributes): number {
-  return attributes.constitution * 6;
+  return attributes.constitution * STARTING_ATTRIBUTE_EFFECTS.constitution.maximumHealthPerPoint;
 }
 
 export function getStartingHealthRegenMultiplier(attributes: StartingAttributes): number {
-  return stable(1 + attributes.constitution * 0.04);
+  return stable(
+    1 + attributes.constitution * STARTING_ATTRIBUTE_EFFECTS.constitution.healthRegenPerPoint,
+  );
 }
 
 export function getStartingMaximumManaBonus(attributes: StartingAttributes): number {
-  return attributes.spirit * 8;
+  return attributes.spirit * STARTING_ATTRIBUTE_EFFECTS.spirit.maximumManaPerPoint;
 }
 
 export function getStartingManaRegenMultiplier(attributes: StartingAttributes): number {
-  return stable(1 + attributes.spirit * 0.08);
+  return stable(1 + attributes.spirit * STARTING_ATTRIBUTE_EFFECTS.spirit.manaRegenPerPoint);
+}
+
+export function getStartingSkillDamageMultiplier(attributes: StartingAttributes): number {
+  return stable(1 + attributes.spirit * STARTING_ATTRIBUTE_EFFECTS.spirit.skillDamagePerPoint);
 }
 
 export function getStartingIncomingImpulseMultiplier(attributes: StartingAttributes): number {
-  return stable(1 - attributes.balance * 0.035);
+  return stable(
+    1 - attributes.balance * STARTING_ATTRIBUTE_EFFECTS.balance.impulseReductionPerPoint,
+  );
 }
 
 export function getStartingControlDurationMultiplier(attributes: StartingAttributes): number {
-  return stable(1 - attributes.balance * 0.025);
+  return stable(
+    1 - attributes.balance * STARTING_ATTRIBUTE_EFFECTS.balance.controlReductionPerPoint,
+  );
 }
 
 export function getStartingDamageTakenMultiplier(attributes: StartingAttributes): number {
-  return stable(1 - attributes.willpower * 0.02);
+  return stable(
+    1 - attributes.willpower * STARTING_ATTRIBUTE_EFFECTS.willpower.damageReductionPerPoint,
+  );
 }
 
 export function getStartingShieldMultiplier(attributes: StartingAttributes): number {
-  return stable(1 + attributes.willpower * 0.02);
+  return stable(1 + attributes.willpower * STARTING_ATTRIBUTE_EFFECTS.willpower.shieldPerPoint);
 }

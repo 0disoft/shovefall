@@ -81,8 +81,8 @@ describe("replay fixture contract", () => {
           balance: 4,
           willpower: 0,
         },
-        startingItems: ["wind-blast"],
-        startingSkills: ["force-palm", "blink-step", "chain-bind"],
+        startingItems: ["soap"],
+        startingSkills: ["arc-bolt", "blink-step", "chain-bind"],
       },
       endTick: 30,
       commands: [{ ...createNeutralCommand(0, 1), useSkillSlot: 2, useItemSlot: 0 }],
@@ -99,8 +99,8 @@ describe("replay fixture contract", () => {
         balance: 4,
         willpower: 0,
       },
-      startingItems: ["wind-blast"],
-      startingSkills: ["force-palm", "blink-step", "chain-bind"],
+      startingItems: ["soap"],
+      startingSkills: ["arc-bolt", "blink-step", "chain-bind"],
     });
     expect(parsed.commands[0]?.useSkillSlot).toBe(2);
     expect(parsed.commands[0]?.useItemSlot).toBe(0);
@@ -127,8 +127,8 @@ describe("replay fixture contract", () => {
               balance: 4,
               willpower: 0,
             },
-            startingItems: ["wind-blast", "wind-blast"],
-            startingSkills: ["force-palm", "blink-step", "arc-bolt"],
+            startingItems: ["soap", "soap"],
+            startingSkills: ["arc-bolt", "blink-step", "arc-bolt"],
           },
         }),
       ),

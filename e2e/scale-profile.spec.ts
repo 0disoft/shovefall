@@ -44,11 +44,10 @@ const STARTING_ITEM_IDS = Object.freeze([
   "iron-boots",
   "feather",
   "spring-glove",
-  "wind-blast",
+  "soap",
   "brick-bag",
   "boat",
   "bomb",
-  "soap",
 ] as const);
 
 function percentile(values: readonly number[], fraction: number): number {

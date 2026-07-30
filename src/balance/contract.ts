@@ -4,6 +4,7 @@ export type BalancePhase = "controlled" | "production";
 export type BalanceCategory = "attribute" | "skill" | "item" | "personality" | "skill-combination";
 
 export type BalanceDeathCause = "fall" | "health" | "bomb" | "rock" | "other";
+export type BalanceSignal = "buff-review" | "watch" | "high-variance" | "nerf-review";
 
 export interface BalanceInterval {
   readonly lower: number;
@@ -27,7 +28,7 @@ export interface BalanceAggregate {
   readonly damageDealtPerRound: number;
   readonly usesPerRound: number;
   readonly hitsPerUse: number | null;
-  readonly signal: "buff-review" | "watch" | "nerf-review";
+  readonly signal: BalanceSignal;
 }
 
 export interface BalanceRoundRecord {

@@ -37,7 +37,7 @@ const ITEM_SPAWN_WEIGHTS = Object.freeze({
   interior: 1,
 } as const);
 const ITEM_SPAWN_BANDS = Object.freeze(["edge", "near-edge", "interior"] as const);
-const TREASURE_SHIP_ID = 1;
+const TREASURE_SHIP_COUNT = 2;
 const TREASURE_SHIP_ORBIT_TICKS = 2_400;
 const TREASURE_SHIP_OFFSHORE_MARGIN = 3.5;
 const GIFT_DELIVERY_FLIGHT_TICKS = 72;
@@ -48,6 +48,7 @@ export type ItemSpawnBand = keyof typeof ITEM_SPAWN_WEIGHTS;
 interface ItemSpawnCandidate {
   readonly position: Vector2;
   readonly band: ItemSpawnBand;
+  readonly shoreDistance: number;
 }
 
 interface TreasureRouteBounds {
@@ -128,17 +129,53 @@ function createTreasureRoute(tiles: readonly TileState[]): TreasureRouteBounds {
   });
 }
 
-export function getTreasureShipState(state: ItemSystemState, tick: Tick): TreasureShipState {
+export function getTreasureShipStates(
+  state: ItemSystemState,
+  tick: Tick,
+): readonly TreasureShipState[] {
   const phase = ((tick % TREASURE_SHIP_ORBIT_TICKS) / TREASURE_SHIP_ORBIT_TICKS) * Math.PI * 2;
   const { centerX, centerY, radiusX, radiusY } = state.treasureRoute;
 
-  return Object.freeze({
-    shipId: TREASURE_SHIP_ID,
-    position: Object.freeze({
-      x: centerX + Math.cos(phase - Math.PI / 2) * radiusX,
-      y: centerY + Math.sin(phase - Math.PI / 2) * radiusY,
+  return Object.freeze(
+    Array.from({ length: TREASURE_SHIP_COUNT }, (_, index) => {
+      const shipPhase = phase - Math.PI / 2 + (index * Math.PI * 2) / TREASURE_SHIP_COUNT;
+      return Object.freeze({
+        shipId: index + 1,
+        position: Object.freeze({
+          x: centerX + Math.cos(shipPhase) * radiusX,
+          y: centerY + Math.sin(shipPhase) * radiusY,
+        }),
+      });
     }),
-  });
+  );
+}
+
+function getStableShoreDistance(position: Vector2, stableTileIds: ReadonlySet<string>): number {
+  const column = Math.floor(position.x);
+  const row = Math.floor(position.y);
+
+  for (let radius = 1; radius <= 8; radius += 1) {
+    for (let offsetY = -radius; offsetY <= radius; offsetY += 1) {
+      for (let offsetX = -radius; offsetX <= radius; offsetX += 1) {
+        if (Math.max(Math.abs(offsetX), Math.abs(offsetY)) !== radius) {
+          continue;
+        }
+
+        if (!stableTileIds.has(`${column + offsetX}:${row + offsetY}`)) {
+          return radius - 1;
+        }
+      }
+    }
+  }
+
+  return 8;
+}
+
+export function getItemShoreDistance(position: Vector2, tiles: readonly TileState[]): number {
+  return getStableShoreDistance(
+    position,
+    new Set(getStableTiles(tiles).map(({ tileId }) => tileId)),
+  );
 }
 
 function getItemSpawnBandFromStableTiles(
@@ -198,7 +235,8 @@ function getSpawnCandidates(
     )
     .map((position) => {
       const band = getItemSpawnBandFromStableTiles(position, stableTileIds);
-      return Object.freeze({ position, band });
+      const shoreDistance = getStableShoreDistance(position, stableTileIds);
+      return Object.freeze({ position, band, shoreDistance });
     });
 }
 
@@ -251,6 +289,7 @@ function chooseCandidate(
 
 function createGiftDelivery(
   state: ItemSystemState,
+  shipId: number,
   target: Vector2,
   origin: Vector2,
   tick: Tick,
@@ -262,6 +301,7 @@ function createGiftDelivery(
 
   return Object.freeze({
     deliveryId: state.nextDeliveryId,
+    shipId,
     itemId: state.nextItemId,
     definitionId,
     origin: Object.freeze({ ...origin }),
@@ -269,6 +309,10 @@ function createGiftDelivery(
     launchTick: tick,
     impactTick: tick + GIFT_DELIVERY_FLIGHT_TICKS,
   });
+}
+
+function getTreasureLaunchIntervalTicks(config: GameConfigV1): number {
+  return Math.max(1, Math.floor(config.itemSpawnIntervalTicks / TREASURE_SHIP_COUNT));
 }
 
 function createItem(itemId: ItemId, position: Vector2, tick: Tick, random: XorShift32): ItemState {
@@ -367,7 +411,7 @@ export function createItemSystem(
     nextDeliveryId: 1,
     nextSpawnTick:
       config.itemsEnabled && config.itemSpawnIntervalTicks > 0
-        ? config.itemSpawnIntervalTicks
+        ? getTreasureLaunchIntervalTicks(config)
         : null,
     initialSafeTileCount,
     treasureRoute: createTreasureRoute(tiles),
@@ -846,22 +890,38 @@ export function advanceItemSpawns(
 
   nextState = Object.freeze({
     ...nextState,
-    nextSpawnTick: tick + config.itemSpawnIntervalTicks,
+    nextSpawnTick: tick + getTreasureLaunchIntervalTicks(config),
   });
 
   if (nextState.items.length + nextState.giftDeliveries.length < cap) {
-    const treasureShip = getTreasureShipState(nextState, tick);
-    const target = chooseCandidate(
-      getSpawnCandidates(tiles, participants, nextState.items, blockedTileIds),
-      random,
-      treasureShip.position,
+    const treasureShips = getTreasureShipStates(nextState, tick);
+    const preferredShipIndex = (nextState.nextDeliveryId - 1) % treasureShips.length;
+    const treasureShip = [
+      ...treasureShips.slice(preferredShipIndex),
+      ...treasureShips.slice(0, preferredShipIndex),
+    ].find(({ shipId }) =>
+      nextState.giftDeliveries.every((delivery) => delivery.shipId !== shipId),
     );
+    const deliveryCandidates = getSpawnCandidates(
+      tiles,
+      participants,
+      nextState.items,
+      blockedTileIds,
+    ).filter(({ shoreDistance }) => shoreDistance >= 3 && shoreDistance <= 7);
+    const target = chooseCandidate(deliveryCandidates, random, treasureShip?.position);
 
-    if (target !== undefined && nextState.giftDeliveries.length === 0) {
-      const delivery = createGiftDelivery(nextState, target, treasureShip.position, tick, random);
+    if (treasureShip !== undefined && target !== undefined) {
+      const delivery = createGiftDelivery(
+        nextState,
+        treasureShip.shipId,
+        target,
+        treasureShip.position,
+        tick,
+        random,
+      );
       nextState = Object.freeze({
         ...nextState,
-        giftDeliveries: Object.freeze([delivery]),
+        giftDeliveries: Object.freeze([...nextState.giftDeliveries, delivery]),
         nextItemId: nextState.nextItemId + 1,
         nextDeliveryId: nextState.nextDeliveryId + 1,
       });

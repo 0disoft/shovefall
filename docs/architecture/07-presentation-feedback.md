@@ -18,9 +18,9 @@ The browser reduced-motion preference removes nonessential movement and flash am
 
 ## Optional Audio
 
-Web Audio is created only after a user gesture. Six oscillator voices may be active at once. When the cap is full, a higher-priority fall or result cue may replace a lower-priority miss or pickup cue; equal or lower priority is dropped. The visible mute control is local UI state and does not enter replay or simulation state.
+Procedural sound effects and licensed background music are separate browser-local channels. Web Audio creates the six-voice effect mixer only after a user gesture. When the cap is full, a higher-priority fall or result cue may replace a lower-priority miss or pickup cue; equal or lower priority is dropped. A same-origin `HTMLAudioElement` loops `HYP - Catch Me If You Can` from the first accepted pointer or keyboard gesture and remains alive through menu, settings, and arena transitions.
 
-Missing, rejected, or failed Web Audio changes the audio state to `unavailable` and play continues silently. There are no downloaded audio assets, autoplay claims, background music, remote requests, or automatic retries.
+Effects default to 50 and background music to 35 on independent persisted 0–100 controls. The visible global sound button mutes or unmutes both channels without changing either saved level. Browser autoplay rejection leaves music `locked` so another gesture may retry; missing or failed media becomes `unavailable`. Either channel may fail while play continues with the other channel or in silence. Audio state never enters replay or simulation state and no runtime audio request leaves the same origin.
 
 ## Renderer Loss and Fatal Recovery
 
@@ -30,6 +30,6 @@ An uncaught round-loop failure stops scheduling and enters the existing DOM fata
 
 ## Evidence and Limits
 
-Vitest proves event deduplication, new-round acceptance, artillery rendering calls, atlas integration under a mocked PixiJS boundary, silent fallback, unlock, mute, and voice priority. Playwright proves menu/history/settings/HUD state, generated item-card art and arena-asset loading, mute semantics, unavailable audio, reduced motion, deterministic human defeat and immediate restart, fatal recovery, context-loss pause, and restoration. The production Chrome profile targets the public fixed-50 presentation.
+Vitest proves event deduplication, new-round acceptance, artillery rendering calls, atlas integration under a mocked PixiJS boundary, effect fallback and voice priority, music looping, retry, mute, and independent volume. Playwright proves menu/history/settings/HUD state, separate persisted audio levels, generated item-card art and arena-asset loading, mute semantics, unavailable audio, reduced motion, deterministic human defeat and immediate restart, fatal recovery, context-loss pause, and restoration. The production Chrome profile targets the public fixed-60 presentation.
 
 This evidence does not establish audio-device quality, final-art readability, photosensitivity approval, physical-GPU performance, cross-browser support, or external playtest acceptance.

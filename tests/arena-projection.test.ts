@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   ARENA_CAMERA_ELEVATION_DEGREES,
+  ARENA_CAMERA_ZOOM,
   ARENA_DEPTH_SCALE,
   ARENA_SHADOW_OFFSET_SCALE,
   createArenaProjection,
@@ -10,13 +11,14 @@ import {
 } from "../src/presentation/arena-projection";
 
 describe("arena 2.5D projection", () => {
-  it("uses the chosen 58 degree elevation without changing horizontal scale", () => {
+  it("uses the chosen 58 degree elevation with a modest terrain zoom", () => {
     const projection = createArenaProjection(1440, 688);
     const origin = projectArenaPoint({ x: 0, y: 0 }, projection);
     const horizontal = projectArenaPoint({ x: 1, y: 0 }, projection);
     const depth = projectArenaPoint({ x: 0, y: 1 }, projection);
 
     expect(ARENA_CAMERA_ELEVATION_DEGREES).toBe(58);
+    expect(ARENA_CAMERA_ZOOM).toBe(1.15);
     expect(ARENA_DEPTH_SCALE).toBeCloseTo(Math.sin((58 * Math.PI) / 180), 8);
     expect(horizontal.x - origin.x).toBeCloseTo(projection.pitch, 8);
     expect(depth.y - origin.y).toBeCloseTo(projection.pitch * ARENA_DEPTH_SCALE, 8);
@@ -24,6 +26,13 @@ describe("arena 2.5D projection", () => {
     expect(projection.cliffDepth).toBeLessThanOrEqual(14);
     expect(ARENA_SHADOW_OFFSET_SCALE).toBeGreaterThanOrEqual(0.18);
     expect(ARENA_SHADOW_OFFSET_SCALE).toBeLessThanOrEqual(0.55);
+  });
+
+  it("makes terrain larger than the unzoomed viewport fit", () => {
+    const projection = createArenaProjection(1440, 688);
+    const unzoomedPitch = Math.min(1440 / 17, 688 / (10.5 * ARENA_DEPTH_SCALE + 0.22));
+
+    expect(projection.pitch).toBeCloseTo(Math.min(unzoomedPitch * ARENA_CAMERA_ZOOM, 80), 8);
   });
 
   it("projects facing vectors onto the same screen plane as movement", () => {

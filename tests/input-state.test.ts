@@ -93,6 +93,17 @@ describe("human input state", () => {
     });
   });
 
+  it("clears pointer and gamepad movement for aiming without forgetting held arrows", () => {
+    const input = new InputState();
+    input.press("ArrowRight");
+    input.setPointerMovement(0.5, 0);
+    input.setGamepadMovement(0, -1);
+
+    input.clearTransientMovement();
+
+    expect(input.consumeCommand(0, 1).move).toEqual({ x: 1, y: 0 });
+  });
+
   it("uses bounded pointer movement while a pointer is active and clears it safely", () => {
     const input = new InputState();
     input.press("ArrowLeft");

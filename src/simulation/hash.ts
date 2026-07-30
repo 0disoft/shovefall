@@ -5,6 +5,7 @@ import type {
   GiftDeliveryState,
   ItemState,
   ParticipantState,
+  PendingSoapDamageState,
   RoundId,
   RoundStateV1,
   RockShotState,
@@ -25,6 +26,7 @@ export interface HashableWorldState {
   readonly trees: readonly TreeObstacleState[];
   readonly bombs: readonly BombState[];
   readonly soapPatches: readonly SoapPatchState[];
+  readonly pendingSoapDamage: readonly PendingSoapDamageState[];
   readonly skillZones: readonly SkillZoneState[];
   readonly nextSkillZoneId: number;
   readonly rockShots: readonly RockShotState[];
@@ -154,7 +156,7 @@ export function hashWorldState(state: HashableWorldState): string {
     .toSorted((left, right) => left.deliveryId - right.deliveryId)
     .map(
       (delivery) =>
-        `${delivery.deliveryId}:${delivery.itemId}:${delivery.definitionId}:${quantize(delivery.origin.x)}:${quantize(delivery.origin.y)}:${quantize(delivery.target.x)}:${quantize(delivery.target.y)}:${delivery.launchTick}:${delivery.impactTick}`,
+        `${delivery.deliveryId}:${delivery.shipId}:${delivery.itemId}:${delivery.definitionId}:${quantize(delivery.origin.x)}:${quantize(delivery.origin.y)}:${quantize(delivery.target.x)}:${quantize(delivery.target.y)}:${delivery.launchTick}:${delivery.impactTick}`,
     );
   const brickWallParts = state.brickWalls
     .toSorted((left, right) => left.tileId.localeCompare(right.tileId))
@@ -172,13 +174,18 @@ export function hashWorldState(state: HashableWorldState): string {
         `${bomb.ownerActorId}:${quantize(bomb.position.x)}:${quantize(bomb.position.y)}:${quantize(bomb.fallbackDirection.x)}:${quantize(bomb.fallbackDirection.y)}:${bomb.placedTick}:${bomb.detonateTick}`,
     );
   const soapPatchParts = state.soapPatches
+    .toSorted((left, right) => left.tileId.localeCompare(right.tileId))
+    .map((patch) => `${patch.tileId}:${patch.ownerActorId}:${patch.placedTick}`);
+  const pendingSoapDamageParts = state.pendingSoapDamage
     .toSorted(
       (left, right) =>
-        left.tileId.localeCompare(right.tileId) || left.ownerActorId - right.ownerActorId,
+        left.applyTick - right.applyTick ||
+        left.targetActorId - right.targetActorId ||
+        left.ownerActorId - right.ownerActorId,
     )
     .map(
-      (patch) =>
-        `${patch.ownerActorId}:${patch.tileId}:${patch.column}:${patch.row}:${patch.placedTick}`,
+      (pending) =>
+        `${pending.ownerActorId}:${pending.targetActorId}:${pending.applyTick}:${quantize(pending.damage)}`,
     );
   const skillZoneParts = state.skillZones
     .toSorted((left, right) => left.zoneId - right.zoneId)
@@ -203,6 +210,7 @@ export function hashWorldState(state: HashableWorldState): string {
     ...(treeParts.length === 0 ? [] : [`trees:${treeParts.join("|")}`]),
     `bombs:${bombParts.join("|")}`,
     `soap-patches:${soapPatchParts.join("|")}`,
+    `soap-damage:${pendingSoapDamageParts.join("|")}`,
     `skill-zones:${skillZoneParts.join("|")}`,
     `skill-zone-cursor:${state.nextSkillZoneId}`,
     `rock-shots:${rockShotParts.join("|")}`,

@@ -11,7 +11,13 @@ import {
   createItemButtonViewModel,
   createSkillButtonViewModel,
 } from "./action-hud";
-import { createDebugTuningController, type DebugTuningController } from "./debug-tuning";
+import {
+  isFontScaleId,
+  loadUserPreferences,
+  normalizeUserPreferences,
+  saveUserPreferences,
+  type UserPreferences,
+} from "./user-preferences";
 import { createPointerControls, type PointerControls } from "./pointer-controls";
 import {
   createPlaytestRoundReport,
@@ -34,11 +40,7 @@ import type {
   UpgradeStatId,
 } from "../simulation/contracts";
 import { normalizeGameConfig } from "../simulation/contracts";
-import {
-  DEFAULT_GAMEPLAY_TUNING,
-  SIMULATION_TUNING,
-  type GameplayTuningV1,
-} from "../simulation/tuning";
+import { DEFAULT_GAMEPLAY_TUNING, SIMULATION_TUNING } from "../simulation/tuning";
 import {
   getMobilityMultiplier,
   getHealthRegenMultiplier,
@@ -48,6 +50,7 @@ import {
   getPowerMultiplier,
   getReflexCooldownReduction,
   getStabilityMultiplier,
+  UPGRADE_EFFECTS,
   isUpgradeStatId,
   canSpendStatPoint,
   MAX_UPGRADE_LEVEL,
@@ -60,9 +63,12 @@ import {
 } from "../content/items";
 import { createArenaRenderer, type ArenaRenderer } from "../presentation/arena-renderer";
 import {
+  createBackgroundMusic,
   createAudioFeedback,
   type AudioFeedback,
   type AudioFeedbackState,
+  type BackgroundMusic,
+  type BackgroundMusicState,
 } from "../presentation/audio-feedback";
 import { FIXED_TICKS_PER_SECOND, PRODUCT_VERSION } from "../simulation/versions";
 import {
@@ -73,6 +79,7 @@ import {
   getStartingHealthRegenMultiplier,
   getStartingIncomingImpulseMultiplier,
   getStartingManaRegenMultiplier,
+  getStartingManaCostMultiplier,
   getStartingMassFactor,
   getStartingMaximumHealthBonus,
   getStartingMaximumManaBonus,
@@ -123,9 +130,137 @@ const UPGRADE_LABELS: Readonly<Record<UpgradeStatId, string>> = Object.freeze({
   focus: "집중력",
 });
 
+const STARTING_ATTRIBUTE_LABELS: Readonly<Record<StartingAttributeId, string>> = Object.freeze({
+  strength: "완력",
+  agility: "민첩",
+  constitution: "체질",
+  spirit: "정신",
+  balance: "균형",
+  willpower: "의지",
+});
+
+interface UpgradeEffectView {
+  readonly label: string;
+  readonly current: string;
+  readonly next: string;
+}
+
+function formatSignedPercent(value: number): string {
+  const percentage = Math.round(value * 1_000) / 10;
+  return `${percentage > 0 ? "+" : ""}${percentage}%`;
+}
+
+function getUpgradeEffectViews(id: UpgradeStatId, rank: number): readonly UpgradeEffectView[] {
+  const nextRank = Math.min(MAX_UPGRADE_LEVEL, rank + 1);
+  switch (id) {
+    case "power":
+      return [
+        {
+          label: "공격 위력",
+          current: formatSignedPercent(rank * UPGRADE_EFFECTS.powerImpulsePerLevel),
+          next: formatSignedPercent(nextRank * UPGRADE_EFFECTS.powerImpulsePerLevel),
+        },
+      ];
+    case "stability":
+      return [
+        {
+          label: "밀침 저항",
+          current: formatSignedPercent(rank * UPGRADE_EFFECTS.stabilityImpulseReductionPerLevel),
+          next: formatSignedPercent(nextRank * UPGRADE_EFFECTS.stabilityImpulseReductionPerLevel),
+        },
+        {
+          label: "받는 피해",
+          current: formatSignedPercent(-rank * UPGRADE_EFFECTS.stabilityDamageReductionPerLevel),
+          next: formatSignedPercent(-nextRank * UPGRADE_EFFECTS.stabilityDamageReductionPerLevel),
+        },
+      ];
+    case "mobility":
+      return [
+        {
+          label: "이동 속도",
+          current: formatSignedPercent(rank * UPGRADE_EFFECTS.mobilitySpeedPerLevel),
+          next: formatSignedPercent(nextRank * UPGRADE_EFFECTS.mobilitySpeedPerLevel),
+        },
+      ];
+    case "reflex":
+      return [
+        {
+          label: "재사용 대기",
+          current: `-${rank * UPGRADE_EFFECTS.reflexCooldownTicksPerLevel}틱`,
+          next: `-${nextRank * UPGRADE_EFFECTS.reflexCooldownTicksPerLevel}틱`,
+        },
+      ];
+    case "vitality":
+      return [
+        {
+          label: "최대 체력",
+          current: String(100 + rank * UPGRADE_EFFECTS.vitalityHealthPerLevel),
+          next: String(100 + nextRank * UPGRADE_EFFECTS.vitalityHealthPerLevel),
+        },
+        {
+          label: "체력 재생",
+          current: formatSignedPercent(rank * UPGRADE_EFFECTS.vitalityRegenPerLevel),
+          next: formatSignedPercent(nextRank * UPGRADE_EFFECTS.vitalityRegenPerLevel),
+        },
+      ];
+    case "focus":
+      return [
+        {
+          label: "최대 마나",
+          current: String(100 + rank * UPGRADE_EFFECTS.focusManaPerLevel),
+          next: String(100 + nextRank * UPGRADE_EFFECTS.focusManaPerLevel),
+        },
+        {
+          label: "마나 재생",
+          current: formatSignedPercent(rank * UPGRADE_EFFECTS.focusRegenPerLevel),
+          next: formatSignedPercent(nextRank * UPGRADE_EFFECTS.focusRegenPerLevel),
+        },
+      ];
+  }
+  return [];
+}
+
+function renderUpgradeEffectViews(
+  container: HTMLElement,
+  views: readonly UpgradeEffectView[],
+): void {
+  const rows = views.map(({ label, current, next }) => {
+    const row = document.createElement("span");
+    row.className = "trait-upgrade__delta-row";
+
+    const name = document.createElement("span");
+    name.className = "trait-upgrade__delta-label";
+    name.textContent = label;
+
+    const values = document.createElement("span");
+    values.className = "trait-upgrade__delta-values";
+
+    const currentValue = document.createElement("span");
+    currentValue.textContent = current;
+
+    const arrow = document.createElement("span");
+    arrow.className = "trait-upgrade__delta-arrow";
+    arrow.setAttribute("aria-hidden", "true");
+    arrow.textContent = "→";
+
+    const nextValue = document.createElement("strong");
+    nextValue.textContent = next;
+
+    values.append(currentValue, arrow, nextValue);
+    row.append(name, values);
+    return row;
+  });
+
+  container.replaceChildren(...rows);
+  container.setAttribute(
+    "aria-label",
+    views.map(({ label, current, next }) => `${label} ${current}에서 ${next}`).join(", "),
+  );
+}
+
 const SKILL_SLOT_INDICES = Object.freeze([0, 1] as const);
 const ITEM_SLOT_INDICES = Object.freeze([0] as const);
-const SETTINGS_TAB_IDS = Object.freeze(["attributes", "skills", "items", "lab"] as const);
+const SETTINGS_TAB_IDS = Object.freeze(["attributes", "skills", "items", "preferences"] as const);
 type SettingsTabId = (typeof SETTINGS_TAB_IDS)[number];
 const BASE_STARTING_HEALTH = 100;
 const BASE_STARTING_MANA = 100;
@@ -159,18 +294,8 @@ function formatBaselineAdjustment(multiplier: number): string {
   return adjustment === "0%" ? "기본" : adjustment;
 }
 
-function incrementStartingAttribute(
-  attributes: StartingAttributes,
-  id: StartingAttributeId,
-): StartingAttributes {
-  return Object.freeze({
-    strength: attributes.strength + (id === "strength" ? 1 : 0),
-    agility: attributes.agility + (id === "agility" ? 1 : 0),
-    constitution: attributes.constitution + (id === "constitution" ? 1 : 0),
-    spirit: attributes.spirit + (id === "spirit" ? 1 : 0),
-    balance: attributes.balance + (id === "balance" ? 1 : 0),
-    willpower: attributes.willpower + (id === "willpower" ? 1 : 0),
-  });
+function isStartingAttributeId(value: unknown): value is StartingAttributeId {
+  return STARTING_ATTRIBUTE_IDS.some((id) => id === value);
 }
 
 function requireElement<T extends Element>(
@@ -194,6 +319,27 @@ function renderMetricChips(container: HTMLElement, labels: readonly string[]): v
     return chip;
   });
   container.replaceChildren(...chips);
+}
+
+function renderCardEffectRows(
+  container: HTMLElement,
+  description: string,
+  separator: RegExp,
+): void {
+  const rows = description
+    .split(separator)
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0)
+    .map((part) => {
+      const row = document.createElement("span");
+      row.className = "loadout-card__effect-row";
+      row.setAttribute("role", "listitem");
+      row.textContent = part;
+      return row;
+    });
+
+  container.setAttribute("role", "list");
+  container.replaceChildren(...rows);
 }
 
 function createDeveloperTelemetry(anchor: HTMLElement): DeveloperTelemetryController {
@@ -307,27 +453,19 @@ function getEventMessage(event: SimulationEventV1): string | undefined {
     case "item-used":
       return event.actorId !== 1
         ? undefined
-        : event.itemDefinitionId === "wind-blast"
-          ? "장풍을 쐈어."
+        : event.itemDefinitionId === "soap"
+          ? "비누를 설치했어."
           : event.itemDefinitionId === "brick-bag"
             ? "벽돌을 세웠어."
             : event.itemDefinitionId === "boat"
               ? `배를 띄웠어. ${(getItemDefinition("boat").durationTicks ?? 0) / 60}초 동안 물을 건널 수 있어.`
               : event.itemDefinitionId === "bomb"
                 ? `폭탄을 놨어. ${getItemDefinition("bomb").fuseTicks / 60}초 뒤 터져.`
-                : event.itemDefinitionId === "soap"
-                  ? "비누를 앞 칸에 놨어."
-                  : undefined;
-    case "wind-blast-hit":
-      return event.actorId === 1 ? "장풍 적중!" : undefined;
+                : undefined;
+    case "soap-triggered":
+      return event.actorId === 1 ? "비누 함정 적중!" : undefined;
     case "bomb-detonated":
       return event.actorId === 1 ? "폭탄 폭발!" : undefined;
-    case "soap-triggered":
-      return event.targetActorId === 1
-        ? "비누를 밟고 미끄러졌어!"
-        : event.actorId === 1
-          ? "비누 함정 발동!"
-          : undefined;
     case "grappling-hook-hit":
       return event.actorId === 1 ? "갈고리가 걸렸어." : undefined;
     case "stat-point-earned":
@@ -402,6 +540,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
           output: requireElement(row, `#starting-attribute-${id}`, HTMLOutputElement),
           decrement: requireElement(row, '[data-attribute-step="-1"]', HTMLButtonElement),
           increment: requireElement(row, '[data-attribute-step="1"]', HTMLButtonElement),
+          meter: requireElement(row, ".starting-attribute__meter > span", HTMLElement),
         }),
       ] as const;
     }),
@@ -413,22 +552,19 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     }
     return controls;
   };
-  const startingAttributeEffectOutputs = new Map(
-    STARTING_ATTRIBUTE_IDS.map((id) => [
-      id,
-      Object.freeze({
-        current: requireElement(root, `#starting-effect-${id}`, HTMLElement),
-        next: requireElement(root, `#starting-next-${id}`, HTMLElement),
-      }),
-    ]),
+  const startingTotalMeters = [...root.querySelectorAll<HTMLElement>("[data-combat-stat]")].map(
+    (card) => {
+      const id = card.dataset.combatStat;
+      if (!isStartingAttributeId(id)) {
+        throw new Error(`Unsupported combat stat meter source ${id ?? "missing"}.`);
+      }
+      return Object.freeze({
+        card,
+        id,
+        fill: requireElement(card, ".combat-stat-meter > span", HTMLElement),
+      });
+    },
   );
-  const getStartingAttributeEffectOutputs = (id: StartingAttributeId) => {
-    const outputs = startingAttributeEffectOutputs.get(id);
-    if (outputs === undefined) {
-      throw new Error(`Missing starting attribute effect outputs for ${id}.`);
-    }
-    return outputs;
-  };
   const startingTotalOutputs = Object.freeze({
     mass: requireElement(root, "#starting-total-mass", HTMLOutputElement),
     health: requireElement(root, "#starting-total-health", HTMLOutputElement),
@@ -446,7 +582,19 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   const saveSettingsButton = requireElement(form, 'button[type="submit"]', HTMLButtonElement);
   const startingItemCount = requireElement(root, "#starting-item-count", HTMLOutputElement);
   const startingSkillCount = requireElement(root, "#starting-skill-count", HTMLOutputElement);
-  const debugTuningPanel = requireElement(root, "#debug-tuning", HTMLDetailsElement);
+  const fontScaleInputs = [...form.querySelectorAll<HTMLInputElement>('input[name="fontScale"]')];
+  const soundEffectsVolume = requireElement(form, "#sound-effects-volume", HTMLInputElement);
+  const soundEffectsVolumeValue = requireElement(
+    form,
+    "#sound-effects-volume-value",
+    HTMLOutputElement,
+  );
+  const backgroundMusicVolume = requireElement(form, "#background-music-volume", HTMLInputElement);
+  const backgroundMusicVolumeValue = requireElement(
+    form,
+    "#background-music-volume-value",
+    HTMLOutputElement,
+  );
   const startingItemInputs = [
     ...form.querySelectorAll<HTMLInputElement>('input[name="startingItem"]'),
   ];
@@ -465,8 +613,11 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
       `마나 ${definition.manaCost}`,
       `재사용 ${definition.cooldownTicks / 60}초`,
     ]);
-    requireElement(card, ".skill-card__effect", HTMLElement).textContent =
-      formatSkillDescription(definition);
+    renderCardEffectRows(
+      requireElement(card, ".skill-card__effect", HTMLElement),
+      formatSkillDescription(definition),
+      /,\s+/u,
+    );
   }
 
   for (const input of startingItemInputs) {
@@ -482,10 +633,13 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
         ? "즉시 사용"
         : definition.targetMode === "direction"
           ? "방향 지정"
-          : "위치 지정",
+          : "설치 위치 선택",
     ]);
-    requireElement(card, ".item-card__effect", HTMLElement).textContent =
-      formatItemEffectDescription(definition);
+    renderCardEffectRows(
+      requireElement(card, ".item-card__effect", HTMLElement),
+      formatItemEffectDescription(definition),
+      /\s+·\s+/u,
+    );
   }
   const arenaActions = requireElement(root, "#arena-actions", HTMLElement);
   const readyMessage = requireElement(root, "#round-message", HTMLElement);
@@ -494,6 +648,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   const pauseMenuTitle = requireElement(root, "#pause-menu-title", HTMLElement);
   const pauseRoundButton = requireElement(root, "#pause-round", HTMLButtonElement);
   const resumeRoundButton = requireElement(root, "#resume-round", HTMLButtonElement);
+  const viewFinishedMapButton = requireElement(root, "#view-finished-map", HTMLButtonElement);
   const restartButton = requireElement(root, "#restart-round", HTMLButtonElement);
   const backButton = requireElement(root, "#back-to-settings", HTMLButtonElement);
   const copyRoundReportButton = requireElement(root, "#copy-round-report", HTMLButtonElement);
@@ -531,6 +686,27 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     vitality: requireElement(root, "#trait-rank-vitality", HTMLOutputElement),
     focus: requireElement(root, "#trait-rank-focus", HTMLOutputElement),
   });
+  const traitUpgradeChoices = new Map(
+    Object.keys(traitRankOutputs).map((id) => {
+      if (!isUpgradeStatId(id)) {
+        throw new Error(`Unsupported upgrade trait ${id}.`);
+      }
+      const choice = requireElement(root, `[data-trait-choice="${id}"]`, HTMLElement);
+      return [
+        id,
+        Object.freeze({
+          choice,
+          effects: requireElement(choice, `[data-upgrade-effects="${id}"]`, HTMLElement),
+          meter: requireElement(choice, ".trait-upgrade__meter > span", HTMLElement),
+        }),
+      ] as const;
+    }),
+  );
+  for (const [id, traitChoice] of traitUpgradeChoices) {
+    traitChoice.meter.style.setProperty("--meter-current", "0");
+    traitChoice.meter.style.setProperty("--meter-next", String(1 / MAX_UPGRADE_LEVEL));
+    renderUpgradeEffectViews(traitChoice.effects, getUpgradeEffectViews(id, 0));
+  }
   const rendererStatus = requireElement(root, "#renderer-status", HTMLElement);
   const telemetry = requireElement(root, "#game-telemetry", HTMLElement);
   const developerTelemetry = import.meta.env.DEV ? createDeveloperTelemetry(telemetry) : undefined;
@@ -540,10 +716,16 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   const itemValue = requireElement(root, "#item-value", HTMLOutputElement);
   const survivorValue = requireElement(root, "#survivor-value", HTMLOutputElement);
   const roundDistanceMoved = requireElement(root, "#round-distance-moved", HTMLOutputElement);
+  const roundElapsedTime = requireElement(root, "#round-elapsed-time", HTMLOutputElement);
+  const roundCurrentRank = requireElement(root, "#round-current-rank", HTMLOutputElement);
+  const roundEliminations = requireElement(root, "#round-eliminations", HTMLOutputElement);
+  const roundLandRemaining = requireElement(root, "#round-land-remaining", HTMLOutputElement);
   const roundDamageDealt = requireElement(root, "#round-damage-dealt", HTMLOutputElement);
   const roundDamageTaken = requireElement(root, "#round-damage-taken", HTMLOutputElement);
   const roundDamageBlocked = requireElement(root, "#round-damage-blocked", HTMLOutputElement);
   const roundSlowedTime = requireElement(root, "#round-slowed-time", HTMLOutputElement);
+  const roundSkillHits = requireElement(root, "#round-skill-hits", HTMLOutputElement);
+  const roundItemUses = requireElement(root, "#round-item-uses", HTMLOutputElement);
   const roundSkillUses = requireElement(root, "#round-skill-uses", HTMLUListElement);
   const healthValue = requireElement(root, "#health-value", HTMLOutputElement);
   const manaValue = requireElement(root, "#mana-value", HTMLOutputElement);
@@ -559,18 +741,17 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   let renderer: ArenaRenderer | undefined;
   let session: GameSession | undefined;
   let audio: AudioFeedback | undefined;
-  let debugTuning: DebugTuningController | undefined;
+  let backgroundMusic: BackgroundMusic | undefined;
   let pointerControls: PointerControls | undefined;
   let latestSettings: GameSettings | undefined;
   let draftStartingAttributes: StartingAttributes = EMPTY_STARTING_ATTRIBUTES;
-  let latestGameplayTuning: GameplayTuningV1 = DEFAULT_GAMEPLAY_TUNING;
-  let latestDebugTuningEnabled = false;
   let latestMasterSeed: string | undefined;
   let latestRoundReport: string | undefined;
   let latestHumanUpgradeSelections: HumanUpgradeSelection[] = [];
   let latestHumanFinalRank: number | undefined;
   let latestHumanSurvivalTick: number | undefined;
   let latestScoreSaved = false;
+  let latestInitialLandTileCount: number | undefined;
   let roundSkillSignature = "";
   const roundSkillUseOutputs = new Map<string, HTMLOutputElement>();
 
@@ -581,6 +762,26 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
       return undefined;
     }
   })();
+  let userPreferences: UserPreferences = loadUserPreferences(scoreboardStorage);
+
+  const applyUserPreferences = (preferences: UserPreferences): void => {
+    userPreferences = normalizeUserPreferences(preferences);
+    document.documentElement.dataset.fontScale = userPreferences.fontScale;
+    audio?.setVolume(userPreferences.soundEffectsVolume);
+    backgroundMusic?.setVolume(userPreferences.backgroundMusicVolume);
+    soundEffectsVolume.value = String(userPreferences.soundEffectsVolume);
+    soundEffectsVolumeValue.value = String(userPreferences.soundEffectsVolume);
+    backgroundMusicVolume.value = String(userPreferences.backgroundMusicVolume);
+    backgroundMusicVolumeValue.value = String(userPreferences.backgroundMusicVolume);
+    for (const input of fontScaleInputs) {
+      input.checked = input.value === userPreferences.fontScale;
+    }
+  };
+
+  const persistUserPreferences = (preferences: UserPreferences): void => {
+    applyUserPreferences(preferences);
+    saveUserPreferences(scoreboardStorage, userPreferences);
+  };
 
   const setScreen = (screen: "menu" | "settings" | "scoreboard" | "history" | "arena"): void => {
     root.dataset.screen = screen;
@@ -610,13 +811,22 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
 
   const setPauseMenu = (
     visible: boolean,
-    options: { readonly title?: string; readonly resumable?: boolean } = {},
+    options: {
+      readonly title?: string;
+      readonly resumable?: boolean;
+      readonly mapViewAvailable?: boolean;
+      readonly mode?: "paused" | "completed" | "fatal";
+    } = {},
   ): void => {
     const resumable = options.resumable !== false;
     pauseMenu.hidden = !visible;
     pauseRoundButton.setAttribute("aria-expanded", String(visible));
     resumeRoundButton.hidden = !resumable;
     resumeRoundButton.disabled = !resumable;
+    viewFinishedMapButton.hidden = options.mapViewAvailable !== true;
+    pauseMenu.dataset.mode =
+      options.mode ??
+      (root.dataset.round === "completed" ? "completed" : resumable ? "paused" : "fatal");
 
     if (options.title !== undefined) {
       pauseMenuTitle.textContent = options.title;
@@ -829,19 +1039,52 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     versionHistoryList.replaceChildren(fragment);
   };
 
-  const updateSoundControl = (state: AudioFeedbackState): void => {
-    root.dataset.audio = state;
-    const unavailable = state === "unavailable" || state === "closed";
+  let audioState: AudioFeedbackState = "locked";
+  let backgroundMusicState: BackgroundMusicState = "locked";
+
+  const updateSoundControl = (): void => {
+    root.dataset.audio = audioState;
+    root.dataset.backgroundMusic = backgroundMusicState;
+    const effectsUnavailable = audioState === "unavailable" || audioState === "closed";
+    const musicUnavailable =
+      backgroundMusicState === "unavailable" || backgroundMusicState === "closed";
+    const unavailable = effectsUnavailable && musicUnavailable;
+    const muted = audio?.muted === true && backgroundMusic?.muted === true;
     soundButton.disabled = unavailable;
-    soundButton.textContent = unavailable
-      ? "무음"
-      : audio?.muted === true
-        ? "소리 켜기"
-        : "소리 끄기";
-    soundButton.setAttribute("aria-pressed", String(audio?.muted === true));
+    soundButton.textContent = unavailable ? "무음" : muted ? "소리 켜기" : "소리 끄기";
+    soundButton.setAttribute("aria-pressed", String(muted));
   };
 
-  audio = createAudioFeedback(undefined, updateSoundControl);
+  audio = createAudioFeedback(undefined, (state) => {
+    audioState = state;
+    updateSoundControl();
+  });
+  backgroundMusic = createBackgroundMusic(undefined, (state) => {
+    backgroundMusicState = state;
+    updateSoundControl();
+  });
+  applyUserPreferences(userPreferences);
+  updateSoundControl();
+
+  const removeAudioGestureListeners = (): void => {
+    document.removeEventListener("pointerdown", handleAudioGesture, true);
+    document.removeEventListener("keydown", handleAudioGesture, true);
+  };
+
+  const unlockAudio = async (): Promise<void> => {
+    await Promise.all([audio?.unlock(), backgroundMusic?.unlock()]);
+    updateSoundControl();
+    if (audioState !== "locked" && backgroundMusicState !== "locked") {
+      removeAudioGestureListeners();
+    }
+  };
+
+  function handleAudioGesture(): void {
+    void unlockAudio();
+  }
+
+  document.addEventListener("pointerdown", handleAudioGesture, true);
+  document.addEventListener("keydown", handleAudioGesture, true);
 
   const getSelectedStartingItems = (): readonly string[] =>
     startingItemInputs.filter(({ checked }) => checked).map(({ value }) => value);
@@ -891,9 +1134,9 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     startingTotalOutputs.movement.value = formatPercentDelta(
       getStartingMovementMultiplier(draftStartingAttributes),
     );
-    startingTotalOutputs.cooldown.value = formatPercentDelta(
+    startingTotalOutputs.cooldown.value = `대기 ${formatPercentDelta(
       getStartingCooldownMultiplier(draftStartingAttributes),
-    );
+    )} · 마나 ${formatPercentDelta(getStartingManaCostMultiplier(draftStartingAttributes))}`;
     startingTotalOutputs.power.value = formatPercentDelta(
       getStartingOutgoingMultiplier(draftStartingAttributes),
     );
@@ -916,65 +1159,28 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
       getStartingManaRegenMultiplier(draftStartingAttributes),
     );
 
+    for (const { card, id, fill } of startingTotalMeters) {
+      const value = draftStartingAttributes[id];
+      const ratio = value / STARTING_ATTRIBUTE_POINT_TOTAL;
+      fill.style.setProperty("--meter-value", String(ratio));
+      card.dataset.active = value > 0 ? "true" : "false";
+    }
+
     for (const id of STARTING_ATTRIBUTE_IDS) {
       const controls = getStartingAttributeControls(id);
-      const effects = getStartingAttributeEffectOutputs(id);
       const value = draftStartingAttributes[id];
-      const nextAttributes =
-        value >= STARTING_ATTRIBUTE_LIMITS.maximum
-          ? undefined
-          : incrementStartingAttribute(draftStartingAttributes, id);
       controls.output.value = String(value);
       controls.decrement.disabled = value <= STARTING_ATTRIBUTE_LIMITS.minimum;
       controls.increment.disabled = value >= STARTING_ATTRIBUTE_LIMITS.maximum || remaining <= 0;
-      effects.next.textContent =
-        nextAttributes === undefined
-          ? "최대치"
-          : id === "strength"
-            ? `다음 +1: 무게 보정 ${formatPercentDelta(
-                1 +
-                  getStartingMassFactor(nextAttributes) -
-                  getStartingMassFactor(draftStartingAttributes),
-              )} · 위력 +2.5%`
-            : id === "agility"
-              ? "다음 +1: 이동 +4% · 재사용 대기 -4%"
-              : id === "constitution"
-                ? "다음 +1: 최대 체력 +6 · 체력 재생 +4%"
-                : id === "spirit"
-                  ? "다음 +1: 최대 마나 +8 · 마나 재생 +8%"
-                  : id === "balance"
-                    ? "다음 +1: 밀침 저항 +3.5% · 제어 시간 -2.5%"
-                    : "다음 +1: 받는 피해 -2% · 보호막 +2%";
-      effects.current.textContent =
-        id === "strength"
-          ? `현재 무게 보정 ${formatBaselineAdjustment(
-              getStartingMassFactor(draftStartingAttributes),
-            )} · 위력 ${formatPercentDelta(getStartingOutgoingMultiplier(draftStartingAttributes))}`
-          : id === "agility"
-            ? `현재 이동 ${formatPercentDelta(
-                getStartingMovementMultiplier(draftStartingAttributes),
-              )} · 재사용 대기 ${formatPercentDelta(
-                getStartingCooldownMultiplier(draftStartingAttributes),
-              )}`
-            : id === "constitution"
-              ? `현재 체력 ${BASE_STARTING_HEALTH + getStartingMaximumHealthBonus(draftStartingAttributes)} · 재생 ${formatPercentDelta(
-                  getStartingHealthRegenMultiplier(draftStartingAttributes),
-                )}`
-              : id === "spirit"
-                ? `현재 마나 ${BASE_STARTING_MANA + getStartingMaximumManaBonus(draftStartingAttributes)} · 재생 ${formatPercentDelta(
-                    getStartingManaRegenMultiplier(draftStartingAttributes),
-                  )}`
-                : id === "balance"
-                  ? `현재 밀침 저항 ${formatResistance(
-                      getStartingIncomingImpulseMultiplier(draftStartingAttributes),
-                    )} · 제어 시간 ${formatPercentDelta(
-                      getStartingControlDurationMultiplier(draftStartingAttributes),
-                    )}`
-                  : `현재 받는 피해 ${formatPercentDelta(
-                      getStartingDamageTakenMultiplier(draftStartingAttributes),
-                    )} · 보호막 ${formatPercentDelta(
-                      getStartingShieldMultiplier(draftStartingAttributes),
-                    )}`;
+      controls.meter.style.setProperty(
+        "--meter-value",
+        String(value / STARTING_ATTRIBUTE_POINT_TOTAL),
+      );
+      controls.row.dataset.active = value > 0 ? "true" : "false";
+      controls.row.setAttribute(
+        "aria-label",
+        `${STARTING_ATTRIBUTE_LABELS[id]} ${value}, 총 ${STARTING_ATTRIBUTE_POINT_TOTAL}포인트 중`,
+      );
     }
     updateSettingsValidity();
   };
@@ -1013,13 +1219,6 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     updateSettingsValidity();
   };
 
-  if (import.meta.env.DEV) {
-    getSettingsTabButton("lab").hidden = false;
-    debugTuning = createDebugTuningController(root, { onChange(): void {} });
-  } else {
-    getSettingsTabButton("lab").remove();
-    debugTuningPanel.remove();
-  }
   activateSettingsTab("attributes");
 
   const hydrateSettingsForm = (): void => {
@@ -1037,7 +1236,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
         latestSettings?.startingSkills.some((skill) => skill === input.value) ?? false;
     }
 
-    debugTuning?.load(latestGameplayTuning, latestDebugTuningEnabled);
+    applyUserPreferences(userPreferences);
     renderStartingItemSelection();
     renderStartingSkillSelection();
     renderStartingAttributes();
@@ -1079,7 +1278,8 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
       const model = createSkillButtonViewModel(human, slotIndex, actionHudContext);
       button.dataset.state = model.state;
       button.textContent = model.text;
-      button.disabled = model.disabled;
+      button.disabled = model.state === "blocked";
+      button.setAttribute("aria-disabled", model.disabled ? "true" : "false");
     }
     massValue.value =
       human.massFactor < 0.9 ? "가벼움" : human.massFactor > 1.1 ? "무거움" : "보통";
@@ -1109,15 +1309,28 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
       button.setAttribute("aria-label", model.ariaLabel ?? model.text);
       button.disabled = model.disabled;
     }
-    survivorValue.value = String(
-      current.frame.participants.filter(
-        (participant) =>
-          participant.active &&
-          participant.action !== "Falling" &&
-          participant.action !== "Eliminated",
-      ).length,
+    const standingParticipants = current.frame.participants.filter(
+      (participant) =>
+        participant.active &&
+        participant.action !== "Falling" &&
+        participant.action !== "Eliminated",
     );
+    survivorValue.value = String(standingParticipants.length);
+    latestInitialLandTileCount ??= current.frame.tiles.filter(
+      ({ state }) => state !== "Void",
+    ).length;
+    const currentLandTileCount = current.frame.tiles.filter(({ state }) => state !== "Void").length;
     const statistics = current.roundStatistics;
+    const elapsedSeconds = Math.floor(current.frame.tick / FIXED_TICKS_PER_SECOND);
+    roundElapsedTime.value = `${Math.floor(elapsedSeconds / 60)}:${String(elapsedSeconds % 60).padStart(2, "0")}`;
+    roundCurrentRank.value =
+      latestHumanFinalRank === undefined
+        ? `${standingParticipants.length}명 생존`
+        : `${latestHumanFinalRank}위`;
+    roundEliminations.value = String(human.progression.creditedEliminations);
+    roundLandRemaining.value = `${Math.round(
+      (currentLandTileCount / Math.max(1, latestInitialLandTileCount)) * 100,
+    )}%`;
     roundDistanceMoved.value = `${statistics.distanceMoved.toFixed(1)}칸`;
     roundDamageDealt.value = statistics.damageDealt.toFixed(1);
     roundDamageTaken.value = statistics.damageTaken.toFixed(1);
@@ -1126,6 +1339,8 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
       attemptedDamage <= 0 ? 0 : Math.round((statistics.damageBlocked / attemptedDamage) * 100);
     roundDamageBlocked.value = `${statistics.damageBlocked.toFixed(1)} · ${blockedPercent}%`;
     roundSlowedTime.value = `${(statistics.slowedTicks / FIXED_TICKS_PER_SECOND).toFixed(1)}초`;
+    roundSkillHits.value = `${Object.values(statistics.skillHits).reduce((sum, hits) => sum + hits, 0)}회`;
+    roundItemUses.value = `${statistics.itemUses}회`;
     const skillSignature = human.skills.map(({ definitionId }) => definitionId).join("|");
     if (skillSignature !== roundSkillSignature) {
       roundSkillSignature = skillSignature;
@@ -1163,15 +1378,10 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     statBonusOutputs.power.value = `+${Math.round((getPowerMultiplier(stats) - 1) * 100)}%`;
     statBonusOutputs.stability.value = `+${Math.round((1 - getStabilityMultiplier(stats)) * 100)}%`;
     statBonusOutputs.mobility.value = `+${Math.round((getMobilityMultiplier(stats) - 1) * 100)}%`;
-    const shoveCooldownPercent = Math.round(
-      (cooldownReductionTicks / SIMULATION_TUNING.shove.cooldownTicks) * 100,
-    );
     const dodgeCooldownPercent = Math.round(
       (cooldownReductionTicks / SIMULATION_TUNING.dodge.cooldownTicks) * 100,
     );
-    statBonusOutputs.reflex.value = `${shoveCooldownPercent === 0 ? "0%" : `-${shoveCooldownPercent}%`} / ${
-      dodgeCooldownPercent === 0 ? "0%" : `-${dodgeCooldownPercent}%`
-    }`;
+    statBonusOutputs.reflex.value = dodgeCooldownPercent === 0 ? "0%" : `-${dodgeCooldownPercent}%`;
     statBonusOutputs.vitality.value = `+${getMaximumHealth(stats) - 100} · 재생 +${Math.round(
       (getHealthRegenMultiplier(stats) - 1) * 100,
     )}%`;
@@ -1273,8 +1483,13 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
               actorId !== 1 && active && action !== "Falling" && action !== "Eliminated",
           ).length + 1;
         latestHumanSurvivalTick = frame.tick;
+        roundCurrentRank.value = `${latestHumanFinalRank}위`;
         root.dataset.humanEliminated = "true";
-        readyMessage.textContent = "탈락했어. 남은 승부를 빠르게 돌리는 중.";
+        readyMessage.textContent = "탈락했어. 방향키나 드래그로 맵을 둘러볼 수 있어.";
+        arenaHost.setAttribute(
+          "aria-label",
+          "관전 중인 아레나. 방향키 또는 마우스 드래그로 맵을 둘러볼 수 있어.",
+        );
       },
       onHumanUpgradeRequested(frame): void {
         const human = frame.participants.find(({ actorId }) => actorId === 1);
@@ -1296,11 +1511,20 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
           const ownedRank = human.progression.stats[id];
           input.disabled = !canSpendStatPoint(human.progression, id);
           traitRankOutputs[id].value = `${ownedRank}/${MAX_UPGRADE_LEVEL}`;
-          const choice = input.closest<HTMLElement>("[data-trait-choice]");
-          if (choice !== null) {
-            choice.dataset.state = input.disabled ? "capped" : "available";
-            choice.dataset.owned = ownedRank > 0 ? "true" : "false";
-            choice.setAttribute("aria-disabled", input.disabled ? "true" : "false");
+          const traitChoice = traitUpgradeChoices.get(id);
+          if (traitChoice !== undefined) {
+            traitChoice.choice.dataset.state = input.disabled ? "capped" : "available";
+            traitChoice.choice.dataset.owned = ownedRank > 0 ? "true" : "false";
+            traitChoice.choice.setAttribute("aria-disabled", input.disabled ? "true" : "false");
+            traitChoice.meter.style.setProperty(
+              "--meter-current",
+              String(ownedRank / MAX_UPGRADE_LEVEL),
+            );
+            traitChoice.meter.style.setProperty(
+              "--meter-next",
+              String(Math.min(MAX_UPGRADE_LEVEL, ownedRank + 1) / MAX_UPGRADE_LEVEL),
+            );
+            renderUpgradeEffectViews(traitChoice.effects, getUpgradeEffectViews(id, ownedRank));
           }
         }
 
@@ -1336,11 +1560,12 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
             latestSettings,
             latestMasterSeed,
             frame,
-            latestGameplayTuning,
+            DEFAULT_GAMEPLAY_TUNING,
             latestHumanUpgradeSelections,
           ),
         );
         const scoreEntry = recordCompletedRound(frame);
+        roundCurrentRank.value = `${scoreEntry?.rank ?? latestHumanFinalRank ?? 1}위`;
         root.dataset.round = "completed";
         statUpgradeOverlay.hidden = true;
         delete root.dataset.upgrade;
@@ -1353,14 +1578,19 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
             : round.winnerActorId === null
               ? `마지막 순간에 모두 떨어졌어. ${scoreEntry?.rank ?? 1}위.`
               : `${scoreEntry?.rank ?? 1}위 · ${scoreEntry?.score.toLocaleString("ko-KR") ?? 0}점`;
-        setPauseMenu(true, { title: "라운드 종료", resumable: false });
+        setPauseMenu(true, {
+          title: "라운드 종료",
+          resumable: false,
+          mapViewAvailable: true,
+          mode: "completed",
+        });
         restartButton.focus();
       },
       onPauseChanged(paused): void {
         if (paused) {
           readyMessage.textContent = "잠시 멈췄어.";
           if (root.dataset.upgrade !== "pending" && root.dataset.screen === "arena") {
-            setPauseMenu(true, { title: "일시정지", resumable: true });
+            setPauseMenu(true, { title: "일시정지", resumable: true, mode: "paused" });
             resumeRoundButton.focus({ preventScroll: true });
           }
         } else if (session?.active === true && root.dataset.round !== "countdown") {
@@ -1374,6 +1604,9 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
       onTargetingChanged(targeting): void {
         targetingHelp.hidden = !targeting;
       },
+      onActionRejected(message): void {
+        readyMessage.textContent = message;
+      },
       onFatalError(error): void {
         latestRoundReport = undefined;
         copyRoundReportButton.hidden = true;
@@ -1383,7 +1616,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
         rendererStatus.dataset.state = "error";
         rendererStatus.textContent = "라운드를 멈췄어";
         readyMessage.textContent = "문제가 생겼어. 다시 시작해 줘.";
-        setPauseMenu(true, { title: "게임 중단", resumable: false });
+        setPauseMenu(true, { title: "게임 중단", resumable: false, mode: "fatal" });
         restartButton.focus();
         console.error("The Shovefall round stopped at its error boundary.", error);
       },
@@ -1407,13 +1640,25 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
         session?.active === true &&
         root.dataset.round === "active" &&
         root.dataset.humanEliminated !== "true",
+      isMovementActive: () =>
+        session?.active === true &&
+        (root.dataset.round === "active" || root.dataset.round === "countdown") &&
+        root.dataset.humanEliminated !== "true",
+      isSpectating: () =>
+        root.dataset.screen === "arena" &&
+        (root.dataset.humanEliminated === "true" || root.dataset.round === "completed"),
       isTargetApproaching: () => session?.targetApproachPending === true,
       isTargeting: () => session?.targeting === true,
       onMove: (x, y) => session?.setPointerMovement(x, y),
+      onMoveTo: (clientX, clientY) => session?.moveTo(clientX, clientY),
+      onSpectatorPan: (deltaX, deltaY) => {
+        renderer?.panSpectatorByScreen(deltaX, deltaY);
+      },
       onGrapple: () => session?.queueGrapple(),
       onTargetHover: (clientX, clientY) => session?.updateTargeting(clientX, clientY),
       onTargetConfirm: (clientX, clientY) => session?.confirmTargeting(clientX, clientY),
       onTargetCancel: () => session?.cancelTargeting(),
+      spectatorSurface: pauseMenu,
     });
     rendererStatus.dataset.state = "ready";
     rendererStatus.textContent = "WebGL 준비됨";
@@ -1436,19 +1681,21 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     latestHumanFinalRank = undefined;
     latestHumanSurvivalTick = undefined;
     latestScoreSaved = false;
+    latestInitialLandTileCount = undefined;
     copyRoundReportButton.hidden = true;
     copyRoundReportButton.textContent = "기록 복사";
-    void audio?.unlock();
+    void unlockAudio();
     setScreen("arena");
     root.dataset.round = "countdown";
     statUpgradeOverlay.hidden = true;
     setPauseMenu(false);
     delete root.dataset.upgrade;
     delete root.dataset.humanEliminated;
+    renderer?.resetSpectatorCamera();
     root.dataset.initialItems = String(settings.initialItemCount);
     root.dataset.botDifficulty = FORCED_BOT_DIFFICULTY;
     root.dataset.collapseSpeed = settings.collapseSpeed;
-    root.dataset.gameplayTuning = latestDebugTuningEnabled ? "debug" : "default";
+    root.dataset.gameplayTuning = "default";
     arenaActions.hidden = false;
     pauseRoundButton.hidden = false;
     inventoryActions.hidden = false;
@@ -1459,10 +1706,10 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     readyMessage.textContent = "3";
     arenaHost.setAttribute(
       "aria-label",
-      `${settings.playerCount}명이 참가하는 바닥이 사라지는 술래잡기 아레나. 방향키, 마우스 드래그 또는 터치 조이스틱으로 이동해. Q와 W는 스킬, D는 아이템 조준을 시작하고, 방향키나 마우스로 조준한 뒤 같은 키, Enter 또는 좌클릭으로 확정해.`,
+      `${settings.playerCount}명이 참가하는 바닥이 사라지는 술래잡기 아레나. 방향키, 땅 우클릭 또는 터치 조이스틱으로 이동해. Q와 W는 스킬, D는 아이템 조준을 시작하고, 방향키나 마우스로 조준한 뒤 같은 키, Enter 또는 좌클릭으로 확정해.`,
     );
     try {
-      session.start(createConfig(settings), latestMasterSeed, latestGameplayTuning, {
+      session.start(createConfig(settings), latestMasterSeed, DEFAULT_GAMEPLAY_TUNING, {
         startingAttributes: settings.startingAttributes,
         startingItems: settings.startingItems,
         startingSkills: settings.startingSkills,
@@ -1475,7 +1722,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
       rendererStatus.dataset.state = "error";
       rendererStatus.textContent = "라운드를 시작하지 못했어";
       readyMessage.textContent = "설정을 확인하고 다시 시작해 줘.";
-      setPauseMenu(true, { title: "게임 시작 실패", resumable: false });
+      setPauseMenu(true, { title: "게임 시작 실패", resumable: false, mode: "fatal" });
       restartButton.focus();
       console.error("The Shovefall round failed during startup.", error);
     }
@@ -1499,7 +1746,29 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
       renderStartingItemSelection();
     } else if (target.name === "startingSkill") {
       renderStartingSkillSelection();
+    } else if (target.name === "fontScale") {
+      if (!isFontScaleId(target.value)) {
+        return;
+      }
+      persistUserPreferences({
+        ...userPreferences,
+        fontScale: target.value,
+      });
     }
+  });
+
+  soundEffectsVolume.addEventListener("input", () => {
+    persistUserPreferences({
+      ...userPreferences,
+      soundEffectsVolume: Number(soundEffectsVolume.value),
+    });
+  });
+
+  backgroundMusicVolume.addEventListener("input", () => {
+    persistUserPreferences({
+      ...userPreferences,
+      backgroundMusicVolume: Number(backgroundMusicVolume.value),
+    });
   });
 
   form.addEventListener("submit", (event) => {
@@ -1508,10 +1777,6 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
       return;
     }
     latestSettings = readSettings();
-    latestDebugTuningEnabled = debugTuning?.enabled ?? false;
-    latestGameplayTuning = latestDebugTuningEnabled
-      ? (debugTuning?.read() ?? DEFAULT_GAMEPLAY_TUNING)
-      : DEFAULT_GAMEPLAY_TUNING;
     setScreen("menu");
     startGameButton.focus();
   });
@@ -1568,7 +1833,44 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   closeVersionHistoryButton.addEventListener("click", closeVersionHistory);
 
   const handleGlobalKeyboard = (event: KeyboardEvent): void => {
+    const spectatorCameraActive =
+      root.dataset.screen === "arena" &&
+      (root.dataset.humanEliminated === "true" || root.dataset.round === "completed");
+    const spectatorPanFocused = event.target === arenaHost || event.target === pauseMenu;
+    if (spectatorCameraActive && spectatorPanFocused && event.code.startsWith("Arrow")) {
+      const cameraStep = event.repeat ? 28 : 44;
+      const moved = renderer?.panSpectatorByScreen(
+        event.code === "ArrowLeft" ? cameraStep : event.code === "ArrowRight" ? -cameraStep : 0,
+        event.code === "ArrowUp" ? cameraStep : event.code === "ArrowDown" ? -cameraStep : 0,
+      );
+      if (moved === true) {
+        event.preventDefault();
+      }
+      return;
+    }
+
     const isPauseKey = event.code === "KeyP";
+    if (
+      isPauseKey &&
+      !event.repeat &&
+      root.dataset.screen === "arena" &&
+      root.dataset.round === "completed"
+    ) {
+      event.preventDefault();
+      if (pauseMenu.hidden) {
+        setPauseMenu(true, {
+          title: "라운드 종료",
+          resumable: false,
+          mapViewAvailable: true,
+          mode: "completed",
+        });
+        restartButton.focus({ preventScroll: true });
+      } else {
+        setPauseMenu(false);
+        arenaHost.focus({ preventScroll: true });
+      }
+      return;
+    }
     if (
       isPauseKey &&
       !event.repeat &&
@@ -1617,7 +1919,15 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   });
 
   pauseRoundButton.addEventListener("click", () => {
-    if (session?.active === true && root.dataset.upgrade !== "pending") {
+    if (root.dataset.round === "completed") {
+      setPauseMenu(true, {
+        title: "라운드 종료",
+        resumable: false,
+        mapViewAvailable: true,
+        mode: "completed",
+      });
+      restartButton.focus({ preventScroll: true });
+    } else if (session?.active === true && root.dataset.upgrade !== "pending") {
       session.setPaused(!session.paused);
     }
   });
@@ -1626,6 +1936,14 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     if (session?.active === true && session.paused) {
       session.setPaused(false);
     }
+  });
+
+  viewFinishedMapButton.addEventListener("click", () => {
+    if (root.dataset.round !== "completed") {
+      return;
+    }
+    setPauseMenu(false);
+    arenaHost.focus({ preventScroll: true });
   });
 
   statUpgradeForm.addEventListener("submit", (event) => {
@@ -1699,15 +2017,17 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   });
 
   soundButton.addEventListener("click", () => {
-    if (audio === undefined) {
+    if (audio === undefined || backgroundMusic === undefined) {
       return;
     }
 
-    audio.setMuted(!audio.muted);
-    updateSoundControl(audio.state);
+    const nextMuted = !(audio.muted && backgroundMusic.muted);
+    audio.setMuted(nextMuted);
+    backgroundMusic.setMuted(nextMuted);
+    updateSoundControl();
 
-    if (!audio.muted) {
-      void audio.unlock();
+    if (!nextMuted) {
+      void unlockAudio();
     }
   });
 
@@ -1744,8 +2064,9 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
       session?.destroy();
       renderer?.destroy();
       audio?.destroy();
-      debugTuning?.destroy();
+      backgroundMusic?.destroy();
       pointerControls?.destroy();
+      removeAudioGestureListeners();
       document.removeEventListener("keydown", handleGlobalKeyboard);
 
       if (import.meta.env.DEV) {

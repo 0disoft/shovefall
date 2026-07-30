@@ -67,7 +67,8 @@ export function createKeyboardInput(activity: KeyboardInputActivity): KeyboardIn
     if (isMovementCode(event.code)) {
       heldMovementCodes.add(event.code);
       if (activity.isTargeting()) {
-        state.clearMovement();
+        state.press(event.code, event.repeat);
+        state.clearTransientMovement();
         const direction = getHeldTargetingDirection();
         activity.onTargetingMoved(direction.x, direction.y);
         return;

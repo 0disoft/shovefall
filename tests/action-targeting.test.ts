@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { getSkillDefinition } from "../src/content/skills";
 import {
   createGrappleTargetedAction,
   createItemTargetedAction,
@@ -23,8 +24,8 @@ describe("action targeting registry", () => {
     expect(ground).toMatchObject({
       actionKind: "skill",
       targetMode: "ground",
-      castRange: 5,
-      effectRadius: 2.15,
+      castRange: getSkillDefinition("meteor-mark").range,
+      effectRadius: getSkillDefinition("meteor-mark").radius,
       target: { x: 8, y: 6 },
     });
     expect(direction).toMatchObject({
@@ -56,8 +57,8 @@ describe("action targeting registry", () => {
 
   it("keeps repeat confirmation and approach policy in one pure rule", () => {
     const line = createSkillTargetedAction(0, "arc-bolt", SOURCE);
-    const dash = createSkillTargetedAction(0, "tidal-charge", SOURCE);
-    const ground = createItemTargetedAction(0, "soap", SOURCE);
+    const dash = createSkillTargetedAction(0, "blink-step", SOURCE);
+    const ground = createItemTargetedAction(0, "brick-bag", SOURCE);
 
     expect(isSameTargetedAction(line, "skill", 0)).toBe(true);
     expect(isSameTargetedAction(line, "skill", 1)).toBe(false);

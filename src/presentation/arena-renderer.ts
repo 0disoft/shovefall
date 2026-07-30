@@ -1,4 +1,5 @@
 import { Application, Container, Graphics, Sprite, Text } from "pixi.js";
+import { SKILL_DEFINITION_IDS } from "../content/skills";
 import type {
   BombState,
   BrickWallState,
@@ -30,13 +31,32 @@ import {
   type ArenaProjection,
 } from "./arena-projection";
 import { SimulationEventLedger } from "./event-ledger";
-import { loadArenaVisualAssets, type ArenaVisualAssets } from "./arena-assets";
+import {
+  loadArenaVisualAssets,
+  TERRAIN_INTERIOR_VARIANT_START,
+  TERRAIN_DIAGONAL_VARIANT_COUNT,
+  TERRAIN_DIAGONAL_VARIANT_START,
+  TERRAIN_WATER_EAST,
+  TERRAIN_WATER_NORTH,
+  TERRAIN_WATER_SOUTH,
+  TERRAIN_WATER_WEST,
+  TERRAIN_WATER_NORTH_EAST,
+  TERRAIN_WATER_SOUTH_EAST,
+  TERRAIN_WATER_SOUTH_WEST,
+  TERRAIN_WATER_NORTH_WEST,
+  type ArenaVisualAssets,
+} from "./arena-assets";
 import { createActionFeedbackGeometry } from "./action-feedback";
+import { createCharacterMotionPose, selectCharacterAnimationState } from "./character-motion";
+
+const CAMERA_OCEAN_MARGIN_TILES = 7.25;
 
 export interface ArenaRenderer {
   consumeEvents(events: readonly SimulationEventV1[], frame: RenderFrameV1): void;
   destroy(): void;
+  panSpectatorByScreen(deltaX: number, deltaY: number): boolean;
   render(frame: RenderFrameV1, interpolationAlpha: number, humanActorId: number): void;
+  resetSpectatorCamera(): void;
   screenToWorld(clientX: number, clientY: number): Vector2 | undefined;
   setAimPreview(preview: ArenaAimPreview | null): void;
 }
@@ -68,10 +88,9 @@ type VisualEffectKind =
   | "falling-started"
   | "item-picked-up"
   | "item-used"
-  | "wind-blast-hit"
-  | "bomb-detonated"
   | "soap-placed"
   | "soap-triggered"
+  | "bomb-detonated"
   | "grappling-hook-hit"
   | "rock-impact"
   | "tile-void";
@@ -88,25 +107,32 @@ interface VisualEffect {
   readonly skillDefinitionId: SimulationEventV1["skillDefinitionId"];
 }
 
+interface CharacterCastAnimation {
+  readonly endTick: number;
+  readonly roundId: number;
+  readonly startTick: number;
+}
+
+interface CharacterHitAnimation {
+  readonly endTick: number;
+  readonly roundId: number;
+}
+
 const DEFAULT_RESOLUTION_CAP = 1.5;
 const MAYHEM_RESOLUTION_CAP = 1;
 const NORMAL_EFFECT_CAP = 36;
 const MAYHEM_EFFECT_CAP = 14;
 const DIRECTIONAL_SKILL_EFFECTS: ReadonlySet<SkillDefinitionId> = new Set([
-  "force-palm",
   "blink-step",
   "arc-bolt",
   "chain-bind",
-  "tidal-charge",
 ]);
 const SKILL_EFFECT_SIZE: Readonly<Record<SkillDefinitionId, number>> = Object.freeze({
-  "force-palm": 2.15,
   "blink-step": 2,
   "arc-bolt": 1.8,
   "chain-bind": 2.4,
   "meteor-mark": 3.6,
   "frost-field": 3.6,
-  "tidal-charge": 2.4,
   aegis: 2.6,
 });
 const BOT_COLORS = [0xb8c1bd, 0xd5aaa7, 0xc9bd91, 0xaab8d5, 0xc0a8cf];
@@ -126,13 +152,27 @@ const ITEM_COLORS = Object.freeze({
   "iron-boots": 0x56626f,
   feather: 0xe9f5ff,
   "spring-glove": 0xff8f5c,
-  "wind-blast": 0x68d8d6,
+  soap: 0xd58bea,
   "brick-bag": 0xb56f3f,
   boat: 0x4c9bd4,
   bomb: 0xff5c4d,
-  soap: 0xd58bea,
-} as const);
+} as const satisfies Readonly<Partial<Record<ItemDefinitionId, number>>>);
 const GRAPPLING_HOOK_COLOR = 0xffc857;
+const HUMAN_MARKER_COLOR = 0x3b8cff;
+const PICKUP_MARKER_COLOR = 0xffd166;
+
+function getItemColor(definitionId: ItemDefinitionId): number | undefined {
+  const colors: Readonly<Partial<Record<ItemDefinitionId, number>>> = ITEM_COLORS;
+  return colors[definitionId];
+}
+
+function getActorIdentityColor(actorId: number, humanActorId: number): number {
+  if (actorId === humanActorId) {
+    return HUMAN_MARKER_COLOR;
+  }
+
+  return BOT_COLORS[(actorId - 2) % BOT_COLORS.length] ?? 0xb8c1bd;
+}
 
 function getArenaDimensions(frame: RenderFrameV1): { columns: number; rows: number } {
   return frame.tiles.reduce(
@@ -166,7 +206,7 @@ function createCameraOffset(
         (human.position.y - human.previousPosition.y) * interpolationAlpha;
   const worldSize = getProjectedArenaSize(columns, rows, projection);
   const focus = projectArenaPoint({ x: focusX, y: focusY }, projection);
-  const oceanMargin = projection.tileWidth * 4.25;
+  const oceanMargin = projection.tileWidth * CAMERA_OCEAN_MARGIN_TILES;
   const unclampedX = width / 2 - focus.x;
   const unclampedY = height / 2 - focus.y;
   const minimumX = width - worldSize.width - oceanMargin;
@@ -179,6 +219,41 @@ function createCameraOffset(
     minimumY > maximumY ? (height - worldSize.height) / 2 : clamp(unclampedY, minimumY, maximumY);
 
   return Object.freeze({ x, y });
+}
+
+function isSpectatorFrame(frame: RenderFrameV1, humanActorId: number): boolean {
+  if (frame.round.status === "Completed") {
+    return true;
+  }
+
+  const human = frame.participants.find(({ actorId }) => actorId === humanActorId);
+  return (
+    human === undefined ||
+    !human.active ||
+    human.action === "Falling" ||
+    human.action === "Eliminated"
+  );
+}
+
+function clampCameraOffset(
+  frame: RenderFrameV1,
+  width: number,
+  height: number,
+  projection: ArenaProjection,
+  camera: Vector2,
+): Vector2 {
+  const { columns, rows } = getArenaDimensions(frame);
+  const worldSize = getProjectedArenaSize(columns, rows, projection);
+  const oceanMargin = projection.tileWidth * CAMERA_OCEAN_MARGIN_TILES;
+  const minimumX = width - worldSize.width - oceanMargin;
+  const maximumX = oceanMargin;
+  const minimumY = height - worldSize.height - oceanMargin;
+  const maximumY = oceanMargin;
+
+  return Object.freeze({
+    x: minimumX > maximumX ? (width - worldSize.width) / 2 : clamp(camera.x, minimumX, maximumX),
+    y: minimumY > maximumY ? (height - worldSize.height) / 2 : clamp(camera.y, minimumY, maximumY),
+  });
 }
 
 function getActionColor(action: ParticipantActionKind): number {
@@ -635,19 +710,29 @@ function drawMassMarker(
       .stroke({ color: 0xe2e8ec, width: 1 });
     return;
   }
-
-  graphics.circle(x, markerY, markerSize * 0.55).fill({ color: 0xd5dbd8 });
 }
 
 function drawItem(graphics: Graphics, item: RenderItemV1, projection: ArenaProjection): void {
   const { x, y } = projectArenaPoint(item.position, projection);
   const radius = Math.max(5, projection.tileWidth * 0.16);
-  const color = ITEM_COLORS[item.definitionId];
+  const color = getItemColor(item.definitionId);
+
+  if (color === undefined) {
+    return;
+  }
 
   graphics
     .ellipse(x, y + radius * ARENA_SHADOW_OFFSET_SCALE, radius * 1.35, radius * 0.42)
     .fill({ color: 0x070a09, alpha: 0.48 });
   graphics.circle(x, y, radius * 1.36).fill({ color: 0x101514, alpha: 0.72 });
+  const pickupMarkerY = y - radius * 1.78;
+  const pickupMarkerSize = Math.max(3, radius * 0.42);
+  graphics
+    .moveTo(x, pickupMarkerY - pickupMarkerSize)
+    .lineTo(x, pickupMarkerY + pickupMarkerSize)
+    .moveTo(x - pickupMarkerSize, pickupMarkerY)
+    .lineTo(x + pickupMarkerSize, pickupMarkerY)
+    .stroke({ color: PICKUP_MARKER_COLOR, width: Math.max(1.5, radius * 0.18), alpha: 0.96 });
 
   if (item.definitionId === "iron-boots") {
     graphics
@@ -694,36 +779,37 @@ function removeStaleSprites<Key extends string | number>(
   }
 }
 
-function getTerrainTextureIndex(tile: TileState, supportedTileIds: ReadonlySet<string>): number {
+export function getTerrainTextureIndex(
+  tile: TileState,
+  supportedTileIds: ReadonlySet<string>,
+): number {
   const north = !supportedTileIds.has(`${tile.column}:${tile.row - 1}`);
   const east = !supportedTileIds.has(`${tile.column + 1}:${tile.row}`);
   const south = !supportedTileIds.has(`${tile.column}:${tile.row + 1}`);
   const west = !supportedTileIds.has(`${tile.column - 1}:${tile.row}`);
 
-  const waterSideCount = [north, east, south, west].filter(Boolean).length;
+  const waterMask =
+    (north ? TERRAIN_WATER_NORTH : 0) |
+    (east ? TERRAIN_WATER_EAST : 0) |
+    (south ? TERRAIN_WATER_SOUTH : 0) |
+    (west ? TERRAIN_WATER_WEST : 0);
 
-  if (waterSideCount === 4) {
-    return getTileTerrainVariant(tile);
+  if (waterMask !== 0) {
+    return waterMask;
   }
 
-  if (waterSideCount === 3) {
-    if (!west) return 5;
-    if (!north) return 6;
-    if (!east) return 7;
-    return 4;
+  const diagonalWaterMask =
+    (!supportedTileIds.has(`${tile.column + 1}:${tile.row - 1}`) ? TERRAIN_WATER_NORTH_EAST : 0) |
+    (!supportedTileIds.has(`${tile.column + 1}:${tile.row + 1}`) ? TERRAIN_WATER_SOUTH_EAST : 0) |
+    (!supportedTileIds.has(`${tile.column - 1}:${tile.row + 1}`) ? TERRAIN_WATER_SOUTH_WEST : 0) |
+    (!supportedTileIds.has(`${tile.column - 1}:${tile.row - 1}`) ? TERRAIN_WATER_NORTH_WEST : 0);
+
+  if (diagonalWaterMask !== 0) {
+    return TERRAIN_DIAGONAL_VARIANT_START + diagonalWaterMask - 1;
   }
 
-  if (north && south) return getTileTerrainVariant(tile) % 2 === 0 ? 4 : 6;
-  if (east && west) return getTileTerrainVariant(tile) % 2 === 0 ? 5 : 7;
-  if (north && east) return 10;
-  if (east && south) return 8;
-  if (south && west) return 9;
-  if (west && north) return 11;
-  if (north) return 4;
-  if (east) return 5;
-  if (south) return 6;
-  if (west) return 7;
-  return getTileTerrainVariant(tile);
+  const variant = getTileTerrainVariant(tile);
+  return variant === 0 ? 0 : TERRAIN_INTERIOR_VARIANT_START + variant - 1;
 }
 
 function syncTerrainSprites(
@@ -738,7 +824,10 @@ function syncTerrainSprites(
 ): number {
   const textures = assets.terrainTextures;
 
-  if (textures === null || textures.length < 16) {
+  if (
+    textures === null ||
+    textures.length < TERRAIN_DIAGONAL_VARIANT_START + TERRAIN_DIAGONAL_VARIANT_COUNT
+  ) {
     removeStaleSprites(layer, sprites, new Set<string>());
     return 0;
   }
@@ -789,8 +878,9 @@ function syncTerrainSprites(
 
     sprite.texture = texture;
     sprite.position.set(x + projection.tileWidth * 0.5, y + projection.tileDepth * 0.5);
-    sprite.width = projection.tileWidth * 1.015;
-    sprite.height = projection.tileDepth * 1.025;
+    const overscan = textureIndex >= TERRAIN_DIAGONAL_VARIANT_START ? 1 : 1.055;
+    sprite.width = projection.tileWidth * overscan;
+    sprite.height = projection.tileDepth * overscan;
     sprite.alpha = 1;
     sprite.tint = 0xffffff;
     sprite.zIndex = tile.row * 10_000 + tile.column;
@@ -878,16 +968,22 @@ function syncItemSprites(
   const visibleItemIds = new Set<number>();
 
   for (const item of frame.items) {
+    const texture = itemTextures[item.definitionId];
+
+    if (texture === undefined) {
+      continue;
+    }
+
     visibleItemIds.add(item.itemId);
     let sprite = sprites.get(item.itemId);
 
     if (sprite === undefined) {
-      sprite = new Sprite(itemTextures[item.definitionId]);
+      sprite = new Sprite(texture);
       sprite.anchor.set(0.5, 0.9);
       sprites.set(item.itemId, sprite);
       layer.addChild(sprite);
-    } else if (sprite.texture !== itemTextures[item.definitionId]) {
-      sprite.texture = itemTextures[item.definitionId];
+    } else if (sprite.texture !== texture) {
+      sprite.texture = texture;
     }
 
     const point = projectArenaPoint(item.position, projection);
@@ -915,8 +1011,6 @@ function syncPirateShipSprites(
     return;
   }
 
-  const { columns, rows } = getArenaDimensions(frame);
-  const arenaCenter = { x: columns / 2, y: rows / 2 };
   const visibleShipIds = new Set<number>();
 
   for (const ship of frame.pirateShips) {
@@ -931,21 +1025,83 @@ function syncPirateShipSprites(
     }
 
     const point = projectArenaPoint(ship.position, projection);
-    const towardCenter = projectArenaVector({
-      x: arenaCenter.x - ship.position.x,
-      y: arenaCenter.y - ship.position.y,
-    });
     const variantScale = 0.9 + (ship.shipId % 4) * 0.035;
     const targetHeight = clamp(projection.tileWidth * 3.2 * variantScale, 86, 154);
     sprite.position.set(point.x, point.y + projection.tileDepth * 0.45);
     sprite.height = targetHeight;
     sprite.width = targetHeight * (pirateShipTexture.width / pirateShipTexture.height);
-    sprite.rotation = Math.atan2(towardCenter.y, towardCenter.x) - (3 * Math.PI) / 4;
+    sprite.rotation = 0;
     sprite.alpha = ship.cannonAmmoRemaining > 0 ? 1 : 0.84;
     sprite.visible = true;
   }
 
   for (const [shipId, sprite] of sprites) {
+    sprite.visible = visibleShipIds.has(shipId);
+  }
+}
+
+function getTreasureShipSpriteHeight(projection: ArenaProjection): number {
+  return clamp(projection.tileWidth * 3.7, 104, 176);
+}
+
+function syncTreasureShipSprite(
+  layer: Container,
+  currentSprite: Sprite | undefined,
+  ship: TreasureShipState,
+  projection: ArenaProjection,
+  assets: ArenaVisualAssets,
+): Sprite | undefined {
+  const texture = assets.treasureShipTexture;
+
+  if (texture === null) {
+    if (currentSprite !== undefined) {
+      currentSprite.visible = false;
+    }
+    return currentSprite;
+  }
+
+  const sprite = currentSprite ?? new Sprite(texture);
+  if (currentSprite === undefined) {
+    sprite.anchor.set(0.5, 0.78);
+    layer.addChild(sprite);
+  } else if (sprite.texture !== texture) {
+    sprite.texture = texture;
+  }
+
+  const point = projectArenaPoint(ship.position, projection);
+  const targetHeight = getTreasureShipSpriteHeight(projection);
+  sprite.position.set(point.x, point.y + projection.tileDepth * 0.45);
+  sprite.height = targetHeight;
+  sprite.width = targetHeight * (texture.width / texture.height);
+  sprite.alpha = 1;
+  sprite.visible = true;
+  return sprite;
+}
+
+function syncTreasureShipSprites(
+  layer: Container,
+  spritesByShipId: Map<number, Sprite>,
+  ships: readonly TreasureShipState[],
+  projection: ArenaProjection,
+  assets: ArenaVisualAssets,
+): void {
+  const visibleShipIds = new Set<number>();
+
+  for (const ship of ships) {
+    visibleShipIds.add(ship.shipId);
+    const sprite = syncTreasureShipSprite(
+      layer,
+      spritesByShipId.get(ship.shipId),
+      ship,
+      projection,
+      assets,
+    );
+    if (sprite !== undefined) {
+      spritesByShipId.set(ship.shipId, sprite);
+    }
+  }
+
+  for (const [shipId, sprite] of spritesByShipId) {
     sprite.visible = visibleShipIds.has(shipId);
   }
 }
@@ -1241,6 +1397,63 @@ function syncAegisSprites(
   removeStaleSprites(layer, sprites, visibleActorIds);
 }
 
+function syncStunnedSprites(
+  layer: Container,
+  sprites: Map<number, Sprite>,
+  frame: RenderFrameV1,
+  projection: ArenaProjection,
+  interpolationAlpha: number,
+  reducedMotion: boolean,
+  assets: ArenaVisualAssets,
+): void {
+  const texture = assets.stunnedTexture;
+  const visibleActorIds = new Set<number>();
+
+  if (texture === null) {
+    removeStaleSprites(layer, sprites, visibleActorIds);
+    return;
+  }
+
+  for (const participant of frame.participants) {
+    if (
+      !participant.active ||
+      participant.action === "Falling" ||
+      participant.combat.stunnedUntilTick <= frame.tick
+    ) {
+      continue;
+    }
+
+    visibleActorIds.add(participant.actorId);
+    let sprite = sprites.get(participant.actorId);
+    if (sprite === undefined) {
+      sprite = new Sprite(texture);
+      sprite.anchor.set(0.5);
+      sprites.set(participant.actorId, sprite);
+      layer.addChild(sprite);
+    }
+
+    const worldX =
+      participant.previousPosition.x +
+      (participant.position.x - participant.previousPosition.x) * interpolationAlpha;
+    const worldY =
+      participant.previousPosition.y +
+      (participant.position.y - participant.previousPosition.y) * interpolationAlpha;
+    const point = projectArenaPoint({ x: worldX, y: worldY }, projection);
+    const collisionRadius = participant.radius * projection.pitch;
+    const width = clamp(collisionRadius * 4.2, 52, 104);
+    const bob = reducedMotion ? 0 : Math.sin(frame.tick * 0.18 + participant.actorId) * 2.5;
+    sprite.position.set(point.x, point.y - collisionRadius * 2.85 + bob);
+    sprite.width = width;
+    sprite.height = width;
+    sprite.alpha = 0.98;
+    sprite.rotation = reducedMotion ? 0 : frame.tick * 0.025;
+    sprite.zIndex = Math.round(worldY * 1_000) + participant.actorId + 2;
+    sprite.visible = true;
+  }
+
+  removeStaleSprites(layer, sprites, visibleActorIds);
+}
+
 function syncParticipantSprites(
   layer: Container,
   sprites: Map<number, Sprite>,
@@ -1250,10 +1463,16 @@ function syncParticipantSprites(
   interpolationAlpha: number,
   reducedMotion: boolean,
   assets: ArenaVisualAssets,
+  castAnimations: ReadonlyMap<number, CharacterCastAnimation>,
+  hitAnimations: ReadonlyMap<number, CharacterHitAnimation>,
 ): void {
   const characterTextures = assets.characterTextures;
+  const characterMotionTextures = assets.characterMotionTextures;
 
-  if (characterTextures === null || characterTextures.length === 0) {
+  if (
+    (characterTextures === null || characterTextures.length === 0) &&
+    (characterMotionTextures === null || characterMotionTextures.length === 0)
+  ) {
     removeStaleSprites(layer, sprites, new Set<number>());
     removeStaleSprites(layer, boatSprites, new Set<number>());
     return;
@@ -1268,8 +1487,52 @@ function syncParticipantSprites(
     }
 
     visibleActorIds.add(participant.actorId);
-    const textureIndex = (participant.actorId - 1) % characterTextures.length;
-    const texture = characterTextures[textureIndex];
+    const textureCount = characterMotionTextures?.length ?? characterTextures?.length ?? 0;
+    const textureIndex = (participant.actorId - 1) % textureCount;
+
+    const worldX =
+      participant.previousPosition.x +
+      (participant.position.x - participant.previousPosition.x) * interpolationAlpha;
+    const worldY =
+      participant.previousPosition.y +
+      (participant.position.y - participant.previousPosition.y) * interpolationAlpha;
+    const point = projectArenaPoint({ x: worldX, y: worldY }, projection);
+    const collisionRadius = participant.radius * projection.pitch;
+    const visualScale = 1 + (participant.massFactor - 1) * 0.16;
+    const castAnimation = castAnimations.get(participant.actorId);
+    const castProgress =
+      castAnimation !== undefined &&
+      castAnimation.roundId === frame.roundId &&
+      frame.tick <= castAnimation.endTick
+        ? clamp(
+            (frame.tick - castAnimation.startTick) /
+              Math.max(1, castAnimation.endTick - castAnimation.startTick),
+            0,
+            1,
+          )
+        : null;
+    const motionPose = createCharacterMotionPose({
+      action: participant.action,
+      actorId: participant.actorId,
+      castProgress,
+      facing: projectArenaVector(participant.facing),
+      frameTick: frame.tick,
+      reducedMotion,
+      velocity: projectArenaVector(participant.velocity),
+    });
+    const hitAnimation = hitAnimations.get(participant.actorId);
+    const animationState = selectCharacterAnimationState({
+      action: participant.action,
+      castProgress,
+      hitActive:
+        hitAnimation !== undefined &&
+        hitAnimation.roundId === frame.roundId &&
+        frame.tick <= hitAnimation.endTick,
+      motionPose,
+      reducedMotion,
+    });
+    const animatedTexture = characterMotionTextures?.[textureIndex]?.[animationState];
+    const texture = animatedTexture ?? characterTextures?.[textureIndex];
 
     if (texture === undefined) {
       continue;
@@ -1286,54 +1549,22 @@ function syncParticipantSprites(
       sprite.texture = texture;
     }
 
-    const worldX =
-      participant.previousPosition.x +
-      (participant.position.x - participant.previousPosition.x) * interpolationAlpha;
-    const worldY =
-      participant.previousPosition.y +
-      (participant.position.y - participant.previousPosition.y) * interpolationAlpha;
-    const point = projectArenaPoint({ x: worldX, y: worldY }, projection);
-    const collisionRadius = participant.radius * projection.pitch;
-    const visualScale = 1 + (participant.massFactor - 1) * 0.16;
-    const frameDisplayScale = assets.characterDisplayScales[textureIndex] ?? 1;
+    const frameDisplayScale =
+      animatedTexture === undefined ? (assets.characterDisplayScales[textureIndex] ?? 1) : 1;
     const targetHeight = Math.max(28, collisionRadius * visualScale * 3.45) * frameDisplayScale;
     const baseWidth = targetHeight * (texture.width / texture.height);
-    const actionPhase = ((frame.tick + participant.actorId * 5) % 18) / 18;
-    const stumbleTilt = reducedMotion ? 0 : Math.sin(actionPhase * Math.PI * 2) * 0.13;
-    const actionScaleX =
-      participant.action === "ShoveWindup"
-        ? 0.92
-        : participant.action === "ShoveActive"
-          ? 1.12
-          : participant.action === "DodgeActive"
-            ? 1.18
-            : 1;
-    const actionScaleY =
-      participant.action === "ShoveWindup"
-        ? 1.06
-        : participant.action === "ShoveActive"
-          ? 0.92
-          : participant.action === "DodgeActive"
-            ? 0.88
-            : participant.action === "Falling"
-              ? Math.max(0.58, 1 - actionPhase * 0.26)
-              : 1;
-    const actionLift =
-      !reducedMotion && participant.action === "DodgeActive"
-        ? Math.sin(actionPhase * Math.PI) * collisionRadius * 0.36
-        : 0;
-    sprite.position.set(point.x, point.y + collisionRadius * 0.82 - actionLift);
-    sprite.width = baseWidth * actionScaleX;
-    sprite.height = targetHeight * actionScaleY;
+    const poseStrength = animatedTexture === undefined ? 1 : 0.28;
+    sprite.position.set(
+      point.x + collisionRadius * motionPose.offsetXRatio * poseStrength,
+      point.y + collisionRadius * 0.82 - collisionRadius * motionPose.liftRatio * poseStrength,
+    );
+    sprite.width = baseWidth * (animatedTexture === undefined ? motionPose.scaleX : 1);
+    sprite.height = targetHeight * (animatedTexture === undefined ? motionPose.scaleY : 1);
     sprite.alpha = participant.action === "Falling" ? 0.42 : 1;
     sprite.rotation =
-      participant.action === "Stumbling"
-        ? stumbleTilt
-        : participant.action === "Falling" && !reducedMotion
-          ? actionPhase * 0.32
-          : participant.action === "ShoveActive" && !reducedMotion
-            ? participant.facing.x * 0.055
-            : 0;
+      animatedTexture === undefined || participant.action === "Falling"
+        ? motionPose.rotation
+        : motionPose.rotation * 0.2;
     sprite.zIndex = Math.round(worldY * 1_000) + participant.actorId;
     sprite.visible = true;
 
@@ -1354,12 +1585,14 @@ function syncParticipantSprites(
       const boatWidth = visualScale * collisionRadius * 3.55;
       const boatBob = reducedMotion
         ? 0
-        : Math.sin(actionPhase * Math.PI * 2) * collisionRadius * 0.08;
+        : Math.sin((frame.tick + participant.actorId * 5) * 0.18) * collisionRadius * 0.08;
       boatSprite.position.set(point.x, point.y + collisionRadius * 1.1 + boatBob);
       boatSprite.width = boatWidth;
       boatSprite.height = boatWidth * (boatTexture.height / boatTexture.width);
       boatSprite.alpha = participant.action === "Falling" ? 0.32 : 0.92;
-      boatSprite.rotation = reducedMotion ? 0 : Math.sin(actionPhase * Math.PI * 2) * 0.025;
+      boatSprite.rotation = reducedMotion
+        ? 0
+        : Math.sin((frame.tick + participant.actorId * 5) * 0.18) * 0.025;
       boatSprite.zIndex = sprite.zIndex - 1;
       boatSprite.visible = true;
     }
@@ -1375,17 +1608,16 @@ function syncParticipantSprites(
 function syncPlacedItemSprites(
   layer: Container,
   bombSprites: Map<string, Sprite>,
-  soapSprites: Map<string, Sprite>,
   frame: RenderFrameV1,
   projection: ArenaProjection,
   reducedMotion: boolean,
   assets: ArenaVisualAssets,
 ): void {
   const itemTextures = assets.itemTextures;
+  const bombTexture = itemTextures?.bomb;
 
-  if (itemTextures === null) {
+  if (bombTexture === undefined) {
     removeStaleSprites(layer, bombSprites, new Set<string>());
-    removeStaleSprites(layer, soapSprites, new Set<string>());
     return;
   }
 
@@ -1397,7 +1629,7 @@ function syncPlacedItemSprites(
     let sprite = bombSprites.get(bombKey);
 
     if (sprite === undefined) {
-      sprite = new Sprite(itemTextures.bomb);
+      sprite = new Sprite(bombTexture);
       sprite.anchor.set(0.5, 0.82);
       bombSprites.set(bombKey, sprite);
       layer.addChild(sprite);
@@ -1416,31 +1648,7 @@ function syncPlacedItemSprites(
     sprite.visible = true;
   }
 
-  const visibleSoapIds = new Set<string>();
-
-  for (const patch of frame.soapPatches) {
-    visibleSoapIds.add(patch.tileId);
-    let sprite = soapSprites.get(patch.tileId);
-
-    if (sprite === undefined) {
-      sprite = new Sprite(itemTextures.soap);
-      sprite.anchor.set(0.5, 0.62);
-      soapSprites.set(patch.tileId, sprite);
-      layer.addChild(sprite);
-    }
-
-    const point = projectArenaPoint({ x: patch.column + 0.5, y: patch.row + 0.5 }, projection);
-    const width = clamp(projection.tileWidth * 0.62, 22, 52);
-    sprite.position.set(point.x, point.y + projection.tileDepth * 0.12);
-    sprite.width = width;
-    sprite.height = width * (sprite.texture.height / sprite.texture.width);
-    sprite.rotation = reducedMotion ? 0 : Math.sin((frame.tick + patch.column * 7) * 0.08) * 0.035;
-    sprite.alpha = 0.96;
-    sprite.visible = true;
-  }
-
   removeStaleSprites(layer, bombSprites, visibleBombIds);
-  removeStaleSprites(layer, soapSprites, visibleSoapIds);
 }
 
 function drawBrickWall(
@@ -1503,6 +1711,54 @@ function drawBrickWall(
     .stroke({ color: 0x5c3023, width: mortar });
 }
 
+function drawSoapPatch(
+  graphics: Graphics,
+  patch: SoapPatchState,
+  projection: ArenaProjection,
+  humanActorId: number,
+): void {
+  const { x, y } = projectArenaPoint({ x: patch.column + 0.5, y: patch.row + 0.5 }, projection);
+  const width = projection.tileWidth * 0.76;
+  const height = Math.max(8, projection.tileDepth * 0.5);
+  const ownerColor = getActorIdentityColor(patch.ownerActorId, humanActorId);
+
+  // A delivered pickup keeps the upright soap sprite and yellow plus marker.
+  // A placed trap is deliberately flat, translucent, and hazard-marked.
+  graphics
+    .ellipse(x, y, width * 0.5, height * 0.5)
+    .fill({ color: 0xa8edf2, alpha: 0.38 })
+    .stroke({ color: ownerColor, width: Math.max(2, projection.tileWidth * 0.04), alpha: 0.92 });
+  graphics
+    .ellipse(x - width * 0.2, y + height * 0.02, width * 0.2, height * 0.26)
+    .ellipse(x + width * 0.18, y - height * 0.04, width * 0.24, height * 0.3)
+    .fill({ color: 0xe9fbff, alpha: 0.42 });
+
+  const bubbleRadius = Math.max(2, height * 0.13);
+  for (const [offsetX, offsetY, scale] of [
+    [-0.28, -0.42, 0.8],
+    [0.04, -0.56, 1],
+    [0.32, -0.34, 0.65],
+  ] as const) {
+    graphics
+      .circle(x + width * offsetX, y + height * offsetY, bubbleRadius * scale)
+      .stroke({ color: 0xf4ffff, width: 1.5, alpha: 0.9 });
+  }
+
+  const markerRadius = Math.max(5, height * 0.3);
+  graphics
+    .circle(x, y, markerRadius)
+    .fill({ color: 0x15383d, alpha: 0.82 })
+    .stroke({ color: 0xf4ffff, width: 1.5, alpha: 0.92 });
+  graphics
+    .moveTo(x, y - markerRadius * 0.5)
+    .lineTo(x, y + markerRadius * 0.16)
+    .stroke({ color: 0xf4ffff, width: Math.max(2, markerRadius * 0.18), cap: "round" });
+  graphics.circle(x, y + markerRadius * 0.48, Math.max(1.5, markerRadius * 0.11)).fill({
+    color: 0xf4ffff,
+    alpha: 0.96,
+  });
+}
+
 function drawBomb(
   graphics: Graphics,
   bomb: BombState,
@@ -1549,36 +1805,6 @@ function drawBomb(
   }
 }
 
-function drawSoapPatch(
-  graphics: Graphics,
-  patch: SoapPatchState,
-  projection: ArenaProjection,
-): void {
-  const { x, y } = projectArenaPoint({ x: patch.column + 0.5, y: patch.row + 0.5 }, projection);
-  const width = projection.tileWidth * 0.62;
-  const height = Math.max(5, projection.tileDepth * 0.34);
-  const radius = Math.max(3, height * 0.45);
-  const grooveInset = width * 0.19;
-
-  graphics
-    .ellipse(x, y + height * 0.34, width * 0.58, height * 0.58)
-    .fill({ color: 0x4b1f57, alpha: 0.5 });
-  graphics
-    .roundRect(x - width / 2, y - height / 2, width, height, radius)
-    .fill({ color: 0xc37adf, alpha: 0.88 })
-    .stroke({ color: 0xf2b8ff, width: Math.max(2, projection.tileWidth * 0.035) });
-  graphics
-    .moveTo(x - grooveInset, y - height * 0.08)
-    .lineTo(x + grooveInset, y - height * 0.08)
-    .moveTo(x - grooveInset * 0.72, y + height * 0.18)
-    .lineTo(x + grooveInset * 0.72, y + height * 0.18)
-    .stroke({ color: 0x5e276d, width: Math.max(1, projection.tileWidth * 0.022), cap: "round" });
-  graphics
-    .circle(x + width * 0.36, y - height * 0.64, Math.max(2, height * 0.2))
-    .circle(x + width * 0.48, y - height * 0.88, Math.max(1.5, height * 0.13))
-    .stroke({ color: 0xf2b8ff, width: 1.5, alpha: 0.9 });
-}
-
 function drawParticipant(
   graphics: Graphics,
   participant: RenderParticipantV1,
@@ -1587,6 +1813,8 @@ function drawParticipant(
   interpolationAlpha: number,
   reducedMotion: boolean,
   mayhem: boolean,
+  frameTick: number,
+  hasCharacterArtwork: boolean,
 ): void {
   if (!participant.active && participant.action === "Eliminated") {
     return;
@@ -1608,6 +1836,15 @@ function drawParticipant(
     : (BOT_COLORS[(participant.actorId - 2) % BOT_COLORS.length] ?? 0xb8c1bd);
   const actionColor = getActionColor(participant.action);
   const hasBoat = participant.effects.some(({ definitionId }) => definitionId === "boat");
+  const motionPose = createCharacterMotionPose({
+    action: participant.action,
+    actorId: participant.actorId,
+    castProgress: null,
+    facing: projectArenaVector(participant.facing),
+    frameTick,
+    reducedMotion,
+    velocity: projectArenaVector(participant.velocity),
+  });
 
   if (hasBoat) {
     const hullWidth = visualRadius * 2.6;
@@ -1624,7 +1861,16 @@ function drawParticipant(
       .stroke({ color: 0x9ad8f5, width: Math.max(1, projection.tileWidth * 0.025), alpha: 0.7 });
   }
 
-  if (mayhem && !isHuman) {
+  graphics
+    .ellipse(
+      x,
+      y + visualRadius * ARENA_SHADOW_OFFSET_SCALE,
+      visualRadius * 0.9,
+      Math.max(2, visualRadius * 0.24),
+    )
+    .fill({ color: 0x050706, alpha: participant.action === "Falling" ? 0.16 : 0.38 });
+
+  if (mayhem && !isHuman && !hasCharacterArtwork) {
     graphics
       .circle(x, y, visualRadius)
       .fill({ color: fillColor, alpha: participant.action === "Falling" ? 0.35 : 1 })
@@ -1656,49 +1902,75 @@ function drawParticipant(
     ({ definitionId }) => definitionId === "spring-glove",
   );
 
-  graphics
-    .ellipse(
-      x,
-      y + visualRadius * ARENA_SHADOW_OFFSET_SCALE,
-      visualRadius * 0.9,
-      Math.max(2, visualRadius * 0.24),
-    )
-    .fill({ color: 0x050706, alpha: participant.action === "Falling" ? 0.16 : 0.38 });
+  if (motionPose.moving && !hasBoat) {
+    const velocity = projectArenaVector(participant.velocity);
+    const speed = Math.hypot(velocity.x, velocity.y);
 
-  graphics.circle(x, y, collisionRadius).stroke({
-    color: 0x0a0d0c,
-    width: Math.max(1, projection.tileWidth * 0.035),
-    alpha: 0.9,
-  });
+    if (speed > Number.EPSILON) {
+      const direction = { x: velocity.x / speed, y: velocity.y / speed };
+      const perpendicular = { x: -direction.y, y: direction.x };
+      const footSpacing = visualRadius * 0.34;
+      const stride = motionPose.stridePhase * visualRadius * 0.22;
 
-  if (isHuman) {
-    const guardRadius = visualRadius + Math.max(5, projection.tileWidth * 0.14);
-    graphics.circle(x, y, guardRadius).stroke({
-      color: 0x3b8cff,
-      width: Math.max(2, projection.tileWidth * 0.05),
-      alpha: reducedMotion ? 0.4 : 0.55,
-    });
-    graphics
-      .poly([x, y - visualRadius, x + visualRadius, y, x, y + visualRadius, x - visualRadius, y])
-      .fill({ color: fillColor, alpha: participant.action === "Falling" ? 0.35 : 1 })
-      .stroke({ color: 0x3b8cff, width: Math.max(3, projection.tileWidth * 0.07) });
-  } else {
-    graphics
-      .circle(x, y, visualRadius)
-      .fill({ color: fillColor, alpha: participant.action === "Falling" ? 0.35 : 1 })
-      .stroke({ color: actionColor, width: 2 });
+      for (const side of [-1, 1]) {
+        const footX = x + perpendicular.x * footSpacing * side + direction.x * stride * side;
+        const footY =
+          y +
+          visualRadius * 0.62 +
+          perpendicular.y * footSpacing * side +
+          direction.y * stride * side;
+        const alpha = side === Math.sign(motionPose.stridePhase || 1) ? 0.42 : 0.2;
+        graphics
+          .ellipse(footX, footY, visualRadius * 0.22, Math.max(1.5, visualRadius * 0.08))
+          .fill({ color: 0xd8c28f, alpha });
+      }
+    }
   }
 
-  const massRingRadius = visualRadius + Math.max(3, projection.tileWidth * 0.06);
-  graphics.circle(x, y, massRingRadius).stroke({
-    color: hasIronBoots
-      ? ITEM_COLORS["iron-boots"]
-      : hasFeather
-        ? ITEM_COLORS.feather
-        : actionColor,
-    width: Math.max(1, participant.massFactor * 1.6),
-    alpha: 0.78,
-  });
+  if (!hasCharacterArtwork) {
+    graphics.circle(x, y, collisionRadius).stroke({
+      color: 0x0a0d0c,
+      width: Math.max(1, projection.tileWidth * 0.035),
+      alpha: 0.9,
+    });
+
+    if (isHuman) {
+      graphics
+        .poly([x, y - visualRadius, x + visualRadius, y, x, y + visualRadius, x - visualRadius, y])
+        .fill({ color: fillColor, alpha: participant.action === "Falling" ? 0.35 : 1 })
+        .stroke({ color: HUMAN_MARKER_COLOR, width: Math.max(3, projection.tileWidth * 0.07) });
+    } else {
+      graphics
+        .circle(x, y, visualRadius)
+        .fill({ color: fillColor, alpha: participant.action === "Falling" ? 0.35 : 1 })
+        .stroke({ color: actionColor, width: 2 });
+    }
+
+    const massRingRadius = visualRadius + Math.max(3, projection.tileWidth * 0.06);
+    graphics.circle(x, y, massRingRadius).stroke({
+      color: hasIronBoots
+        ? ITEM_COLORS["iron-boots"]
+        : hasFeather
+          ? ITEM_COLORS.feather
+          : actionColor,
+      width: Math.max(1, participant.massFactor * 1.6),
+      alpha: 0.78,
+    });
+  } else if (isHuman) {
+    const markerY = y + visualRadius * 1.12;
+    const markerWidth = visualRadius * 0.46;
+    const markerDepth = Math.max(3, visualRadius * 0.24);
+    graphics
+      .moveTo(x - markerWidth, markerY)
+      .lineTo(x, markerY + markerDepth)
+      .lineTo(x + markerWidth, markerY)
+      .stroke({
+        color: HUMAN_MARKER_COLOR,
+        width: Math.max(2, projection.tileWidth * 0.04),
+        alpha: 0.92,
+        cap: "round",
+      });
+  }
 
   drawMassMarker(graphics, participant, x, y, visualRadius);
 
@@ -1812,9 +2084,9 @@ function getEffectPosition(event: SimulationEventV1, frame: RenderFrameV1): Vect
   }
 
   if (
-    (event.kind === "soap-placed" ||
-      event.kind === "soap-triggered" ||
-      event.kind === "tile-void") &&
+    (event.kind === "tile-void" ||
+      event.kind === "soap-placed" ||
+      event.kind === "soap-triggered") &&
     event.tileId !== undefined
   ) {
     const tile = frame.tiles.find(({ tileId }) => tileId === event.tileId);
@@ -1826,7 +2098,6 @@ function getEffectPosition(event: SimulationEventV1, frame: RenderFrameV1): Vect
 
   const actorId =
     event.kind === "shove-hit" ||
-    event.kind === "wind-blast-hit" ||
     event.kind === "soap-triggered" ||
     event.kind === "skill-hit" ||
     event.kind === "status-applied"
@@ -1847,10 +2118,9 @@ function isVisualEffectKind(kind: SimulationEventV1["kind"]): kind is VisualEffe
     kind === "falling-started" ||
     kind === "item-picked-up" ||
     kind === "item-used" ||
-    kind === "wind-blast-hit" ||
-    kind === "bomb-detonated" ||
     kind === "soap-placed" ||
     kind === "soap-triggered" ||
+    kind === "bomb-detonated" ||
     kind === "grappling-hook-hit" ||
     kind === "rock-impact" ||
     kind === "tile-void"
@@ -1872,17 +2142,6 @@ function drawSkillEffect(
   const color = effect.kind === "skill-hit" ? 0xffc857 : 0x72d8ff;
 
   switch (effect.skillDefinitionId) {
-    case "force-palm":
-      for (const spread of [-0.75, 0, 0.75]) {
-        graphics
-          .moveTo(x, y)
-          .lineTo(
-            x + direction.x * radius * 2.8 + perpendicular.x * radius * spread,
-            y + direction.y * radius * 2.8 + perpendicular.y * radius * spread,
-          );
-      }
-      graphics.stroke({ color: 0xffb05c, width: 4, alpha, cap: "round" });
-      break;
     case "blink-step":
       for (let index = 0; index < 3; index += 1) {
         const offset = index * radius * 0.85;
@@ -1943,23 +2202,6 @@ function drawSkillEffect(
           .lineTo(x + Math.cos(angle) * radius * 1.8, y + Math.sin(angle) * radius);
       }
       graphics.stroke({ color: 0xa9f1ff, width: 3, alpha, cap: "round" });
-      break;
-    case "tidal-charge":
-      for (let index = 0; index < 3; index += 1) {
-        const offset = radius * index * 0.72;
-        graphics
-          .moveTo(
-            x - direction.x * offset - perpendicular.x * radius * 1.2,
-            y - direction.y * offset - perpendicular.y * radius * 1.2,
-          )
-          .quadraticCurveTo(
-            x + direction.x * radius * 0.8 - direction.x * offset,
-            y + direction.y * radius * 0.8 - direction.y * offset,
-            x - direction.x * offset + perpendicular.x * radius * 1.2,
-            y - direction.y * offset + perpendicular.y * radius * 1.2,
-          );
-      }
-      graphics.stroke({ color: 0x4dc9ff, width: 4, alpha, cap: "round" });
       break;
     case "aegis":
       graphics
@@ -2039,22 +2281,15 @@ function drawWorldEffect(
     const radiusY = projection.depthPitch * 3 * explosionScale;
     graphics.ellipse(x, y, radiusX, radiusY).stroke({ color: ITEM_COLORS.bomb, width: 5, alpha });
   } else if (effect.kind === "soap-triggered") {
-    const slipWidth = baseRadius * (reducedMotion ? 2.4 : 2.4 + progress * 1.8);
-    const slipHeight = baseRadius * 0.48;
-    graphics.ellipse(x, y, slipWidth, slipHeight).stroke({ color: 0xf2b8ff, width: 4, alpha });
     graphics
-      .moveTo(x - slipWidth * 0.38, y - slipHeight * 0.7)
-      .lineTo(x - slipWidth * 0.06, y + slipHeight * 0.7)
-      .moveTo(x + slipWidth * 0.06, y - slipHeight * 0.7)
-      .lineTo(x + slipWidth * 0.38, y + slipHeight * 0.7)
-      .stroke({ color: 0xc37adf, width: 3, alpha, cap: "round" });
+      .ellipse(x, y, baseRadius * expansion * 1.8, baseRadius * 0.55)
+      .stroke({ color: ITEM_COLORS.soap, width: 4, alpha });
   } else if (effect.kind === "soap-placed") {
-    const placementRadius = baseRadius * (reducedMotion ? 1 : 0.75 + progress * 0.5);
-    graphics.circle(x, y, placementRadius).stroke({ color: 0xc37adf, width: 3, alpha });
-  } else if (effect.kind === "wind-blast-hit") {
-    graphics
-      .circle(x, y, baseRadius * expansion * 1.35)
-      .stroke({ color: ITEM_COLORS["wind-blast"], width: 4, alpha });
+    graphics.circle(x, y, baseRadius * expansion).stroke({
+      color: ITEM_COLORS.soap,
+      width: 3,
+      alpha,
+    });
   } else if (effect.kind === "item-used" && effect.itemDefinitionId === "brick-bag") {
     const size = baseRadius * (reducedMotion ? 1 : 1 + progress * 0.6);
     graphics
@@ -2079,7 +2314,12 @@ function drawWorldEffect(
         x + direction.x * length + direction.y * spread,
         y + direction.y * length - direction.x * spread,
       )
-      .stroke({ color: ITEM_COLORS["wind-blast"], width: 3, alpha, cap: "round" });
+      .stroke({
+        color: getItemColor(effect.itemDefinitionId ?? "soap") ?? 0x68d8d6,
+        width: 3,
+        alpha,
+        cap: "round",
+      });
   } else if (effect.kind === "shove-hit") {
     graphics.circle(x, y, baseRadius * expansion).stroke({ color: 0xff695c, width: 3, alpha });
   } else if (effect.kind === "dodge-succeeded") {
@@ -2254,17 +2494,20 @@ export async function createArenaRenderer(
   const terrainSpritesByTileId = new Map<string, Sprite>();
   const treeSpritesByTileId = new Map<string, Sprite>();
   const bombSpritesByKey = new Map<string, Sprite>();
-  const soapSpritesByTileId = new Map<string, Sprite>();
   const pirateShipSpritesById = new Map<number, Sprite>();
+  const treasureShipSpritesById = new Map<number, Sprite>();
   const cannonSpritesByShotId = new Map<number, Sprite>();
   const rockSpritesByShotId = new Map<number, Sprite>();
   const participantSpritesByActorId = new Map<number, Sprite>();
   const boatSpritesByActorId = new Map<number, Sprite>();
   const aegisSpritesByActorId = new Map<number, Sprite>();
+  const stunnedSpritesByActorId = new Map<number, Sprite>();
   const impactSpritesByEffectKey = new Map<string, Sprite>();
   const skillEffectSpritesByKey = new Map<string, Sprite>();
   const skillZoneSpritesById = new Map<number, Sprite>();
   const eventLedger = new SimulationEventLedger();
+  const castAnimationsByActorId = new Map<number, CharacterCastAnimation>();
+  const hitAnimationsByActorId = new Map<number, CharacterHitAnimation>();
   const motionPreference = window.matchMedia("(prefers-reduced-motion: reduce)");
   let reducedMotion = motionPreference.matches;
   let visualEffects: readonly VisualEffect[] = Object.freeze([]);
@@ -2272,15 +2515,15 @@ export async function createArenaRenderer(
   let latestInterpolationAlpha = 0;
   let latestHumanActorId = 1;
   let latestAimPreview: ArenaAimPreview | null = null;
+  let spectatorCamera: Vector2 | undefined;
+  let spectatorRoundId: number | undefined;
   let tileLayerDirty = true;
   let oceanSprite: Sprite | undefined;
 
-  const draw = (): void => {
+  const getPresentationCamera = (projection: ArenaProjection): Vector2 => {
     if (latestFrame === undefined) {
-      return;
+      return Object.freeze({ x: 0, y: 0 });
     }
-
-    const projection = createArenaProjection(application.screen.width, application.screen.height);
     const camera = createCameraOffset(
       latestFrame,
       application.screen.width,
@@ -2289,7 +2532,28 @@ export async function createArenaRenderer(
       latestHumanActorId,
       latestInterpolationAlpha,
     );
-    const presentationCamera = camera;
+    if (!isSpectatorFrame(latestFrame, latestHumanActorId)) {
+      spectatorCamera = undefined;
+      return camera;
+    }
+
+    spectatorCamera = clampCameraOffset(
+      latestFrame,
+      application.screen.width,
+      application.screen.height,
+      projection,
+      spectatorCamera ?? camera,
+    );
+    return spectatorCamera;
+  };
+
+  const draw = (): void => {
+    if (latestFrame === undefined) {
+      return;
+    }
+
+    const projection = createArenaProjection(application.screen.width, application.screen.height);
+    const presentationCamera = getPresentationCamera(projection);
 
     if (visualAssets?.oceanTexture !== null && visualAssets?.oceanTexture !== undefined) {
       if (oceanSprite === undefined) {
@@ -2323,8 +2587,11 @@ export async function createArenaRenderer(
       layer.x = presentationCamera.x;
       layer.y = presentationCamera.y;
     }
-    host.dataset.cameraX = camera.x.toFixed(2);
-    host.dataset.cameraY = camera.y.toFixed(2);
+    host.dataset.cameraX = presentationCamera.x.toFixed(2);
+    host.dataset.cameraY = presentationCamera.y.toFixed(2);
+    host.dataset.cameraMode = isSpectatorFrame(latestFrame, latestHumanActorId)
+      ? "spectator"
+      : "follow";
     host.dataset.cameraShake = "0.00";
     host.dataset.projectionAngle = ARENA_CAMERA_ELEVATION_DEGREES.toString();
     host.dataset.projectionScaleY = ARENA_DEPTH_SCALE.toFixed(4);
@@ -2407,7 +2674,9 @@ export async function createArenaRenderer(
     }
 
     for (const ship of latestFrame.pirateShips) {
-      drawPirateShip(artillery, ship, projection);
+      if (visualAssets?.pirateShipTexture === null || visualAssets === null) {
+        drawPirateShip(artillery, ship, projection);
+      }
       const point = projectArenaPoint(ship.position, projection);
       let label = artilleryLabelsByShip.get(ship.shipId);
 
@@ -2433,37 +2702,50 @@ export async function createArenaRenderer(
       label.position.set(point.x, point.y - projection.tileDepth * 1.25);
     }
 
-    drawTreasureShip(artillery, latestFrame.treasureShip, projection);
-    const treasureShipPoint = projectArenaPoint(latestFrame.treasureShip.position, projection);
-    let treasureShipLabel = artilleryLabelsByShip.get(-1);
+    for (const treasureShip of latestFrame.treasureShips) {
+      if (visualAssets?.treasureShipTexture === null || visualAssets === null) {
+        drawTreasureShip(artillery, treasureShip, projection);
+      }
+      const treasureShipPoint = projectArenaPoint(treasureShip.position, projection);
+      const labelId = -1_000 - treasureShip.shipId;
+      let treasureShipLabel = artilleryLabelsByShip.get(labelId);
 
-    if (treasureShipLabel === undefined) {
-      treasureShipLabel = new Text({
-        text: "보물선",
-        style: {
-          fill: 0xffd166,
-          fontFamily: "system-ui, sans-serif",
-          fontSize: Math.max(12, projection.tileWidth * 0.22),
-          fontWeight: "900",
-          stroke: { color: 0x0f0c0e, width: 4 },
-        },
-      });
-      treasureShipLabel.anchor.set(0.5, 1);
-      artilleryLabelsByShip.set(-1, treasureShipLabel);
-      artilleryLabels.addChild(treasureShipLabel);
+      if (treasureShipLabel === undefined) {
+        treasureShipLabel = new Text({
+          text: "보물선",
+          style: {
+            fill: 0xffd166,
+            fontFamily: "system-ui, sans-serif",
+            fontSize: Math.max(12, projection.tileWidth * 0.22),
+            fontWeight: "900",
+            stroke: { color: 0x0f0c0e, width: 4 },
+          },
+        });
+        treasureShipLabel.anchor.set(0.5, 1);
+        artilleryLabelsByShip.set(labelId, treasureShipLabel);
+        artilleryLabels.addChild(treasureShipLabel);
+      }
+
+      treasureShipLabel.style.fontSize = Math.max(12, projection.tileWidth * 0.22);
+      treasureShipLabel.position.set(
+        treasureShipPoint.x,
+        treasureShipPoint.y -
+          Math.max(projection.tileDepth * 1.35, getTreasureShipSpriteHeight(projection) * 0.62),
+      );
     }
-
-    treasureShipLabel.style.fontSize = Math.max(12, projection.tileWidth * 0.22);
-    treasureShipLabel.position.set(
-      treasureShipPoint.x,
-      treasureShipPoint.y - projection.tileDepth * 1.35,
-    );
 
     if (visualAssets !== null) {
       syncPirateShipSprites(
         pirateShipSprites,
         pirateShipSpritesById,
         latestFrame,
+        projection,
+        visualAssets,
+      );
+      syncTreasureShipSprites(
+        pirateShipSprites,
+        treasureShipSpritesById,
+        latestFrame.treasureShips,
         projection,
         visualAssets,
       );
@@ -2506,7 +2788,7 @@ export async function createArenaRenderer(
     }
 
     for (const patch of latestFrame.soapPatches) {
-      drawSoapPatch(items, patch, projection);
+      drawSoapPatch(items, patch, projection, latestHumanActorId);
     }
 
     for (const zone of latestFrame.skillZones) {
@@ -2525,7 +2807,6 @@ export async function createArenaRenderer(
       syncPlacedItemSprites(
         itemSprites,
         bombSpritesByKey,
-        soapSpritesByTileId,
         latestFrame,
         projection,
         reducedMotion,
@@ -2561,6 +2842,10 @@ export async function createArenaRenderer(
     const humanParticipant = latestFrame.participants.find(
       ({ actorId }) => actorId === latestHumanActorId,
     );
+    const hasCharacterArtwork =
+      visualAssets !== null &&
+      ((visualAssets.characterTextures?.length ?? 0) > 0 ||
+        (visualAssets.characterMotionTextures?.length ?? 0) > 0);
 
     for (const entry of depthEntries) {
       if (entry.kind === "brick-wall") {
@@ -2578,6 +2863,8 @@ export async function createArenaRenderer(
           latestInterpolationAlpha,
           reducedMotion,
           mayhem,
+          latestFrame.tick,
+          hasCharacterArtwork,
         );
       }
     }
@@ -2599,10 +2886,21 @@ export async function createArenaRenderer(
         latestInterpolationAlpha,
         reducedMotion,
         visualAssets,
+        castAnimationsByActorId,
+        hitAnimationsByActorId,
       );
       syncAegisSprites(
         participantSprites,
         aegisSpritesByActorId,
+        latestFrame,
+        projection,
+        latestInterpolationAlpha,
+        reducedMotion,
+        visualAssets,
+      );
+      syncStunnedSprites(
+        participantSprites,
+        stunnedSpritesByActorId,
         latestFrame,
         projection,
         latestInterpolationAlpha,
@@ -2703,61 +3001,96 @@ export async function createArenaRenderer(
   };
 
   const present = (): void => {
+    if (destroyed || rendererLost || latestFrame === undefined) {
+      return;
+    }
     draw();
     application.render();
   };
 
-  void loadArenaVisualAssets().then((loadedAssets) => {
-    visualAssets = loadedAssets;
-    const loadedAssetCount = [
-      loadedAssets.characterTextures,
-      loadedAssets.itemTextures,
-      loadedAssets.pirateShipTexture,
-      loadedAssets.cannonballTexture,
-      loadedAssets.lethalBoulderTexture,
-      loadedAssets.impactExplosionTexture,
-      loadedAssets.seawaterImpactTexture,
-      loadedAssets.terrainTextures,
-      loadedAssets.treeTexture,
-      Object.keys(loadedAssets.skillEffectTextures).length === 9
-        ? loadedAssets.skillEffectTextures
-        : null,
-    ].filter((asset) => asset !== null).length;
-    host.dataset.skillEffectAssets = Object.keys(
-      loadedAssets.skillEffectTextures,
-    ).length.toString();
-    host.dataset.visualAssets =
-      loadedAssetCount === 0
-        ? "procedural-fallback"
-        : loadedAssetCount === 10
-          ? "generated"
-          : "partial";
-
-    if (latestFrame !== undefined) {
-      tileLayerDirty = true;
-      present();
+  let destroyed = false;
+  let rendererLost = false;
+  let scheduledPresentationId: number | undefined;
+  const invalidatePresentation = (): void => {
+    if (
+      destroyed ||
+      rendererLost ||
+      latestFrame === undefined ||
+      scheduledPresentationId !== undefined
+    ) {
+      return;
     }
+    scheduledPresentationId = window.requestAnimationFrame(() => {
+      scheduledPresentationId = undefined;
+      present();
+    });
+  };
 
-    return undefined;
-  });
+  void loadArenaVisualAssets()
+    .then((loadedAssets) => {
+      if (destroyed) {
+        return undefined;
+      }
+      visualAssets = loadedAssets;
+      const loadedAssetCount = [
+        loadedAssets.characterTextures,
+        loadedAssets.characterMotionTextures,
+        loadedAssets.itemTextures,
+        loadedAssets.pirateShipTexture,
+        loadedAssets.treasureShipTexture,
+        loadedAssets.cannonballTexture,
+        loadedAssets.lethalBoulderTexture,
+        loadedAssets.impactExplosionTexture,
+        loadedAssets.seawaterImpactTexture,
+        loadedAssets.terrainTextures,
+        loadedAssets.treeTexture,
+        loadedAssets.stunnedTexture,
+        Object.keys(loadedAssets.skillEffectTextures).length === SKILL_DEFINITION_IDS.length
+          ? loadedAssets.skillEffectTextures
+          : null,
+      ].filter((asset) => asset !== null).length;
+      host.dataset.skillEffectAssets = Object.keys(
+        loadedAssets.skillEffectTextures,
+      ).length.toString();
+      host.dataset.visualAssets =
+        loadedAssetCount === 0
+          ? "procedural-fallback"
+          : loadedAssetCount === 13
+            ? "generated"
+            : "partial";
+
+      tileLayerDirty = true;
+      invalidatePresentation();
+      return undefined;
+    })
+    .catch(() => {
+      if (!destroyed) {
+        visualAssets = null;
+        host.dataset.visualAssets = "procedural-fallback";
+        invalidatePresentation();
+      }
+      return undefined;
+    });
 
   const handleMotionPreference = (event: MediaQueryListEvent): void => {
     reducedMotion = event.matches;
     host.dataset.motion = reducedMotion ? "reduced" : "full";
-    present();
+    invalidatePresentation();
   };
   const handleResize = (): void => {
     tileLayerDirty = true;
-    draw();
+    invalidatePresentation();
   };
   const handleContextLost = (event: Event): void => {
     event.preventDefault();
+    rendererLost = true;
     host.dataset.renderer = "lost";
     options.onContextLost?.();
   };
   const handleContextRestored = (): void => {
+    rendererLost = false;
     host.dataset.renderer = "ready";
-    present();
+    invalidatePresentation();
     options.onContextRestored?.();
   };
 
@@ -2770,16 +3103,48 @@ export async function createArenaRenderer(
   return Object.freeze({
     consumeEvents(events: readonly SimulationEventV1[], frame: RenderFrameV1): void {
       const accepted = eventLedger.consume(events);
+      for (const event of accepted) {
+        if (event.kind === "skill-used" && event.actorId !== undefined) {
+          castAnimationsByActorId.set(
+            event.actorId,
+            Object.freeze({
+              endTick: event.tick + (reducedMotion ? 3 : 14),
+              roundId: event.roundId,
+              startTick: event.tick,
+            }),
+          );
+        }
+        if (
+          event.kind === "damage-applied" &&
+          event.targetActorId !== undefined &&
+          (event.amount ?? 0) > 0
+        ) {
+          hitAnimationsByActorId.set(
+            event.targetActorId,
+            Object.freeze({
+              endTick: event.tick + (reducedMotion ? 3 : 10),
+              roundId: event.roundId,
+            }),
+          );
+        }
+      }
+      for (const [actorId, animation] of castAnimationsByActorId) {
+        if (animation.roundId !== frame.roundId || animation.endTick < frame.tick) {
+          castAnimationsByActorId.delete(actorId);
+        }
+      }
+      for (const [actorId, animation] of hitAnimationsByActorId) {
+        if (animation.roundId !== frame.roundId || animation.endTick < frame.tick) {
+          hitAnimationsByActorId.delete(actorId);
+        }
+      }
       tileLayerDirty ||= accepted.some(
         ({ kind }) => kind === "tile-warning" || kind === "tile-collapsing" || kind === "tile-void",
       );
       const durationTicks = reducedMotion ? 3 : frame.participants.length >= 25 ? 7 : 12;
       const cap = frame.participants.length >= 25 ? MAYHEM_EFFECT_CAP : NORMAL_EFFECT_CAP;
       const appended = accepted.flatMap((event): readonly VisualEffect[] => {
-        if (
-          !isVisualEffectKind(event.kind) ||
-          (event.kind === "item-used" && event.itemDefinitionId === "soap")
-        ) {
+        if (!isVisualEffectKind(event.kind)) {
           return [];
         }
 
@@ -2814,11 +3179,48 @@ export async function createArenaRenderer(
       visualEffects = Object.freeze([...visualEffects, ...appended].slice(-cap));
     },
     destroy(): void {
+      destroyed = true;
+      if (scheduledPresentationId !== undefined) {
+        window.cancelAnimationFrame(scheduledPresentationId);
+        scheduledPresentationId = undefined;
+      }
       application.renderer.off("resize", handleResize);
       motionPreference.removeEventListener("change", handleMotionPreference);
       application.canvas.removeEventListener("webglcontextlost", handleContextLost);
       application.canvas.removeEventListener("webglcontextrestored", handleContextRestored);
       application.destroy(true, { children: true });
+    },
+    panSpectatorByScreen(deltaX: number, deltaY: number): boolean {
+      if (
+        latestFrame === undefined ||
+        !isSpectatorFrame(latestFrame, latestHumanActorId) ||
+        !Number.isFinite(deltaX) ||
+        !Number.isFinite(deltaY)
+      ) {
+        return false;
+      }
+
+      const projection = createArenaProjection(application.screen.width, application.screen.height);
+      const currentCamera = getPresentationCamera(projection);
+      const requestedCamera = Object.freeze({
+        x: currentCamera.x + deltaX,
+        y: currentCamera.y + deltaY,
+      });
+      const camera = clampCameraOffset(
+        latestFrame,
+        application.screen.width,
+        application.screen.height,
+        projection,
+        requestedCamera,
+      );
+      const moved =
+        Math.abs(camera.x - currentCamera.x) > 0.01 || Math.abs(camera.y - currentCamera.y) > 0.01;
+      spectatorCamera = camera;
+      if (!moved) {
+        return false;
+      }
+      invalidatePresentation();
+      return true;
     },
     render(frame: RenderFrameV1, interpolationAlpha: number, humanActorId: number): void {
       const resolutionCap =
@@ -2840,32 +3242,45 @@ export async function createArenaRenderer(
         tileLayerDirty = true;
       }
 
-      tileLayerDirty ||= latestFrame?.roundId !== frame.roundId;
+      const roundChanged = latestFrame?.roundId !== frame.roundId;
+      tileLayerDirty ||= roundChanged;
+      if (roundChanged || spectatorRoundId !== frame.roundId) {
+        spectatorCamera = undefined;
+        spectatorRoundId = frame.roundId;
+      }
       latestFrame = frame;
       visualEffects = Object.freeze(
         visualEffects.filter((effect) => effect.roundId === frame.roundId),
       );
       latestInterpolationAlpha = clamp(interpolationAlpha, 0, 1);
       latestHumanActorId = humanActorId;
+      if (scheduledPresentationId !== undefined) {
+        window.cancelAnimationFrame(scheduledPresentationId);
+        scheduledPresentationId = undefined;
+      }
       present();
+    },
+    resetSpectatorCamera(): void {
+      spectatorCamera = undefined;
+      invalidatePresentation();
     },
     screenToWorld(clientX: number, clientY: number): Vector2 | undefined {
       if (latestFrame === undefined) {
         return undefined;
       }
       const bounds = host.getBoundingClientRect();
-      if (bounds.width <= 0 || bounds.height <= 0) {
+      if (
+        bounds.width <= 0 ||
+        bounds.height <= 0 ||
+        clientX < bounds.left ||
+        clientX > bounds.right ||
+        clientY < bounds.top ||
+        clientY > bounds.bottom
+      ) {
         return undefined;
       }
       const projection = createArenaProjection(application.screen.width, application.screen.height);
-      const camera = createCameraOffset(
-        latestFrame,
-        application.screen.width,
-        application.screen.height,
-        projection,
-        latestHumanActorId,
-        latestInterpolationAlpha,
-      );
+      const camera = getPresentationCamera(projection);
       return Object.freeze({
         x: (clientX - bounds.left - camera.x - projection.originX) / projection.pitch,
         y: (clientY - bounds.top - camera.y - projection.originY) / projection.depthPitch,
@@ -2878,7 +3293,6 @@ export async function createArenaRenderer(
       } else {
         host.dataset.targeting = preview.valid ? "valid" : "invalid";
       }
-      present();
     },
   });
 }

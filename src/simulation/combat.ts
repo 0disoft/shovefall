@@ -27,6 +27,7 @@ import {
 import type { GameplayTuningV1 } from "./tuning";
 
 export const COMBAT_TUNING = Object.freeze({
+  initialMana: 30,
   healthRegenDelayTicks: 300,
   healthRegenPerTick: 0.04,
   manaRegenDelayTicks: 60,
@@ -60,7 +61,7 @@ export function createParticipantCombat(
   return Object.freeze({
     health: maximumHealth,
     maximumHealth,
-    mana: maximumMana,
+    mana: Math.min(COMBAT_TUNING.initialMana, maximumMana),
     maximumMana,
     shield: 0,
     shieldEndsTick: 0,
@@ -234,6 +235,23 @@ export function healParticipant(participant: ParticipantState, amount: number): 
       health: stable(
         Math.min(participant.combat.maximumHealth, participant.combat.health + amount),
       ),
+    }),
+  });
+}
+
+export function restoreParticipantMana(
+  participant: ParticipantState,
+  amount: number,
+): ParticipantState {
+  if (!participant.active || amount <= 0 || participant.combat.health <= 0) {
+    return participant;
+  }
+
+  return Object.freeze({
+    ...participant,
+    combat: Object.freeze({
+      ...participant.combat,
+      mana: stable(Math.min(participant.combat.maximumMana, participant.combat.mana + amount)),
     }),
   });
 }

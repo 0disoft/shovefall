@@ -355,6 +355,74 @@ function carveLakes(
   );
 }
 
+function bridgeOuterCoastDiagonalGaps(
+  tiles: readonly TileState[],
+  columns: number,
+  rows: number,
+): readonly TileState[] {
+  const landIds = new Set(
+    tiles.filter(({ state }) => state !== "Void").map(({ tileId }) => tileId),
+  );
+  const outerOceanIds = getOuterOceanTileIds(tiles, columns, rows);
+  const additions = new Set<TileId>();
+  const diagonalDirections = [
+    Object.freeze({ column: 1, row: 1 }),
+    Object.freeze({ column: -1, row: 1 }),
+  ] as const;
+
+  const countLandNeighbors = (column: number, row: number): number =>
+    ORTHOGONAL_DIRECTIONS.filter((direction) =>
+      landIds.has(createTileId(column + direction.column, row + direction.row)),
+    ).length;
+
+  for (const tile of tiles) {
+    if (tile.state === "Void") {
+      continue;
+    }
+
+    for (const diagonal of diagonalDirections) {
+      const diagonalId = createTileId(tile.column + diagonal.column, tile.row + diagonal.row);
+      if (!landIds.has(diagonalId)) {
+        continue;
+      }
+
+      const horizontal = Object.freeze({
+        column: tile.column + diagonal.column,
+        row: tile.row,
+      });
+      const vertical = Object.freeze({
+        column: tile.column,
+        row: tile.row + diagonal.row,
+      });
+      const horizontalId = createTileId(horizontal.column, horizontal.row);
+      const verticalId = createTileId(vertical.column, vertical.row);
+
+      if (!outerOceanIds.has(horizontalId) || !outerOceanIds.has(verticalId)) {
+        continue;
+      }
+
+      const horizontalScore = countLandNeighbors(horizontal.column, horizontal.row);
+      const verticalScore = countLandNeighbors(vertical.column, vertical.row);
+      additions.add(
+        horizontalScore > verticalScore ||
+          (horizontalScore === verticalScore && horizontalId.localeCompare(verticalId) < 0)
+          ? horizontalId
+          : verticalId,
+      );
+    }
+  }
+
+  if (additions.size === 0) {
+    return tiles;
+  }
+
+  return Object.freeze(
+    tiles.map((tile) =>
+      additions.has(tile.tileId) ? Object.freeze({ ...tile, state: "Stable" as const }) : tile,
+    ),
+  );
+}
+
 export function createArenaTiles(config: GameConfigV1, random: XorShift32): readonly TileState[] {
   const centerX = config.arenaColumns / 2;
   const centerY = config.arenaRows / 2;
@@ -410,7 +478,10 @@ export function createArenaTiles(config: GameConfigV1, random: XorShift32): read
     });
   });
 
-  return carveLakes(Object.freeze(tiles), config, random);
+  const carved = carveLakes(Object.freeze(tiles), config, random);
+  return usesLargeIslandPolicy
+    ? bridgeOuterCoastDiagonalGaps(carved, config.arenaColumns, config.arenaRows)
+    : carved;
 }
 
 export function createRectangularArenaTiles(config: GameConfigV1): readonly TileState[] {

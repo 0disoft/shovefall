@@ -11,6 +11,7 @@ import type { RenderFrameV1 } from "../src/simulation/contracts";
 import { normalizeGameConfig } from "../src/simulation/contracts";
 import { FIXED_TICKS_PER_SECOND } from "../src/simulation/versions";
 import { SimulationWorld } from "../src/simulation/world";
+import { DEFAULT_STARTING_ATTRIBUTES } from "../src/simulation/starting-attributes";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -41,6 +42,71 @@ function createDispositionFrame(
 }
 
 describe("browser simulation clock", () => {
+  it("rejects an unaffordable skill before targeting or drawing its range", () => {
+    const animationFrames: FrameRequestCallback[] = [];
+    vi.stubGlobal("window", {
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      requestAnimationFrame: (callback: FrameRequestCallback) => {
+        animationFrames.push(callback);
+        return animationFrames.length;
+      },
+      cancelAnimationFrame: () => {},
+    });
+    vi.stubGlobal("document", {
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      hasFocus: () => true,
+      visibilityState: "visible",
+    });
+    let preview: ArenaAimPreview | null = null;
+    let rejection = "";
+    const renderer: ArenaRenderer = {
+      consumeEvents: () => {},
+      destroy: () => {},
+      panSpectatorByScreen: () => false,
+      render: () => {},
+      resetSpectatorCamera: () => {},
+      screenToWorld: () => undefined,
+      setAimPreview: (nextPreview) => {
+        preview = nextPreview;
+      },
+    };
+    const session = createGameSession(renderer, {
+      onTelemetry: () => {},
+      onEvents: () => {},
+      onHumanUpgradeRequested: () => {},
+      onHumanEliminated: () => {},
+      onRoundCompleted: () => {},
+      onPauseChanged: () => {},
+      onTargetingChanged: () => {},
+      onActionRejected: (message) => {
+        rejection = message;
+      },
+      onFatalError: () => {},
+    });
+    session.start(
+      normalizeGameConfig({ participantCount: 4, itemsEnabled: false }),
+      "skill-mana-rejection",
+      undefined,
+      {
+        startingAttributes: DEFAULT_STARTING_ATTRIBUTES,
+        startingItems: ["bomb"],
+        startingSkills: ["aegis", "arc-bolt"],
+      },
+    );
+    for (const timestamp of [0, 500, 1_000, 1_500]) {
+      animationFrames.shift()?.(timestamp);
+    }
+
+    session.queueSkillSlot(0);
+
+    expect(session.targeting).toBe(false);
+    expect(preview).toBeNull();
+    expect(rejection).toBe("마나가 부족해. 38MP가 필요해.");
+    session.destroy();
+  });
+
   it("confirms built-in grapple targeting without smart-casting on the first E press", () => {
     const animationFrames: FrameRequestCallback[] = [];
     vi.stubGlobal("window", {
@@ -63,7 +129,9 @@ describe("browser simulation clock", () => {
     const renderer: ArenaRenderer = {
       consumeEvents: (events) => eventKinds.push(...events.map(({ kind }) => kind)),
       destroy: () => {},
+      panSpectatorByScreen: () => false,
       render: () => {},
+      resetSpectatorCamera: () => {},
       screenToWorld: () => preview?.target,
       setAimPreview: (nextPreview) => {
         preview = nextPreview;

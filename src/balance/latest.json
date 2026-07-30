@@ -326,28 +326,6 @@
           "signal": "watch"
         },
         {
-          "category": "item",
-          "id": "soap",
-          "label": "비누",
-          "exposures": 337,
-          "wins": 0,
-          "winRate": 0,
-          "winRate95": {
-            "lower": 0,
-            "upper": 0.0113
-          },
-          "winIndex": 0,
-          "averageRank": 25.8902,
-          "top10Rate": 0.2018,
-          "top5Rate": 0.1543,
-          "averageSurvivalSeconds": 21.4648,
-          "eliminationsPerRound": 0.5193,
-          "damageDealtPerRound": 60.8831,
-          "usesPerRound": 0.8961,
-          "hitsPerUse": 0.9404,
-          "signal": "watch"
-        },
-        {
           "category": "personality",
           "id": "Aggressor",
           "label": "Aggressor",

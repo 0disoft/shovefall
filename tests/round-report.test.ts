@@ -44,7 +44,7 @@ describe("playtest round reports", () => {
     );
 
     expect(report).toMatchObject({
-      schemaVersion: "shovefall-playtest-round/v9",
+      schemaVersion: "shovefall-playtest-round/v10",
       seed: "0000000800000000",
       settings: {
         preset: "massive",
@@ -62,7 +62,7 @@ describe("playtest round reports", () => {
           willpower: 0,
         },
         startingItems: ["bomb"],
-        startingSkills: ["force-palm", "blink-step"],
+        startingSkills: ["blink-step", "arc-bolt"],
         roundLimitSeconds: 120,
       },
       gameplayTuning: DEFAULT_GAMEPLAY_TUNING,
@@ -82,9 +82,9 @@ describe("playtest round reports", () => {
       },
     });
     expect(report.versions).toEqual({
-      product: "0.69.0",
-      simulation: "41.0.0",
-      content: "25.0.0",
+      product: "0.98.0",
+      simulation: "62.0.0",
+      content: "38.0.0",
     });
     expect(JSON.parse(serializePlaytestRoundReport(report))).toEqual(report);
   });

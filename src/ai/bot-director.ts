@@ -27,7 +27,9 @@ import {
 import { RandomStreamSet, type SeedInput, type XorShift32 } from "../simulation/random";
 import { ParticipantSpatialHash } from "../simulation/spatial-hash";
 import { SIMULATION_TUNING } from "../simulation/tuning";
-import { canSpendStatPoint, getSkillManaMultiplier } from "../simulation/progression";
+import { canSpendStatPoint } from "../simulation/progression";
+import { getSkillManaCost } from "../simulation/skills";
+import { getItemDefinition } from "../content/items";
 import { getSkillDefinition } from "../content/skills";
 import {
   createBotBlockedTileIds,
@@ -121,15 +123,43 @@ const TARGET_SWITCH_SCORE_MARGIN = 0.65;
 const STALL_PROGRESS_DISTANCE = 0.08;
 const STALL_DECISION_THRESHOLD = 2;
 const CROWD_AVOIDANCE_DISTANCE = 1.15;
+const ITEM_COMBAT_PRIORITY_DISTANCE = 1.8;
+const IMMEDIATE_PICKUP_DISTANCE = 0.7;
 
 const ACTIVE_ITEM_IDS = Object.freeze([
-  "wind-blast",
+  "soap",
   "brick-bag",
   "boat",
   "bomb",
-  "soap",
 ] as const satisfies readonly ItemDefinitionId[]);
 type ActiveItemDefinitionId = (typeof ACTIVE_ITEM_IDS)[number];
+
+export function canBotCollectMapItem(
+  participant: RenderParticipantV1,
+  item: RenderItemV1,
+): boolean {
+  if (getItemDefinition(item.definitionId).loadoutKind === "passive") {
+    return true;
+  }
+
+  const activeSlot = participant.inventory.find(({ slotIndex }) => slotIndex === 0);
+  return activeSlot === undefined || activeSlot.charges === 0;
+}
+
+export function getBotMapItemClaimantActorId(
+  item: RenderItemV1,
+  participants: readonly RenderParticipantV1[],
+): ActorId | null {
+  const claimant = participants
+    .filter(isControllable)
+    .filter((participant) => canBotCollectMapItem(participant, item))
+    .map((participant) => ({
+      actorId: participant.actorId,
+      distance: vectorLength(subtractVectors(participant.position, item.position)),
+    }))
+    .toSorted((left, right) => left.distance - right.distance || left.actorId - right.actorId)[0];
+  return claimant?.actorId ?? null;
+}
 
 function assertPositiveInteger(value: number, name: string, allowZero = false): void {
   const minimum = allowZero ? 0 : 1;
@@ -286,6 +316,7 @@ function chooseReadySkillSlot(
     target: RenderParticipantV1 | undefined;
     terrain: BotNavigationTerrain;
     blockedTileIds: ReadonlySet<TileId>;
+    nearbyOpponentCount: number;
   }>,
 ): SkillSlotIndex | null {
   const lowHealth = participant.combat.health / participant.combat.maximumHealth <= 0.42;
@@ -295,24 +326,8 @@ function chooseReadySkillSlot(
         ? ["blink-step", "aegis"]
         : ["aegis"]
       : lowHealth
-        ? [
-            "aegis",
-            "meteor-mark",
-            "frost-field",
-            "arc-bolt",
-            "chain-bind",
-            "tidal-charge",
-            "force-palm",
-          ]
-        : [
-            "meteor-mark",
-            "frost-field",
-            "arc-bolt",
-            "chain-bind",
-            "tidal-charge",
-            "force-palm",
-            "aegis",
-          ];
+        ? ["aegis", "meteor-mark", "frost-field", "arc-bolt", "chain-bind"]
+        : ["meteor-mark", "frost-field", "arc-bolt", "chain-bind", "aegis"];
 
   let selected: { slotIndex: SkillSlotIndex; score: number } | undefined;
   for (const definitionId of preferred) {
@@ -321,9 +336,7 @@ function chooseReadySkillSlot(
       continue;
     }
     const rank = participant.progression.skillRanks[slot.slotIndex] ?? 0;
-    const manaCost = Math.ceil(
-      getSkillDefinition(slot.definitionId).manaCost * getSkillManaMultiplier(rank),
-    );
+    const manaCost = getSkillManaCost(slot.definitionId, rank, participant.startingAttributes);
     if (participant.combat.mana + 1e-9 < manaCost) {
       continue;
     }
@@ -406,15 +419,81 @@ function getCrowdAvoidance(
     }
     const away = subtractVectors(current.position, candidate.position);
     const distance = vectorLength(away);
-    if (distance <= 0 || distance >= CROWD_AVOIDANCE_DISTANCE) {
+    if (distance >= CROWD_AVOIDANCE_DISTANCE) {
       continue;
     }
+    const separationDirection =
+      distance <= Number.EPSILON
+        ? Object.freeze({
+            x: Math.cos((current.actorId * 2.399963229728653) % (Math.PI * 2)),
+            y: Math.sin((current.actorId * 2.399963229728653) % (Math.PI * 2)),
+          })
+        : normalizeVector(away);
     avoidance = addVectors(
       avoidance,
-      scaleVector(normalizeVector(away), 1 - distance / CROWD_AVOIDANCE_DISTANCE),
+      scaleVector(separationDirection, 1 - distance / CROWD_AVOIDANCE_DISTANCE),
     );
   }
   return avoidance;
+}
+
+function getStalledEscapeMovement(
+  current: RenderParticipantV1,
+  desiredDirection: Vector2,
+  perceivedParticipants: readonly RenderParticipantV1[],
+  terrain: BotNavigationTerrain,
+  blockedTileIds: ReadonlySet<TileId>,
+): Vector2 | undefined {
+  const desired = normalizeVector(desiredDirection);
+  const separation = normalizeVector(getCrowdAvoidance(current, perceivedParticipants));
+  const actorOffset = (current.actorId % 8) * (Math.PI / 4);
+  const candidates = Array.from({ length: 8 }, (_, index) => {
+    const direction = Object.freeze({
+      x: Math.cos(actorOffset + index * (Math.PI / 4)),
+      y: Math.sin(actorOffset + index * (Math.PI / 4)),
+    });
+    const endpoint = addVectors(current.position, scaleVector(direction, 1.35));
+
+    if (
+      !isBotNavigationSegmentClear(
+        terrain,
+        blockedTileIds,
+        current.position,
+        endpoint,
+        current.radius,
+      )
+    ) {
+      return undefined;
+    }
+
+    const crowdClearance = perceivedParticipants.reduce((minimum, participant) => {
+      if (participant.actorId === current.actorId || !isControllable(participant)) {
+        return minimum;
+      }
+      return Math.min(minimum, vectorLength(subtractVectors(endpoint, participant.position)));
+    }, CROWD_AVOIDANCE_DISTANCE * 2);
+    const desiredAlignment = vectorLength(desired) === 0 ? 0 : dotVectors(direction, desired);
+    const separationAlignment =
+      vectorLength(separation) === 0 ? 0 : dotVectors(direction, separation);
+    const inwardAlignment = dotVectors(
+      direction,
+      normalizeVector(subtractVectors(terrain.center, current.position)),
+    );
+    return Object.freeze({
+      direction,
+      score:
+        crowdClearance * 2.4 +
+        separationAlignment * 2.2 +
+        desiredAlignment * 0.55 +
+        inwardAlignment * 0.25 -
+        index * 0.001,
+    });
+  }).filter(
+    (candidate): candidate is Readonly<{ direction: Vector2; score: number }> =>
+      candidate !== undefined,
+  );
+
+  return candidates.toSorted((left, right) => right.score - left.score)[0]?.direction;
 }
 
 function getSteeredMovement(
@@ -426,10 +505,29 @@ function getSteeredMovement(
   memory: BotMemory,
 ): Vector2 {
   const desired = normalizeVector(desiredDirection);
+  const stalled = memory.stalledDecisionCount >= STALL_DECISION_THRESHOLD;
+  const nearbyCrowdCount = perceivedParticipants.filter(
+    (participant) =>
+      participant.actorId !== current.actorId &&
+      isControllable(participant) &&
+      vectorLength(subtractVectors(participant.position, current.position)) <
+        CROWD_AVOIDANCE_DISTANCE,
+  ).length;
+  if (stalled && (nearbyCrowdCount >= 2 || vectorLength(desired) === 0)) {
+    const escape = getStalledEscapeMovement(
+      current,
+      desired,
+      perceivedParticipants,
+      terrain,
+      blockedTileIds,
+    );
+    if (escape !== undefined) {
+      return escape;
+    }
+  }
   if (vectorLength(desired) === 0) {
     return ZERO_VECTOR;
   }
-  const stalled = memory.stalledDecisionCount >= STALL_DECISION_THRESHOLD;
   const crowdAvoidance = getCrowdAvoidance(current, perceivedParticipants);
   let steered = normalizeVector(
     addVectors(desired, scaleVector(crowdAvoidance, stalled ? 1.2 : 0.38)),
@@ -775,13 +873,7 @@ export class BotDirector {
     const canUseActiveItem =
       current.action === "Ready" &&
       tick - memory.lastItemUseTick >= ACTIVE_ITEM_DECISION_COOLDOWN_TICKS;
-    const windBlastReady = canUseActiveItem && getChargedItemSlot(current, "wind-blast") !== null;
-    const perceivedParticipants = perceivedSpatialHash.queryNearby(
-      perceived.position,
-      windBlastReady
-        ? Math.ceil(SIMULATION_TUNING.windBlast.range / SIMULATION_TUNING.spatialHash.cellSize)
-        : 2,
-    );
+    const perceivedParticipants = perceivedSpatialHash.queryNearby(perceived.position, 2);
     const threats = perceivedParticipants
       .filter(
         (candidate) =>
@@ -816,12 +908,45 @@ export class BotDirector {
       );
     }
 
+    const nearby = perceivedParticipants
+      .filter((candidate) => candidate.actorId !== perceived.actorId && isControllable(candidate))
+      .map((candidate) => ({
+        candidate,
+        distance: vectorLength(subtractVectors(candidate.position, perceived.position)),
+      }))
+      .toSorted(
+        (left, right) =>
+          left.distance - right.distance || left.candidate.actorId - right.candidate.actorId,
+      )
+      .slice(0, this.#nearbyCandidateLimit);
+    const hasCloseOpponent = nearby.some(
+      ({ distance }) => distance <= ITEM_COMBAT_PRIORITY_DISTANCE,
+    );
     const itemCandidates = perceivedItems
       .map((item) => ({
         item,
         distance: vectorLength(subtractVectors(item.position, perceived.position)),
       }))
-      .filter(({ distance }) => distance <= 3.5 * personality.itemInterestWeight)
+      .filter(
+        ({ item, distance }) =>
+          distance <= 3.5 * personality.itemInterestWeight &&
+          canBotCollectMapItem(current, item) &&
+          getBotMapItemClaimantActorId(
+            item,
+            perceptionFrame.participants.filter((participant) => {
+              const candidateDistance = vectorLength(
+                subtractVectors(participant.position, item.position),
+              );
+              if (participant.actorId === this.#humanActorId) {
+                return candidateDistance <= IMMEDIATE_PICKUP_DISTANCE;
+              }
+              const candidatePersonality =
+                BOT_PERSONALITIES[this.#getMemory(participant).personality];
+              return candidateDistance <= 3.5 * candidatePersonality.itemInterestWeight;
+            }),
+          ) === current.actorId &&
+          (!hasCloseOpponent || distance <= IMMEDIATE_PICKUP_DISTANCE),
+      )
       .toSorted(
         (left, right) => left.distance - right.distance || left.item.itemId - right.item.itemId,
       )
@@ -850,17 +975,6 @@ export class BotDirector {
       }
     }
 
-    const nearby = perceivedParticipants
-      .filter((candidate) => candidate.actorId !== perceived.actorId && isControllable(candidate))
-      .map((candidate) => ({
-        candidate,
-        distance: vectorLength(subtractVectors(candidate.position, perceived.position)),
-      }))
-      .toSorted(
-        (left, right) =>
-          left.distance - right.distance || left.candidate.actorId - right.candidate.actorId,
-      )
-      .slice(0, this.#nearbyCandidateLimit);
     const scoredTargets = nearby.map(({ candidate, distance }) => {
       const edgeOpportunity = Math.max(0, 2.2 - getBotEdgeDistance(candidate, terrain));
       const stumblingOpportunity = candidate.action === "Stumbling" ? 1 : 0;
@@ -956,6 +1070,7 @@ export class BotDirector {
             target: bestTarget,
             terrain,
             blockedTileIds,
+            nearbyOpponentCount: nearby.filter(({ distance }) => distance <= 2.75).length,
           })
         : null;
     if (canUseActiveItem) {
@@ -991,26 +1106,9 @@ export class BotDirector {
         );
       }
 
-      const windBlastSlot = getChargedItemSlot(current, "wind-blast");
-
-      if (
-        windBlastSlot !== null &&
-        bestDistance >= 1.1 &&
-        bestDistance <= SIMULATION_TUNING.windBlast.range &&
-        getBotEdgeDistance(bestTarget, terrain) <= 3 &&
-        isBotNavigationSegmentClear(
-          terrain,
-          blockedTileIds,
-          current.position,
-          bestTarget.position,
-          current.radius * 0.5,
-        )
-      ) {
-        return createDecision(direct, false, false, windBlastSlot);
-      }
-
       const brickBagSlot = getChargedItemSlot(current, "brick-bag");
       const healthRatio = current.combat.health / current.combat.maximumHealth;
+      const crowdedNearby = nearby.filter(({ distance }) => distance < 1.4).length >= 2;
       const needsBrickCover =
         threat !== undefined ||
         getBotEdgeDistance(current, terrain) <= BRICK_BAG_EDGE_PRESSURE_DISTANCE ||
@@ -1018,6 +1116,7 @@ export class BotDirector {
 
       if (
         brickBagSlot !== null &&
+        !crowdedNearby &&
         needsBrickCover &&
         bestDistance >= BRICK_BAG_MINIMUM_TARGET_DISTANCE &&
         bestDistance <= BRICK_BAG_MAXIMUM_TARGET_DISTANCE
@@ -1026,7 +1125,6 @@ export class BotDirector {
       }
 
       const soapSlot = getChargedItemSlot(current, "soap");
-
       if (
         soapSlot !== null &&
         bestDistance <= 1.3 &&
@@ -1034,18 +1132,15 @@ export class BotDirector {
           memory.personality === "Survivor" ||
           memory.personality === "Opportunist")
       ) {
-        return createDecision(
+        const retreatDirection =
           findBotNavigationDirection(
             terrain,
             blockedTileIds,
             current.position,
             terrain.center,
             current.radius,
-          ) ?? move,
-          false,
-          false,
-          soapSlot,
-        );
+          ) ?? move;
+        return createDecision(retreatDirection, false, false, soapSlot);
       }
     }
 

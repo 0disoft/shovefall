@@ -1,4 +1,5 @@
 import type { SkillDefinitionId, SkillZoneKind } from "../simulation/contracts";
+import { getUnobstructedStumbleDistance } from "../simulation/motion-constants";
 
 export type SkillCastKind = "melee" | "dash" | "line" | "zone" | "self";
 
@@ -22,26 +23,31 @@ export interface SkillDefinition {
   readonly delayTicks: number;
   readonly shield: number;
   readonly controlDurationMultiplier: number;
+  readonly damageHealingRatio: number;
 }
 
 export const SKILL_DEFINITION_IDS = [
-  "force-palm",
   "blink-step",
   "arc-bolt",
   "chain-bind",
   "meteor-mark",
   "frost-field",
-  "tidal-charge",
   "aegis",
 ] as const satisfies readonly SkillDefinitionId[];
 
 export const DEFAULT_SKILL_LOADOUT = Object.freeze([
-  "force-palm",
   "blink-step",
+  "arc-bolt",
 ] as const satisfies readonly SkillDefinitionId[]);
 
-function defineSkill(definition: SkillDefinition): SkillDefinition {
-  return Object.freeze(definition);
+type SkillDefinitionInput = Omit<SkillDefinition, "damageHealingRatio"> &
+  Partial<Pick<SkillDefinition, "damageHealingRatio">>;
+
+function defineSkill(definition: SkillDefinitionInput): SkillDefinition {
+  return Object.freeze({
+    ...definition,
+    damageHealingRatio: definition.damageHealingRatio ?? 0,
+  });
 }
 
 function formatNumber(value: number): string {
@@ -52,6 +58,34 @@ function formatTicksAsSeconds(ticks: number): string {
   return formatNumber(ticks / 60);
 }
 
+function formatDistance(value: number): string {
+  return String(Math.round(value * 10) / 10);
+}
+
+export function getBaseSkillKnockbackDistance(skill: SkillDefinition): number {
+  return getUnobstructedStumbleDistance(skill.impulse, skill.stumbleTicks);
+}
+
+function formatKnockback(skill: SkillDefinition): string | undefined {
+  if (skill.impulse <= 0 || skill.stumbleTicks <= 0) {
+    return undefined;
+  }
+
+  return `기준 넉백 약 ${formatDistance(getBaseSkillKnockbackDistance(skill))}칸`;
+}
+
+function formatControl(skill: SkillDefinition): string | undefined {
+  if (skill.stunTicks > 0) {
+    return `기본 ${formatTicksAsSeconds(skill.stunTicks)}초 기절`;
+  }
+
+  if (skill.stumbleTicks > 0) {
+    return `${formatTicksAsSeconds(skill.stumbleTicks)}초 휘청`;
+  }
+
+  return undefined;
+}
+
 function formatAimAssist(minimumAimDot: number): string {
   if (minimumAimDot >= 1) {
     return "";
@@ -59,72 +93,69 @@ function formatAimAssist(minimumAimDot: number): string {
 
   const clampedDot = Math.max(-1, Math.min(1, minimumAimDot));
   const degrees = Math.round((Math.acos(clampedDot) * 180) / Math.PI);
-  return `전방 약 ${degrees}도까지 조준 보정해 `;
+  return `전방 약 ${degrees}도까지 조준 보정`;
 }
 
 export function formatSkillDescription(skill: SkillDefinition): string {
   switch (skill.castKind) {
     case "melee": {
-      const effects = [
-        skill.damage > 0 ? `피해 ${formatNumber(skill.damage)}` : undefined,
-        skill.impulse > 0 ? "넉백" : undefined,
-        skill.stunTicks > 0 ? `${formatTicksAsSeconds(skill.stunTicks)}초 기절` : undefined,
-      ].filter((effect): effect is string => effect !== undefined);
-      const target =
-        skill.range > 0 ? `사거리 ${formatNumber(skill.range)}칸 안의 첫 적에게` : "첫 적에게";
-      const aimAssist = formatAimAssist(skill.minimumAimDot);
-      const detail = effects.join(", ");
-      return detail.length > 0
-        ? `${target} ${aimAssist}${detail}`
-        : `${target} ${aimAssist}`.trim();
-    }
-    case "dash":
-      if (skill.id === "blink-step") {
-        const distance = skill.range > 0 ? ` 최대 ${formatNumber(skill.range)}칸` : "";
-        const evasion = formatTicksAsSeconds(skill.durationTicks);
-        return `지정 방향으로${distance} 이동하고 ${evasion}초 동안 공격 회피`;
-      }
       return [
-        skill.range > 0
-          ? `첫 적이나 물가에서 멈추며 최대 ${formatNumber(skill.range)}칸 돌진`
-          : "첫 적이나 물가에서 멈추는 돌진",
+        skill.range > 0 ? `사거리 ${formatNumber(skill.range)}칸 안의 첫 적` : "첫 적",
+        formatAimAssist(skill.minimumAimDot).trim() || undefined,
         skill.damage > 0 ? `피해 ${formatNumber(skill.damage)}` : undefined,
-        skill.impulse > 0 ? "넉백" : undefined,
-        skill.stunTicks > 0 ? `${formatTicksAsSeconds(skill.stunTicks)}초 기절` : undefined,
+        formatKnockback(skill),
+        formatControl(skill),
       ]
         .filter((part): part is string => part !== undefined)
         .join(", ");
+    }
+    case "dash":
+      const distance = skill.range > 0 ? ` 최대 ${formatNumber(skill.range)}칸` : "";
+      const evasion = formatTicksAsSeconds(skill.durationTicks);
+      return `지정 방향으로${distance} 이동하고 ${evasion}초 동안 공격 회피`;
     case "line": {
       if (skill.id === "chain-bind") {
         const target =
           skill.range > 0 ? `전방 ${formatNumber(skill.range)}칸의 첫 적` : "전방의 첫 적";
-        const aimAssist = formatAimAssist(skill.minimumAimDot);
-        const damage = skill.damage > 0 ? `피해 ${formatNumber(skill.damage)}와 ` : "";
-        const root =
+        return [
+          target,
+          formatAimAssist(skill.minimumAimDot).trim() || undefined,
+          skill.damage > 0 ? `피해 ${formatNumber(skill.damage)}` : undefined,
           skill.rootTicks > 0
             ? `${formatTicksAsSeconds(skill.rootTicks)}초 이동 봉쇄`
-            : "이동 봉쇄";
-        return `${target}에게 ${aimAssist}${damage}${root}`;
+            : "이동 봉쇄",
+        ]
+          .filter((part): part is string => part !== undefined)
+          .join(", ");
       }
       const target =
         skill.range > 0 ? `전방 ${formatNumber(skill.range)}칸 안의 첫 적` : "전방의 첫 적";
       const effects = [
         skill.damage > 0 ? `피해 ${formatNumber(skill.damage)}` : undefined,
-        skill.impulse > 0 ? `넉백 ${formatNumber(skill.impulse)}` : undefined,
+        formatKnockback(skill),
+        formatControl(skill),
       ].filter((effect): effect is string => effect !== undefined);
-      const detail = effects.join("와 ");
-      return detail.length > 0 ? `${target}을 조준 보정해 ${detail}` : `${target}을 조준 보정`;
+      return effects.length > 0
+        ? `${target}을 조준 보정, ${effects.join(", ")}`
+        : `${target}을 조준 보정`;
     }
     case "zone": {
       const placement = skill.range > 0 ? `${formatNumber(skill.range)}칸 앞에` : "현재 위치에";
       switch (skill.zoneKind) {
         case "delayed-blast": {
-          const delay =
-            skill.delayTicks > 0 ? `, ${formatTicksAsSeconds(skill.delayTicks)}초 뒤` : "";
-          const radius = skill.radius > 0 ? ` 반경 ${formatNumber(skill.radius)}칸` : "";
-          const damage = skill.damage > 0 ? ` 피해 ${formatNumber(skill.damage)}` : "";
-          const stun = skill.stunTicks > 0 ? "와 기절" : "";
-          return `${placement} 표식${delay}${radius}${damage}${stun}`;
+          return [
+            `${placement} 표식`,
+            skill.delayTicks > 0
+              ? `${formatTicksAsSeconds(skill.delayTicks)}초 뒤${skill.radius > 0 ? ` 반경 ${formatNumber(skill.radius)}칸` : ""}`
+              : skill.radius > 0
+                ? `반경 ${formatNumber(skill.radius)}칸`
+                : undefined,
+            skill.damage > 0 ? `피해 ${formatNumber(skill.damage)}` : undefined,
+            formatKnockback(skill),
+            formatControl(skill),
+          ]
+            .filter((part): part is string => part !== undefined)
+            .join(", ");
         }
         case "frost": {
           const duration =
@@ -135,7 +166,11 @@ export function formatSkillDescription(skill: SkillDefinition): string {
             slowPercent > 0
               ? `${damage.length > 0 ? "와 " : ""}${formatNumber(slowPercent)}% 둔화`
               : "";
-          return `${placement} ${duration}${damage}${slow} 지대`;
+          const healing =
+            skill.damageHealingRatio > 0
+              ? `, 준 피해의 ${formatNumber(skill.damageHealingRatio * 100)}% 체력 회복`
+              : "";
+          return `${placement} ${duration}${damage}${slow} 지대${healing}`;
         }
         case null:
           throw new Error(`Zone skill ${skill.id} requires a zone kind`);
@@ -157,27 +192,6 @@ export function formatSkillDescription(skill: SkillDefinition): string {
 
 export const SKILL_DEFINITIONS: Readonly<Record<SkillDefinitionId, SkillDefinition>> =
   Object.freeze({
-    "force-palm": defineSkill({
-      id: "force-palm",
-      label: "충격 장타",
-      castKind: "melee",
-      zoneKind: null,
-      cooldownTicks: 72,
-      manaCost: 18,
-      range: 1.7,
-      minimumAimDot: 0.94,
-      radius: 0,
-      damage: 18,
-      impulse: 0.22,
-      stumbleTicks: 14,
-      stunTicks: 120,
-      rootTicks: 0,
-      slowMultiplier: 1,
-      durationTicks: 0,
-      delayTicks: 0,
-      shield: 0,
-      controlDurationMultiplier: 1,
-    }),
     "blink-step": defineSkill({
       id: "blink-step",
       label: "잔상 회피",
@@ -230,11 +244,11 @@ export const SKILL_DEFINITIONS: Readonly<Record<SkillDefinitionId, SkillDefiniti
       range: 5.5,
       minimumAimDot: 0.966,
       radius: 0,
-      damage: 12,
+      damage: 20,
       impulse: 0,
       stumbleTicks: 0,
       stunTicks: 0,
-      rootTicks: 72,
+      rootTicks: 60,
       slowMultiplier: 1,
       durationTicks: 0,
       delayTicks: 0,
@@ -246,11 +260,11 @@ export const SKILL_DEFINITIONS: Readonly<Record<SkillDefinitionId, SkillDefiniti
       label: "낙석 표식",
       castKind: "zone",
       zoneKind: "delayed-blast",
-      cooldownTicks: 600,
-      manaCost: 45,
+      cooldownTicks: 480,
+      manaCost: 36,
       range: 5,
       minimumAimDot: 1,
-      radius: 2.15,
+      radius: 3,
       damage: 36,
       impulse: 0.18,
       stumbleTicks: 18,
@@ -258,7 +272,7 @@ export const SKILL_DEFINITIONS: Readonly<Record<SkillDefinitionId, SkillDefiniti
       rootTicks: 0,
       slowMultiplier: 1,
       durationTicks: 1,
-      delayTicks: 120,
+      delayTicks: 90,
       shield: 0,
       controlDurationMultiplier: 1,
     }),
@@ -268,7 +282,7 @@ export const SKILL_DEFINITIONS: Readonly<Record<SkillDefinitionId, SkillDefiniti
       castKind: "zone",
       zoneKind: "frost",
       cooldownTicks: 480,
-      manaCost: 38,
+      manaCost: 30,
       range: 3.5,
       minimumAimDot: 1,
       radius: 2.3,
@@ -282,27 +296,7 @@ export const SKILL_DEFINITIONS: Readonly<Record<SkillDefinitionId, SkillDefiniti
       delayTicks: 0,
       shield: 0,
       controlDurationMultiplier: 1,
-    }),
-    "tidal-charge": defineSkill({
-      id: "tidal-charge",
-      label: "파도 돌진",
-      castKind: "dash",
-      zoneKind: null,
-      cooldownTicks: 300,
-      manaCost: 26,
-      range: 3.6,
-      minimumAimDot: 1,
-      radius: 0,
-      damage: 24,
-      impulse: 0.3,
-      stumbleTicks: 20,
-      stunTicks: 90,
-      rootTicks: 0,
-      slowMultiplier: 1,
-      durationTicks: 0,
-      delayTicks: 0,
-      shield: 0,
-      controlDurationMultiplier: 1,
+      damageHealingRatio: 0.25,
     }),
     aegis: defineSkill({
       id: "aegis",
@@ -310,7 +304,7 @@ export const SKILL_DEFINITIONS: Readonly<Record<SkillDefinitionId, SkillDefiniti
       castKind: "self",
       zoneKind: null,
       cooldownTicks: 720,
-      manaCost: 45,
+      manaCost: 40,
       range: 0,
       minimumAimDot: 1,
       radius: 0,
@@ -322,7 +316,7 @@ export const SKILL_DEFINITIONS: Readonly<Record<SkillDefinitionId, SkillDefiniti
       slowMultiplier: 1,
       durationTicks: 300,
       delayTicks: 0,
-      shield: 24,
+      shield: 22,
       controlDurationMultiplier: 0.7,
     }),
   });

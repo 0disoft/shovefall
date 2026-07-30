@@ -8,6 +8,59 @@ interface CanvasPixelSummary {
   readonly uniqueColorBuckets: number;
 }
 
+interface LoadoutCardOffsets {
+  readonly art: number;
+  readonly effect: number;
+  readonly height: number;
+  readonly meta: number;
+  readonly top: number;
+  readonly title: number;
+}
+
+async function expectAlignedLoadoutCards(cards: Locator): Promise<void> {
+  const offsets = await cards.evaluateAll((elements): readonly LoadoutCardOffsets[] =>
+    elements.map((element) => {
+      const card = element.getBoundingClientRect();
+      const art = element.querySelector<HTMLElement>(".skill-art, .item-art");
+      const effect = element.querySelector<HTMLElement>(".skill-card__effect, .item-card__effect");
+      const meta = element.querySelector<HTMLElement>(".skill-card__meta, .item-card__meta");
+      const title = element.querySelector<HTMLElement>("strong");
+
+      if (art === null || effect === null || meta === null || title === null) {
+        throw new Error("Loadout card is missing a required layout region.");
+      }
+
+      return {
+        art: art.getBoundingClientRect().top - card.top,
+        effect: effect.getBoundingClientRect().top - card.top,
+        height: card.height,
+        meta: meta.getBoundingClientRect().top - card.top,
+        top: card.top,
+        title: title.getBoundingClientRect().top - card.top,
+      };
+    }),
+  );
+
+  expect(offsets.length).toBeGreaterThan(1);
+  const first = offsets[0];
+  expect(first).toBeDefined();
+
+  for (const current of offsets.slice(1)) {
+    expect(Math.abs(current.title - first!.title)).toBeLessThanOrEqual(1);
+    expect(Math.abs(current.meta - first!.meta)).toBeLessThanOrEqual(1);
+    expect(Math.abs(current.art - first!.art)).toBeLessThanOrEqual(1);
+    expect(Math.abs(current.effect - first!.effect)).toBeLessThanOrEqual(1);
+  }
+
+  for (const [index, current] of offsets.entries()) {
+    for (const sibling of offsets.slice(index + 1)) {
+      if (Math.abs(current.top - sibling.top) <= 1) {
+        expect(Math.abs(current.height - sibling.height)).toBeLessThanOrEqual(1);
+      }
+    }
+  }
+}
+
 function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
   return typeof value === "object" && value !== null;
 }
@@ -181,7 +234,7 @@ async function openSettings(page: Page): Promise<void> {
 
 async function openSettingsTab(
   page: Page,
-  name: "특성" | "스킬" | "아이템" | "실험실",
+  name: "특성" | "스킬" | "아이템" | "설정",
 ): Promise<void> {
   await page.getByRole("tab", { name, exact: true }).click();
 }
@@ -212,17 +265,14 @@ async function allocateBalancedAttributes(
 }
 
 async function selectStartingSkills(page: Page): Promise<void> {
-  const selectedCount = await page
-    .locator('#starting-skills input[name="startingSkill"]:checked')
-    .count();
-  if (selectedCount >= 2) {
-    return;
+  const arcBolt = page.locator('input[name="startingSkill"][value="arc-bolt"]');
+  if (!(await arcBolt.isChecked())) {
+    await arcBolt.check();
   }
-  await page
-    .locator('#starting-skills input[name="startingSkill"]:not(:checked):not(:disabled)')
-    .first()
-    .check();
-  return selectStartingSkills(page);
+  const blinkStep = page.locator('input[name="startingSkill"][value="blink-step"]');
+  if (!(await blinkStep.isChecked())) {
+    await blinkStep.check();
+  }
 }
 
 async function saveSettings(page: Page): Promise<void> {
@@ -407,11 +457,59 @@ async function faceArenaDirection(page: Page, direction: string): Promise<void> 
 
   try {
     await fastForwardUntilCameraMoved(page, positionBeforeFacing);
-    await expect.poll(() => readSimulationTick(page)).toBeGreaterThan(tickBeforeFacing);
+    await waitForSimulationTickAdvance(page, tickBeforeFacing);
   } finally {
     await page.keyboard.up(direction);
   }
 }
+
+test("centers the fullscreen menu actions on the viewport", async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto("/");
+
+  const geometry = await page.locator(".main-menu__actions").evaluate((actions) => {
+    const bounds = actions.getBoundingClientRect();
+    return {
+      actionCenter: bounds.top + bounds.height / 2,
+      viewportCenter: window.innerHeight / 2,
+    };
+  });
+
+  expect(Math.abs(geometry.actionCenter - geometry.viewportCenter)).toBeLessThanOrEqual(1);
+  await expect(page.locator(".masthead h1")).toBeVisible();
+  await expect(page.locator(".fullscreen-guide")).toBeVisible();
+});
+
+test("uses right-click ground destinations instead of desktop mouse-drag movement", async ({
+  page,
+}) => {
+  test.setTimeout(60_000);
+  await page.clock.install();
+  await installFixedRoundSeed(page, 1, 0);
+  await page.goto("/");
+  await pauseInstalledClock(page);
+  await saveBalancedDefaults(page);
+  await startGame(page);
+  await finishInstalledClockCountdown(page);
+
+  const arenaBounds = await page.locator("#arena-host").boundingBox();
+  expect(arenaBounds).not.toBeNull();
+  if (arenaBounds === null) {
+    return;
+  }
+
+  const originX = arenaBounds.x + arenaBounds.width / 2;
+  const originY = arenaBounds.y + arenaBounds.height / 2;
+  await page.mouse.move(originX, originY);
+  await page.mouse.down();
+  await page.mouse.move(originX + 80, originY, { steps: 4 });
+  await expect(page.locator("#arena-host")).not.toHaveAttribute("data-pointer-moving", "true");
+  await page.mouse.up();
+
+  const cameraBeforeRightClick = await readCameraPosition(page);
+  await page.mouse.click(originX + 80, originY, { button: "right" });
+  await fastForwardUntilCameraMoved(page, cameraBeforeRightClick);
+});
 
 test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) => {
   test.slow();
@@ -441,6 +539,11 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await expect(scoreboardButton).toBeFocused();
   const versionHistoryButton = page.getByRole("button", { name: "버전 기록", exact: true });
   await expect(versionHistoryButton).toBeVisible();
+  const sourceCodeLink = page.getByRole("link", { name: "소스 코드", exact: true });
+  await expect(sourceCodeLink).toBeVisible();
+  await expect(sourceCodeLink).toHaveAttribute("href", "https://github.com/0disoft/shovefall");
+  await expect(sourceCodeLink).toHaveAttribute("target", "_blank");
+  await expect(sourceCodeLink).toHaveAttribute("rel", "noopener noreferrer");
   await expect(page.getByText("F11 키로 전체화면을 켠 뒤 시작해.")).toBeVisible();
   await expect(page.locator("#arena-host canvas")).toBeHidden();
   await versionHistoryButton.click();
@@ -492,23 +595,36 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await expect(page.locator("#starting-total-health-regen")).toHaveText("0%");
   await expect(page.locator("#starting-total-mana-regen")).toHaveText("0%");
   await expect(page.locator(".starting-build-summary > div")).toHaveCount(12);
+  await expect(page.locator("#starting-total-cooldown")).toHaveText("대기 0% · 마나 0%");
+  await expect(page.locator("#starting-total-cooldown")).toHaveAttribute(
+    "title",
+    "대기: 스킬을 다시 쓸 때까지 기다리는 시간. 마나: 스킬을 사용할 때 소비하는 양.",
+  );
   await expect(page.locator(".starting-attributes__grid")).toHaveCSS(
     "grid-template-columns",
-    /^\d+(?:\.\d+)?px \d+(?:\.\d+)?px$/u,
+    /^\d+(?:\.\d+)?px \d+(?:\.\d+)?px \d+(?:\.\d+)?px$/u,
   );
-  await expect(page.locator("#starting-next-strength")).toContainText("위력 +2.5%");
+  await expect(page.locator(".starting-build-summary")).toHaveCSS(
+    "grid-template-columns",
+    /^\d+(?:\.\d+)?px \d+(?:\.\d+)?px \d+(?:\.\d+)?px$/u,
+  );
   await openSettingsTab(page, "스킬");
-  await expect(page.locator('#starting-skills input[name="startingSkill"]')).toHaveCount(8);
-  await expect(page.locator("#starting-skills .skill-art")).toHaveCount(8);
+  await expect(page.locator('#starting-skills input[name="startingSkill"]')).toHaveCount(6);
+  await expect(page.locator("#starting-skills .skill-art")).toHaveCount(6);
+  await expectAlignedLoadoutCards(page.locator("#starting-skills .preset-card"));
   await expect(page.getByText("바위 감옥", { exact: true })).toHaveCount(0);
   await expect(page.locator(".skill-art--arc-bolt")).toHaveCSS(
     "background-image",
-    /skill-icons\.svg/u,
+    /skill-icon-arc-bolt[^)]*\.png/u,
   );
-  await expect(
-    page.getByText("전방 3.5칸 안의 첫 적을 조준 보정해 피해 20와 넉백 0.3"),
-  ).toBeVisible();
-  await expect(page.getByText("5초간 피해 28 흡수, 제어 시간 30% 감소")).toBeVisible();
+  await Promise.all(
+    ["blink-step", "arc-bolt", "chain-bind", "meteor-mark", "frost-field", "aegis"].map((skillId) =>
+      expect(page.locator(`.skill-art--${skillId}`)).toHaveCSS(
+        "background-image",
+        new RegExp(`skill-icon-${skillId}[^)]*\\.png`, "u"),
+      ),
+    ),
+  );
   await expect(page.locator('#starting-skills input[name="startingSkill"]:checked')).toHaveCount(0);
   await expect(page.locator('input[name="startingItem"]:checked')).toHaveCount(0);
   await expect(page.getByRole("button", { name: "설정 저장" })).toBeDisabled();
@@ -517,12 +633,16 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await openSettingsTab(page, "아이템");
   await expect(page.locator('[data-item-definition="bomb"] .item-card__meta')).toContainText("2회");
   await expect(page.locator('[data-item-definition="bomb"] .item-card__meta')).toContainText(
-    "위치 지정",
+    "설치 위치 선택",
   );
-  await expect(page.locator('[data-item-definition="bomb"] .item-card__effect')).toHaveText(
-    "지정 타일 · 3.5초 뒤 반경 3칸 80 피해 · 설치자는 피해 없음",
-  );
-  await expect(page.locator("#starting-items .item-art")).toHaveCount(5);
+  const bombEffect = page.locator('[data-item-definition="bomb"] .item-card__effect');
+  await expect(bombEffect).toContainText("내 위치에서 최대 0.75칸 떨어진 곳에 폭탄 설치");
+  await expect(bombEffect).toContainText("3.25초 뒤 폭발");
+  await expect(bombEffect).toContainText("폭발 반경 3칸");
+  await expect(bombEffect).toContainText("피해 65");
+  await expect(bombEffect).toContainText("나는 폭발 피해를 받지 않음");
+  await expect(page.locator("#starting-items .item-art")).toHaveCount(4);
+  await expectAlignedLoadoutCards(page.locator("#starting-items .preset-card"));
   await expect(page.locator(".item-art--soap")).toHaveCSS("background-image", /item-icons/u);
   await expect(page.locator("#setup-summary")).toHaveCount(0);
   await expect(page.locator("#starting-skill-count")).toHaveText("0");
@@ -530,17 +650,15 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await openSettingsTab(page, "특성");
   await page.getByRole("button", { name: "완력 1 올리기" }).click();
   await expect(page.locator("#starting-total-mass")).toHaveText("+2.5%");
-  await expect(page.locator("#starting-effect-strength")).toContainText("무게 보정 +2.5%");
-  await expect(page.locator("#starting-effect-strength")).toContainText("위력 +2.5%");
   await expect(page.getByRole("button", { name: "설정 저장" })).toBeDisabled();
   await page.getByRole("button", { name: "취소" }).click();
   await openSettings(page);
   await expect(page.locator("#starting-attribute-strength")).toHaveText("0");
   await expect(page.locator("#setup-summary")).toHaveCount(0);
   await allocateStrengthBuild(page);
-  await selectStartingItem(page, "wind-blast");
+  await selectStartingItem(page, "soap");
   await expect(page.locator("#starting-attribute-strength")).toHaveText("8");
-  await expect(page.locator('input[name="startingItem"][value="wind-blast"]')).toBeChecked();
+  await expect(page.locator('input[name="startingItem"][value="soap"]')).toBeChecked();
   await expect(page.locator("#starting-item-count")).toHaveText("1");
 
   await saveSettings(page);
@@ -568,7 +686,7 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await expect(page.locator("#app")).toHaveAttribute("data-screen", "arena");
   await expect(page.locator("#app")).toHaveAttribute("data-round", "countdown");
   await expect(page.locator("#arena-host")).toHaveAttribute("data-visual-assets", "generated");
-  await expect(page.locator("#arena-host")).toHaveAttribute("data-skill-effect-assets", "8");
+  await expect(page.locator("#arena-host")).toHaveAttribute("data-skill-effect-assets", "6");
   await expect
     .poll(async () =>
       Number(await page.locator("#arena-host").getAttribute("data-terrain-sprites")),
@@ -610,10 +728,10 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await expect(page.locator("#game-telemetry")).toHaveAttribute("data-action", "Ready");
   await expect(page.locator("#inventory-actions")).toBeVisible();
   await expect(page.locator("#skill-actions")).toBeVisible();
-  await expect(page.locator("#use-skill-slot-0")).toContainText("Q · 충격 장타");
-  await expect(page.locator("#use-skill-slot-1")).toContainText("W · 잔상 회피");
+  await expect(page.locator("#use-skill-slot-0")).toContainText("Q · 잔상 회피");
+  await expect(page.locator("#use-skill-slot-1")).toContainText("W · 파동탄");
   await expect(page.locator("#use-grapple")).toContainText("E · 구조 갈고리");
-  await expect(page.locator("#use-item-slot-0")).toContainText("D · 장풍 · 2회");
+  await expect(page.locator("#use-item-slot-0")).toContainText("D · 비누 · 4회");
   const actionHudButtons = page.locator(".action-hud button");
   await expect(actionHudButtons).toHaveCount(4);
   const actionHudPositions = await actionHudButtons.evaluateAll((buttons) =>
@@ -699,11 +817,14 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   if (arenaBounds !== null) {
     const originX = arenaBounds.x + arenaBounds.width / 2;
     const originY = arenaBounds.y + arenaBounds.height / 2;
+    const cameraBeforeRightClick = await readCameraPosition(page);
     await page.mouse.move(originX, originY);
     await page.mouse.down();
-    await expect(page.locator("#arena-host")).toHaveAttribute("data-pointer-moving", "true");
     await page.mouse.move(originX + 80, originY, { steps: 4 });
     await page.mouse.up();
+    await expect(page.locator("#arena-host")).not.toHaveAttribute("data-pointer-moving", "true");
+    await page.mouse.click(originX + 80, originY, { button: "right" });
+    await fastForwardUntilCameraMoved(page, cameraBeforeRightClick);
   }
   await expect(page.locator("#arena-host")).not.toHaveAttribute("data-pointer-moving", "true");
 
@@ -802,9 +923,9 @@ test("equips Brick Bag in a live production round", async ({ page }) => {
   await expect(page.locator("#stability-bonus")).toHaveText("+0%");
   await expect(page.locator("#mobility-bonus")).toHaveText("+0%");
   await expect(page.locator("#reflex-bonus")).toHaveText("0% / 0%");
-  await expect(page.locator("#use-skill-slot-0")).toContainText("Q · 충격 장타");
+  await expect(page.locator("#use-skill-slot-0")).toContainText("Q · 잔상 회피");
   await expect(page.locator("#use-skill-slot-0")).toHaveAttribute("data-state", "ready");
-  await expect(page.locator("#use-skill-slot-1")).toContainText("W · 잔상 회피");
+  await expect(page.locator("#use-skill-slot-1")).toContainText("W · 파동탄");
   await expect(page.locator("#use-item-slot-0")).toContainText("D · 벽돌 가방 · 4회");
 });
 
@@ -847,26 +968,6 @@ test("equips and places a timed bomb in a fresh round", async ({ page }) => {
   await expect(page.locator("#round-message")).toHaveText("폭탄을 놨어. 3.5초 뒤 터져.");
 });
 
-test("selects Soap in a live production-safe round", async ({ page }) => {
-  await installFixedRoundSeed(page, 1, 0);
-  await page.goto("/");
-  await openSettings(page);
-  await openSettingsTab(page, "아이템");
-  const soapCard = page.locator('input[name="startingItem"][value="soap"]');
-  await expect(soapCard).toHaveCount(1);
-  await expect(page.locator('[data-item-definition="soap"] .item-card__meta')).toContainText("4회");
-  await expect(page.locator('[data-item-definition="soap"] .item-card__effect')).toContainText(
-    "1초 미끄러짐",
-  );
-  await soapCard.check();
-  await expect(soapCard).toBeChecked();
-  await saveSettings(page);
-  await startGame(page);
-  await expect(page.locator("#app")).toHaveAttribute("data-round", "active", { timeout: 5_000 });
-  await expect(page.locator("#use-item-slot-0")).toContainText("D · 비누 · 4회");
-  await expect(page.locator("#use-item-slot-0")).toBeEnabled();
-});
-
 test("fires the built-in grapple in a fresh round", async ({ page }) => {
   test.setTimeout(60_000);
   await page.clock.install();
@@ -874,8 +975,8 @@ test("fires the built-in grapple in a fresh round", async ({ page }) => {
   await page.goto("/");
   await pauseInstalledClock(page);
   await openSettings(page);
-  await selectStartingItem(page, "soap");
-  await expect(page.locator('input[name="startingItem"][value="soap"]')).toBeChecked();
+  await selectStartingItem(page, "brick-bag");
+  await expect(page.locator('input[name="startingItem"][value="brick-bag"]')).toBeChecked();
   await saveSettings(page);
   await startGame(page);
   await finishInstalledClockCountdown(page);
@@ -958,72 +1059,34 @@ test("offers a working touch joystick and action buttons on a narrow viewport", 
   await expect(joystick).not.toHaveAttribute("data-active", "true");
 });
 
-test("keeps bounded debug tuning in development and removes it from production", async ({
-  page,
-}) => {
-  await installClipboardCapture(page);
+test("persists four-step text size and sound-effect volume settings", async ({ page }) => {
   await page.goto("/");
   await openSettings(page);
-
-  const debugPanel = page.locator("#debug-tuning");
-  const labTab = page.getByRole("tab", { name: "실험실", exact: true });
-  const productionArtifact = new URL(page.url()).port === "4175";
-  if (productionArtifact) {
-    await expect(debugPanel).toHaveCount(0);
-    await expect(labTab).toHaveCount(0);
-    return;
-  }
-
-  await expect(labTab).toBeVisible();
-  await labTab.click();
-  await expect(debugPanel).toBeVisible();
-  const movementSpeed = page.locator("#debug-movement-speed");
-  await expect(movementSpeed).toBeDisabled();
-  await page.getByLabel("조정값 사용").check();
-  await expect(movementSpeed).toBeEnabled();
-
-  await movementSpeed.fill("0.04");
-  await page.locator("#debug-lightweight-speed").fill("1.5");
-  await page.locator("#debug-shove-reach").fill("0.24");
-  await page.locator("#debug-shove-ticks").fill("4");
-  await page.locator("#debug-shove-windup-ticks").fill("10");
-  await page.locator("#debug-health-regen-per-tick").fill("0.08");
-  await page.locator("#debug-bomb-blast-radius").fill("4.5");
-  await page.locator("#debug-dodge-speed").fill("0.095");
-  await page.locator("#debug-dodge-ticks").fill("4");
-
-  await expect(page.locator("#debug-tuning-summary")).toContainText("기본 2.4칸/초");
-  await expect(page.locator("#debug-tuning-summary")).toContainText("손길이 0.24칸");
-  await expect(page.locator("#debug-tuning-summary")).toContainText("회피 약 0.38칸");
-
-  await page.getByRole("button", { name: "튜닝값 복사" }).click();
-  await expect
-    .poll(() =>
-      page.evaluate(
-        () => (window as Window & { shovefallClipboardCapture?: string }).shovefallClipboardCapture,
-      ),
-    )
-    .toContain("shovefall-debug-tuning/v1");
-  const copiedTuning: unknown = JSON.parse(
-    (await page.evaluate(
-      () => (window as Window & { shovefallClipboardCapture?: string }).shovefallClipboardCapture,
-    )) ?? "null",
+  await expect(page.locator("#app")).toHaveAttribute("data-background-music", "playing");
+  await openSettingsTab(page, "설정");
+  const volume = page.getByLabel("효과음");
+  const musicVolume = page.getByLabel("배경음악");
+  await expect(volume).toHaveValue("50");
+  await expect(musicVolume).toHaveValue("35");
+  await expect(page.getByRole("link", { name: "HYP - Catch Me If You Can" })).toHaveAttribute(
+    "href",
+    "https://youtu.be/LrTkfYqNJFU",
   );
-  expect(copiedTuning).toMatchObject({
-    tuning: {
-      movementMaximumSpeed: 0.04,
-      shoveWindupTicks: 10,
-      shoveActiveTicks: 4,
-      shoveReach: 0.24,
-      dodgeActiveTicks: 4,
-      healthRegenPerTick: 0.08,
-      bombBlastRadius: 4.5,
-    },
-  });
+  await page.getByLabel("아주 크게").check();
+  await volume.fill("35");
+  await musicVolume.fill("24");
+  await expect(page.locator("#sound-effects-volume-value")).toHaveText("35");
+  await expect(page.locator("#background-music-volume-value")).toHaveText("24");
+  await expect(page.locator("html")).toHaveAttribute("data-font-scale", "extra-large");
 
-  await saveSettings(page);
-  await startGame(page);
-  await expect(page.locator("#app")).toHaveAttribute("data-gameplay-tuning", "debug");
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("data-font-scale", "extra-large");
+  await openSettings(page);
+  await openSettingsTab(page, "설정");
+  await expect(page.getByLabel("효과음")).toHaveValue("35");
+  await expect(page.getByLabel("배경음악")).toHaveValue("24");
+  await expect(page.getByLabel("아주 크게")).toBeChecked();
+  await expect(page.locator("#debug-tuning")).toHaveCount(0);
 });
 
 test("completes a collapsing round and starts a fresh world", async ({ page }) => {
@@ -1041,10 +1104,41 @@ test("completes a collapsing round and starts a fresh world", async ({ page }) =
   await finishInstalledClockCountdown(page);
   await fastForwardUntilRoundCompleted(page);
   await expect(page.locator("#app")).toHaveAttribute("data-round", "completed");
+  await expect(page.locator("#pause-menu")).toHaveAttribute("data-mode", "completed");
   await expect(page.getByRole("button", { name: "계속", exact: true })).toBeHidden();
   await expect(page.locator("#resume-round")).toBeDisabled();
+  await expect(page.locator("#game-telemetry")).toBeHidden();
+  await expect(page.locator(".control-guide")).toBeHidden();
+  await expect(page.locator("#developer-telemetry")).toBeHidden();
+  const resultActionsAboveStatistics = await page.evaluate(() => {
+    const actions = document.querySelector("#arena-actions");
+    const statistics = document.querySelector(".round-statistics");
+    return (
+      actions !== null &&
+      statistics !== null &&
+      (actions.compareDocumentPosition(statistics) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0
+    );
+  });
+  expect(resultActionsAboveStatistics).toBe(true);
   await expect(page.getByRole("button", { name: "다시 시작" })).toBeFocused();
   await expect(page.locator("#renderer-status")).toHaveText(/승리|라운드 종료/u);
+  await expect(page.locator("#arena-host")).toHaveAttribute("data-camera-mode", "spectator");
+  await page.getByRole("button", { name: "맵 보기" }).click();
+  await expect(page.locator("#pause-menu")).toBeHidden();
+  await expect(page.locator("#arena-host")).toBeFocused();
+  const completedCameraBefore = await readCameraPosition(page);
+  await page.keyboard.press("ArrowLeft");
+  const completedCameraAfterLeft = await readCameraPosition(page);
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("ArrowRight");
+  const completedCameraAfterRight = await readCameraPosition(page);
+  expect(
+    completedCameraAfterLeft !== completedCameraBefore ||
+      completedCameraAfterRight !== completedCameraBefore,
+  ).toBe(true);
+  await page.keyboard.press("p");
+  await expect(page.locator("#pause-menu")).toBeVisible();
+  await expect(page.getByRole("button", { name: "맵 보기" })).toBeVisible();
 
   const copyButton = page.getByRole("button", { name: "기록 복사" });
   await expect(copyButton).toBeVisible();
@@ -1055,7 +1149,7 @@ test("completes a collapsing round and starts a fresh world", async ({ page }) =
   );
   const parsedReport: unknown = JSON.parse(copiedReport ?? "null");
   expect(parsedReport).toMatchObject({
-    schemaVersion: "shovefall-playtest-round/v9",
+    schemaVersion: "shovefall-playtest-round/v10",
     seed: expect.any(String),
     stateHash: expect.stringMatching(/^fnv1a32:[0-9a-f]{8}$/u),
     settings: {
@@ -1123,6 +1217,29 @@ test("allows an immediate fresh restart after a deterministic human defeat", asy
   await fastForwardUntilAttribute(page, "#app", "data-human-eliminated", "true");
   await expect(page.locator("#app")).toHaveAttribute("data-human-eliminated", "true");
   await expect(page.locator("#game-telemetry")).toHaveAttribute("data-simulation-rate", "6");
+  await expect(page.locator("#arena-host")).toHaveAttribute("data-camera-mode", "spectator");
+  const spectatorCameraBefore = await readCameraPosition(page);
+  await page.keyboard.press("ArrowLeft");
+  const spectatorCameraAfterLeft = await readCameraPosition(page);
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("ArrowRight");
+  const spectatorCameraAfterRight = await readCameraPosition(page);
+  expect(
+    spectatorCameraAfterLeft !== spectatorCameraBefore ||
+      spectatorCameraAfterRight !== spectatorCameraBefore,
+  ).toBe(true);
+  const spectatorArenaBounds = await page.locator("#arena-host").boundingBox();
+  expect(spectatorArenaBounds).not.toBeNull();
+  if (spectatorArenaBounds !== null) {
+    const centerX = spectatorArenaBounds.x + spectatorArenaBounds.width / 2;
+    const centerY = spectatorArenaBounds.y + spectatorArenaBounds.height / 2;
+    await page.mouse.move(centerX, centerY);
+    await page.mouse.down();
+    await expect(page.locator("#arena-host")).toHaveAttribute("data-spectator-panning", "true");
+    await page.mouse.move(centerX + 80, centerY, { steps: 4 });
+    await page.mouse.up();
+    await expect(page.locator("#arena-host")).not.toHaveAttribute("data-spectator-panning", "true");
+  }
   await page.keyboard.press("p");
   await expect(page.locator("#pause-menu")).toBeVisible();
   await page.getByRole("button", { name: "다시 시작" }).click();
@@ -1134,16 +1251,18 @@ test("allows an immediate fresh restart after a deterministic human defeat", asy
   await expect(page.locator("#arena-host")).toBeFocused();
 });
 
-test("keeps playing silently when Web Audio is unavailable", async ({ page }) => {
+test("keeps playing silently when browser audio is unavailable", async ({ page }) => {
   await page.addInitScript(() => {
     Object.defineProperty(window, "AudioContext", { configurable: true, value: undefined });
     Object.defineProperty(window, "webkitAudioContext", { configurable: true, value: undefined });
+    HTMLMediaElement.prototype.play = () => Promise.reject(new Error("media unavailable"));
   });
   await page.goto("/");
   await saveBalancedDefaults(page);
   await startGame(page);
 
   await expect(page.locator("#app")).toHaveAttribute("data-audio", "unavailable");
+  await expect(page.locator("#app")).toHaveAttribute("data-background-music", "unavailable");
   await page.keyboard.press("p");
   await expect(page.locator("#pause-menu")).toBeVisible();
   await expect(page.getByRole("button", { name: "무음" })).toBeDisabled();

@@ -98,6 +98,7 @@ export function getRequiredStreamNames(actorIds: readonly number[]): readonly st
     "collapse",
     "items",
     "tie-break",
+    "artillery-plan",
     "artillery",
     ...actorIds.flatMap((actorId) => [`bot-personality:${actorId}`, `bot-jitter:${actorId}`]),
   ]);

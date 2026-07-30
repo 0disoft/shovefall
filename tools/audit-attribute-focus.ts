@@ -22,6 +22,7 @@ import {
   type BalancePhaseReport,
   type BalanceRoundRecord,
 } from "../src/balance/contract";
+import { classifyBalanceSignal, type BalancePeerBaseline } from "../src/balance/signal";
 import { ROCK_BLAST_RADIUS } from "../src/simulation/artillery";
 import {
   normalizeGameConfig,
@@ -57,20 +58,16 @@ const WORKER_COUNT = Math.min(
 );
 const OUTPUT_PATH = new URL("../balance/latest.json", import.meta.url);
 
-const BALANCED_ATTRIBUTE_ID = "balanced-20";
-const BALANCED_ATTRIBUTE_LABEL = "균등 분배 20";
-
 const ITEM_LABELS: Readonly<Record<BotActiveItemId, string>> = Object.freeze({
-  "wind-blast": "장풍",
+  soap: "비누",
   "brick-bag": "벽돌 가방",
   boat: "배",
   bomb: "시한폭탄",
-  soap: "비누",
 });
 
 interface LoadoutAssignment {
   readonly actorId: ActorId;
-  readonly attributeId: typeof BALANCED_ATTRIBUTE_ID;
+  readonly attributeProfileId: string;
   readonly attributes: StartingAttributes;
   readonly item: BotActiveItemId;
   readonly skills: readonly [SkillDefinitionId, SkillDefinitionId];
@@ -193,136 +190,64 @@ function shuffle<T>(values: readonly T[], random: XorShift32): T[] {
   return copy;
 }
 
-function createBalancedSlots<T>(
-  values: readonly T[],
-  offset: number,
-  stream: XorShift32,
-): readonly T[] {
-  return shuffle(
-    Array.from(
-      { length: PARTICIPANT_COUNT },
-      (_, slotIndex) => values[(offset + slotIndex) % values.length]!,
-    ),
-    stream,
-  );
-}
-
-const ATTRIBUTE_BONUS_PAIRS = Object.freeze(
-  STARTING_ATTRIBUTE_IDS.flatMap((left, leftIndex) =>
-    STARTING_ATTRIBUTE_IDS.slice(leftIndex + 1).map((right) =>
-      Object.freeze([left, right] as const),
-    ),
-  ),
-);
-
 const SKILL_COMBINATIONS = Object.freeze(
   SKILL_DEFINITION_IDS.flatMap((left, leftIndex) =>
     SKILL_DEFINITION_IDS.slice(leftIndex + 1).map((right) => Object.freeze([left, right] as const)),
   ),
 );
 
-function createSkillRoundRobin(): readonly (readonly (readonly [
-  SkillDefinitionId,
-  SkillDefinitionId,
-])[])[] {
-  const participants: (SkillDefinitionId | null)[] = [...SKILL_DEFINITION_IDS];
-  if (participants.length % 2 !== 0) {
-    participants.push(null);
-  }
-  const rounds: (readonly (readonly [SkillDefinitionId, SkillDefinitionId])[])[] = [];
-  for (let roundIndex = 0; roundIndex < participants.length - 1; roundIndex += 1) {
-    const pairs: (readonly [SkillDefinitionId, SkillDefinitionId])[] = [];
-    for (let pairIndex = 0; pairIndex < participants.length / 2; pairIndex += 1) {
-      const left = participants[pairIndex];
-      const right = participants[participants.length - 1 - pairIndex];
-      if (left !== null && left !== undefined && right !== null && right !== undefined) {
-        pairs.push(Object.freeze([left, right] as const));
-      }
-    }
-    rounds.push(Object.freeze(pairs));
-    const fixed = participants[0]!;
-    const rotating = participants.slice(1);
-    rotating.unshift(rotating.pop()!);
-    participants.splice(0, participants.length, fixed, ...rotating);
-  }
-  return Object.freeze(rounds);
-}
-
-const SKILL_ROUND_ROBIN = createSkillRoundRobin();
-const BALANCED_SKILL_SEQUENCE = Object.freeze(SKILL_ROUND_ROBIN.flat());
 const SKILL_ITEM_LOADOUTS = Object.freeze(
   SKILL_COMBINATIONS.flatMap((skills) =>
     BOT_ACTIVE_ITEM_IDS.map((item) => Object.freeze({ item, skills })),
   ),
 );
-const TOTAL_ASSIGNMENTS = TOTAL_ROUNDS * PARTICIPANT_COUNT;
-const FULL_LOADOUT_CYCLES = Math.floor(TOTAL_ASSIGNMENTS / SKILL_ITEM_LOADOUTS.length);
-const REMAINING_LOADOUT_ASSIGNMENTS =
-  TOTAL_ASSIGNMENTS - FULL_LOADOUT_CYCLES * SKILL_ITEM_LOADOUTS.length;
-const LOADOUT_ASSIGNMENT_SCHEDULE = Object.freeze([
-  ...Array.from({ length: FULL_LOADOUT_CYCLES }, () => SKILL_ITEM_LOADOUTS).flat(),
-  ...Array.from({ length: REMAINING_LOADOUT_ASSIGNMENTS }, (_, assignmentIndex) => {
-    const combinationIndex = assignmentIndex % BALANCED_SKILL_SEQUENCE.length;
-    return Object.freeze({
-      item: BOT_ACTIVE_ITEM_IDS[assignmentIndex % BOT_ACTIVE_ITEM_IDS.length]!,
-      skills: BALANCED_SKILL_SEQUENCE[combinationIndex]!,
-    });
-  }),
-]);
 
-function createBalancedAttributes(
-  bonusPair: readonly [StartingAttributeId, StartingAttributeId],
-): StartingAttributes {
-  const hasBonus = (id: StartingAttributeId): boolean => bonusPair.includes(id);
-  return Object.freeze({
-    strength: hasBonus("strength") ? 4 : 3,
-    agility: hasBonus("agility") ? 4 : 3,
-    constitution: hasBonus("constitution") ? 4 : 3,
-    spirit: hasBonus("spirit") ? 4 : 3,
-    balance: hasBonus("balance") ? 4 : 3,
-    willpower: hasBonus("willpower") ? 4 : 3,
-  });
+interface EvenAttributeProfile {
+  readonly id: string;
+  readonly attributes: StartingAttributes;
 }
 
-function createAssignments(roundIndex: number): readonly LoadoutAssignment[] {
-  const streams = new RandomStreamSet(`skill-item-roster-v2-${roundIndex}`);
-  const attributeBonusPairs = createBalancedSlots(
-    ATTRIBUTE_BONUS_PAIRS,
-    roundIndex * PARTICIPANT_COUNT,
-    streams.get("attribute-bonus-pairs"),
-  );
-  const loadouts = shuffle(
-    LOADOUT_ASSIGNMENT_SCHEDULE.slice(
-      roundIndex * PARTICIPANT_COUNT,
-      (roundIndex + 1) * PARTICIPANT_COUNT,
-    ),
-    streams.get("skill-item-loadouts"),
-  );
-  const personalities = createBalancedSlots(
-    BOT_PERSONALITY_KINDS,
-    roundIndex * PARTICIPANT_COUNT,
-    streams.get("personalities"),
-  );
-
-  return Object.freeze(
-    Array.from({ length: PARTICIPANT_COUNT }, (_, actorIndex) => {
-      const actorId = actorIndex + 1;
-      const attributeBonusPair = attributeBonusPairs[actorIndex]!;
-      const personality = personalities[actorIndex]!;
-      const loadout = loadouts[actorIndex]!;
-      const item = loadout.item;
-      const skills = loadout.skills;
-
+const EVEN_ATTRIBUTE_PROFILES: readonly EvenAttributeProfile[] = Object.freeze(
+  STARTING_ATTRIBUTE_IDS.flatMap((left, leftIndex) =>
+    STARTING_ATTRIBUTE_IDS.slice(leftIndex + 1).map((right) => {
+      const boosted = new Set<StartingAttributeId>([left, right]);
       return Object.freeze({
-        actorId,
-        attributeId: BALANCED_ATTRIBUTE_ID,
-        attributes: createBalancedAttributes(attributeBonusPair),
-        item,
-        skills,
-        skillCombinationId: [...skills].toSorted().join("+"),
-        personality,
+        id: `${left}+${right}`,
+        attributes: Object.freeze(
+          Object.fromEntries(
+            STARTING_ATTRIBUTE_IDS.map((attributeId) => [
+              attributeId,
+              boosted.has(attributeId) ? 4 : 3,
+            ]),
+          ) as unknown as StartingAttributes,
+        ),
       });
     }),
+  ),
+);
+
+function createAssignments(roundIndex: number): readonly LoadoutAssignment[] {
+  const streams = new RandomStreamSet(`even-trait-loadout-roster-v4-${roundIndex}`);
+  const assignments = SKILL_ITEM_LOADOUTS.map((loadout, loadoutIndex) => {
+    const skills = loadout.skills;
+    const attributeProfile =
+      EVEN_ATTRIBUTE_PROFILES[(loadoutIndex + roundIndex) % EVEN_ATTRIBUTE_PROFILES.length]!;
+    const combinationIndex = Math.floor(loadoutIndex / BOT_ACTIVE_ITEM_IDS.length);
+    return {
+      actorId: 0,
+      attributeProfileId: attributeProfile.id,
+      attributes: attributeProfile.attributes,
+      item: loadout.item,
+      skills,
+      skillCombinationId: [...skills].toSorted().join("+"),
+      personality:
+        BOT_PERSONALITY_KINDS[(combinationIndex + roundIndex) % BOT_PERSONALITY_KINDS.length]!,
+    } satisfies LoadoutAssignment;
+  });
+  return Object.freeze(
+    shuffle(assignments, streams.get("actor-seats")).map((assignment, actorIndex) =>
+      Object.freeze({ ...assignment, actorId: actorIndex + 1 }),
+    ),
   );
 }
 
@@ -332,7 +257,7 @@ function getPhase(_roundIndex: number): BalancePhase {
 
 function getRoundSeed(roundIndex: number): string {
   const seedFamily = Math.floor(roundIndex / 2);
-  return `skill-item-audit-v2-${seedFamily.toString().padStart(3, "0")}`;
+  return `even-trait-skill-item-audit-v3-${seedFamily.toString().padStart(3, "0")}`;
 }
 
 function createConfig(_phase: BalancePhase) {
@@ -479,7 +404,7 @@ function recordActor(
     0,
   );
   addObservation(
-    getAggregate(phase, "attribute", assignment.attributeId, BALANCED_ATTRIBUTE_LABEL),
+    getAggregate(phase, "attribute", "even-20", "균등 배분 20"),
     observation,
     won,
     observation.damageDealt,
@@ -634,11 +559,8 @@ function runRound(roundIndex: number, result: WorkerResult): void {
           ) {
             actor.itemUses[event.itemDefinitionId as BotActiveItemId] += 1;
           }
-          if (event.kind === "wind-blast-hit") {
-            actor.itemHits["wind-blast"] += 1;
-          }
           if (event.kind === "soap-triggered") {
-            actor.itemHits.soap += 1;
+            actor.itemHits["soap"] += 1;
           }
         }
       }
@@ -808,12 +730,6 @@ function finalizeAggregate(aggregate: MutableAggregate, baselineWinRate: number)
   const winRate = ratio(aggregate.wins, aggregate.exposures);
   const interval = wilson95(aggregate.wins, aggregate.exposures);
   const winIndex = baselineWinRate === 0 ? 0 : roundMetric(winRate / baselineWinRate);
-  const signal =
-    interval.upper < baselineWinRate * 0.75
-      ? "buff-review"
-      : interval.lower > baselineWinRate * 1.25
-        ? "nerf-review"
-        : "watch";
   return Object.freeze({
     category: aggregate.category,
     id: aggregate.id,
@@ -833,13 +749,58 @@ function finalizeAggregate(aggregate: MutableAggregate, baselineWinRate: number)
     damageDealtPerRound: roundMetric(aggregate.damageDealt / aggregate.exposures),
     usesPerRound: ratio(aggregate.uses, aggregate.exposures),
     hitsPerUse: aggregate.uses === 0 ? null : ratio(aggregate.hits, aggregate.uses),
-    signal,
+    signal: "watch",
+  });
+}
+
+function median(values: readonly number[]): number {
+  return percentile(
+    values.toSorted((left, right) => left - right),
+    0.5,
+  );
+}
+
+function createPeerBaseline(
+  category: BalanceCategory,
+  aggregates: readonly BalanceAggregate[],
+  baselineWinRate: number,
+): BalancePeerBaseline {
+  const peers = aggregates.filter((aggregate) => aggregate.category === category);
+  return Object.freeze({
+    winRate: baselineWinRate,
+    averageRank: median(peers.map(({ averageRank }) => averageRank)),
+    top10Rate: median(peers.map(({ top10Rate }) => top10Rate)),
+    top5Rate: median(peers.map(({ top5Rate }) => top5Rate)),
+    averageSurvivalSeconds: median(
+      peers.map(({ averageSurvivalSeconds }) => averageSurvivalSeconds),
+    ),
+  });
+}
+
+function applyBalanceSignals(
+  aggregates: readonly BalanceAggregate[],
+  baselineWinRate: number,
+): readonly BalanceAggregate[] {
+  const baselines = new Map<BalanceCategory, BalancePeerBaseline>();
+  return aggregates.map((aggregate) => {
+    let peer = baselines.get(aggregate.category);
+    if (peer === undefined) {
+      peer = createPeerBaseline(aggregate.category, aggregates, baselineWinRate);
+      baselines.set(aggregate.category, peer);
+    }
+    return Object.freeze({
+      ...aggregate,
+      signal: classifyBalanceSignal(aggregate, peer),
+    });
   });
 }
 
 function finalizePhase(id: BalancePhase, phase: MutablePhase): BalancePhaseReport {
   const durations = phase.durations.toSorted((left, right) => left - right);
   const baselineWinRate = ratio(phase.winners, phase.actorRounds);
+  const aggregates = Object.values(phase.aggregates).map((aggregate) =>
+    finalizeAggregate(aggregate, baselineWinRate),
+  );
   return Object.freeze({
     phase: id,
     roundCount: phase.rounds.length,
@@ -856,14 +817,12 @@ function finalizePhase(id: BalancePhase, phase: MutablePhase): BalancePhaseRepor
     }),
     deathCauses: Object.freeze({ ...phase.deathCauses }),
     aggregates: Object.freeze(
-      Object.values(phase.aggregates)
-        .map((aggregate) => finalizeAggregate(aggregate, baselineWinRate))
-        .toSorted(
-          (left, right) =>
-            left.category.localeCompare(right.category) ||
-            left.averageRank - right.averageRank ||
-            left.id.localeCompare(right.id),
-        ),
+      applyBalanceSignals(aggregates, baselineWinRate).toSorted(
+        (left, right) =>
+          left.category.localeCompare(right.category) ||
+          left.averageRank - right.averageRank ||
+          left.id.localeCompare(right.id),
+      ),
     ),
     rounds: Object.freeze(phase.rounds.toSorted((left, right) => left.index - right.index)),
   });
@@ -893,38 +852,55 @@ function assertCoverage(report: WorkerResult): void {
 
 function assertAssignmentCoverage(): void {
   const counts = {
+    attributeProfile: new Map<string, number>(EVEN_ATTRIBUTE_PROFILES.map(({ id }) => [id, 0])),
     item: new Map<string, number>(BOT_ACTIVE_ITEM_IDS.map((id) => [id, 0])),
     skill: new Map<string, number>(SKILL_DEFINITION_IDS.map((id) => [id, 0])),
     combination: new Map<string, number>(
       SKILL_COMBINATIONS.map((skills) => [[...skills].toSorted().join("+"), 0]),
     ),
     personality: new Map<string, number>(BOT_PERSONALITY_KINDS.map((id) => [id, 0])),
-    attributeBonus: new Map<string, number>(STARTING_ATTRIBUTE_IDS.map((id) => [id, 0])),
+    itemPersonality: new Map<string, number>(
+      BOT_ACTIVE_ITEM_IDS.flatMap((item) =>
+        BOT_PERSONALITY_KINDS.map((personality) => [`${item}:${personality}`, 0]),
+      ),
+    ),
     combinationItem: new Map<string, number>(
       SKILL_COMBINATIONS.flatMap((skills) =>
         BOT_ACTIVE_ITEM_IDS.map((item) => [[...skills].toSorted().join("+") + `:${item}`, 0]),
       ),
     ),
   };
+  const perLoadoutProfiles = new Map(
+    SKILL_COMBINATIONS.flatMap((skills) =>
+      BOT_ACTIVE_ITEM_IDS.map((item) => [
+        [...skills].toSorted().join("+") + `:${item}`,
+        new Map<string, number>(EVEN_ATTRIBUTE_PROFILES.map(({ id }) => [id, 0])),
+      ]),
+    ),
+  );
   for (let roundIndex = 0; roundIndex < TOTAL_ROUNDS; roundIndex += 1) {
     for (const assignment of createAssignments(roundIndex)) {
       const attributeValues = STARTING_ATTRIBUTE_IDS.map((id) => assignment.attributes[id]);
       if (
         attributeValues.reduce((sum, value) => sum + value, 0) !== 20 ||
-        Math.max(...attributeValues) - Math.min(...attributeValues) > 1
+        attributeValues.filter((value) => value === 4).length !== 2 ||
+        attributeValues.filter((value) => value === 3).length !== 4
       ) {
-        throw new Error(`actor ${assignment.actorId} does not have a balanced 20-point build`);
+        throw new Error(`actor ${assignment.actorId} does not have an even 20-point build`);
       }
-      for (const attributeId of STARTING_ATTRIBUTE_IDS) {
-        counts.attributeBonus.set(
-          attributeId,
-          (counts.attributeBonus.get(attributeId) ?? 0) + (assignment.attributes[attributeId] - 3),
-        );
-      }
+      counts.attributeProfile.set(
+        assignment.attributeProfileId,
+        (counts.attributeProfile.get(assignment.attributeProfileId) ?? 0) + 1,
+      );
       counts.item.set(assignment.item, (counts.item.get(assignment.item) ?? 0) + 1);
       counts.personality.set(
         assignment.personality,
         (counts.personality.get(assignment.personality) ?? 0) + 1,
+      );
+      const itemPersonalityKey = `${assignment.item}:${assignment.personality}`;
+      counts.itemPersonality.set(
+        itemPersonalityKey,
+        (counts.itemPersonality.get(itemPersonalityKey) ?? 0) + 1,
       );
       if (
         assignment.skills[0] === assignment.skills[1] ||
@@ -944,6 +920,11 @@ function assertAssignmentCoverage(): void {
         combinationItemKey,
         (counts.combinationItem.get(combinationItemKey) ?? 0) + 1,
       );
+      const profileCounts = perLoadoutProfiles.get(combinationItemKey)!;
+      profileCounts.set(
+        assignment.attributeProfileId,
+        (profileCounts.get(assignment.attributeProfileId) ?? 0) + 1,
+      );
       for (const skill of assignment.skills) {
         counts.skill.set(skill, (counts.skill.get(skill) ?? 0) + 1);
       }
@@ -951,10 +932,21 @@ function assertAssignmentCoverage(): void {
   }
   for (const [category, categoryCounts] of Object.entries(counts)) {
     const values = [...categoryCounts.values()];
-    if (Math.max(...values) - Math.min(...values) > 1) {
+    const allowedDifference = 0;
+    if (Math.max(...values) - Math.min(...values) > allowedDifference) {
       throw new Error(
-        `${category} assignment exposure differs by more than one: ${Math.min(...values)}..${Math.max(...values)}`,
+        `${category} assignment exposure exceeds ${allowedDifference}: ${Math.min(...values)}..${Math.max(...values)}`,
       );
+    }
+  }
+  for (const [loadoutId, profileCounts] of perLoadoutProfiles) {
+    const exposures = [...profileCounts.values()];
+    if (Math.max(...exposures) !== Math.min(...exposures)) {
+      if (Math.max(...exposures) - Math.min(...exposures) > 1) {
+        throw new Error(
+          `even-trait profile exposure differs for ${loadoutId}: ${Math.min(...exposures)}..${Math.max(...exposures)}`,
+        );
+      }
     }
   }
 }
@@ -1053,13 +1045,12 @@ async function main(): Promise<void> {
       productionRoundCount: PRODUCTION_ROUNDS,
       seedFamilyCount: SEED_FAMILY_COUNT,
       workerCount: WORKER_COUNT,
-      assignment:
-        "모든 참가자는 특성 20점을 4/4/3/3/3/3으로 받는다. 추가 1점이 붙는 15개 특성 쌍, 28개 2스킬 조합, 5개 시작 아이템, 5개 AI 성향과 좌석을 서로 분리해 균등 회전한다.",
+      assignment: `모든 참가자는 여섯 특성에 3점씩 배분하고 남은 2점은 서로 다른 두 특성에 1점씩 더한다. 가능한 ${EVEN_ATTRIBUTE_PROFILES.length}개 4·4·3·3·3·3 조합은 매 판 4명씩 배정한다. ${SKILL_COMBINATIONS.length}개 2스킬 조합과 ${BOT_ACTIVE_ITEM_IDS.length}개 시작 아이템의 모든 조합은 매 판 한 번씩 등장하며 좌석만 독립적으로 섞는다.`,
       rankTiePolicy:
         "같은 틱에 탈락한 참가자는 해당 틱 종료 후 생존자 수에 1을 더한 공동 순위를 받는다.",
       limitations: Object.freeze([
         "고정 시드 어려움 AI 결과는 사람 플레이 밸런스를 증명하지 않는다.",
-        "균등 특성은 큰 빌드 차이를 통제하지만 특성 1포인트의 한계효과를 측정하지 않는다.",
+        "20포인트는 여섯 특성으로 정확히 나눌 수 없어 두 특성만 4점, 나머지는 3점이며 추가 2점의 위치를 모든 조합으로 순환한다.",
         "시작 아이템의 효과를 분리하려고 보물선과 맵 추가 아이템을 끈 제어 실험이다.",
         "개별 스킬 결과에는 함께 선택된 다른 스킬의 영향이 섞여 있다.",
         "사망 원인은 eliminated 이벤트에 직접 원인이 없어 주변 전투 이벤트로 분류한다.",

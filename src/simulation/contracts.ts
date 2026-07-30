@@ -23,21 +23,18 @@ export type ItemDefinitionId =
   | "iron-boots"
   | "feather"
   | "spring-glove"
-  | "wind-blast"
+  | "soap"
   | "brick-bag"
   | "boat"
-  | "bomb"
-  | "soap";
+  | "bomb";
 export type InventorySlotIndex = 0 | 1;
 export type SkillSlotIndex = 0 | 1 | 2;
 export type SkillDefinitionId =
-  | "force-palm"
   | "blink-step"
   | "arc-bolt"
   | "chain-bind"
   | "meteor-mark"
   | "frost-field"
-  | "tidal-charge"
   | "aegis";
 export type UpgradeStatId = "power" | "stability" | "mobility" | "reflex" | "vitality" | "focus";
 export type StartingAttributeId =
@@ -266,6 +263,13 @@ export interface SoapPatchState {
   readonly placedTick: Tick;
 }
 
+export interface PendingSoapDamageState {
+  readonly ownerActorId: ActorId;
+  readonly targetActorId: ActorId;
+  readonly applyTick: Tick;
+  readonly damage: number;
+}
+
 export interface PirateShipState {
   readonly shipId: number;
   readonly position: Vector2;
@@ -303,6 +307,7 @@ export interface TreasureShipState {
 
 export interface GiftDeliveryState {
   readonly deliveryId: number;
+  readonly shipId: number;
   readonly itemId: ItemId;
   readonly definitionId: ItemDefinitionId;
   readonly origin: Vector2;
@@ -369,7 +374,7 @@ export interface RenderFrameV1 {
   readonly pirateShips: readonly PirateShipState[];
   readonly cannonShots: readonly CannonShotState[];
   readonly rockShots: readonly RockShotState[];
-  readonly treasureShip: TreasureShipState;
+  readonly treasureShips: readonly TreasureShipState[];
   readonly giftDeliveries: readonly GiftDeliveryState[];
   readonly tiles: readonly TileState[];
   readonly round: RoundStateV1;
@@ -393,11 +398,10 @@ export type SimulationEventKind =
   | "healed"
   | "shield-applied"
   | "status-applied"
-  | "wind-blast-hit"
-  | "grappling-hook-hit"
-  | "bomb-detonated"
   | "soap-placed"
   | "soap-triggered"
+  | "grappling-hook-hit"
+  | "bomb-detonated"
   | "brick-wall-placed"
   | "brick-wall-removed"
   | "item-spawned"
@@ -454,7 +458,7 @@ export interface ReplayHumanSetupV4 {
 }
 
 export interface ReplayFixtureV4 {
-  readonly formatVersion: 5;
+  readonly formatVersion: 8;
   readonly productVersion: string;
   readonly simulationVersion: string;
   readonly contentVersion: string;
@@ -503,7 +507,7 @@ export function normalizeGameConfig(input: GameConfigInput): GameConfigV1 {
     MINIMUM_PARTICIPANT_COUNT,
     MAXIMUM_PARTICIPANT_COUNT,
   );
-  assertIntegerInRange(arenaColumns, "arenaColumns", 7, 48);
+  assertIntegerInRange(arenaColumns, "arenaColumns", 7, 52);
   assertIntegerInRange(arenaRows, "arenaRows", 7, 48);
   assertIntegerInRange(roundLimitSeconds, "roundLimitSeconds", 1, 120);
   assertIntegerInRange(initialItemCount, "initialItemCount", 0, maximumItemCount);

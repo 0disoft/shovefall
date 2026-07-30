@@ -8,11 +8,10 @@ import {
 import { RandomStreamSet, type SeedInput } from "../simulation/random";
 
 const ACTIVE_ITEMS = Object.freeze([
-  "wind-blast",
+  "soap",
   "brick-bag",
   "boat",
   "bomb",
-  "soap",
 ] as const satisfies readonly ItemDefinitionId[]);
 export type BotActiveItemId = (typeof ACTIVE_ITEMS)[number];
 

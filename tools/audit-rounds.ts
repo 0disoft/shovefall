@@ -335,11 +335,10 @@ function createItemCounts(): Record<ItemDefinitionId, number> {
     "iron-boots": 0,
     feather: 0,
     "spring-glove": 0,
-    "wind-blast": 0,
+    soap: 0,
     "brick-bag": 0,
     boat: 0,
     bomb: 0,
-    soap: 0,
   };
 }
 
@@ -673,11 +672,10 @@ function aggregateBalance(results: readonly RoundAuditResult[]) {
     "iron-boots": { pickupCount: 0, exposedActorRounds: 0, winnerActorRounds: 0 },
     feather: { pickupCount: 0, exposedActorRounds: 0, winnerActorRounds: 0 },
     "spring-glove": { pickupCount: 0, exposedActorRounds: 0, winnerActorRounds: 0 },
-    "wind-blast": { pickupCount: 0, exposedActorRounds: 0, winnerActorRounds: 0 },
+    soap: { pickupCount: 0, exposedActorRounds: 0, winnerActorRounds: 0 },
     "brick-bag": { pickupCount: 0, exposedActorRounds: 0, winnerActorRounds: 0 },
     boat: { pickupCount: 0, exposedActorRounds: 0, winnerActorRounds: 0 },
     bomb: { pickupCount: 0, exposedActorRounds: 0, winnerActorRounds: 0 },
-    soap: { pickupCount: 0, exposedActorRounds: 0, winnerActorRounds: 0 },
   };
   const massExposure: Record<
     MassBand,

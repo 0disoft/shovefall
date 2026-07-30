@@ -3,6 +3,7 @@ import {
   createArenaTiles,
   createParticipantSpawnPositions,
   getLandShoreDepths,
+  getOuterOceanTileIds,
 } from "../src/simulation/arena";
 import {
   advanceCollapse,
@@ -132,11 +133,11 @@ describe("procedural island arena", () => {
     expect(spawnIds.every((tileId) => stableIds.has(tileId))).toBe(true);
   });
 
-  it("carves twelve separated lakes into the widened fifty-player island", () => {
+  it("carves twelve separated lakes into the widened public island", () => {
     const massiveConfig = normalizeGameConfig({
-      participantCount: 50,
-      arenaColumns: 48,
-      arenaRows: 40,
+      participantCount: 60,
+      arenaColumns: 52,
+      arenaRows: 44,
     });
 
     for (let seed = 0; seed < 32; seed += 1) {
@@ -147,23 +148,50 @@ describe("procedural island arena", () => {
       const landIds = new Set(
         tiles.filter(({ state }) => state === "Stable").map(({ tileId }) => tileId),
       );
-      const lakes = getLakeComponents(tiles, 48, 40);
+      const lakes = getLakeComponents(tiles, 52, 44);
       const totalLakeTiles = lakes.reduce((sum, lake) => sum + lake.size, 0);
 
       expect(getComponents(landIds)).toHaveLength(1);
       expect(lakes).toHaveLength(12);
       expect(lakes.every((lake) => lake.size >= 5 && lake.size <= 9)).toBe(true);
       expect(totalLakeTiles).toBeLessThanOrEqual(96);
-      expect(landIds.size).toBeGreaterThanOrEqual(1_040);
-      expect(landIds.size).toBeLessThanOrEqual(1_096);
+      expect(landIds.size).toBeGreaterThanOrEqual(1_250);
+      expect(landIds.size).toBeLessThanOrEqual(1_320);
     }
   });
 
-  it("keeps all fifty starting positions supported and away from every shore", () => {
+  it("bridges public outer-coast tiles that would otherwise touch only at a corner", () => {
+    const tiles = createArenaTiles(
+      normalizeGameConfig({ participantCount: 60 }),
+      new RandomStreamSet("coast-diagonal-bridges").get("arena"),
+    );
+    const landIds = new Set(
+      tiles.filter(({ state }) => state !== "Void").map(({ tileId }) => tileId),
+    );
+    const outerOceanIds = getOuterOceanTileIds(tiles, 52, 44);
+
+    for (const tile of tiles.filter(({ state }) => state !== "Void")) {
+      for (const diagonal of [
+        { column: 1, row: 1 },
+        { column: -1, row: 1 },
+      ] as const) {
+        const diagonalId = createTileId(tile.column + diagonal.column, tile.row + diagonal.row);
+        if (!landIds.has(diagonalId)) {
+          continue;
+        }
+
+        const horizontalId = createTileId(tile.column + diagonal.column, tile.row);
+        const verticalId = createTileId(tile.column, tile.row + diagonal.row);
+        expect(outerOceanIds.has(horizontalId) && outerOceanIds.has(verticalId)).toBe(false);
+      }
+    }
+  });
+
+  it("keeps all sixty starting positions supported and away from every shore", () => {
     const massiveConfig = normalizeGameConfig({
-      participantCount: 50,
-      arenaColumns: 48,
-      arenaRows: 40,
+      participantCount: 60,
+      arenaColumns: 52,
+      arenaRows: 44,
     });
 
     for (let seed = 0; seed < 16; seed += 1) {
@@ -173,7 +201,7 @@ describe("procedural island arena", () => {
         tiles.filter(({ state }) => state === "Stable").map(({ tileId }) => tileId),
       );
       const shoreDepths = getLandShoreDepths(tiles);
-      const positions = createParticipantSpawnPositions(tiles, 50, streams.get("spawn"));
+      const positions = createParticipantSpawnPositions(tiles, 60, streams.get("spawn"));
       const spawnIds = positions.map(({ x, y }) => createTileId(Math.floor(x), Math.floor(y)));
       const minimumSpawnDistance = positions.reduce(
         (minimum, position, index) =>
@@ -186,7 +214,7 @@ describe("procedural island arena", () => {
         Number.POSITIVE_INFINITY,
       );
 
-      expect(new Set(spawnIds)).toHaveLength(50);
+      expect(new Set(spawnIds)).toHaveLength(60);
       expect(spawnIds.every((tileId) => stableIds.has(tileId))).toBe(true);
       expect(spawnIds.every((tileId) => (shoreDepths.get(tileId) ?? 0) >= 1)).toBe(true);
       expect(minimumSpawnDistance).toBeGreaterThanOrEqual(1);
@@ -199,7 +227,7 @@ describe("procedural island arena", () => {
       { participantCount: 16, arenaColumns: 25, arenaRows: 20 },
       { participantCount: 24, arenaColumns: 28, arenaRows: 23 },
       { participantCount: 32, arenaColumns: 31, arenaRows: 26 },
-      { participantCount: 50, arenaColumns: 48, arenaRows: 40 },
+      { participantCount: 60, arenaColumns: 52, arenaRows: 44 },
     ] as const;
 
     for (let seed = 0; seed < 24; seed += 1) {
@@ -223,9 +251,9 @@ describe("procedural island arena", () => {
     { participantCount: 16, arenaColumns: 25, arenaRows: 20 },
     { participantCount: 24, arenaColumns: 28, arenaRows: 23 },
     { participantCount: 32, arenaColumns: 31, arenaRows: 26 },
-    { participantCount: 50, arenaColumns: 48, arenaRows: 40 },
+    { participantCount: 60, arenaColumns: 52, arenaRows: 44 },
   ])(
-    "keeps the $participantCount-player island connected through its protected 20% core",
+    "keeps the $participantCount-player island connected through its protected 10% core",
     ({ participantCount, arenaColumns, arenaRows }) => {
       const tierConfig = normalizeGameConfig({ participantCount, arenaColumns, arenaRows });
 
@@ -251,7 +279,9 @@ describe("procedural island arena", () => {
         );
 
         expect(spawnPositions).toHaveLength(participantCount);
-        expect(finalLandIds.size).toBe(Math.ceil(initialLandCount * MINIMUM_REMAINING_LAND_RATIO));
+        expect(finalLandIds.size).toBe(
+          Math.max(1, Math.floor(initialLandCount * MINIMUM_REMAINING_LAND_RATIO)),
+        );
         expect(getComponents(finalLandIds)).toHaveLength(1);
       }
     },

@@ -26,11 +26,10 @@ const ITEM_DEFINITION_IDS = Object.freeze([
   "iron-boots",
   "feather",
   "spring-glove",
-  "wind-blast",
+  "soap",
   "brick-bag",
   "boat",
   "bomb",
-  "soap",
 ] as const satisfies readonly ItemDefinitionId[]);
 
 function isItemDefinitionId(value: string): value is ItemDefinitionId {

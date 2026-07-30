@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { getPointerMovementVector } from "../src/app/pointer-controls";
 
-describe("pointer movement vector", () => {
+describe("touch joystick movement vector", () => {
   it("keeps small accidental motion inside the dead zone neutral", () => {
     expect(getPointerMovementVector(100, 100, 105, 100, 64)).toEqual({ x: 0, y: 0 });
   });

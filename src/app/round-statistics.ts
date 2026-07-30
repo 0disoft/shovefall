@@ -11,18 +11,19 @@ export interface RoundStatistics {
   readonly damageTaken: number;
   readonly damageBlocked: number;
   readonly slowedTicks: number;
+  readonly itemUses: number;
+  readonly shoveHits: number;
+  readonly skillHits: Readonly<Record<SkillDefinitionId, number>>;
   readonly skillUses: Readonly<Record<SkillDefinitionId, number>>;
 }
 
 function createSkillUseCounts(): Record<SkillDefinitionId, number> {
   return {
-    "force-palm": 0,
     "blink-step": 0,
     "arc-bolt": 0,
     "chain-bind": 0,
     "meteor-mark": 0,
     "frost-field": 0,
-    "tidal-charge": 0,
     aegis: 0,
   };
 }
@@ -33,6 +34,9 @@ export class RoundStatisticsTracker {
   #damageTaken = 0;
   #damageBlocked = 0;
   #slowedTicks = 0;
+  #itemUses = 0;
+  #shoveHits = 0;
+  #skillHits = createSkillUseCounts();
   #skillUses = createSkillUseCounts();
 
   public reset(): void {
@@ -41,6 +45,9 @@ export class RoundStatisticsTracker {
     this.#damageTaken = 0;
     this.#damageBlocked = 0;
     this.#slowedTicks = 0;
+    this.#itemUses = 0;
+    this.#shoveHits = 0;
+    this.#skillHits = createSkillUseCounts();
     this.#skillUses = createSkillUseCounts();
   }
 
@@ -74,6 +81,22 @@ export class RoundStatisticsTracker {
         this.#skillUses[event.skillDefinitionId] += 1;
       }
 
+      if (
+        event.kind === "skill-hit" &&
+        event.actorId === actorId &&
+        event.skillDefinitionId !== undefined
+      ) {
+        this.#skillHits[event.skillDefinitionId] += 1;
+      }
+
+      if (event.kind === "item-used" && event.actorId === actorId) {
+        this.#itemUses += 1;
+      }
+
+      if (event.kind === "shove-hit" && event.actorId === actorId) {
+        this.#shoveHits += 1;
+      }
+
       if (event.kind !== "damage-applied") {
         continue;
       }
@@ -95,6 +118,9 @@ export class RoundStatisticsTracker {
       damageTaken: this.#damageTaken,
       damageBlocked: this.#damageBlocked,
       slowedTicks: this.#slowedTicks,
+      itemUses: this.#itemUses,
+      shoveHits: this.#shoveHits,
+      skillHits: Object.freeze({ ...this.#skillHits }),
       skillUses: Object.freeze({ ...this.#skillUses }),
     });
   }

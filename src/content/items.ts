@@ -46,19 +46,17 @@ export const ITEM_DEFINITION_IDS = [
   "iron-boots",
   "feather",
   "spring-glove",
-  "wind-blast",
+  "soap",
   "brick-bag",
   "boat",
   "bomb",
-  "soap",
 ] as const;
 
 export const ACTIVE_ITEM_DEFINITION_IDS = [
-  "wind-blast",
+  "soap",
   "brick-bag",
   "boat",
   "bomb",
-  "soap",
 ] as const satisfies readonly ItemDefinitionId[];
 
 export const MAP_ITEM_DEFINITION_IDS = ["iron-boots", "feather", "spring-glove"] as const;
@@ -88,37 +86,59 @@ function requireStartingCharges(item: ItemDefinition): string {
     : `${formatNumber(item.startingCharges)}회 · `;
 }
 
+function formatGroundPlacement(item: ItemDefinition, objectLabel: string): string {
+  return item.castRange > 0
+    ? `내 위치에서 최대 ${formatNumber(item.castRange)}칸 떨어진 곳에 ${objectLabel} 설치`
+    : `내 위치에 ${objectLabel} 설치`;
+}
+
 export function formatItemEffectDescription(item: ItemDefinition): string {
   switch (item.id) {
-    case "wind-blast": {
-      const range = item.castRange > 0 ? `사거리 ${formatNumber(item.castRange)}칸 · ` : "";
-      const stumble = item.stumbleTicks > 0 ? `${formatNumber(item.stumbleTicks / 60)}초 휘청` : "";
-      return `${range}첫 적을 강하게 밀고 ${stumble}`;
+    case "soap": {
+      const stumble =
+        item.stumbleTicks > 0
+          ? `밟은 상대는 ${formatNumber(item.stumbleTicks / 60)}초 동안 미끄러짐`
+          : undefined;
+      const damage =
+        item.damage > 0 ? `미끄러짐이 끝나면 피해 ${formatNumber(item.damage)}` : undefined;
+      return [
+        formatGroundPlacement(item, "비누"),
+        stumble,
+        damage,
+        "내가 설치한 비누에는 미끄러지지 않음",
+      ]
+        .filter((effect): effect is string => effect !== undefined)
+        .join(" · ");
     }
     case "brick-bag": {
-      const range = item.castRange > 0 ? `${formatNumber(item.castRange)}칸 안의 ` : "";
       const healing =
-        item.healing > 0 ? ` · 설치할 때 체력 ${formatNumber(item.healing)} 회복` : "";
-      return `${range}지정 타일 · 이동·넉백 차단 벽${healing}`;
+        item.healing > 0 ? `설치할 때 체력 ${formatNumber(item.healing)} 회복` : undefined;
+      return [formatGroundPlacement(item, "벽"), "벽은 이동과 넉백을 막음", healing]
+        .filter((effect): effect is string => effect !== undefined)
+        .join(" · ");
     }
     case "boat": {
       const duration =
         item.durationTicks === null || item.durationTicks === 0
           ? ""
           : `${formatNumber(item.durationTicks / 60)}초간 `;
-      return `${duration}물 위 이동 · 탑승 중 스킬·아이템 사용 불가 · 체력·마나 재생 중지`;
+      return `물에 들어가면 자동 탑승 · ${duration}물 위 이동 · 육지 사용 불가 · 탑승 중 스킬·아이템 사용 불가 · 체력·마나 재생 중지`;
     }
     case "bomb": {
-      const radius = item.effectRadius > 0 ? ` 반경 ${formatNumber(item.effectRadius)}칸` : "";
-      const fuse = item.fuseTicks > 0 ? `${formatNumber(item.fuseTicks / 60)}초 뒤` : "";
-      const damage = item.damage > 0 ? ` ${formatNumber(item.damage)} 피해` : "";
-      return `지정 타일 · ${fuse}${radius}${damage} · 설치자는 피해 없음`;
-    }
-    case "soap": {
-      const range = item.castRange > 0 ? `${formatNumber(item.castRange)}칸 안의 ` : "";
-      const stumble =
-        item.stumbleTicks > 0 ? `${formatNumber(item.stumbleTicks / 60)}초 미끄러짐` : "";
-      return `${range}지정 타일 · ${stumble} · 설치자는 미끄러지지 않음`;
+      const fuse =
+        item.fuseTicks > 0 ? `${formatNumber(item.fuseTicks / 60)}초 뒤 폭발` : undefined;
+      const radius =
+        item.effectRadius > 0 ? `폭발 반경 ${formatNumber(item.effectRadius)}칸` : undefined;
+      const damage = item.damage > 0 ? `피해 ${formatNumber(item.damage)}` : undefined;
+      return [
+        formatGroundPlacement(item, "폭탄"),
+        fuse,
+        radius,
+        damage,
+        "나는 폭발 피해를 받지 않음",
+      ]
+        .filter((effect): effect is string => effect !== undefined)
+        .join(" · ");
     }
     case "iron-boots": {
       const duration =
@@ -227,13 +247,13 @@ export const ITEM_DEFINITIONS: Readonly<Record<ItemDefinitionId, ItemDefinition>
     effectRadius: 0,
     aiTags: Object.freeze(["shove"] as const),
   }),
-  "wind-blast": defineItem({
-    id: "wind-blast",
-    label: "장풍",
-    visualKey: "item.wind-blast",
-    audioKey: "item.use.wind-blast",
+  soap: defineItem({
+    id: "soap",
+    label: "비누",
+    visualKey: "item.soap",
+    audioKey: "item.use.soap",
     loadoutKind: "active",
-    startingCharges: 2,
+    startingCharges: 4,
     mapSpawnEligible: true,
     durationTicks: null,
     consumePolicy: "inventory-charge",
@@ -242,11 +262,12 @@ export const ITEM_DEFINITIONS: Readonly<Record<ItemDefinitionId, ItemDefinition>
     dodgeSpeedMultiplier: 1,
     shoveImpulseMultiplier: 1,
     shoveReachMultiplier: 1,
-    targetMode: "direction",
-    castRange: 3.5,
-    effectRadius: 0.55,
-    stumbleTicks: 30,
-    aiTags: Object.freeze(["projectile", "shove"] as const),
+    targetMode: "ground",
+    castRange: 3,
+    effectRadius: 0.5,
+    damage: 25,
+    stumbleTicks: 120,
+    aiTags: Object.freeze(["trap", "mobility"] as const),
   }),
   "brick-bag": defineItem({
     id: "brick-bag",
@@ -266,7 +287,7 @@ export const ITEM_DEFINITIONS: Readonly<Record<ItemDefinitionId, ItemDefinition>
     targetMode: "ground",
     castRange: 2,
     effectRadius: 0.5,
-    healing: 20,
+    healing: 7,
     aiTags: Object.freeze(["cover"] as const),
   }),
   boat: defineItem({
@@ -277,7 +298,7 @@ export const ITEM_DEFINITIONS: Readonly<Record<ItemDefinitionId, ItemDefinition>
     loadoutKind: "active",
     startingCharges: 1,
     mapSpawnEligible: true,
-    durationTicks: 180,
+    durationTicks: 150,
     consumePolicy: "inventory-charge",
     stackingPolicy: "refresh",
     massMultiplier: 1,
@@ -307,30 +328,9 @@ export const ITEM_DEFINITIONS: Readonly<Record<ItemDefinitionId, ItemDefinition>
     targetMode: "ground",
     castRange: 0.75,
     effectRadius: 3,
-    damage: 80,
-    fuseTicks: 210,
+    damage: 65,
+    fuseTicks: 195,
     aiTags: Object.freeze(["area", "shove"] as const),
-  }),
-  soap: defineItem({
-    id: "soap",
-    label: "비누",
-    visualKey: "item.soap",
-    audioKey: "item.use.soap",
-    loadoutKind: "active",
-    startingCharges: 4,
-    mapSpawnEligible: true,
-    durationTicks: null,
-    consumePolicy: "inventory-charge",
-    stackingPolicy: "refresh",
-    massMultiplier: 1,
-    dodgeSpeedMultiplier: 1,
-    shoveImpulseMultiplier: 1,
-    shoveReachMultiplier: 1,
-    targetMode: "ground",
-    castRange: 3,
-    effectRadius: 0.5,
-    stumbleTicks: 60,
-    aiTags: Object.freeze(["trap", "mobility"] as const),
   }),
 });
 

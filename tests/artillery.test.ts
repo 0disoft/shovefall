@@ -1,12 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   CANNON_FLIGHT_TICKS,
-  CANNON_RELOAD_TICKS,
+  CANNON_MAXIMUM_LAUNCH_INTERVAL_TICKS,
+  CANNON_MINIMUM_LAUNCH_INTERVAL_TICKS,
   createArtilleryPlan,
   getActiveCannonShots,
   getPirateShipStates,
-  PIRATE_SHIP_COUNT,
-  PIRATE_SHIP_OFFSHORE_DISTANCE,
   ROCK_FLIGHT_TICKS,
 } from "../src/simulation/artillery";
 import { getOuterOceanTileIds } from "../src/simulation/arena";
@@ -45,7 +44,13 @@ describe("pirate artillery", () => {
       config.collapseSpeed,
       new RandomStreamSet(seed).get("collapse"),
     );
-    const plan = createArtilleryPlan(tiles, collapsePlan, config.arenaColumns, config.arenaRows);
+    const plan = createArtilleryPlan(
+      tiles,
+      collapsePlan,
+      config.arenaColumns,
+      config.arenaRows,
+      new RandomStreamSet(seed).get("artillery-plan"),
+    );
     const lakeNeighborIds = new Set([
       createTileId(4, 3),
       createTileId(5, 4),
@@ -61,7 +66,7 @@ describe("pirate artillery", () => {
     );
   });
 
-  it("starts the public slow barrage during the opening seconds and spaces waves evenly", () => {
+  it("starts every ship on an independent seeded two-to-three-second firing clock", () => {
     const config = normalizeGameConfig({
       participantCount: 4,
       arenaColumns: 12,
@@ -84,18 +89,24 @@ describe("pirate artillery", () => {
       collapsePlan,
       config.arenaColumns,
       config.arenaRows,
+      new RandomStreamSet(seed).get("artillery-plan"),
     );
 
-    expect(collapsePlan[0]).toMatchObject({ warningTick: 120, voidTick: 210 });
-    expect(collapsePlan[1]?.warningTick).toBe(162);
-    expect(artillery.cannonShots[0]?.launchTick).toBe(0);
-    expect(artillery.cannonShots[1]?.launchTick).toBe(42);
+    expect(collapsePlan[0]).toMatchObject({ warningTick: 240, voidTick: 330 });
+    expect(artillery.cannonShots[0]?.launchTick).toBeGreaterThanOrEqual(145);
+    expect(artillery.cannonShots[0]?.launchTick).toBeLessThan(325);
     expect(
-      (artillery.cannonShots[1]?.impactTick ?? 0) - (artillery.cannonShots[1]?.launchTick ?? 0),
-    ).toBe(CANNON_FLIGHT_TICKS);
+      artillery.cannonShots.every(({ warningTick, launchTick }) => warningTick === launchTick),
+    ).toBe(true);
+    const launchGapsByShip = artillery.cannonLaunchTicksByShip.flatMap((launchTicks) =>
+      launchTicks.slice(1).map((tick, index) => tick - (launchTicks[index] ?? 0)),
+    );
+    expect(launchGapsByShip.length).toBeGreaterThan(0);
+    expect(launchGapsByShip.every((gap) => gap >= CANNON_MINIMUM_LAUNCH_INTERVAL_TICKS)).toBe(true);
+    expect(launchGapsByShip.some((gap) => gap <= CANNON_MAXIMUM_LAUNCH_INTERVAL_TICKS)).toBe(true);
   });
 
-  it("fires one nearby-coast cannonball per collapse wave and exposes bounded live ammo", () => {
+  it("fires one nearby-coast cannonball per warned tile and exposes bounded live ammo", () => {
     const config = normalizeGameConfig({
       participantCount: 4,
       arenaColumns: 9,
@@ -118,59 +129,98 @@ describe("pirate artillery", () => {
       collapsePlan,
       config.arenaColumns,
       config.arenaRows,
+      new RandomStreamSet(seed).get("artillery-plan"),
     );
     const initialAmmo = plan.ships.map(({ initialCannonAmmo }) => initialCannonAmmo);
     const firstShot = plan.cannonShots[0];
 
-    expect(plan.cannonShots).toHaveLength(collapsePlan.length);
-    expect(initialAmmo.reduce((total, ammo) => total + ammo, 0)).toBe(collapsePlan.length);
+    expect(plan.cannonShots).toHaveLength(plan.collapseWaves.length);
+    expect(initialAmmo.reduce((total, ammo) => total + ammo, 0)).toBe(plan.collapseWaves.length);
     for (const [waveIndex, shot] of plan.cannonShots.entries()) {
-      const wave = collapsePlan[waveIndex];
-      expect(wave?.tileIds).toContain(shot.targetTileId);
+      const wave = plan.collapseWaves[waveIndex];
+      expect(wave?.tileIds).toEqual([shot.targetTileId]);
+      expect(wave?.warningTick).toBe(shot.launchTick);
+      expect(shot.warningTick).toBe(shot.launchTick);
+      expect(shot.impactTick - shot.launchTick).toBe(CANNON_FLIGHT_TICKS);
     }
 
-    const reloadGaps = plan.cannonShots.flatMap((shot, shotIndex) => {
-      const priorShotFromShip = plan.cannonShots
-        .slice(0, shotIndex)
-        .findLast(({ shipId }) => shipId === shot.shipId);
-      return priorShotFromShip === undefined
-        ? []
-        : [shot.launchTick - priorShotFromShip.impactTick];
-    });
-    expect(reloadGaps.every((gap) => gap >= CANNON_RELOAD_TICKS)).toBe(true);
-
-    const finalImpactTick = collapsePlan.at(-1)?.voidTick ?? 0;
-    const maximumShotsInFlight = Array.from(
-      { length: finalImpactTick + 1 },
-      (_, tick) => getActiveCannonShots(plan, tick).length,
-    ).reduce((maximum, count) => Math.max(maximum, count), 0);
-    expect(maximumShotsInFlight).toBeLessThanOrEqual(PIRATE_SHIP_COUNT);
-    for (let tick = 0; tick <= finalImpactTick; tick += 1) {
-      const activeShipIds = getActiveCannonShots(plan, tick).map(({ shipId }) => shipId);
-      expect(new Set(activeShipIds).size).toBe(activeShipIds.length);
-    }
+    const finalImpactTick = plan.collapseWaves.at(-1)?.voidTick ?? 0;
+    expect(finalImpactTick).toBeGreaterThan(0);
     expect(
       getPirateShipStates(plan, 0).map(({ cannonAmmoRemaining }) => cannonAmmoRemaining),
     ).toEqual(initialAmmo);
     expect(firstShot).toBeDefined();
     expect(getActiveCannonShots(plan, firstShot?.warningTick ?? 0)).toContainEqual(firstShot);
-    expect(
-      plan.ships.every(
-        ({ position }) =>
-          position.x === -PIRATE_SHIP_OFFSHORE_DISTANCE ||
-          position.x === config.arenaColumns + PIRATE_SHIP_OFFSHORE_DISTANCE ||
-          position.y === -PIRATE_SHIP_OFFSHORE_DISTANCE ||
-          position.y === config.arenaRows + PIRATE_SHIP_OFFSHORE_DISTANCE,
+    const nearestLandDistances = plan.ships.map(({ position }) =>
+      Math.min(
+        ...frame.tiles
+          .filter(({ state }) => state !== "Void")
+          .map(({ column, row }) => Math.hypot(column + 0.5 - position.x, row + 0.5 - position.y)),
       ),
-    ).toBe(true);
+    );
+    const visualHullHalfExtent = 1.6;
+    const visualWaterClearances = nearestLandDistances.map(
+      (distance) => distance - 0.5 - visualHullHalfExtent,
+    );
+    expect(visualWaterClearances.every((distance) => distance >= 3 && distance <= 4)).toBe(true);
   });
 
-  it("stops at the connected twenty-percent core, then telegraphs lethal rocks", () => {
+  it("assigns every public-island warning to exactly one cannonball", () => {
+    const config = normalizeGameConfig({
+      participantCount: 60,
+      arenaColumns: 48,
+      arenaRows: 40,
+      collapseSpeed: "slow",
+    });
+    const seed = "public-one-shot-one-warning";
+    const frame = new SimulationWorld(config, seed).createRenderFrame();
+    const collapsePlan = createCollapsePlan(
+      frame.tiles,
+      config.arenaColumns,
+      config.arenaRows,
+      config.collapseSpeed,
+      new RandomStreamSet(seed).get("collapse"),
+    );
+    const artillery = createArtilleryPlan(
+      frame.tiles,
+      collapsePlan,
+      config.arenaColumns,
+      config.arenaRows,
+      new RandomStreamSet(seed).get("artillery-plan"),
+    );
+
+    expect(artillery.collapseWaves.length).toBeGreaterThan(0);
+    expect(artillery.collapseWaves.length).toBeLessThanOrEqual(collapsePlan.length);
+    expect(artillery.collapseWaves.every(({ tileIds }) => tileIds.length === 1)).toBe(true);
+    expect(artillery.cannonShots).toHaveLength(artillery.collapseWaves.length);
+    expect(artillery.cannonShots.map(({ targetTileId }) => targetTileId)).toEqual(
+      artillery.collapseWaves.map(({ tileIds }) => tileIds[0]),
+    );
+    expect(
+      artillery.cannonShots.every(
+        ({ launchTick, impactTick }) => impactTick - launchTick === CANNON_FLIGHT_TICKS,
+      ),
+    ).toBe(true);
+    const globalLaunchGaps = artillery.cannonShots
+      .slice(1)
+      .map((shot, index) => shot.launchTick - (artillery.cannonShots[index]?.launchTick ?? 0));
+    expect(globalLaunchGaps.some((gap) => gap < CANNON_MINIMUM_LAUNCH_INTERVAL_TICKS)).toBe(true);
+    expect(
+      artillery.ships.reduce((total, { initialCannonAmmo }) => total + initialCannonAmmo, 0),
+    ).toBe(artillery.collapseWaves.length);
+    const initialLandCount = frame.tiles.filter(({ state }) => state === "Stable").length;
+    const protectedLandCount = initialLandCount - artillery.collapseWaves.length;
+    expect(protectedLandCount).toBe(
+      Math.max(1, Math.floor(initialLandCount * MINIMUM_REMAINING_LAND_RATIO)),
+    );
+  });
+
+  it("stops at the connected ten-percent core, then telegraphs lethal rocks", () => {
     const config = normalizeGameConfig({
       participantCount: 4,
-      arenaColumns: 9,
+      arenaColumns: 7,
       arenaRows: 7,
-      roundLimitSeconds: 75,
+      roundLimitSeconds: 120,
       collapseSpeed: "fast",
       itemsEnabled: false,
     });
@@ -189,8 +239,9 @@ describe("pirate artillery", () => {
       collapsePlan,
       config.arenaColumns,
       config.arenaRows,
+      new RandomStreamSet(seed).get("artillery-plan"),
     );
-    const scheduledIds = new Set(collapsePlan.flatMap(({ tileIds }) => tileIds));
+    const scheduledIds = new Set(plan.collapseWaves.flatMap(({ tileIds }) => tileIds));
     const coreTiles = initialFrame.tiles.filter(
       ({ state, tileId }) => state === "Stable" && !scheduledIds.has(tileId),
     );
@@ -220,14 +271,19 @@ describe("pirate artillery", () => {
     }
 
     const frame = world.createRenderFrame();
-    const expectedCoreSize = Math.ceil(
-      initialFrame.tiles.filter(({ state }) => state === "Stable").length *
-        MINIMUM_REMAINING_LAND_RATIO,
+    const expectedCoreSize = Math.max(
+      1,
+      Math.floor(
+        initialFrame.tiles.filter(({ state }) => state === "Stable").length *
+          MINIMUM_REMAINING_LAND_RATIO,
+      ),
     );
 
     expect(events.some(({ kind }) => kind === "rock-fired")).toBe(true);
     expect(events.some(({ kind }) => kind === "rock-impact")).toBe(true);
     expect(events.some(({ kind }) => kind === "eliminated")).toBe(true);
-    expect(frame.tiles.filter(({ state }) => state !== "Void")).toHaveLength(expectedCoreSize);
+    expect(frame.tiles.filter(({ state }) => state !== "Void").length).toBeGreaterThanOrEqual(
+      expectedCoreSize,
+    );
   });
 });

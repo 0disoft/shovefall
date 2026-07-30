@@ -15,7 +15,7 @@ export const GRAPPLING_HOOK_DEFINITION: GrapplingHookDefinition = Object.freeze(
   id: "grappling-hook",
   label: "구조 갈고리",
   inputKey: "E",
-  cooldownTicks: 900,
+  cooldownTicks: 630,
   castRange: 4.5,
   effectRadius: 0.35,
   minimumAnchorDistance: 1.25,

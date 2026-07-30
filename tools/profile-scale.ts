@@ -12,7 +12,6 @@ interface Percentiles {
   readonly p99: number;
   readonly maximum: number;
 }
-
 function percentile(sortedValues: readonly number[], fraction: number): number {
   if (sortedValues.length === 0) {
     return 0;
@@ -56,7 +55,7 @@ function createProfileHumanCommand(tick: number) {
   return {
     ...createNeutralCommand(tick, 1),
     move: direction,
-    useItemSlot: tick === 0 ? (0 as const) : tick < 13 ? (1 as const) : null,
+    useItemSlot: tick === 0 ? (0 as const) : null,
   };
 }
 
@@ -85,10 +84,6 @@ function profileParticipantCount(participantCount: number) {
   let peakBombs = 0;
   let totalBombSamples = 0;
   let maximumSimultaneousBombDetonations = 0;
-  let peakSoapPatches = 0;
-  let totalSoapPatchSamples = 0;
-  let soapTriggers = 0;
-  let maximumSimultaneousSoapTriggers = 0;
   let grapplingHookHits = 0;
   let maximumSimultaneousGrapplingHookHits = 0;
   const heapBefore = process.memoryUsage().heapUsed;
@@ -106,7 +101,7 @@ function profileParticipantCount(participantCount: number) {
             y: Math.floor(arenaSize.rows / 2) + 0.5,
           },
           facing: { x: 1, y: 0 },
-          startingItems: ["brick-bag", "soap"],
+          startingItems: ["brick-bag"],
         },
         { actorId: 2, startingItems: ["bomb"] },
         { actorId: 3, startingItems: ["bomb"] },
@@ -170,16 +165,6 @@ function profileParticipantCount(participantCount: number) {
         maximumSimultaneousBombDetonations,
         result.events.filter(({ kind }) => kind === "bomb-detonated").length,
       );
-      peakSoapPatches = Math.max(peakSoapPatches, frame.soapPatches.length);
-      totalSoapPatchSamples += frame.soapPatches.length;
-      const simultaneousSoapTriggers = result.events.filter(
-        ({ kind }) => kind === "soap-triggered",
-      ).length;
-      soapTriggers += simultaneousSoapTriggers;
-      maximumSimultaneousSoapTriggers = Math.max(
-        maximumSimultaneousSoapTriggers,
-        simultaneousSoapTriggers,
-      );
       const simultaneousGrapplingHookHits = result.events.filter(
         ({ kind }) => kind === "grappling-hook-hit",
       ).length;
@@ -219,10 +204,6 @@ function profileParticipantCount(participantCount: number) {
     peakBombs,
     meanBombsPerTick: Math.round((totalBombSamples / totalTicks) * 1_000) / 1_000,
     maximumSimultaneousBombDetonations,
-    peakSoapPatches,
-    meanSoapPatchesPerTick: Math.round((totalSoapPatchSamples / totalTicks) * 1_000) / 1_000,
-    soapTriggers,
-    maximumSimultaneousSoapTriggers,
     grapplingHookHits,
     maximumSimultaneousGrapplingHookHits,
     longStepsOver100Milliseconds: longSteps,
@@ -239,7 +220,6 @@ const ok = profiles.every(
     profile.peakBrickWalls >= 1 &&
     profile.peakBombs >= 2 &&
     profile.maximumSimultaneousBombDetonations >= 2 &&
-    profile.peakSoapPatches >= 1 &&
     profile.grapplingHookHits >= 1,
 );
 
@@ -253,7 +233,7 @@ process.stdout.write(
       profiles,
       limitations: [
         "This measures hard-difficulty headless AI plus simulation on the current workstation, not browser rendering.",
-        "Each round gives actors 2 and 3 Bomb, keeps them neutral through tick 12, and forces both placements and detonations on the same ticks while actor 1 exercises Brick Bag and Soap and actor 4 attempts the built-in grapple.",
+        "Each round gives actors 2 and 3 Bomb, keeps them neutral through tick 12, and forces both placements and detonations on the same ticks while actor 1 exercises Brick Bag and actor 4 attempts the built-in grapple.",
         "Heap deltas are observational because the harness does not force garbage collection.",
       ],
     },

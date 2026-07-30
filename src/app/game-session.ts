@@ -34,6 +34,7 @@ import {
 } from "../simulation/tuning";
 import type { ArenaRenderer } from "../presentation/arena-renderer";
 import { RoundStatisticsTracker, type RoundStatistics } from "./round-statistics";
+import { createSkillButtonViewModel } from "./action-hud";
 
 const FIXED_STEP_MILLISECONDS = 1_000 / FIXED_TICKS_PER_SECOND;
 const MAX_STEPS_PER_RENDER = 8;
@@ -42,6 +43,9 @@ const MAX_SIMULATION_BACKLOG_MILLISECONDS = FIXED_STEP_MILLISECONDS * MAX_SIMULA
 const HUMAN_ACTOR_ID = 1;
 const POST_HUMAN_ELIMINATION_RATE = 6;
 const COUNTDOWN_STEP_MILLISECONDS = 500;
+const TELEMETRY_INTERVAL_TICKS = Math.ceil(FIXED_TICKS_PER_SECOND / 10);
+const MOVE_DESTINATION_MINIMUM_STOP_DISTANCE = 0.08;
+const MOVE_DESTINATION_RADIUS_RATIO = 0.35;
 
 export type RoundCountdownValue = 3 | 2 | 1 | null;
 
@@ -64,6 +68,7 @@ export interface GameSessionHooks {
   readonly onRoundCompleted: (frame: RenderFrameV1) => void;
   readonly onPauseChanged: (paused: boolean) => void;
   readonly onTargetingChanged: (targeting: boolean, approaching: boolean) => void;
+  readonly onActionRejected?: (message: string) => void;
   readonly onFatalError: (error: unknown) => void;
 }
 
@@ -79,6 +84,7 @@ export interface GameSession {
   queueGrapple(): void;
   queueSkillSlot(slotIndex: 0 | 1): void;
   failForDiagnostics(error: unknown): void;
+  moveTo(clientX: number, clientY: number): void;
   setPaused(paused: boolean): void;
   setPointerMovement(x: number, y: number): void;
   updateTargeting(clientX: number, clientY: number): void;
@@ -163,6 +169,7 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
   let world: SimulationWorld | undefined;
   let bots: BotDirector | undefined;
   let latestFrame: RenderFrameV1 | undefined;
+  let supportedGroundTileIds = new Set<string>();
   let animationFrameId: number | undefined;
   let previousTimestamp: number | undefined;
   let accumulatorMilliseconds = 0;
@@ -180,20 +187,27 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
   let pendingHumanUpgrade: UpgradeStatId | null = null;
   let targetingAction: TargetedAction | null = null;
   let pendingTargetedAction: TargetedAction | null = null;
+  let moveDestination: Vector2 | null = null;
   let grapplingHookCastRange = DEFAULT_GAMEPLAY_TUNING.grapplingHookRange;
+  let lastTelemetryTick = Number.NEGATIVE_INFINITY;
+  let lastTargetingSignal = "";
+  let lastAimPreviewSignal = "";
   let keyboard: KeyboardInput;
   const roundStatistics = new RoundStatisticsTracker();
 
   const getHuman = (): RenderParticipantV1 | undefined =>
     latestFrame?.participants.find(({ actorId }) => actorId === HUMAN_ACTOR_ID);
 
+  const setLatestFrame = (frame: RenderFrameV1 | undefined): void => {
+    latestFrame = frame;
+    supportedGroundTileIds = new Set(
+      frame?.tiles.filter(({ state }) => state !== "Void").map(({ tileId }) => tileId) ?? [],
+    );
+  };
+
   const isSupportedGroundTarget = (target: Vector2): boolean => {
     const tileId = `${Math.floor(target.x)}:${Math.floor(target.y)}`;
-    return (
-      latestFrame?.tiles.some(
-        ({ tileId: candidateId, state }) => candidateId === tileId && state !== "Void",
-      ) === true
-    );
+    return supportedGroundTileIds.has(tileId);
   };
 
   const isTargetValid = (action: TargetedAction): boolean => {
@@ -220,11 +234,36 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
   const syncAimPreview = (): void => {
     const action = targetingAction ?? pendingTargetedAction;
     const human = getHuman();
-    hooks.onTargetingChanged(targetingAction !== null, isTargetApproachActive());
+    const approaching = isTargetApproachActive();
+    const targetingSignal = `${targetingAction !== null}:${approaching}`;
+    if (targetingSignal !== lastTargetingSignal) {
+      lastTargetingSignal = targetingSignal;
+      hooks.onTargetingChanged(targetingAction !== null, approaching);
+    }
     if (action === null || human === undefined || !human.active) {
-      renderer.setAimPreview(null);
+      if (lastAimPreviewSignal !== "none") {
+        lastAimPreviewSignal = "none";
+        renderer.setAimPreview(null);
+      }
       return;
     }
+    const valid = isTargetValid(action);
+    const previewSignal = [
+      action.targetMode,
+      human.position.x,
+      human.position.y,
+      action.target.x,
+      action.target.y,
+      action.castRange,
+      action.effectRadius,
+      valid,
+      approaching,
+      action.visualKind,
+    ].join(":");
+    if (previewSignal === lastAimPreviewSignal) {
+      return;
+    }
+    lastAimPreviewSignal = previewSignal;
     renderer.setAimPreview(
       Object.freeze({
         targetMode: action.targetMode,
@@ -232,8 +271,8 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
         target: action.target,
         castRange: action.castRange,
         effectRadius: action.effectRadius,
-        valid: isTargetValid(action),
-        approaching: isTargetApproachActive(),
+        valid,
+        approaching,
         visualKind: action.visualKind,
       }),
     );
@@ -242,7 +281,22 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
   const cancelTargeting = (): void => {
     targetingAction = null;
     pendingTargetedAction = null;
-    renderer.setAimPreview(null);
+    syncAimPreview();
+  };
+
+  const cancelMoveDestination = (): void => {
+    moveDestination = null;
+  };
+
+  const setMoveDestinationFromClient = (clientX: number, clientY: number): void => {
+    const worldTarget = renderer.screenToWorld(clientX, clientY);
+    if (worldTarget === undefined || !isSupportedGroundTarget(worldTarget)) {
+      hooks.onActionRejected?.("이동할 수 있는 땅을 우클릭해 줘.");
+      return;
+    }
+    cancelTargeting();
+    keyboard.state.setPointerMovement(0, 0);
+    moveDestination = Object.freeze({ ...worldTarget });
   };
 
   const confirmCurrentTargeting = (): void => {
@@ -274,13 +328,14 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
   };
 
   const activateTargetedAction = (action: TargetedAction): void => {
+    cancelMoveDestination();
     if (action.targetMode === "self") {
       targetingAction = null;
       pendingTargetedAction = action;
-      renderer.setAimPreview(null);
+      syncAimPreview();
       return;
     }
-    keyboard.state.clearMovement();
+    keyboard.state.clearTransientMovement();
     targetingAction = action;
     pendingTargetedAction = null;
     syncAimPreview();
@@ -290,6 +345,17 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
     const human = getHuman();
     const slot = human?.skills.find((candidate) => candidate.slotIndex === slotIndex);
     if (!active || paused || countdown !== null || human === undefined || slot === undefined) {
+      return;
+    }
+    const model = createSkillButtonViewModel(human, slotIndex, {
+      tick: latestFrame?.tick ?? 0,
+      countdownActive: countdown !== null,
+      roundActive: latestFrame?.round.status === "Active",
+    });
+    if (model.state !== "ready") {
+      cancelTargeting();
+      hooks.onTargetingChanged(false, false);
+      hooks.onActionRejected?.(model.rejectionMessage ?? "지금은 이 스킬을 사용할 수 없어.");
       return;
     }
     if (isSameTargetedAction(targetingAction, "skill", slotIndex)) {
@@ -405,7 +471,7 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
       });
     }
     pendingTargetedAction = null;
-    renderer.setAimPreview(null);
+    syncAimPreview();
     return Object.freeze({
       ...command,
       move: Object.freeze({ x: 0, y: 0 }),
@@ -413,6 +479,36 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
       grapplePressed: pending.actionKind === "grapple",
       useSkillSlot: pending.actionKind === "skill" ? pending.slotIndex : null,
       useItemSlot: pending.actionKind === "item" ? 0 : null,
+    });
+  };
+
+  const applyMoveDestination = (command: ReturnType<InputState["consumeCommand"]>) => {
+    const destination = moveDestination;
+    const human = getHuman();
+    if (destination === null || human === undefined) {
+      return command;
+    }
+    if (command.move.x !== 0 || command.move.y !== 0) {
+      cancelMoveDestination();
+      return command;
+    }
+    if (!human.active || !isSupportedGroundTarget(destination)) {
+      cancelMoveDestination();
+      return command;
+    }
+    const offset = subtractVectors(destination, human.position);
+    const stopDistance = Math.max(
+      MOVE_DESTINATION_MINIMUM_STOP_DISTANCE,
+      human.radius * MOVE_DESTINATION_RADIUS_RATIO,
+    );
+    if (vectorLength(offset) <= stopDistance) {
+      cancelMoveDestination();
+      return command;
+    }
+    return Object.freeze({
+      ...command,
+      move: normalizeVector(offset),
+      targetPosition: destination,
     });
   };
   keyboard = createKeyboardInput({
@@ -429,26 +525,35 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
   });
   const gamepad: GamepadInput = createGamepadInput();
 
-  const publishFrame = (): void => {
+  const publishFrame = (forceTelemetry = false): void => {
     if (world === undefined || latestFrame === undefined) {
       return;
     }
 
     const interpolationAlpha = clamp(accumulatorMilliseconds / FIXED_STEP_MILLISECONDS, 0, 1);
-    renderer.render(latestFrame, interpolationAlpha, HUMAN_ACTOR_ID);
     syncAimPreview();
-    hooks.onTelemetry(
-      Object.freeze({
-        frame: latestFrame,
-        interpolationAlpha,
-        backlogTicks: Math.floor(accumulatorMilliseconds / FIXED_STEP_MILLISECONDS),
-        paused,
-        masterSeed: currentSeed,
-        simulationRate: humanEliminated ? POST_HUMAN_ELIMINATION_RATE : 1,
-        countdown,
-        roundStatistics: roundStatistics.snapshot(),
-      }),
-    );
+    if (rendererAvailable) {
+      renderer.render(latestFrame, interpolationAlpha, HUMAN_ACTOR_ID);
+    }
+    const simulationRate = humanEliminated ? POST_HUMAN_ELIMINATION_RATE : 1;
+    if (
+      forceTelemetry ||
+      latestFrame.tick - lastTelemetryTick >= TELEMETRY_INTERVAL_TICKS * simulationRate
+    ) {
+      lastTelemetryTick = latestFrame.tick;
+      hooks.onTelemetry(
+        Object.freeze({
+          frame: latestFrame,
+          interpolationAlpha,
+          backlogTicks: Math.floor(accumulatorMilliseconds / FIXED_STEP_MILLISECONDS),
+          paused,
+          masterSeed: currentSeed,
+          simulationRate,
+          countdown,
+          roundStatistics: roundStatistics.snapshot(),
+        }),
+      );
+    }
   };
 
   const schedule = (): void => {
@@ -462,12 +567,12 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
 
     if (paused) {
       previousTimestamp = timestamp;
-      publishFrame();
       schedule();
       return;
     }
 
     if (countdown !== null) {
+      const previousCountdown = countdown;
       if (previousTimestamp !== undefined) {
         countdownElapsedMilliseconds += Math.max(0, timestamp - previousTimestamp);
       }
@@ -481,7 +586,9 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
             : countdownElapsedMilliseconds < COUNTDOWN_STEP_MILLISECONDS * 3
               ? 1
               : null;
-      publishFrame();
+      if (countdown !== previousCountdown) {
+        publishFrame(true);
+      }
       schedule();
       return;
     }
@@ -500,20 +607,25 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
     try {
       let steps = 0;
 
-      while (accumulatorMilliseconds >= FIXED_STEP_MILLISECONDS && steps < MAX_STEPS_PER_RENDER) {
-        if (humanEliminated) {
-          gamepad.clear(keyboard.state);
-        } else {
-          gamepad.sample(keyboard.state, {
+      if (humanEliminated) {
+        gamepad.clear(keyboard.state);
+      } else {
+        gamepad.sample(
+          keyboard.state,
+          {
             isTargeting: () => targetingAction !== null,
             onTargetingMoved: moveTargetingWithKeyboard,
             onGrappleRequested: beginGrappleTargeting,
             onSkillRequested: beginSkillTargeting,
             onItemRequested: beginItemTargeting,
-          });
-        }
+          },
+          timestamp,
+        );
+      }
+
+      while (accumulatorMilliseconds >= FIXED_STEP_MILLISECONDS && steps < MAX_STEPS_PER_RENDER) {
         const inputCommand = applyPendingTargetedAction(
-          keyboard.state.consumeCommand(world.tick, HUMAN_ACTOR_ID),
+          applyMoveDestination(keyboard.state.consumeCommand(world.tick, HUMAN_ACTOR_ID)),
         );
         const previousFrame = latestFrame ?? world.createRenderFrame();
         const requestedUpgrade = pendingHumanUpgrade;
@@ -526,7 +638,7 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
           ...(bots?.createCommands(world.tick, previousFrame) ?? []),
         ]);
         roundStatistics.recordStep(previousFrame, result.frame, result.events, HUMAN_ACTOR_ID);
-        latestFrame = result.frame;
+        setLatestFrame(result.frame);
         renderer.consumeEvents(result.events, result.frame);
         hooks.onEvents(result.events);
         accumulatorMilliseconds -= FIXED_STEP_MILLISECONDS;
@@ -547,7 +659,7 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
           keyboard.state.clear();
           gamepad.clear(keyboard.state);
           animationFrameId = undefined;
-          publishFrame();
+          publishFrame(true);
           hooks.onRoundCompleted(result.frame);
           return;
         }
@@ -564,7 +676,6 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
           accumulatorMilliseconds = 0;
           syncPausedState();
           hooks.onHumanUpgradeRequested(result.frame);
-          publishFrame();
           schedule();
           return;
         }
@@ -591,10 +702,11 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
 
     paused = nextPaused;
     previousTimestamp = undefined;
+    cancelMoveDestination();
     keyboard.state.clear();
     gamepad.clear(keyboard.state);
     hooks.onPauseChanged(paused);
-    publishFrame();
+    publishFrame(true);
   };
 
   const handleWindowBlur = (): void => {
@@ -664,6 +776,11 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
     failForDiagnostics(error: unknown): void {
       fail(error);
     },
+    moveTo(clientX: number, clientY: number): void {
+      if (active && !paused && countdown === null && !humanEliminated) {
+        setMoveDestinationFromClient(clientX, clientY);
+      }
+    },
     setRendererAvailable(available: boolean): void {
       rendererAvailable = available;
       syncPausedState();
@@ -712,7 +829,7 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
       });
       nextRoundId += 1;
       bots = new BotDirector(masterSeed, HUMAN_ACTOR_ID, { difficulty: config.difficulty });
-      latestFrame = world.createRenderFrame();
+      setLatestFrame(world.createRenderFrame());
       roundStatistics.reset();
       accumulatorMilliseconds = 0;
       previousTimestamp = undefined;
@@ -723,13 +840,17 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
       humanEliminated = false;
       awaitingHumanUpgrade = false;
       pendingHumanUpgrade = null;
+      cancelMoveDestination();
       cancelTargeting();
       countdown = 3;
       countdownElapsedMilliseconds = 0;
+      lastTelemetryTick = Number.NEGATIVE_INFINITY;
+      lastTargetingSignal = "";
+      lastAimPreviewSignal = "";
       active = true;
       keyboard.state.clear();
       gamepad.clear(keyboard.state);
-      publishFrame();
+      publishFrame(true);
       hooks.onPauseChanged(paused);
       schedule();
     },
@@ -745,7 +866,7 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
     },
     queueGrapple: beginGrappleTargeting,
     setPointerMovement(x: number, y: number): void {
-      if (active && !paused && countdown === null && !humanEliminated) {
+      if (active && !paused && !humanEliminated) {
         keyboard.state.setPointerMovement(x, y);
       } else {
         keyboard.state.setPointerMovement(0, 0);
@@ -758,7 +879,7 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
       active = false;
       world = undefined;
       bots = undefined;
-      latestFrame = undefined;
+      setLatestFrame(undefined);
       accumulatorMilliseconds = 0;
       previousTimestamp = undefined;
       paused = false;
@@ -766,6 +887,7 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
       humanEliminated = false;
       awaitingHumanUpgrade = false;
       pendingHumanUpgrade = null;
+      cancelMoveDestination();
       countdown = null;
       countdownElapsedMilliseconds = 0;
       cancelTargeting();

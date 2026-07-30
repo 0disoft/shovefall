@@ -1,14 +1,14 @@
 # Round and strategy audit
 
-## Current `0.45.0` contract
+## Current `0.88.0` contract
 
-- Product/simulation/content: `0.45.0 / 25.0.0 / 17.0.0`
-- Public mode: 50 participants, Hard AI, fixed Slow collapse
-- Public map: `48×40`, exactly 12 separated 5–9-tile lakes under a 96-tile budget
+- Product/simulation/content: `0.88.0 / 56.0.0 / 33.0.0`
+- Public mode: 60 participants, Hard AI, fixed Slow collapse
+- Public map: `52×44`, exactly 12 separated 5–9-tile lakes under a 96-tile budget
 - Public round limit: 120 seconds
-- Public item policy: 8 pre-delivered initial items and one 72-tick treasure gift launched every 4 seconds when capacity permits
+- Public item policy: 8 pre-delivered initial items and two opposite ships alternating one 72-tick treasure gift about every 3.5 seconds when capacity permits
 
-Both `audit:strategy` and production `audit:rounds` consume the exported 120-second public limit instead of preserving their former 75-second copy. Controlled mass, item, and collapse experiments retain their bounded 75-second diagnostic horizon because they are not public-mode duration claims. All prior numeric tables below are historical evidence for their named versions and must not be relabeled as `0.45.0` results. Fresh strategy and production audit evidence remains pending after the health, skill, opening-collapse, treasure-delivery, and branching-progression contract changes. The browser-local scoreboard, tree connectors, and treasure-ship rendering are presentation state; delivery timing and bot upgrade eligibility alter audit outcomes.
+Both `audit:strategy` and production `audit:rounds` consume the exported 120-second public limit instead of preserving their former 75-second copy. Controlled mass, item, and collapse experiments retain their bounded 75-second diagnostic horizon because they are not public-mode duration claims. All prior numeric tables below are historical evidence for their named versions and must not be relabeled as `0.88.0` results. Fresh strategy, balance, performance, and production audit evidence remains pending after the 52×44 arena expansion.
 
 ## Protected-core pressure `0.34.0` status
 
@@ -30,7 +30,7 @@ The paired collapse screen completed all 48 rounds without time-limit draws. Mea
 - Content: `9.0.0`
 - Public bound: `48×40`, exactly eight separated 6–10-tile lakes under a 72-tile budget
 
-Thirty-two public seeds pass the topology gate with one connected 1,080–1,104-tile starting island after lakes, eight enclosed lake components, fifty distinct supported spawns at shore depth one or greater, and an exact connected `ceil(initial land × 0.20)` collapse core. The topology-independent item selector chooses edge, near-edge, or interior with fixed 3:2:1 band weights before choosing a tile within that band.
+Thirty-two public seeds pass the topology gate with one connected 1,080–1,104-tile starting island after lakes, eight enclosed lake components, fifty distinct supported spawns at shore depth one or greater, and an exact connected `max(1, floor(initial land × 0.10))` collapse core. The topology-independent item selector chooses edge, near-edge, or interior with fixed 3:2:1 band weights before choosing a tile within that band.
 
 The full `audit:rounds` workload exceeded its configured 300-second limit before emitting a result. This is neither a balance pass nor a balance failure. The 7,200-tick headless performance profile passes at simulation p95 `6.823 ms`, zero steps over 100 ms, and `1.73×` real time, but it does not prove round duration, human pacing, risky-pickup balance, or aggression-versus-survival outcomes on the widened map.
 
@@ -50,7 +50,7 @@ The main round and strategy harnesses now target 50 participants. The fresh head
 - Content: `4.0.0`
 - Preset bounds: `16×13`, `20×16`, `24×19`, and `28×22`
 
-The island contract has deterministic tests across all four participant tiers and multiple seeds. They require one connected tick-zero landmass, enclosed lakes, distinct supported default spawns, an exact `ceil(initial playable land × 0.20)` final land count, and one connected protected final core. These invariants validate topology and collapse limits; they do not prove human pacing or item risk preference.
+The island contract has deterministic tests across all participant tiers and multiple seeds. They require one connected tick-zero landmass, enclosed lakes, distinct supported default spawns, an exact `max(1, floor(initial playable land × 0.10))` final land count, and one connected protected final core. These invariants validate topology and collapse limits; they do not prove human pacing or item risk preference.
 
 The full `audit:rounds` workload again hit its configured 300-second timeout before emitting a result. It is neither a pass nor a balance failure, and the historical `0.20.0` round tables below do not transfer to procedural islands. Current headless scale profiling completed 7,200 ticks at 16/24/32 participants with 0 steps over 100 ms; the 32-participant run reported AI p95 `5.404 ms`, simulation p95 `3.917 ms`, and `3.61×` real-time throughput. Current local production Chrome profiling reported p95 `16.9/17.0/16.9 ms`, 0 backlog ticks, 0 frames over 100 ms, and a 1,436,776-byte heap increase after 20 restarts. This is local lab evidence, not field or cross-browser evidence.
 

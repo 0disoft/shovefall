@@ -74,4 +74,34 @@ describe("gamepad movement", () => {
     adapter.clear(input);
     expect(input.consumeCommand(0, 1).useItemSlot).toBeNull();
   });
+
+  it("rate-limits held-stick aim independently from fixed-step catch-up", () => {
+    const input = new InputState();
+    const adapter = createGamepadInput(() => [
+      {
+        connected: true,
+        axes: [1, 0],
+        buttons: [],
+      },
+    ]);
+    const aimMoves: Array<readonly [number, number]> = [];
+    const actions = {
+      isTargeting: () => true,
+      onTargetingMoved: (x: number, y: number) => aimMoves.push([x, y]),
+      onSkillRequested: () => {},
+      onItemRequested: () => {},
+    };
+
+    adapter.sample(input, actions, 0);
+    adapter.sample(input, actions, 16);
+    adapter.sample(input, actions, 279);
+    expect(aimMoves).toHaveLength(1);
+
+    adapter.sample(input, actions, 280);
+    adapter.sample(input, actions, 399);
+    expect(aimMoves).toHaveLength(2);
+
+    adapter.sample(input, actions, 400);
+    expect(aimMoves).toHaveLength(3);
+  });
 });

@@ -130,23 +130,27 @@ describe("optional Web Audio feedback", () => {
     expect(context.oscillators).toHaveLength(1);
     expect(context.gains[0]?.gain.values[0]).toBeCloseTo(0.11 * MASTER_GAIN_SCALE, 10);
 
-    audio.setMuted(true);
+    audio.setVolume(50);
     audio.consumeEvents([createEvent(1, 2, 2)]);
-    expect(context.oscillators).toHaveLength(1);
-    audio.setMuted(false);
+    expect(context.gains[1]?.gain.values[0]).toBeCloseTo(0.11 * MASTER_GAIN_SCALE * 0.5, 10);
+
+    audio.setMuted(true);
     audio.consumeEvents([createEvent(1, 3, 3)]);
     expect(context.oscillators).toHaveLength(2);
+    audio.setMuted(false);
+    audio.consumeEvents([createEvent(1, 4, 4)]);
+    expect(context.oscillators).toHaveLength(3);
   });
 
-  it("plays a dedicated high-priority Wind Blast impact cue", async () => {
+  it("plays a dedicated Soap trigger cue", async () => {
     const context = new FakeAudioContext();
     const audio = createAudioFeedback(() => context);
     await audio.unlock();
 
-    audio.consumeEvents([createEvent(1, 0, 0, "wind-blast-hit")]);
+    audio.consumeEvents([createEvent(1, 0, 0, "soap-triggered")]);
 
     expect(context.oscillators).toHaveLength(1);
-    expect(context.oscillators[0]?.type).toBe("sawtooth");
+    expect(context.oscillators[0]?.type).toBe("triangle");
   });
 
   it("plays distinct cues when a lethal rock is fired and lands", async () => {
@@ -183,30 +187,6 @@ describe("optional Web Audio feedback", () => {
     expect(context.oscillators.map(({ type }) => type)).toEqual(["square", "sawtooth"]);
     expect(context.oscillators[0]?.frequency.values[0]).toBe(640);
     expect(context.oscillators[1]?.frequency.values[0]).toBe(92);
-  });
-
-  it("uses distinct procedural cues for Soap placement and triggering", async () => {
-    const context = new FakeAudioContext();
-    const audio = createAudioFeedback(() => context);
-    await audio.unlock();
-
-    audio.consumeEvents([
-      {
-        ...createEvent(1, 0, 0, "soap-placed"),
-        itemDefinitionId: "soap",
-        position: { x: 4.5, y: 5.5 },
-      },
-      {
-        ...createEvent(1, 1, 1, "soap-triggered"),
-        itemDefinitionId: "soap",
-        position: { x: 4.5, y: 5.5 },
-      },
-    ]);
-
-    expect(context.oscillators).toHaveLength(2);
-    expect(context.oscillators.map(({ type }) => type)).toEqual(["sine", "triangle"]);
-    expect(context.oscillators[0]?.frequency.values[0]).toBe(360);
-    expect(context.oscillators[1]?.frequency.values[0]).toBe(430);
   });
 
   it("plays a brief metallic catch when Grappling Hook finds an anchor", async () => {

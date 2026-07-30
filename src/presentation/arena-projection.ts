@@ -3,6 +3,7 @@ import { clamp, type Vector2 } from "../simulation/math";
 export const ARENA_CAMERA_ELEVATION_DEGREES = 58;
 export const ARENA_DEPTH_SCALE = Math.sin((ARENA_CAMERA_ELEVATION_DEGREES * Math.PI) / 180);
 export const ARENA_TILE_GAP = 0;
+export const ARENA_CAMERA_ZOOM = 1.15;
 export const ARENA_SHADOW_OFFSET_SCALE = clamp((1 - ARENA_DEPTH_SCALE) * 4.5, 0.18, 0.55);
 
 export interface ArenaProjection {
@@ -17,10 +18,14 @@ export interface ArenaProjection {
 
 export function createArenaProjection(width: number, height: number): ArenaProjection {
   const compact = width <= 820;
-  const visibleColumns = compact ? 10 : 18;
-  const visibleRows = compact ? 12 : 11;
+  const visibleColumns = compact ? 9.6 : 17;
+  const visibleRows = compact ? 11.5 : 10.5;
   const verticalBudget = visibleRows * ARENA_DEPTH_SCALE + 0.22;
-  const pitch = clamp(Math.min(width / visibleColumns, height / verticalBudget), 28, 68);
+  const pitch = clamp(
+    Math.min(width / visibleColumns, height / verticalBudget) * ARENA_CAMERA_ZOOM,
+    28,
+    80,
+  );
   const tileWidth = pitch - ARENA_TILE_GAP;
 
   return Object.freeze({

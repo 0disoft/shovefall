@@ -1,5 +1,29 @@
 import type { SimulationEventKind, SimulationEventV1 } from "../simulation/contracts";
 import { SimulationEventLedger } from "./event-ledger";
+import backgroundMusicUrl from "../assets/audio/hyp-catch-me-if-you-can.mp3?url";
+
+export type BackgroundMusicState = "locked" | "playing" | "muted" | "unavailable" | "closed";
+
+export interface AudioElementPort {
+  loop: boolean;
+  muted: boolean;
+  preload: string;
+  volume: number;
+  pause(): void;
+  play(): Promise<void>;
+}
+
+export type AudioElementFactory = (source: string) => AudioElementPort | undefined;
+
+export interface BackgroundMusic {
+  readonly muted: boolean;
+  readonly state: BackgroundMusicState;
+  readonly volume: number;
+  destroy(): void;
+  setMuted(muted: boolean): void;
+  setVolume(volume: number): void;
+  unlock(): Promise<BackgroundMusicState>;
+}
 
 export type AudioFeedbackState = "locked" | "ready" | "muted" | "unavailable" | "closed";
 
@@ -39,9 +63,11 @@ export type AudioContextFactory = () => AudioContextPort | undefined;
 export interface AudioFeedback {
   readonly muted: boolean;
   readonly state: AudioFeedbackState;
+  readonly volume: number;
   consumeEvents(events: readonly SimulationEventV1[]): void;
   destroy(): void;
   setMuted(muted: boolean): void;
+  setVolume(volume: number): void;
   unlock(): Promise<AudioFeedbackState>;
 }
 
@@ -102,13 +128,21 @@ const SOUND_DEFINITIONS: Partial<Record<SimulationEventKind, SoundDefinition>> =
     priority: 1,
     oscillatorType: "sawtooth",
   }),
-  "wind-blast-hit": Object.freeze({
-    frequency: 110,
-    endFrequency: 54,
-    durationSeconds: 0.2,
-    gain: 0.105,
-    priority: 4,
-    oscillatorType: "sawtooth",
+  "soap-placed": Object.freeze({
+    frequency: 520,
+    endFrequency: 390,
+    durationSeconds: 0.08,
+    gain: 0.045,
+    priority: 1,
+    oscillatorType: "sine",
+  }),
+  "soap-triggered": Object.freeze({
+    frequency: 310,
+    endFrequency: 120,
+    durationSeconds: 0.18,
+    gain: 0.08,
+    priority: 3,
+    oscillatorType: "triangle",
   }),
   "rock-fired": Object.freeze({
     frequency: 180,
@@ -141,22 +175,6 @@ const SOUND_DEFINITIONS: Partial<Record<SimulationEventKind, SoundDefinition>> =
     gain: 0.12,
     priority: 5,
     oscillatorType: "sawtooth",
-  }),
-  "soap-placed": Object.freeze({
-    frequency: 360,
-    endFrequency: 210,
-    durationSeconds: 0.11,
-    gain: 0.045,
-    priority: 2,
-    oscillatorType: "sine",
-  }),
-  "soap-triggered": Object.freeze({
-    frequency: 430,
-    endFrequency: 880,
-    durationSeconds: 0.18,
-    gain: 0.065,
-    priority: 4,
-    oscillatorType: "triangle",
   }),
   "grappling-hook-hit": Object.freeze({
     frequency: 1_080,
@@ -235,6 +253,7 @@ export function createAudioFeedback(
   let context: AudioContextPort | undefined;
   let state: AudioFeedbackState = "locked";
   let muted = false;
+  let volume = 100;
 
   const setState = (nextState: AudioFeedbackState): void => {
     if (state === nextState) {
@@ -281,7 +300,7 @@ export function createAudioFeedback(
       oscillator.type = definition.oscillatorType;
       oscillator.frequency.setValueAtTime(definition.frequency, startedAt);
       oscillator.frequency.exponentialRampToValueAtTime(definition.endFrequency, endsAt);
-      gain.gain.setValueAtTime(definition.gain * MASTER_GAIN_SCALE, startedAt);
+      gain.gain.setValueAtTime(definition.gain * MASTER_GAIN_SCALE * (volume / 100), startedAt);
       gain.gain.exponentialRampToValueAtTime(0.000_1, endsAt);
       oscillator.connect(gain);
       gain.connect(context.destination);
@@ -302,6 +321,9 @@ export function createAudioFeedback(
     },
     get state(): AudioFeedbackState {
       return state;
+    },
+    get volume(): number {
+      return volume;
     },
     consumeEvents(events: readonly SimulationEventV1[]): void {
       for (const event of ledger.consume(events)) {
@@ -334,6 +356,11 @@ export function createAudioFeedback(
         setState(muted ? "muted" : "ready");
       }
     },
+    setVolume(nextVolume: number): void {
+      volume = Number.isFinite(nextVolume)
+        ? Math.round(Math.min(100, Math.max(0, nextVolume)))
+        : 100;
+    },
     async unlock(): Promise<AudioFeedbackState> {
       if (state === "closed" || state === "unavailable") {
         return state;
@@ -355,6 +382,117 @@ export function createAudioFeedback(
       } catch {
         context = undefined;
         setState("unavailable");
+      }
+
+      return state;
+    },
+  });
+}
+
+function createBrowserAudioElement(source: string): AudioElementPort | undefined {
+  if (typeof Audio === "undefined") {
+    return undefined;
+  }
+
+  return new Audio(source);
+}
+
+function normalizeBackgroundMusicVolume(value: number): number {
+  return Number.isFinite(value) ? Math.round(Math.min(100, Math.max(0, value))) : 35;
+}
+
+function isAutoplayRejection(error: unknown): boolean {
+  return error instanceof DOMException && error.name === "NotAllowedError";
+}
+
+export function createBackgroundMusic(
+  factory: AudioElementFactory = createBrowserAudioElement,
+  onStateChange: (state: BackgroundMusicState) => void = () => undefined,
+): BackgroundMusic {
+  let element: AudioElementPort | undefined;
+  let state: BackgroundMusicState = "locked";
+  let muted = false;
+  let volume = 35;
+
+  const setState = (nextState: BackgroundMusicState): void => {
+    if (state === nextState) {
+      return;
+    }
+    state = nextState;
+    onStateChange(state);
+  };
+
+  const ensureElement = (): AudioElementPort | undefined => {
+    if (element !== undefined) {
+      return element;
+    }
+    element = factory(backgroundMusicUrl);
+    if (element === undefined) {
+      setState("unavailable");
+      return undefined;
+    }
+    element.loop = true;
+    element.preload = "auto";
+    element.muted = muted;
+    element.volume = volume / 100;
+    return element;
+  };
+
+  onStateChange(state);
+
+  return Object.freeze({
+    get muted(): boolean {
+      return muted;
+    },
+    get state(): BackgroundMusicState {
+      return state;
+    },
+    get volume(): number {
+      return volume;
+    },
+    destroy(): void {
+      element?.pause();
+      element = undefined;
+      setState("closed");
+    },
+    setMuted(nextMuted: boolean): void {
+      muted = nextMuted;
+      if (element !== undefined) {
+        element.muted = muted;
+      }
+      if (state === "playing" || state === "muted") {
+        setState(muted ? "muted" : "playing");
+      }
+    },
+    setVolume(nextVolume: number): void {
+      volume = normalizeBackgroundMusicVolume(nextVolume);
+      if (element !== undefined) {
+        element.volume = volume / 100;
+      }
+    },
+    async unlock(): Promise<BackgroundMusicState> {
+      if (
+        state === "closed" ||
+        state === "unavailable" ||
+        state === "playing" ||
+        state === "muted"
+      ) {
+        return state;
+      }
+
+      const music = ensureElement();
+      if (music === undefined) {
+        return state;
+      }
+
+      try {
+        await music.play();
+        setState(muted ? "muted" : "playing");
+      } catch (error) {
+        if (!isAutoplayRejection(error)) {
+          element = undefined;
+          setState("unavailable");
+        }
       }
 
       return state;

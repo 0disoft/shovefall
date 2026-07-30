@@ -7,82 +7,10 @@ import {
 } from "../simulation/tuning";
 import { PRODUCT_VERSION, SIMULATION_VERSION } from "../simulation/versions";
 
-type TuningKey = keyof GameplayTuningInput;
-
-const TUNING_INPUT_IDS: Readonly<Record<TuningKey, string>> = Object.freeze({
-  movementMaximumSpeed: "debug-movement-speed",
-  lightweightSpeedMultiplier: "debug-lightweight-speed",
-  heavyweightSpeedMultiplier: "debug-heavyweight-speed",
-  shoveWindupTicks: "debug-shove-windup-ticks",
-  shoveActiveTicks: "debug-shove-ticks",
-  shoveRecoveryTicks: "debug-shove-recovery-ticks",
-  shoveCooldownTicks: "debug-shove-cooldown-ticks",
-  shoveReach: "debug-shove-reach",
-  shoveBaseImpulse: "debug-shove-base-impulse",
-  shoveMaximumImpulse: "debug-shove-maximum-impulse",
-  shoveHitStumbleTicks: "debug-shove-hit-stumble-ticks",
-  dodgeActiveTicks: "debug-dodge-ticks",
-  dodgeCooldownTicks: "debug-dodge-cooldown-ticks",
-  dodgeEvasionTicks: "debug-dodge-evasion-ticks",
-  dodgeSpeed: "debug-dodge-speed",
-  healthRegenDelayTicks: "debug-health-regen-delay-ticks",
-  healthRegenPerTick: "debug-health-regen-per-tick",
-  manaRegenDelayTicks: "debug-mana-regen-delay-ticks",
-  manaRegenPerTick: "debug-mana-regen-per-tick",
-  shoveDamage: "debug-shove-damage",
-  windBlastRange: "debug-wind-blast-range",
-  windBlastBaseImpulse: "debug-wind-blast-base-impulse",
-  bombFuseTicks: "debug-bomb-fuse-ticks",
-  bombBlastRadius: "debug-bomb-blast-radius",
-  grapplingHookCooldownTicks: "debug-grappling-hook-cooldown-ticks",
-  grapplingHookRange: "debug-grappling-hook-range",
-  grapplingHookPullTicks: "debug-grappling-hook-pull-ticks",
-  soapStumbleTicks: "debug-soap-stumble-ticks",
-});
-
-const TUNING_OUTPUT_IDS: Readonly<Record<TuningKey, string>> = Object.freeze({
-  movementMaximumSpeed: "debug-movement-speed-value",
-  lightweightSpeedMultiplier: "debug-lightweight-speed-value",
-  heavyweightSpeedMultiplier: "debug-heavyweight-speed-value",
-  shoveWindupTicks: "debug-shove-windup-ticks-value",
-  shoveActiveTicks: "debug-shove-ticks-value",
-  shoveRecoveryTicks: "debug-shove-recovery-ticks-value",
-  shoveCooldownTicks: "debug-shove-cooldown-ticks-value",
-  shoveReach: "debug-shove-reach-value",
-  shoveBaseImpulse: "debug-shove-base-impulse-value",
-  shoveMaximumImpulse: "debug-shove-maximum-impulse-value",
-  shoveHitStumbleTicks: "debug-shove-hit-stumble-ticks-value",
-  dodgeActiveTicks: "debug-dodge-ticks-value",
-  dodgeCooldownTicks: "debug-dodge-cooldown-ticks-value",
-  dodgeEvasionTicks: "debug-dodge-evasion-ticks-value",
-  dodgeSpeed: "debug-dodge-speed-value",
-  healthRegenDelayTicks: "debug-health-regen-delay-ticks-value",
-  healthRegenPerTick: "debug-health-regen-per-tick-value",
-  manaRegenDelayTicks: "debug-mana-regen-delay-ticks-value",
-  manaRegenPerTick: "debug-mana-regen-per-tick-value",
-  shoveDamage: "debug-shove-damage-value",
-  windBlastRange: "debug-wind-blast-range-value",
-  windBlastBaseImpulse: "debug-wind-blast-base-impulse-value",
-  bombFuseTicks: "debug-bomb-fuse-ticks-value",
-  bombBlastRadius: "debug-bomb-blast-radius-value",
-  grapplingHookCooldownTicks: "debug-grappling-hook-cooldown-ticks-value",
-  grapplingHookRange: "debug-grappling-hook-range-value",
-  grapplingHookPullTicks: "debug-grappling-hook-pull-ticks-value",
-  soapStumbleTicks: "debug-soap-stumble-ticks-value",
-});
-
-const TUNING_KEYS: readonly TuningKey[] = Object.freeze([
+const TUNING_KEYS = Object.freeze([
   "movementMaximumSpeed",
   "lightweightSpeedMultiplier",
   "heavyweightSpeedMultiplier",
-  "shoveWindupTicks",
-  "shoveActiveTicks",
-  "shoveRecoveryTicks",
-  "shoveCooldownTicks",
-  "shoveReach",
-  "shoveBaseImpulse",
-  "shoveMaximumImpulse",
-  "shoveHitStumbleTicks",
   "dodgeActiveTicks",
   "dodgeCooldownTicks",
   "dodgeEvasionTicks",
@@ -91,16 +19,52 @@ const TUNING_KEYS: readonly TuningKey[] = Object.freeze([
   "healthRegenPerTick",
   "manaRegenDelayTicks",
   "manaRegenPerTick",
-  "shoveDamage",
-  "windBlastRange",
-  "windBlastBaseImpulse",
   "bombFuseTicks",
   "bombBlastRadius",
   "grapplingHookCooldownTicks",
   "grapplingHookRange",
   "grapplingHookPullTicks",
-  "soapStumbleTicks",
-]);
+] as const satisfies readonly (keyof GameplayTuningInput)[]);
+
+type TuningKey = (typeof TUNING_KEYS)[number];
+
+const TUNING_INPUT_IDS: Readonly<Record<TuningKey, string>> = Object.freeze({
+  movementMaximumSpeed: "debug-movement-speed",
+  lightweightSpeedMultiplier: "debug-lightweight-speed",
+  heavyweightSpeedMultiplier: "debug-heavyweight-speed",
+  dodgeActiveTicks: "debug-dodge-ticks",
+  dodgeCooldownTicks: "debug-dodge-cooldown-ticks",
+  dodgeEvasionTicks: "debug-dodge-evasion-ticks",
+  dodgeSpeed: "debug-dodge-speed",
+  healthRegenDelayTicks: "debug-health-regen-delay-ticks",
+  healthRegenPerTick: "debug-health-regen-per-tick",
+  manaRegenDelayTicks: "debug-mana-regen-delay-ticks",
+  manaRegenPerTick: "debug-mana-regen-per-tick",
+  bombFuseTicks: "debug-bomb-fuse-ticks",
+  bombBlastRadius: "debug-bomb-blast-radius",
+  grapplingHookCooldownTicks: "debug-grappling-hook-cooldown-ticks",
+  grapplingHookRange: "debug-grappling-hook-range",
+  grapplingHookPullTicks: "debug-grappling-hook-pull-ticks",
+});
+
+const TUNING_OUTPUT_IDS: Readonly<Record<TuningKey, string>> = Object.freeze({
+  movementMaximumSpeed: "debug-movement-speed-value",
+  lightweightSpeedMultiplier: "debug-lightweight-speed-value",
+  heavyweightSpeedMultiplier: "debug-heavyweight-speed-value",
+  dodgeActiveTicks: "debug-dodge-ticks-value",
+  dodgeCooldownTicks: "debug-dodge-cooldown-ticks-value",
+  dodgeEvasionTicks: "debug-dodge-evasion-ticks-value",
+  dodgeSpeed: "debug-dodge-speed-value",
+  healthRegenDelayTicks: "debug-health-regen-delay-ticks-value",
+  healthRegenPerTick: "debug-health-regen-per-tick-value",
+  manaRegenDelayTicks: "debug-mana-regen-delay-ticks-value",
+  manaRegenPerTick: "debug-mana-regen-per-tick-value",
+  bombFuseTicks: "debug-bomb-fuse-ticks-value",
+  bombBlastRadius: "debug-bomb-blast-radius-value",
+  grapplingHookCooldownTicks: "debug-grappling-hook-cooldown-ticks-value",
+  grapplingHookRange: "debug-grappling-hook-range-value",
+  grapplingHookPullTicks: "debug-grappling-hook-pull-ticks-value",
+});
 
 export interface DebugTuningController {
   readonly enabled: boolean;
@@ -140,11 +104,6 @@ function formatValue(key: TuningKey, tuning: GameplayTuningV1): string {
       return `${tuning.lightweightSpeedMultiplier.toFixed(2)}×`;
     case "heavyweightSpeedMultiplier":
       return `${tuning.heavyweightSpeedMultiplier.toFixed(2)}×`;
-    case "shoveWindupTicks":
-    case "shoveActiveTicks":
-    case "shoveRecoveryTicks":
-    case "shoveCooldownTicks":
-    case "shoveHitStumbleTicks":
     case "dodgeActiveTicks":
     case "dodgeCooldownTicks":
     case "dodgeEvasionTicks":
@@ -153,26 +112,13 @@ function formatValue(key: TuningKey, tuning: GameplayTuningV1): string {
     case "bombFuseTicks":
     case "grapplingHookCooldownTicks":
     case "grapplingHookPullTicks":
-    case "soapStumbleTicks":
       return `${tuning[key]}틱`;
-    case "shoveReach":
-      return `${tuning.shoveReach.toFixed(2)}칸`;
-    case "shoveBaseImpulse":
-      return tuning.shoveBaseImpulse.toFixed(2);
-    case "shoveMaximumImpulse":
-      return tuning.shoveMaximumImpulse.toFixed(2);
     case "dodgeSpeed":
       return tuning.dodgeSpeed.toFixed(3);
     case "healthRegenPerTick":
       return `${tuning.healthRegenPerTick.toFixed(2)}/틱`;
     case "manaRegenPerTick":
       return `${tuning.manaRegenPerTick.toFixed(3)}/틱`;
-    case "shoveDamage":
-      return `${tuning.shoveDamage.toFixed(0)}피해`;
-    case "windBlastRange":
-      return `${tuning.windBlastRange.toFixed(1)}칸`;
-    case "windBlastBaseImpulse":
-      return tuning.windBlastBaseImpulse.toFixed(2);
     case "bombBlastRadius":
       return `${tuning.bombBlastRadius.toFixed(1)}칸`;
     case "grapplingHookRange":
@@ -252,7 +198,7 @@ export function createDebugTuningController(
     summary.textContent = enabled
       ? `기본 ${normalTilesPerSecond.toFixed(1)}칸/초 · 가벼움 ${lightTilesPerSecond.toFixed(
           1,
-        )}칸/초 · 손길이 ${tuning.shoveReach.toFixed(2)}칸 · 회피 약 ${dodgeDistance.toFixed(2)}칸`
+        )}칸/초 · 회피 약 ${dodgeDistance.toFixed(2)}칸`
       : "기본 밸런스로 시작해. 켜면 다음 라운드부터 조정값을 써.";
   };
 

@@ -85,3 +85,97 @@ Final result: blocked — no persisted post-change screenshot exists for the req
 - Automated evidence: the complete non-browser check passed 202 tests, and the production artifact passed all 13 Playwright browser paths including the empty-scoreboard menu and focus flow.
 
 Final result: blocked — source implementation is complete, but a same-state post-change terrain screenshot and populated-scoreboard browser capture have not yet been retained.
+
+## 0.71.1 coast-autotile QA
+
+### Evidence
+
+- Source visual truth: `C:\Users\cherr\AppData\Local\Temp\codex-clipboard-19fa798a-6589-48c3-8a32-fc2288012e94.png`.
+- Implementation: `.cache/design-qa/coast-autotile-0.71.1-final.png`.
+- Combined comparison: `.cache/design-qa/coast-autotile-comparison.png`.
+- Source pixels: 992 × 528. Implementation pixels and CSS viewport: 1280 × 720 at DPR 1.
+- Comparison normalization: each image was aspect-fit into a 960 × 540 slot without stretching. The seed and combat state differ, so the comparison judges repeated shoreline junctions rather than island layout.
+
+### Full-view comparison
+
+- The source shows unsupported three-sided and opposite-edge cells borrowing a one-edge coast frame, leaving abrupt rectangular water arms and disconnected foam at narrow lake and coast junctions.
+- The implementation keeps the accepted terrain art and viewport-wide ocean, restores three interior grass variants, and maps every visible tile through its actual north/east/south/west water mask.
+- Sand and foam now continue around corners, narrow channels, and multi-edge remnants without a false shore opening on a supported side.
+
+### Focused boundary comparison
+
+- The source lake's lower stem and side arms expose hard frame substitutions. In the implementation, the lower-center channel and lower-right coast retain one continuous sand/foam boundary through turns and opposing shores.
+- Exact one-edge and corner masks reuse the atlas's authored frames. Only the five shapes missing from the atlas are composed from its four cardinal cutouts.
+
+### Required fidelity surfaces
+
+- Fonts and typography: unchanged; HUD hierarchy and optical weights do not drift from the existing arena.
+- Spacing and layout rhythm: unchanged; canvas, HUD placement, camera, and tile extent remain stable.
+- Colors and visual tokens: unchanged atlas grass, sand, foam, and ocean colors; no synthetic replacement palette was introduced.
+- Image quality and asset fidelity: authored corners remain intact, missing masks are composited at 256 × 192 before GPU scaling, and the existing 5.5% sprite overscan remains bounded.
+- Copy and content: unchanged except the new `0.71.1` version-history entry.
+
+### Iteration history
+
+1. P1: unsupported masks selected unrelated single-edge frames. Fixed by deriving a four-bit adjacency mask and preparing all sixteen textures.
+2. P2: the first compositor replaced authored corner art and repeated one grass frame across the island. Fixed by retaining the four authored corner frames and restoring two additional interior variants.
+3. Post-fix evidence: the final browser capture shows continuous boundary ownership without false water direction; no P0, P1, or P2 finding remains for this request.
+
+### Follow-up polish
+
+- P3: the simulation remains a square-cell island, so the macro shoreline silhouette is intentionally stepped. Removing that grid character would require a separate topology or mesh redesign rather than another frame-selection patch.
+
+Primary interactions tested: saved setup, game start, active WebGL arena, generated terrain load, live combat HUD. Console-error inspection is covered by the repository smoke suite, but that suite exceeded its 240-second command budget during this pass.
+
+final result: passed
+
+## 0.85.0 trait allocation and reward comparison QA
+
+### Scope
+
+- Reference: `C:\Users\cherr\AppData\Local\Temp\codex-clipboard-037a82b7-3643-414a-bab0-2249c49322c4.png`.
+- Requested change: remove repeated prose from pre-round trait cards, make the twelve derived combat values more visual, and show exact colored stat changes in the kill-reward dialog.
+
+### Implemented hierarchy
+
+- The six pre-round cards retain only trait name, allocated point count, vertical controls, and one allocation meter.
+- The twelve derived combat-value cards retain exact text and receive a source-trait meter; color is supplementary rather than the only value signal.
+- The six kill-reward cards render each affected value as `current → after`, color the after value, and overlay owned-rank and pending-rank fills in one meter.
+- Desktop keeps the two-column setup grid and three-column reward grid. Existing 820 px and 480 px breakpoints reduce columns without changing keyboard-native radio and button controls.
+
+### Automated evidence
+
+- The configured browser path verifies six compact setup cards, twelve combat-value meters, six reward comparison groups, six reward meters, no setup-card `<small>` prose, keyboard selection, a reachable save action, narrow-width overflow containment, and the exact Stability `0% → +12%` / `0% → -5%` changes.
+- The aggregate check passes format, lint, TypeScript, architecture, 255 tests, documentation validation, and production build.
+
+### Remaining visual evidence
+
+- P2: no persisted same-state post-change screenshot was produced. The in-app browser could not reach the short-lived configured preview even though the repository Playwright browser path passed twice.
+- A manual screenshot comparison at the user's running `localhost:5173` remains useful for spacing and meter contrast, but does not block the verified DOM, keyboard, responsive, or calculation contracts.
+
+final result: blocked
+
+## 0.92.0 two-column loadout QA
+
+### Scope
+
+- Reference: `C:\Users\cherr\AppData\Local\Temp\codex-clipboard-74efce06-e29e-41c9-985d-e1ca59648610.png`.
+- Requested change: retire Tidal Charge, remove its contradictory reward copy, and present skills and items as two cards per desktop row without large artificial empty areas.
+
+### Implemented hierarchy
+
+- The active skill catalog contains seven definitions; Tidal Charge is absent from setup, AI, simulation, effects, and statistics.
+- Skill and item fieldsets both use two equal desktop columns and one narrow-screen column.
+- Cards retain shared title, metadata, artwork, and effect tracks but no longer enforce a fixed minimum height. Longer descriptions grow only their own cards.
+- Retired Tidal Charge PNGs remain provenance-only and are not bundled into the production runtime.
+
+### Automated evidence
+
+- The focused Playwright settings path verifies seven skill cards, no Tidal Charge card, two computed desktop columns for both catalogs, aligned internal card tracks, and seven loaded skill-effect assets.
+- The aggregate check passes format, lint, TypeScript, architecture, 262 tests, documentation validation, and production build without bundling either retired Tidal Charge image.
+
+### Remaining visual evidence
+
+- P2: no persisted same-state screenshot was produced from the short-lived configured preview. The DOM geometry and runtime asset boundary are verified, while final optical spacing still benefits from the user's live `localhost:5173` review.
+
+final result: passed with screenshot follow-up

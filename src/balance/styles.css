@@ -224,6 +224,11 @@ meter {
   background: #4a3a18;
 }
 
+.signal--high-variance {
+  color: #9dd9ff;
+  background: #193d50;
+}
+
 .chart-host {
   min-height: 260px;
   margin-top: 16px;

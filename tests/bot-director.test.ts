@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { BotDirector, getBotDifficultyProfile } from "../src/ai/bot-director";
+import {
+  BotDirector,
+  canBotCollectMapItem,
+  getBotDifficultyProfile,
+  getBotMapItemClaimantActorId,
+} from "../src/ai/bot-director";
 import { BOT_ACTIVE_ITEM_IDS, createBotLoadoutAssignments } from "../src/ai/bot-loadouts";
 import { getArenaSize } from "../src/app/settings";
 import { createNeutralCommand, normalizeGameConfig } from "../src/simulation/contracts";
@@ -72,6 +77,70 @@ describe("utility bot director", () => {
     expect(commands.every(({ tick, commandVersion }) => tick === 0 && commandVersion === 1)).toBe(
       true,
     );
+  });
+
+  it("assigns a contested map item to one nearest eligible participant", () => {
+    const frame = createBotWorld(4).createRenderFrame();
+    const actor2 = frame.participants.find(({ actorId }) => actorId === 2);
+    const actor3 = frame.participants.find(({ actorId }) => actorId === 3);
+    if (actor2 === undefined || actor3 === undefined) {
+      throw new Error("item claimant test requires actors 2 and 3");
+    }
+
+    const occupiedActor2 = Object.freeze({
+      ...actor2,
+      position: Object.freeze({ x: 3.5, y: 4.5 }),
+      inventory: Object.freeze([
+        Object.freeze({ slotIndex: 0 as const, definitionId: "soap" as const, charges: 1 }),
+      ]),
+    });
+    const emptyActor3 = Object.freeze({
+      ...actor3,
+      position: Object.freeze({ x: 4.5, y: 4.5 }),
+      inventory: Object.freeze([]),
+    });
+    const activeItem = Object.freeze({
+      itemId: 1,
+      definitionId: "bomb" as const,
+      position: Object.freeze({ x: 3.7, y: 4.5 }),
+      spawnedTick: frame.tick,
+    });
+    const passiveItem = Object.freeze({ ...activeItem, definitionId: "iron-boots" as const });
+    const participants = Object.freeze([occupiedActor2, emptyActor3]);
+
+    expect(canBotCollectMapItem(occupiedActor2, activeItem)).toBe(false);
+    expect(getBotMapItemClaimantActorId(activeItem, participants)).toBe(3);
+    expect(getBotMapItemClaimantActorId(passiveItem, participants)).toBe(2);
+  });
+
+  it("prioritizes a nearby fight over walking into an item contest", () => {
+    const world = createBotWorld(4, [
+      { actorId: 1, position: { x: 1.5, y: 1.5 } },
+      { actorId: 2, position: { x: 4.5, y: 4.5 }, facing: { x: 1, y: 0 } },
+      { actorId: 3, position: { x: 5.8, y: 4.5 }, facing: { x: 1, y: 0 } },
+      { actorId: 4, position: { x: 8.5, y: 7.5 } },
+    ]);
+    const frame = world.createRenderFrame();
+    const contestedFrame = Object.freeze({
+      ...frame,
+      items: Object.freeze([
+        Object.freeze({
+          itemId: 1,
+          definitionId: "iron-boots" as const,
+          position: Object.freeze({ x: 3.5, y: 4.5 }),
+          spawnedTick: frame.tick,
+        }),
+      ]),
+    });
+    const director = new BotDirector("fight-before-item", 1, {
+      reactionDelayTicks: 0,
+      decisionIntervalTicks: 1,
+    });
+    const bot = director
+      .createCommands(contestedFrame.tick, contestedFrame)
+      .find(({ actorId }) => actorId === 2);
+
+    expect(bot?.move.x).toBeGreaterThan(0);
   });
 
   it("can explicitly control every active actor for headless audits", () => {
@@ -270,29 +339,28 @@ describe("utility bot director", () => {
     expect(bot?.dodgePressed).toBe(false);
   });
 
-  it("uses a carried Wind Blast on a readable edge opportunity", () => {
+  it("uses carried Soap when a nearby opponent creates pressure", () => {
     const world = createBotWorld(4, [
       { actorId: 1, position: { x: 10.5, y: 1.5 } },
       {
         actorId: 2,
         position: { x: 6.5, y: 4.5 },
         facing: { x: 1, y: 0 },
-        startingItems: ["wind-blast"],
+        startingItems: ["soap"],
       },
-      { actorId: 3, position: { x: 9.5, y: 4.5 } },
+      { actorId: 3, position: { x: 7.7, y: 4.5 } },
       { actorId: 4, position: { x: 10.5, y: 8.5 } },
     ]);
-    const director = new BotDirector("wind-edge-opportunity", 1, {
+    const director = new BotDirector("soap-pressure", 1, {
       reactionDelayTicks: 0,
       decisionIntervalTicks: 1,
-      personalityOverrides: [{ actorId: 2, personality: "Aggressor" }],
+      personalityOverrides: [{ actorId: 2, personality: "Survivor" }],
     });
     const command = director
       .createCommands(0, world.createRenderFrame())
       .find(({ actorId }) => actorId === 2);
 
     expect(command?.useItemSlot).toBe(0);
-    expect(command?.move.x).toBeGreaterThan(0.9);
     expect(command?.grapplePressed).toBe(false);
   });
 
@@ -342,7 +410,7 @@ describe("utility bot director", () => {
           {
             actorId: 2,
             position: { x: 2.5, y: 3.5 },
-            startingSkills: ["force-palm", "aegis"],
+            startingSkills: ["arc-bolt", "aegis"],
           },
           { actorId: 3, position: { x: 7.5, y: 1.5 } },
           { actorId: 4, position: { x: 7.5, y: 5.5 } },
@@ -411,6 +479,34 @@ describe("utility bot director", () => {
 
     expect(command?.useSkillSlot).toBeNull();
     expect(Math.abs(command?.move.y ?? 0)).toBeGreaterThan(0.2);
+  });
+
+  it("splits overlapping stalled bots toward distinct clear exits", () => {
+    const world = createBotWorld(5, [
+      { actorId: 1, position: { x: 7.5, y: 4.5 } },
+      { actorId: 2, position: { x: 4.5, y: 4.5 } },
+      { actorId: 3, position: { x: 4.5, y: 4.5 } },
+      { actorId: 4, position: { x: 4.5, y: 4.5 } },
+      { actorId: 5, position: { x: 4.5, y: 4.5 } },
+    ]);
+    const director = new BotDirector("overlap-stall-split", 1, {
+      reactionDelayTicks: 0,
+      decisionIntervalTicks: 1,
+    });
+    const baseFrame = world.createRenderFrame();
+
+    for (let tick = 0; tick < 3; tick += 1) {
+      director.createCommands(tick, Object.freeze({ ...baseFrame, tick }));
+    }
+
+    const commands = director.createCommands(3, Object.freeze({ ...baseFrame, tick: 3 }));
+    const headings = new Set(
+      commands.map(({ move }) => `${Math.round(move.x * 10)}:${Math.round(move.y * 10)}`),
+    );
+
+    expect(commands).toHaveLength(4);
+    expect(commands.every(({ move }) => Math.hypot(move.x, move.y) > 0.9)).toBe(true);
+    expect(headings.size).toBeGreaterThanOrEqual(3);
   });
 
   it("keeps a recently chosen target when a rival becomes only slightly more attractive", () => {
@@ -485,6 +581,6 @@ describe("utility bot director", () => {
 
     expect(useCount).toBeGreaterThanOrEqual(12);
     expect(usedItems.size).toBeGreaterThanOrEqual(4);
-    expect(usedItems).toContain("wind-blast");
+    expect(usedItems).toContain("soap");
   }, 45_000);
 });

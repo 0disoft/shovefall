@@ -1,8 +1,8 @@
 {
-  "formatVersion": 5,
-  "productVersion": "0.69.0",
-  "simulationVersion": "41.0.0",
-  "contentVersion": "25.0.0",
+  "formatVersion": 8,
+  "productVersion": "0.96.0",
+  "simulationVersion": "62.0.0",
+  "contentVersion": "38.0.0",
   "buildId": "fixture-v4",
   "config": {
     "configVersion": 1,
@@ -31,7 +31,7 @@
       "willpower": 0
     },
     "startingItems": [],
-    "startingSkills": ["force-palm", "blink-step"]
+    "startingSkills": ["blink-step", "arc-bolt"]
   },
   "endTick": 240,
   "commands": [
@@ -119,20 +119,20 @@
   "checkpoints": [
     {
       "tick": 60,
-      "stateHash": "fnv1a32:5294cc65"
+      "stateHash": "fnv1a32:4636a3f0"
     },
     {
       "tick": 120,
-      "stateHash": "fnv1a32:a2f88327"
+      "stateHash": "fnv1a32:69fde964"
     },
     {
       "tick": 180,
-      "stateHash": "fnv1a32:f131f91e"
+      "stateHash": "fnv1a32:e1c8228b"
     },
     {
       "tick": 240,
-      "stateHash": "fnv1a32:e72f27fd"
+      "stateHash": "fnv1a32:237bf380"
     }
   ],
-  "finalHash": "fnv1a32:e72f27fd"
+  "finalHash": "fnv1a32:237bf380"
 }

@@ -49,7 +49,7 @@ export class InputState {
 
   public clear(): void {
     this.#heldCodes.clear();
-    this.clearMovement();
+    this.clearTransientMovement();
     this.#skillSlotQueued = null;
     this.#itemSlotQueued = null;
   }
@@ -58,6 +58,10 @@ export class InputState {
     for (const code of MOVEMENT_CODES) {
       this.#heldCodes.delete(code);
     }
+    this.clearTransientMovement();
+  }
+
+  public clearTransientMovement(): void {
     this.#pointerMoveX = 0;
     this.#pointerMoveY = 0;
     this.#gamepadMoveX = 0;

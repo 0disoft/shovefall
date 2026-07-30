@@ -1,0 +1,7 @@
+Create one single game status-effect sprite for a polished colorful 2D/isometric fantasy party game.
+
+Subject: a dizzy/stunned halo that floats above a character's head, consisting of three small golden stars and one curved pale-cyan spiral swoosh orbiting in a horizontal oval. Readable at 64x40 pixels, chunky painterly mobile-game rendering, warm gold highlights, subtle dark brown outline, cohesive with bright lush island adventure game assets.
+
+Centered object, generous clear margin, no character, no letters, no numbers, no icons besides the stars and spiral, no shadow, no glow extending to the border.
+
+Background must be a perfectly flat solid chroma green #00FF00 with no texture, gradient, shadow, reflection, or green spill. Square 512x512 image.

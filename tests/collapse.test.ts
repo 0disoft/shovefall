@@ -30,22 +30,38 @@ describe("collapse and round lifecycle", () => {
       collapseSpeed: "fast",
     });
     const world = new SimulationWorld(config, "collapse-phases");
+    let warningEvent: SimulationEventV1 | undefined;
 
-    const warningEvents = stepUntil(world, 481).filter(({ kind }) => kind === "tile-warning");
-    expect(warningEvents.length).toBeGreaterThan(0);
-    expect(world.createRenderFrame().tiles.filter(({ state }) => state === "Warning")).toHaveLength(
-      warningEvents.length,
-    );
+    while (warningEvent === undefined && world.tick < 1_200) {
+      warningEvent = world.step().events.find(({ kind }) => kind === "tile-warning");
+    }
 
-    const collapsingEvents = stepUntil(world, 547).filter(({ kind }) => kind === "tile-collapsing");
-    expect(collapsingEvents.map(({ tileId }) => tileId)).toEqual(
-      warningEvents.map(({ tileId }) => tileId),
-    );
+    if (warningEvent?.tileId === undefined) {
+      throw new Error("expected an artillery warning before the round limit");
+    }
 
-    const voidEvents = stepUntil(world, 559).filter(({ kind }) => kind === "tile-void");
-    expect(voidEvents.map(({ tileId }) => tileId)).toEqual(
-      warningEvents.map(({ tileId }) => tileId),
-    );
+    const warnedTileId = warningEvent.tileId;
+    expect(
+      world.createRenderFrame().tiles.find(({ tileId }) => tileId === warnedTileId)?.state,
+    ).toBe("Warning");
+    let collapsingEvent: SimulationEventV1 | undefined;
+
+    while (collapsingEvent === undefined && world.tick < 1_200) {
+      collapsingEvent = world
+        .step()
+        .events.find(({ kind, tileId }) => kind === "tile-collapsing" && tileId === warnedTileId);
+    }
+
+    expect(collapsingEvent?.tileId).toBe(warnedTileId);
+    let voidEvent: SimulationEventV1 | undefined;
+
+    while (voidEvent === undefined && world.tick < 1_200) {
+      voidEvent = world
+        .step()
+        .events.find(({ kind, tileId }) => kind === "tile-void" && tileId === warnedTileId);
+    }
+
+    expect(voidEvent?.tileId).toBe(warnedTileId);
   });
 
   it("keeps the collapse order deterministic and starts at the outer edge", () => {
@@ -70,6 +86,7 @@ describe("collapse and round lifecycle", () => {
     const samePlan = plan("same-plan");
     expect(samePlan).toEqual(plan("same-plan"));
     expect(samePlan).not.toEqual(plan("different-plan"));
+    expect(samePlan.every(({ tileIds }) => tileIds.length === 1)).toBe(true);
 
     const stableIds = new Set(
       frame.tiles.filter(({ state }) => state === "Stable").map(({ tileId }) => tileId),
@@ -87,7 +104,10 @@ describe("collapse and round lifecycle", () => {
     ).toBe(true);
 
     const scheduledIds = samePlan.flatMap(({ tileIds }) => tileIds);
-    const expectedRemaining = Math.ceil(stableIds.size * MINIMUM_REMAINING_LAND_RATIO);
+    const expectedRemaining = Math.max(
+      1,
+      Math.floor(stableIds.size * MINIMUM_REMAINING_LAND_RATIO),
+    );
     expect(new Set(scheduledIds)).toHaveLength(scheduledIds.length);
     expect(scheduledIds).toHaveLength(stableIds.size - expectedRemaining);
 

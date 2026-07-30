@@ -60,5 +60,5 @@ manual kill-reward growth, eight initial map items, all eight item definitions a
 mechanics, Brick dodge mounting, opponent-lethal and owner-launching Bombs, pirate cannon collapse,
 protected-core rock pressure, orbiting treasure-ship gift deliveries, generated terrain and action feedback, local production smoke,
 balance screens, and 60-participant performance harnesses are implemented. Hosted `0.37.0` and its
-sixteen-seed audit remains historical; fresh `0.69.0` browser, performance, audit, capture, hosted, and public evidence; direct-trait and item balance; human playtest
+sixteen-seed audit remains historical; fresh `0.71.1` browser, performance, audit, capture, hosted, and public evidence; direct-trait and item balance; human playtest
 evidence; and named device/browser coverage remain open release work.

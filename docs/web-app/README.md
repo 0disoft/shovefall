@@ -22,7 +22,7 @@ remote analytics, and application network requests are outside the MVP.
 - One static document route that boots setup, settings, countdown, active round, result, pause,
   unsupported-renderer, and recoverable-error states.
 - Quick Start plus bounded starting weight, two-item loadout, map-item, and collapse-speed choices; participant count and bot difficulty are fixed.
-- Arrow-key, mouse-drag, virtual-joystick, and standard-gamepad movement plus pointer-confirmed `Q/W` skill and `D` item aiming.
+- Arrow-key, right-click destination, virtual-joystick, and standard-gamepad movement plus pointer-confirmed `Q/W` skill and `D` item aiming.
 - A provider-neutral `dist` artifact that supports the configured Vite base path.
 
 URL state, hash routing, shareable query settings, service workers, cookies, and durable browser

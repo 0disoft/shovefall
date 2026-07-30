@@ -9,7 +9,8 @@ import {
 import type { XorShift32 } from "./random";
 import { getOuterCoastDepths } from "./arena";
 
-export const MINIMUM_REMAINING_LAND_RATIO = 0.2;
+export const MINIMUM_REMAINING_LAND_RATIO = 0.1;
+export const COLLAPSE_COAST_SECTOR_COUNT = 16;
 
 export interface CollapseWave {
   readonly tileIds: readonly TileId[];
@@ -20,27 +21,31 @@ export interface CollapseWave {
 
 interface CollapseTiming {
   readonly startTick: Tick;
-  readonly waveIntervalTicks: number;
+  readonly minimumWaveIntervalTicks: number;
+  readonly maximumWaveIntervalTicks: number;
   readonly warningTicks: number;
   readonly collapsingTicks: number;
 }
 
 const COLLAPSE_TIMINGS: Readonly<Record<CollapseSpeed, CollapseTiming>> = Object.freeze({
   slow: Object.freeze({
-    startTick: 2 * 60,
-    waveIntervalTicks: 42,
+    startTick: 4 * 60,
+    minimumWaveIntervalTicks: 120,
+    maximumWaveIntervalTicks: 120,
     warningTicks: 60,
     collapsingTicks: 30,
   }),
   normal: Object.freeze({
     startTick: 13 * 60,
-    waveIntervalTicks: 66,
+    minimumWaveIntervalTicks: 60,
+    maximumWaveIntervalTicks: 150,
     warningTicks: 90,
     collapsingTicks: 18,
   }),
   fast: Object.freeze({
     startTick: 8 * 60,
-    waveIntervalTicks: 48,
+    minimumWaveIntervalTicks: 60,
+    maximumWaveIntervalTicks: 120,
     warningTicks: 66,
     collapsingTicks: 12,
   }),
@@ -62,7 +67,24 @@ function orderLayerTilesSpatially(
     return leftAngle - rightAngle || left.tileId.localeCompare(right.tileId);
   });
   const offset = random.nextUint32() % ordered.length;
-  return Object.freeze([...ordered.slice(offset), ...ordered.slice(0, offset)]);
+  const rotated = [...ordered.slice(offset), ...ordered.slice(0, offset)];
+  const sectorSize = Math.max(1, Math.ceil(rotated.length / COLLAPSE_COAST_SECTOR_COUNT));
+  const sectors = Array.from({ length: COLLAPSE_COAST_SECTOR_COUNT }, (_, index) =>
+    rotated.slice(index * sectorSize, (index + 1) * sectorSize),
+  ).filter((sector) => sector.length > 0);
+  const interleaved: TileState[] = [];
+
+  for (let depth = 0; depth < sectorSize; depth += 1) {
+    for (const sector of sectors) {
+      const tile = sector[depth];
+
+      if (tile !== undefined) {
+        interleaved.push(tile);
+      }
+    }
+  }
+
+  return Object.freeze(interleaved);
 }
 
 export function createCollapsePlan(
@@ -75,7 +97,10 @@ export function createCollapsePlan(
   const timing = COLLAPSE_TIMINGS[speed];
   const landTiles = tiles.filter(({ state }) => state === "Stable");
   const shoreDepths = getOuterCoastDepths(tiles, _columns, _rows);
-  const minimumRemainingTiles = Math.ceil(landTiles.length * MINIMUM_REMAINING_LAND_RATIO);
+  const minimumRemainingTiles = Math.max(
+    1,
+    Math.floor(landTiles.length * MINIMUM_REMAINING_LAND_RATIO),
+  );
   const protectedIds = selectProtectedCore(landTiles, shoreDepths, minimumRemainingTiles);
   const centerX = landTiles.reduce((sum, tile) => sum + tile.column + 0.5, 0) / landTiles.length;
   const centerY = landTiles.reduce((sum, tile) => sum + tile.row + 0.5, 0) / landTiles.length;
@@ -96,40 +121,15 @@ export function createCollapsePlan(
     .toSorted(([left], [right]) => left - right)
     .map(([, layerTiles]) => orderLayerTilesSpatially(layerTiles, centerX, centerY, random));
   const orderedTiles = orderedLayers.flat();
-  const regularBatchSize = 6;
-  const waves: TileState[][] = [];
-  const finaleStartIndex = Math.max(0, orderedTiles.length - 4);
-  let consumedTiles = 0;
-
-  for (const layerTiles of orderedLayers) {
-    const regularTilesInLayer = layerTiles.slice(
-      0,
-      Math.max(0, Math.min(layerTiles.length, finaleStartIndex - consumedTiles)),
-    );
-
-    for (let cursor = 0; cursor < regularTilesInLayer.length; cursor += regularBatchSize) {
-      waves.push(regularTilesInLayer.slice(cursor, cursor + regularBatchSize));
-    }
-
-    consumedTiles += layerTiles.length;
-  }
-
-  let cursor = finaleStartIndex;
-
-  while (cursor < orderedTiles.length) {
-    const tile = orderedTiles[cursor];
-
-    if (tile !== undefined) {
-      waves.push([tile]);
-    }
-
-    cursor += 1;
-  }
+  const waves = orderedTiles.map((tile) => Object.freeze([tile]));
+  let nextWarningTick = timing.startTick;
 
   return Object.freeze(
-    waves.map((wave, index) => {
-      const warningTick = timing.startTick + index * timing.waveIntervalTicks;
+    waves.map((wave) => {
+      const warningTick = nextWarningTick;
       const collapsingTick = warningTick + timing.warningTicks;
+      const intervalRange = timing.maximumWaveIntervalTicks - timing.minimumWaveIntervalTicks + 1;
+      nextWarningTick += timing.minimumWaveIntervalTicks + (random.nextUint32() % intervalRange);
       return Object.freeze({
         tileIds: Object.freeze(wave.map(({ tileId }) => tileId)),
         warningTick,

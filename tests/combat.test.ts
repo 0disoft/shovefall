@@ -4,6 +4,7 @@ import {
   normalizeGameConfig,
   type StartingAttributes,
 } from "../src/simulation/contracts";
+import { COMBAT_TUNING } from "../src/simulation/combat";
 import { vectorLength } from "../src/simulation/math";
 import {
   DEFAULT_GAMEPLAY_TUNING,
@@ -74,56 +75,49 @@ function stepWithMovement(world: SimulationWorld, actorId: number, x: number, y:
 describe("gameplay tuning normalization", () => {
   it("bounds every expanded lab value while preserving version 1", () => {
     const tuning = normalizeGameplayTuning({
-      shoveWindupTicks: 1,
-      shoveRecoveryTicks: 61,
-      shoveCooldownTicks: 29,
-      shoveBaseImpulse: 0.01,
-      shoveMaximumImpulse: 0.81,
-      shoveHitStumbleTicks: 61,
       dodgeCooldownTicks: 361,
       dodgeEvasionTicks: 0,
       healthRegenDelayTicks: 59,
       healthRegenPerTick: 0.31,
       manaRegenDelayTicks: -1,
       manaRegenPerTick: 0.51,
-      shoveDamage: 31,
-      windBlastRange: 1,
-      windBlastBaseImpulse: 1.51,
       bombFuseTicks: 601,
       bombBlastRadius: 0.5,
       grapplingHookRange: 11,
       grapplingHookPullTicks: 3,
-      soapStumbleTicks: 61,
     });
 
     expect(tuning).toMatchObject({
       tuningVersion: 1,
-      shoveWindupTicks: 2,
-      shoveRecoveryTicks: 60,
-      shoveCooldownTicks: 30,
-      shoveBaseImpulse: 0.05,
-      shoveMaximumImpulse: 0.8,
-      shoveHitStumbleTicks: 60,
       dodgeCooldownTicks: 360,
       dodgeEvasionTicks: 1,
       healthRegenDelayTicks: 60,
       healthRegenPerTick: 0.3,
       manaRegenDelayTicks: 0,
       manaRegenPerTick: 0.5,
-      shoveDamage: 30,
-      windBlastRange: 2,
-      windBlastBaseImpulse: 1.5,
       bombFuseTicks: 600,
       bombBlastRadius: 1,
       grapplingHookRange: 10,
       grapplingHookPullTicks: 4,
-      soapStumbleTicks: 60,
     });
     expect(Object.isFrozen(tuning)).toBe(true);
   });
 });
 
 describe("gray-box movement and action timing", () => {
+  it("starts human and scripted participants at thirty mana without lowering capacity", () => {
+    const frame = new SimulationWorld(CONFIG, "initial-mana").createRenderFrame();
+
+    expect(frame.participants).toHaveLength(CONFIG.participantCount);
+    expect(
+      frame.participants.every(
+        ({ combat }) =>
+          combat.mana === COMBAT_TUNING.initialMana &&
+          combat.maximumMana > COMBAT_TUNING.initialMana,
+      ),
+    ).toBe(true);
+  });
+
   it("reserves the old fast pace for lightweight bodies", () => {
     const light = getMovementProfile(SIMULATION_TUNING.mass.minimum);
     const normal = getMovementProfile(SIMULATION_TUNING.mass.default);
@@ -143,8 +137,7 @@ describe("gray-box movement and action timing", () => {
     expect(normal.maximumSpeed * 60).toBeCloseTo(2.4, 10);
   });
 
-  it("keeps the default hand reach compact while dodge crosses multiple tiles", () => {
-    expect(DEFAULT_GAMEPLAY_TUNING.shoveReach).toBeLessThanOrEqual(0.35);
+  it("keeps dodge travel in the intended multi-tile range", () => {
     expect(
       DEFAULT_GAMEPLAY_TUNING.dodgeSpeed * DEFAULT_GAMEPLAY_TUNING.dodgeActiveTicks,
     ).toBeCloseTo(2.4, 10);
@@ -429,7 +422,7 @@ describe("weak-contact containment", () => {
 });
 
 describe("support grace and falling", () => {
-  it("allows center support to recover before the ninth unsupported tick", () => {
+  it("allows center support to recover before half a second unsupported", () => {
     const world = createWorld(
       createSeparatedOverrides({ actorId: 1, position: { x: -0.05, y: 4.5 } }),
       "support-recovery",
@@ -443,7 +436,7 @@ describe("support grace and falling", () => {
     expect(getActor(world, 1).unsupportedTicks).toBe(0);
   });
 
-  it("enters irreversible falling on the ninth unsupported tick and then eliminates", () => {
+  it("enters irreversible falling after half a second unsupported and then eliminates", () => {
     const world = createWorld(
       createSeparatedOverrides({ actorId: 1, position: { x: -0.5, y: 4.5 } }),
       "falling-boundary",

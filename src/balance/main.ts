@@ -8,6 +8,7 @@ import {
 } from "./contract";
 import latestSnapshot from "../../balance/latest.json";
 import { ACTIVE_ITEM_DEFINITION_IDS } from "../content/items";
+import { SKILL_DEFINITION_IDS } from "../content/skills";
 import "./styles.css";
 
 const CATEGORY_LABELS: Readonly<Record<BalanceCategory, string>> = Object.freeze({
@@ -20,7 +21,7 @@ const CATEGORY_LABELS: Readonly<Record<BalanceCategory, string>> = Object.freeze
 
 const PHASE_NOTES: Readonly<Record<BalancePhase, string>> = Object.freeze({
   controlled:
-    "맵 추가 아이템을 끄고 균등 특성·2스킬·시작 아이템·성향을 회전한 비교다. 시작 장비 차이에 가장 가까운 화면이다.",
+    "맵 추가 아이템을 끄고 20점을 4·4·3·3·3·3으로 균등 배분한 참가자들의 2스킬·시작 아이템·성향을 회전한 비교다.",
   production:
     "실제 맵 아이템 8개와 7초 보급을 켠 결과다. 시작 아이템은 균등 배정했지만 추가 획득 기회는 관측치라 방향 확인에만 쓴다.",
 });
@@ -82,9 +83,11 @@ function createSignal(aggregate: BalanceAggregate): HTMLElement {
   badge.textContent =
     aggregate.signal === "buff-review"
       ? "상향 검토"
-      : aggregate.signal === "nerf-review"
-        ? "하향 검토"
-        : "관찰";
+      : aggregate.signal === "high-variance"
+        ? "고위험·고보상"
+        : aggregate.signal === "nerf-review"
+          ? "하향 검토"
+          : "관찰";
   return badge;
 }
 
@@ -138,10 +141,15 @@ function createAggregateRow(aggregate: BalanceAggregate): HTMLTableRowElement {
 function renderComparison(): void {
   const phase = getPhase();
   const activeItemIds = new Set<string>(ACTIVE_ITEM_DEFINITION_IDS);
+  const activeSkillIds = new Set<string>(SKILL_DEFINITION_IDS);
   const rows = phase.aggregates
     .filter(
       ({ category, id }) =>
-        category === selectedCategory && (category !== "item" || activeItemIds.has(id)),
+        category === selectedCategory &&
+        (category !== "item" || activeItemIds.has(id)) &&
+        (category !== "skill" || activeSkillIds.has(id)) &&
+        (category !== "skill-combination" ||
+          id.split("+").every((skillId) => activeSkillIds.has(skillId))),
     )
     .toSorted(
       (left, right) =>
@@ -261,6 +269,8 @@ function renderPhase(): void {
 }
 
 function initialize(dashboard: BalanceDashboardData): void {
+  requireElement("#balance-run-count", HTMLParagraphElement).textContent =
+    `${dashboard.methodology.roundCount}판 자동 검토`;
   const phaseFilter = requireElement("#phase-filter", HTMLSelectElement);
   for (const option of phaseFilter.options) {
     const phase = dashboard.phases.find((candidate) => candidate.phase === option.value);

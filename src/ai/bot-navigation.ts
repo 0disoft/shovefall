@@ -169,6 +169,18 @@ function isPositionTraversable(
   );
 }
 
+export function getBotNavigationPositionDepth(
+  terrain: BotNavigationTerrain,
+  blockedTileIds: ReadonlySet<TileId>,
+  position: Vector2,
+  radius = 0,
+): number | undefined {
+  if (!isPositionTraversable(terrain, blockedTileIds, position, radius)) {
+    return undefined;
+  }
+  return terrain.stableTileDepths.get(toTileId(Math.floor(position.x), Math.floor(position.y)));
+}
+
 export function isBotNavigationSegmentClear(
   terrain: BotNavigationTerrain,
   blockedTileIds: ReadonlySet<TileId>,

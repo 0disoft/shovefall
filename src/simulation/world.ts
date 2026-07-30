@@ -13,6 +13,7 @@ import {
   type ItemId,
   type InventorySlotIndex,
   type ParticipantActionKind,
+  type PendingSoapDamageState,
   type ParticipantState,
   type RenderFrameV1,
   type RockShotState,
@@ -22,8 +23,8 @@ import {
   type SimulationEventV1,
   type SkillDefinitionId,
   type SkillZoneState,
-  type SkillSlotIndex,
   type SoapPatchState,
+  type SkillSlotIndex,
   type StartingAttributes,
   type TileId,
   type TileState,
@@ -69,7 +70,7 @@ import {
   consumeInventoryCharge,
   consumeSpringGlove,
   createItemSystem,
-  getTreasureShipState,
+  getTreasureShipStates,
   expireEffects,
   hasSpringGlove,
   resolveItemPickups,
@@ -135,6 +136,8 @@ import {
   getStartingMassFactor,
   getStartingMovementMultiplier,
   getStartingOutgoingMultiplier,
+  getStartingSkillDamageMultiplier,
+  getStartingStumbleDurationMultiplier,
 } from "./starting-attributes";
 
 export interface SimulationStepResult {
@@ -155,6 +158,7 @@ export interface ParticipantSpawnOverride {
   readonly velocity?: Vector2;
   readonly facing?: Vector2;
   readonly massFactor?: number;
+  readonly initialHealth?: number;
   readonly startingAttributes?: StartingAttributes;
   readonly control?: "human" | "scripted";
   readonly startingItems?: readonly ItemDefinitionId[];
@@ -322,19 +326,6 @@ function createTimedAction(
 function normalizeDirectionOrFallback(direction: Vector2, fallback: Vector2): Vector2 {
   const normalized = normalizeVector(direction);
   return isZeroVector(normalized) ? normalizeVector(fallback) : normalized;
-}
-
-function getUnitDirectionOrFallback(direction: Vector2, fallback: Vector2): Vector2 {
-  const directionLength = vectorLength(direction);
-
-  if (directionLength > 0) {
-    return scaleVector(direction, 1 / directionLength);
-  }
-
-  const fallbackLength = vectorLength(fallback);
-  return fallbackLength > 0
-    ? scaleVector(fallback, 1 / fallbackLength)
-    : Object.freeze({ x: 1, y: 0 });
 }
 
 function chooseOffensiveCredit(
@@ -619,6 +610,13 @@ function validateOverride(override: ParticipantSpawnOverride, participantCount: 
     assertFiniteNumber(override.massFactor, "participant override massFactor");
   }
 
+  if (override.initialHealth !== undefined) {
+    assertFiniteNumber(override.initialHealth, "participant override initialHealth");
+    if (override.initialHealth < 0) {
+      throw new SimulationContractError("participant override initialHealth cannot be negative");
+    }
+  }
+
   if (override.startingAttributes !== undefined) {
     assertStartingAttributes(override.startingAttributes);
   }
@@ -692,6 +690,11 @@ function createParticipants(
     const baseMassFactor = normalizeMassFactor(
       override?.massFactor ?? getStartingMassFactor(startingAttributes),
     );
+    const baseCombat = createParticipantCombat(progression.stats, startingAttributes);
+    const combat = Object.freeze({
+      ...baseCombat,
+      health: Math.min(baseCombat.maximumHealth, override?.initialHealth ?? baseCombat.health),
+    });
 
     const participant: ParticipantState = Object.freeze({
       actorId,
@@ -710,7 +713,7 @@ function createParticipants(
       cooldowns: Object.freeze({ grappleReadyTick: 0, dodgeReadyTick: 0 }),
       inventory: Object.freeze([]),
       skills: Object.freeze([]),
-      combat: createParticipantCombat(progression.stats, startingAttributes),
+      combat,
       effects: Object.freeze([]),
       progression,
       startingAttributes,
@@ -797,62 +800,21 @@ function hasTileSupport(position: Vector2, tilesById: ReadonlySet<string>): bool
   return tilesById.has(`${Math.floor(position.x)}:${Math.floor(position.y)}`);
 }
 
-interface SupportBoundaryContact {
-  readonly position: Vector2;
-  readonly time: number;
-}
-
-function findFirstSupportBoundaryContact(
-  start: Vector2,
-  end: Vector2,
-  supportedTileIds: ReadonlySet<string>,
-): SupportBoundaryContact | undefined {
-  if (!hasTileSupport(start, supportedTileIds)) {
-    return Object.freeze({ position: start, time: 0 });
-  }
-
-  const motion = subtractVectors(end, start);
-  const distance = vectorLength(motion);
-  if (distance === 0) {
-    return undefined;
-  }
-
-  const sampleCount = Math.max(1, Math.ceil(distance * 32));
-  let lastSupportedTime = 0;
-  for (let index = 1; index <= sampleCount; index += 1) {
-    const sampleTime = index / sampleCount;
-    const samplePosition = addVectors(start, scaleVector(motion, sampleTime));
-    if (hasTileSupport(samplePosition, supportedTileIds)) {
-      lastSupportedTime = sampleTime;
-      continue;
-    }
-
-    let supportedTime = lastSupportedTime;
-    let unsupportedTime = sampleTime;
-    for (let iteration = 0; iteration < 14; iteration += 1) {
-      const midpoint = (supportedTime + unsupportedTime) / 2;
-      const midpointPosition = addVectors(start, scaleVector(motion, midpoint));
-      if (hasTileSupport(midpointPosition, supportedTileIds)) {
-        supportedTime = midpoint;
-      } else {
-        unsupportedTime = midpoint;
-      }
-    }
-
-    return Object.freeze({
-      position: addVectors(start, scaleVector(motion, supportedTime)),
-      time: supportedTime,
-    });
-  }
-
-  return undefined;
-}
-
 function getMissedStumbleTicks(participant: ParticipantState): number {
   const speedTicks =
     (vectorLength(participant.body.velocity) * SIMULATION_TUNING.shove.missedStumbleSpeedTicks) /
     participant.body.massFactor;
-  return SIMULATION_TUNING.shove.missedStumbleBaseTicks + Math.ceil(speedTicks);
+  return getStumbleTicks(
+    participant,
+    SIMULATION_TUNING.shove.missedStumbleBaseTicks + Math.ceil(speedTicks),
+  );
+}
+
+function getStumbleTicks(participant: ParticipantState, baseTicks: number): number {
+  return Math.max(
+    1,
+    Math.round(baseTicks * getStartingStumbleDurationMultiplier(participant.startingAttributes)),
+  );
 }
 
 export class SimulationWorld {
@@ -872,6 +834,7 @@ export class SimulationWorld {
   #trees: readonly TreeObstacleState[] = Object.freeze([]);
   #bombs: readonly BombState[] = Object.freeze([]);
   #soapPatches: readonly SoapPatchState[] = Object.freeze([]);
+  #pendingSoapDamage: readonly PendingSoapDamageState[] = Object.freeze([]);
   #skillZones: readonly SkillZoneState[] = Object.freeze([]);
   #nextSkillZoneId = 1;
   #rockShots: readonly RockShotState[] = Object.freeze([]);
@@ -918,25 +881,27 @@ export class SimulationWorld {
         ? createRectangularArenaTiles(config)
         : createArenaTiles(config, streams.get("arena"));
     this.#arenaTileIds = new Set(this.#tiles.map(({ tileId }) => tileId));
-    this.#collapsePlan = createCollapsePlan(
+    const proposedCollapsePlan = createCollapsePlan(
       this.#tiles,
       config.arenaColumns,
       config.arenaRows,
       config.collapseSpeed,
       streams.get("collapse"),
     );
+    this.#artilleryPlan = createArtilleryPlan(
+      this.#tiles,
+      proposedCollapsePlan,
+      config.arenaColumns,
+      config.arenaRows,
+      streams.get("artillery-plan"),
+    );
+    this.#collapsePlan = this.#artilleryPlan.collapseWaves;
     this.#collapseTransitionTicks = new Set(
       this.#collapsePlan.flatMap(({ warningTick, collapsingTick, voidTick }) => [
         warningTick,
         collapsingTick,
         voidTick,
       ]),
-    );
-    this.#artilleryPlan = createArtilleryPlan(
-      this.#tiles,
-      this.#collapsePlan,
-      config.arenaColumns,
-      config.arenaRows,
     );
     this.#nextRockLaunchTick = this.#artilleryPlan.rockPhaseStartTick;
     this.#participants = createParticipants(
@@ -1002,6 +967,7 @@ export class SimulationWorld {
       advanceCombatResources(participant, this.#tick, this.#gameplayTuning),
     );
     participants = this.#advanceExpiredActions(participants, events);
+    participants = this.#resolvePendingSoapDamage(participants, events);
     participants = expireEffects(participants, this.#tick);
     participants = this.#applyUpgrades(participants, commandsByActor, events);
     const requestedActions = this.#startRequestedActions(participants, commandsByActor, events);
@@ -1033,7 +999,7 @@ export class SimulationWorld {
     const candidatePairs = spatialHash.getCandidatePairs();
     participants = this.#resolveWeakContacts(participants, candidatePairs);
     participants = this.#resolveObstacleContacts(participants, false);
-    participants = this.#resolveSkillZonesAndDashHits(participants, events);
+    participants = this.#resolveSkillZones(participants, events);
     participants = this.#resolveSoapPatches(participants, events);
     participants = this.#resolveShoves(participants, candidatePairs, events);
     participants = this.#resolveHealthEliminations(participants, events);
@@ -1091,6 +1057,7 @@ export class SimulationWorld {
       trees: this.#trees,
       bombs: this.#bombs,
       soapPatches: this.#soapPatches,
+      pendingSoapDamage: this.#pendingSoapDamage,
       skillZones: this.#skillZones,
       nextSkillZoneId: this.#nextSkillZoneId,
       rockShots: this.#rockShots,
@@ -1144,7 +1111,7 @@ export class SimulationWorld {
       pirateShips: getPirateShipStates(this.#artilleryPlan, this.#tick),
       cannonShots: getActiveCannonShots(this.#artilleryPlan, this.#tick),
       rockShots: this.#rockShots,
-      treasureShip: getTreasureShipState(this.#itemState, this.#tick),
+      treasureShips: getTreasureShipStates(this.#itemState, this.#tick),
       giftDeliveries: this.#itemState.giftDeliveries,
       tiles: this.#tiles,
       round: this.#round,
@@ -1267,7 +1234,7 @@ export class SimulationWorld {
           action: createTimedAction(
             "ShoveActive",
             this.#tick,
-            this.#gameplayTuning.shoveActiveTicks,
+            SIMULATION_TUNING.shove.activeTicks,
             action.lockedDirection,
             action.hitActorIds,
             action.resolvedActorIds,
@@ -1300,7 +1267,7 @@ export class SimulationWorld {
           action: createTimedAction(
             "ShoveRecovery",
             this.#tick,
-            this.#gameplayTuning.shoveRecoveryTicks,
+            SIMULATION_TUNING.shove.recoveryTicks,
             action.lockedDirection,
             action.hitActorIds,
             action.resolvedActorIds,
@@ -1338,6 +1305,9 @@ export class SimulationWorld {
   ): RequestedActionResult {
     const activeAbilities = new Map<ActorId, ActiveAbilityRequest>();
     const skillCasts: SkillCastRequest[] = [];
+    const supportedTileIds = new Set(
+      this.#tiles.filter(({ state }) => state !== "Void").map(({ tileId }) => tileId),
+    );
     const nextParticipants = participants.map((participant) => {
       const command =
         commandsByActor.get(participant.actorId) ??
@@ -1469,23 +1439,6 @@ export class SimulationWorld {
             });
           }
 
-          if (skill.definitionId === "tidal-charge") {
-            return Object.freeze({
-              ...committed,
-              body: Object.freeze({ ...committed.body, facing: direction }),
-              action: createTimedAction(
-                "DodgeActive",
-                this.#tick,
-                Math.max(6, this.#gameplayTuning.dodgeActiveTicks + 2),
-                direction,
-                [],
-                [],
-                false,
-                skill.definitionId,
-              ),
-            });
-          }
-
           if (skill.definitionId === "aegis") {
             const shielded = applyShield(
               committed,
@@ -1584,12 +1537,12 @@ export class SimulationWorld {
         );
 
         const canActivate =
-          slot?.definitionId === "wind-blast" ||
           (slot?.definitionId === "bomb" &&
             this.#getBombPlacement(participant, [], direction, command.targetPosition) !==
               undefined) ||
           (slot?.definitionId === "boat" &&
-            hasTileSupport(participant.body.position, this.#arenaTileIds)) ||
+            hasTileSupport(participant.body.position, this.#arenaTileIds) &&
+            !hasTileSupport(participant.body.position, supportedTileIds)) ||
           (slot?.definitionId === "brick-bag" &&
             this.#getBrickPlacement(
               participant,
@@ -1806,7 +1759,7 @@ export class SimulationWorld {
             action: createTimedAction(
               "Stumbling",
               this.#tick,
-              Math.max(1, cast.metrics.stumbleTicks),
+              getStumbleTicks(updatedTarget, cast.metrics.stumbleTicks),
               targetHit.direction,
             ),
             shoveCredit: chooseOffensiveCredit(
@@ -1974,11 +1927,6 @@ export class SimulationWorld {
 
     let ordered = participants.toSorted((left, right) => left.actorId - right.actorId);
     let updatedById = new Map(ordered.map((participant) => [participant.actorId, participant]));
-    const impulses = new Map<ActorId, Vector2>();
-    const credits = new Map<
-      ActorId,
-      { readonly attackerActorId: ActorId; readonly strength: number }
-    >();
     const placedWalls: BrickWallState[] = [];
 
     const dueBombs = this.#bombs
@@ -2086,7 +2034,7 @@ export class SimulationWorld {
           action: createTimedAction(
             "Stumbling",
             this.#tick,
-            SIMULATION_TUNING.bomb.ownerStumbleTicks,
+            getStumbleTicks(participant, SIMULATION_TUNING.bomb.ownerStumbleTicks),
             normalizeDirectionOrFallback(impulse, participant.body.facing),
           ),
         });
@@ -2393,119 +2341,7 @@ export class SimulationWorld {
       );
     }
 
-    for (const attacker of ordered) {
-      const ability = activeAbilities.get(attacker.actorId);
-
-      if (ability === undefined || !isCollidable(attacker) || attacker.action.kind !== "Ready") {
-        continue;
-      }
-
-      if (ability.definitionId !== "wind-blast") {
-        continue;
-      }
-
-      const consumed = consumeAbility(attacker, ability);
-
-      if (consumed === undefined) {
-        continue;
-      }
-
-      updatedById.set(attacker.actorId, consumed);
-      const direction = normalizeDirectionOrFallback(attacker.body.facing, { x: 1, y: 0 });
-      events.push(
-        this.#createEvent("item-used", {
-          actorId: attacker.actorId,
-          itemDefinitionId: "wind-blast",
-          vector: direction,
-        }),
-      );
-      const targetHit = this.#findForwardTarget(
-        attacker,
-        direction,
-        this.#gameplayTuning.windBlastRange,
-        ordered,
-        SIMULATION_TUNING.windBlast.minimumAimDot,
-      );
-      if (targetHit === undefined) {
-        continue;
-      }
-      const target = targetHit.target;
-
-      const targetIsEvading = isParticipantEvading(
-        target,
-        this.#tick,
-        this.#gameplayTuning.dodgeEvasionTicks,
-      );
-
-      if (targetIsEvading) {
-        events.push(
-          this.#createEvent("dodge-succeeded", {
-            actorId: target.actorId,
-            targetActorId: attacker.actorId,
-            vector: target.action.lockedDirection ?? target.body.facing,
-          }),
-        );
-        continue;
-      }
-
-      const rawImpulse =
-        this.#gameplayTuning.windBlastBaseImpulse *
-        getIncomingMassImpulseMultiplier(target.body.massFactor) *
-        getStartingIncomingImpulseMultiplier(target.startingAttributes) *
-        getPowerMultiplier(attacker.progression.stats) *
-        getStabilityMultiplier(target.progression.stats);
-      const impulse = scaleVector(
-        targetHit.direction,
-        Math.min(rawImpulse, SIMULATION_TUNING.windBlast.maximumImpulse),
-      );
-      impulses.set(
-        target.actorId,
-        addVectors(impulses.get(target.actorId) ?? ZERO_VECTOR, impulse),
-      );
-      const strength = vectorLength(impulse);
-      const previousCredit = credits.get(target.actorId);
-
-      if (
-        previousCredit === undefined ||
-        strength > previousCredit.strength ||
-        (strength === previousCredit.strength && attacker.actorId < previousCredit.attackerActorId)
-      ) {
-        credits.set(target.actorId, Object.freeze({ attackerActorId: attacker.actorId, strength }));
-      }
-      events.push(
-        this.#createEvent("wind-blast-hit", {
-          actorId: attacker.actorId,
-          targetActorId: target.actorId,
-          itemDefinitionId: "wind-blast",
-          vector: impulse,
-        }),
-      );
-    }
-
-    return participants.map((participant) => {
-      const current = updatedById.get(participant.actorId) ?? participant;
-      const impulse = impulses.get(participant.actorId);
-
-      if (impulse === undefined) {
-        return current;
-      }
-
-      const credit = credits.get(participant.actorId);
-      return Object.freeze({
-        ...current,
-        body: Object.freeze({
-          ...current.body,
-          velocity: addVectors(current.body.velocity, impulse),
-        }),
-        action: createTimedAction(
-          "Stumbling",
-          this.#tick,
-          SIMULATION_TUNING.windBlast.stumbleTicks,
-          normalizeDirectionOrFallback(impulse, current.body.facing),
-        ),
-        shoveCredit: chooseOffensiveCredit(current.shoveCredit, credit, this.#tick),
-      });
-    });
+    return participants.map((participant) => updatedById.get(participant.actorId) ?? participant);
   }
 
   #getBombPlacement(
@@ -2697,7 +2533,7 @@ export class SimulationWorld {
     if (
       tile === undefined ||
       tile.state === "Void" ||
-      [...this.#brickWalls, ...this.#trees].some((wall) => wall.tileId === tileId) ||
+      [...this.#brickWalls, ...this.#trees].some((obstacle) => obstacle.tileId === tileId) ||
       this.#bombs.some(
         (bomb) =>
           bomb.detonateTick > this.#tick &&
@@ -2724,6 +2560,150 @@ export class SimulationWorld {
       row,
       placedTick: this.#tick,
     });
+  }
+
+  #resolveSoapPatches(
+    participants: readonly ParticipantState[],
+    events: SimulationEventV1[],
+  ): readonly ParticipantState[] {
+    if (this.#soapPatches.length === 0) {
+      return participants;
+    }
+
+    const orderedParticipants = participants.toSorted(
+      (left, right) => left.actorId - right.actorId,
+    );
+    const triggeredByActor = new Map<ActorId, SoapPatchState>();
+    const triggeredTileIds = new Set<TileId>();
+
+    for (const patch of this.#soapPatches.toSorted((left, right) =>
+      left.tileId.localeCompare(right.tileId),
+    )) {
+      const target = orderedParticipants.find(
+        (participant) =>
+          isCollidable(participant) &&
+          participant.actorId !== patch.ownerActorId &&
+          !triggeredByActor.has(participant.actorId) &&
+          ((Math.floor(participant.body.position.x) === patch.column &&
+            Math.floor(participant.body.position.y) === patch.row) ||
+            findSweptPointBoundsContact(
+              participant.body.previousPosition,
+              participant.body.position,
+              getTileBounds(patch.column, patch.row, participant.body.radius),
+            ) !== undefined),
+      );
+
+      if (target === undefined) {
+        continue;
+      }
+
+      triggeredByActor.set(target.actorId, patch);
+      triggeredTileIds.add(patch.tileId);
+      events.push(
+        this.#createEvent("soap-triggered", {
+          actorId: patch.ownerActorId,
+          targetActorId: target.actorId,
+          itemDefinitionId: "soap",
+          tileId: patch.tileId,
+        }),
+      );
+    }
+
+    if (triggeredTileIds.size === 0) {
+      return participants;
+    }
+
+    this.#soapPatches = Object.freeze(
+      this.#soapPatches.filter((patch) => !triggeredTileIds.has(patch.tileId)),
+    );
+    const definition = getItemDefinition("soap");
+    const pendingDamage: PendingSoapDamageState[] = [];
+
+    const nextParticipants = participants.map((participant) => {
+      const patch = triggeredByActor.get(participant.actorId);
+
+      if (patch === undefined) {
+        return participant;
+      }
+
+      const direction = normalizeDirectionOrFallback(
+        participant.body.velocity,
+        participant.body.facing,
+      );
+      const speed = clamp(
+        vectorLength(participant.body.velocity),
+        SIMULATION_TUNING.soap.minimumSpeed,
+        SIMULATION_TUNING.soap.maximumSpeed,
+      );
+      const stumbleTicks = getStumbleTicks(participant, definition.stumbleTicks);
+      pendingDamage.push(
+        Object.freeze({
+          ownerActorId: patch.ownerActorId,
+          targetActorId: participant.actorId,
+          applyTick: this.#tick + stumbleTicks,
+          damage: definition.damage,
+        }),
+      );
+
+      return Object.freeze({
+        ...participant,
+        body: Object.freeze({
+          ...participant.body,
+          velocity: scaleVector(direction, speed),
+        }),
+        action: createTimedAction("Stumbling", this.#tick, stumbleTicks, direction),
+      });
+    });
+
+    this.#pendingSoapDamage = Object.freeze(
+      [...this.#pendingSoapDamage, ...pendingDamage].toSorted(
+        (left, right) =>
+          left.applyTick - right.applyTick || left.targetActorId - right.targetActorId,
+      ),
+    );
+    return nextParticipants;
+  }
+
+  #resolvePendingSoapDamage(
+    participants: readonly ParticipantState[],
+    events: SimulationEventV1[],
+  ): readonly ParticipantState[] {
+    const due = this.#pendingSoapDamage.filter(({ applyTick }) => applyTick <= this.#tick);
+    if (due.length === 0) {
+      return participants;
+    }
+
+    this.#pendingSoapDamage = Object.freeze(
+      this.#pendingSoapDamage.filter(({ applyTick }) => applyTick > this.#tick),
+    );
+    const byId = new Map(participants.map((participant) => [participant.actorId, participant]));
+
+    for (const pending of due.toSorted(
+      (left, right) =>
+        left.targetActorId - right.targetActorId || left.ownerActorId - right.ownerActorId,
+    )) {
+      const target = byId.get(pending.targetActorId);
+      if (target === undefined || !isCollidable(target)) {
+        continue;
+      }
+
+      const result = applyCombatDamage(target, pending.damage, pending.ownerActorId, this.#tick);
+      byId.set(target.actorId, result.participant);
+      if (result.damage > 0 || result.absorbed > 0) {
+        events.push(
+          this.#createEvent("damage-applied", {
+            actorId: pending.ownerActorId,
+            targetActorId: target.actorId,
+            itemDefinitionId: "soap",
+            amount: result.damage,
+            absorbedAmount: result.absorbed,
+            healthAfter: result.participant.combat.health,
+          }),
+        );
+      }
+    }
+
+    return participants.map((participant) => byId.get(participant.actorId) ?? participant);
   }
 
   #applyMovementIntent(
@@ -3026,7 +3006,7 @@ export class SimulationWorld {
     });
   }
 
-  #resolveSkillZonesAndDashHits(
+  #resolveSkillZones(
     participants: readonly ParticipantState[],
     events: SimulationEventV1[],
   ): readonly ParticipantState[] {
@@ -3058,7 +3038,9 @@ export class SimulationWorld {
       const damage =
         definition.damage *
         getSkillDamageMultiplier(zone.rank) *
-        getPowerMultiplier(owner?.progression.stats ?? createParticipantProgression().stats);
+        getPowerMultiplier(owner?.progression.stats ?? createParticipantProgression().stats) *
+        (owner === undefined ? 1 : getStartingOutgoingMultiplier(owner.startingAttributes)) *
+        (owner === undefined ? 1 : getStartingSkillDamageMultiplier(owner.startingAttributes));
       const impulseStrength = definition.impulse * getSkillImpulseMultiplier(zone.rank);
       const pulseDamage =
         zone.kind === "delayed-blast"
@@ -3120,7 +3102,10 @@ export class SimulationWorld {
               action: createTimedAction(
                 "Stumbling",
                 this.#tick,
-                Math.max(1, Math.round(definition.stumbleTicks * (1 + zone.rank * 0.12))),
+                getStumbleTicks(
+                  participant,
+                  Math.round(definition.stumbleTicks * (1 + zone.rank * 0.12)),
+                ),
                 direction,
               ),
               shoveCredit: chooseOffensiveCredit(
@@ -3135,6 +3120,15 @@ export class SimulationWorld {
           }
         }
         byId.set(participant.actorId, participant);
+        if (damageResult.damage > 0 && definition.damageHealingRatio > 0) {
+          const currentOwner = byId.get(zone.ownerActorId);
+          if (currentOwner !== undefined) {
+            byId.set(
+              zone.ownerActorId,
+              healParticipant(currentOwner, damageResult.damage * definition.damageHealingRatio),
+            );
+          }
+        }
         events.push(
           this.#createEvent("skill-hit", {
             actorId: zone.ownerActorId,
@@ -3155,158 +3149,6 @@ export class SimulationWorld {
           }),
         );
       }
-    }
-
-    const supportedTileIds = new Set(
-      this.#tiles.filter(({ state }) => state !== "Void").map(({ tileId }) => tileId),
-    );
-    for (const originalAttacker of participants.toSorted(
-      (left, right) => left.actorId - right.actorId,
-    )) {
-      let attacker = byId.get(originalAttacker.actorId) ?? originalAttacker;
-      if (
-        !isCollidable(attacker) ||
-        attacker.action.kind !== "DodgeActive" ||
-        attacker.action.skillDefinitionId !== "tidal-charge"
-      ) {
-        continue;
-      }
-
-      const definition = getSkillDefinition("tidal-charge");
-      const slot = attacker.skills.find(({ definitionId }) => definitionId === "tidal-charge");
-      const rank = slot === undefined ? 0 : attacker.progression.skillRanks[slot.slotIndex];
-      const waterContact = findFirstSupportBoundaryContact(
-        attacker.body.previousPosition,
-        attacker.body.position,
-        supportedTileIds,
-      );
-      const targetContact = participants
-        .filter((candidate) => candidate.actorId !== attacker.actorId && isCollidable(candidate))
-        .map((originalTarget) => {
-          const target = byId.get(originalTarget.actorId) ?? originalTarget;
-          const minimumDistance = attacker.body.radius + target.body.radius;
-          const sweptContact = findSweptCircleContact(attacker, target, minimumDistance);
-          if (sweptContact !== undefined) {
-            return Object.freeze({ contact: sweptContact, target });
-          }
-
-          const offset = subtractVectors(target.body.position, attacker.body.position);
-          if (vectorLength(offset) > minimumDistance + 0.18) {
-            return undefined;
-          }
-
-          return Object.freeze({
-            contact: Object.freeze({
-              time: 1,
-              normal: normalizeDirectionOrFallback(offset, attacker.body.facing),
-              leftPosition: attacker.body.position,
-              rightPosition: target.body.position,
-            }),
-            target,
-          });
-        })
-        .filter(
-          (
-            candidate,
-          ): candidate is {
-            readonly contact: SweptCircleContact;
-            readonly target: ParticipantState;
-          } => candidate !== undefined,
-        )
-        .toSorted(
-          (left, right) =>
-            left.contact.time - right.contact.time || left.target.actorId - right.target.actorId,
-        )[0];
-
-      if (
-        waterContact !== undefined &&
-        (targetContact === undefined || waterContact.time < targetContact.contact.time)
-      ) {
-        attacker = Object.freeze({
-          ...attacker,
-          body: Object.freeze({
-            ...attacker.body,
-            position: waterContact.position,
-            velocity: ZERO_VECTOR,
-          }),
-          action: createReadyAction(this.#tick),
-        });
-        byId.set(attacker.actorId, attacker);
-        continue;
-      }
-
-      if (targetContact === undefined) {
-        continue;
-      }
-
-      let target = targetContact.target;
-      const direction = normalizeDirectionOrFallback(
-        subtractVectors(targetContact.contact.rightPosition, targetContact.contact.leftPosition),
-        attacker.body.facing,
-      );
-      const damageResult = applyCombatDamage(
-        target,
-        definition.damage *
-          getSkillDamageMultiplier(rank) *
-          getPowerMultiplier(attacker.progression.stats),
-        attacker.actorId,
-        this.#tick,
-      );
-      target = applyCombatStatus(
-        damageResult.participant,
-        "stun",
-        Math.round(definition.stunTicks * (1 + rank * 0.12)),
-        this.#tick,
-      );
-      const impulse = scaleVector(
-        direction,
-        definition.impulse *
-          getSkillImpulseMultiplier(rank) *
-          getIncomingMassImpulseMultiplier(target.body.massFactor) *
-          getStartingIncomingImpulseMultiplier(target.startingAttributes) *
-          getStabilityMultiplier(target.progression.stats),
-      );
-      if (target.action.kind !== "Anchored") {
-        target = Object.freeze({
-          ...target,
-          body: Object.freeze({
-            ...target.body,
-            velocity: addVectors(target.body.velocity, impulse),
-          }),
-          action: createTimedAction(
-            "Stumbling",
-            this.#tick,
-            Math.max(1, Math.round(definition.stumbleTicks * (1 + rank * 0.12))),
-            direction,
-          ),
-          shoveCredit: chooseOffensiveCredit(
-            target.shoveCredit,
-            Object.freeze({ attackerActorId: attacker.actorId, strength: vectorLength(impulse) }),
-            this.#tick,
-          ),
-        });
-      }
-      attacker = Object.freeze({
-        ...attacker,
-        body: Object.freeze({
-          ...attacker.body,
-          position: targetContact.contact.leftPosition,
-          velocity: ZERO_VECTOR,
-        }),
-        action: createReadyAction(this.#tick),
-      });
-      byId.set(target.actorId, target);
-      byId.set(attacker.actorId, attacker);
-      events.push(
-        this.#createEvent("skill-hit", {
-          actorId: attacker.actorId,
-          targetActorId: target.actorId,
-          skillDefinitionId: "tidal-charge",
-          amount: damageResult.damage,
-          healthAfter: target.combat.health,
-          vector: impulse,
-        }),
-      );
     }
 
     return Object.freeze(
@@ -3468,100 +3310,6 @@ export class SimulationWorld {
     );
   }
 
-  #resolveSoapPatches(
-    participants: readonly ParticipantState[],
-    events: SimulationEventV1[],
-  ): readonly ParticipantState[] {
-    if (this.#soapPatches.length === 0) {
-      return participants;
-    }
-
-    const orderedParticipants = participants.toSorted(
-      (left, right) => left.actorId - right.actorId,
-    );
-    const triggeredByActor = new Map<ActorId, SoapPatchState>();
-    const triggeredTileIds = new Set<TileId>();
-
-    for (const patch of this.#soapPatches.toSorted((left, right) =>
-      left.tileId.localeCompare(right.tileId),
-    )) {
-      const target = orderedParticipants.find(
-        (participant) =>
-          isCollidable(participant) &&
-          participant.actorId !== patch.ownerActorId &&
-          ((Math.floor(participant.body.position.x) === patch.column &&
-            Math.floor(participant.body.position.y) === patch.row) ||
-            findSweptPointBoundsContact(
-              participant.body.previousPosition,
-              participant.body.position,
-              getTileBounds(patch.column, patch.row, participant.body.radius),
-            ) !== undefined),
-      );
-
-      if (target === undefined) {
-        continue;
-      }
-
-      triggeredByActor.set(target.actorId, patch);
-      triggeredTileIds.add(patch.tileId);
-      events.push(
-        this.#createEvent("soap-triggered", {
-          actorId: patch.ownerActorId,
-          targetActorId: target.actorId,
-          itemDefinitionId: "soap",
-          tileId: patch.tileId,
-        }),
-      );
-    }
-
-    if (triggeredTileIds.size === 0) {
-      return participants;
-    }
-
-    this.#soapPatches = Object.freeze(
-      this.#soapPatches.filter((patch) => !triggeredTileIds.has(patch.tileId)),
-    );
-
-    return participants.map((participant) => {
-      const patch = triggeredByActor.get(participant.actorId);
-
-      if (patch === undefined) {
-        return participant;
-      }
-
-      const direction = getUnitDirectionOrFallback(
-        participant.body.velocity,
-        participant.body.facing,
-      );
-      const speed = Math.min(
-        Math.max(vectorLength(participant.body.velocity), SIMULATION_TUNING.soap.minimumSpeed),
-        SIMULATION_TUNING.soap.maximumSpeed,
-      );
-
-      return Object.freeze({
-        ...participant,
-        body: Object.freeze({
-          ...participant.body,
-          velocity: scaleVector(direction, speed),
-        }),
-        action: createTimedAction(
-          "Stumbling",
-          this.#tick,
-          this.#gameplayTuning.soapStumbleTicks,
-          direction,
-        ),
-        shoveCredit:
-          participant.actorId === patch.ownerActorId
-            ? participant.shoveCredit
-            : chooseOffensiveCredit(
-                participant.shoveCredit,
-                Object.freeze({ attackerActorId: patch.ownerActorId, strength: speed }),
-                this.#tick,
-              ),
-      });
-    });
-  }
-
   #resolveShoves(
     participants: readonly ParticipantState[],
     candidatePairs: readonly ActorPair[],
@@ -3613,7 +3361,7 @@ export class SimulationWorld {
         const maximumContactDistance =
           attacker.body.radius +
           target.body.radius +
-          this.#gameplayTuning.shoveReach *
+          SIMULATION_TUNING.shove.reach *
             (attacker.action.springBoosted
               ? getItemDefinition("spring-glove").shoveReachMultiplier
               : 1);
@@ -3662,7 +3410,7 @@ export class SimulationWorld {
 
         const forwardSpeed = Math.max(0, dotVectors(attacker.body.velocity, direction));
         const rawImpulse =
-          (this.#gameplayTuning.shoveBaseImpulse +
+          (SIMULATION_TUNING.shove.baseImpulse +
             forwardSpeed * SIMULATION_TUNING.shove.velocityImpulseScale) *
           getShoveMassImpulseMultiplier(attacker.body.massFactor, target.body.massFactor) *
           getPowerMultiplier(attacker.progression.stats) *
@@ -3674,7 +3422,7 @@ export class SimulationWorld {
             : 1);
         const impulse = scaleVector(
           normal,
-          Math.min(rawImpulse, this.#gameplayTuning.shoveMaximumImpulse),
+          Math.min(rawImpulse, SIMULATION_TUNING.shove.maximumImpulse),
         );
         impulses.set(
           target.actorId,
@@ -3749,7 +3497,7 @@ export class SimulationWorld {
         action = createTimedAction(
           "Stumbling",
           this.#tick,
-          this.#gameplayTuning.shoveHitStumbleTicks,
+          getStumbleTicks(participant, SIMULATION_TUNING.shove.hitStumbleTicks),
           normalizeDirectionOrFallback(impulse, participant.body.facing),
         );
       }
@@ -3766,7 +3514,7 @@ export class SimulationWorld {
 
       const damageResult = applyCombatDamage(
         movedParticipant,
-        this.#gameplayTuning.shoveDamage,
+        SIMULATION_TUNING.shove.damage,
         strongestShove.actorId,
         this.#tick,
       );
@@ -3802,50 +3550,74 @@ export class SimulationWorld {
         return participant;
       }
 
-      const hasBoat = participant.effects.some(({ definitionId }) => definitionId === "boat");
-      const hasArenaSupport = hasTileSupport(participant.body.position, supportedTileIds);
-      const hasBoatSupport =
-        hasBoat && hasTileSupport(participant.body.position, this.#arenaTileIds);
+      let current = participant;
+      let hasBoat = current.effects.some(({ definitionId }) => definitionId === "boat");
+      const hasArenaSupport = hasTileSupport(current.body.position, supportedTileIds);
+      const isInsideArena = hasTileSupport(current.body.position, this.#arenaTileIds);
+
+      if (!hasArenaSupport && isInsideArena && !hasBoat) {
+        const boatSlot = current.inventory.find(
+          ({ definitionId, charges }) => definitionId === "boat" && charges !== null && charges > 0,
+        );
+        const activated =
+          boatSlot === undefined
+            ? undefined
+            : activateTimedInventoryEffect(current, boatSlot.slotIndex, this.#tick);
+
+        if (activated !== undefined) {
+          current = activated;
+          hasBoat = true;
+          events.push(
+            this.#createEvent("item-used", {
+              actorId: current.actorId,
+              itemDefinitionId: "boat",
+              vector: current.body.facing,
+            }),
+          );
+        }
+      }
+
+      const hasBoatSupport = hasBoat && hasTileSupport(current.body.position, this.#arenaTileIds);
 
       if (hasArenaSupport || hasBoatSupport) {
-        if (participant.body.unsupportedTicks === 0) {
-          return participant;
+        if (current.body.unsupportedTicks === 0) {
+          return current;
         }
 
         return Object.freeze({
-          ...participant,
-          body: Object.freeze({ ...participant.body, unsupportedTicks: 0 }),
+          ...current,
+          body: Object.freeze({ ...current.body, unsupportedTicks: 0 }),
         });
       }
 
-      const unsupportedTicks = participant.body.unsupportedTicks + 1;
+      const unsupportedTicks = current.body.unsupportedTicks + 1;
 
       if (unsupportedTicks < SIMULATION_TUNING.support.graceTicks) {
         return Object.freeze({
-          ...participant,
-          body: Object.freeze({ ...participant.body, unsupportedTicks }),
+          ...current,
+          body: Object.freeze({ ...current.body, unsupportedTicks }),
         });
       }
 
       events.push(
         this.#createEvent("falling-started", {
-          actorId: participant.actorId,
-          vector: participant.body.velocity,
+          actorId: current.actorId,
+          vector: current.body.velocity,
         }),
       );
-      const { attackerActorId, hitTick } = participant.shoveCredit;
+      const { attackerActorId, hitTick } = current.shoveCredit;
 
       if (
         attackerActorId !== null &&
         hitTick !== null &&
-        attackerActorId !== participant.actorId &&
+        attackerActorId !== current.actorId &&
         this.#tick - hitTick <= SIMULATION_TUNING.shove.eliminationCreditTicks
       ) {
         creditedEliminations.push(
-          Object.freeze({ attackerActorId, targetActorId: participant.actorId }),
+          Object.freeze({ attackerActorId, targetActorId: current.actorId }),
         );
       }
-      const participantWithoutEffects = clearEffects(participant);
+      const participantWithoutEffects = clearEffects(current);
       return Object.freeze({
         ...participantWithoutEffects,
         body: Object.freeze({
@@ -3985,6 +3757,9 @@ export class SimulationWorld {
         this.#brickWalls.filter(({ tileId }) => !voidTileIds.has(tileId)),
       );
       this.#trees = Object.freeze(this.#trees.filter(({ tileId }) => !voidTileIds.has(tileId)));
+      this.#soapPatches = Object.freeze(
+        this.#soapPatches.filter(({ tileId }) => !voidTileIds.has(tileId)),
+      );
 
       for (const wall of removedWalls) {
         events.push(
@@ -3995,10 +3770,6 @@ export class SimulationWorld {
           }),
         );
       }
-
-      this.#soapPatches = Object.freeze(
-        this.#soapPatches.filter(({ tileId }) => !voidTileIds.has(tileId)),
-      );
     }
 
     return result.transitions.length > 0;
@@ -4086,6 +3857,7 @@ export class SimulationWorld {
       ...(details.projectileId === undefined ? {} : { projectileId: details.projectileId }),
       ...(details.zoneId === undefined ? {} : { zoneId: details.zoneId }),
       ...(details.amount === undefined ? {} : { amount: details.amount }),
+      ...(details.absorbedAmount === undefined ? {} : { absorbedAmount: details.absorbedAmount }),
       ...(details.healthAfter === undefined ? {} : { healthAfter: details.healthAfter }),
       ...(details.manaAfter === undefined ? {} : { manaAfter: details.manaAfter }),
       ...(details.durationTicks === undefined ? {} : { durationTicks: details.durationTicks }),

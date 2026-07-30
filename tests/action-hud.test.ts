@@ -24,7 +24,7 @@ function createHuman(): RenderParticipantV1 {
         {
           actorId: 1,
           startingItems: ["bomb"],
-          startingSkills: ["force-palm", "blink-step"],
+          startingSkills: ["arc-bolt", "blink-step"],
         },
       ],
     },
@@ -41,9 +41,9 @@ describe("action HUD view models", () => {
     const human = createHuman();
     expect(createGrappleButtonViewModel(human, ACTIVE_CONTEXT)).toEqual({
       state: "ready",
-      text: "E · 구조 갈고리 · 준비 · 재사용 15.0초",
+      text: "E · 구조 갈고리 · 준비 · 재사용 10.5초",
       disabled: false,
-      ariaLabel: "구조 갈고리, 사용 가능, 재사용 대기시간 15.0초",
+      ariaLabel: "구조 갈고리, 사용 가능, 재사용 대기시간 10.5초",
     });
     expect(
       createGrappleButtonViewModel(
@@ -62,7 +62,7 @@ describe("action HUD view models", () => {
     const human = createHuman();
     expect(createSkillButtonViewModel(human, 0, ACTIVE_CONTEXT)).toMatchObject({
       state: "ready",
-      text: "Q · 충격 장타 · 18MP",
+      text: "Q · 파동탄 · 30MP",
       disabled: false,
     });
     const noMana = Object.freeze({
@@ -71,8 +71,44 @@ describe("action HUD view models", () => {
     });
     expect(createSkillButtonViewModel(noMana, 0, ACTIVE_CONTEXT)).toMatchObject({
       state: "mana",
-      text: "Q · 충격 장타 · 18MP 필요",
+      text: "Q · 파동탄 · 30MP 필요",
       disabled: true,
+      rejectionMessage: "마나가 부족해. 30MP가 필요해.",
+    });
+    expect(
+      createSkillButtonViewModel(
+        Object.freeze({
+          ...human,
+          skills: Object.freeze(
+            human.skills.map((slot) =>
+              slot.slotIndex === 0 ? Object.freeze({ ...slot, readyTick: 180 }) : slot,
+            ),
+          ),
+        }),
+        0,
+        ACTIVE_CONTEXT,
+      ),
+    ).toMatchObject({
+      state: "cooldown",
+      text: "Q · 파동탄 · 3.0초",
+      disabled: true,
+      rejectionMessage: "재사용 대기시간 중이야. 3.0초 남았어.",
+    });
+    const agilityFocused = Object.freeze({
+      ...human,
+      startingAttributes: Object.freeze({
+        strength: 0,
+        agility: 20,
+        constitution: 0,
+        spirit: 0,
+        balance: 0,
+        willpower: 0,
+      }),
+    });
+    expect(createSkillButtonViewModel(agilityFocused, 0, ACTIVE_CONTEXT)).toMatchObject({
+      state: "ready",
+      text: "Q · 파동탄 · 21MP",
+      disabled: false,
     });
   });
 

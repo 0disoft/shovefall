@@ -62,11 +62,10 @@ const ATTRIBUTE_LABELS: Readonly<Record<StartingAttributeId, string>> = Object.f
 });
 
 const ITEM_LABELS: Readonly<Record<BotActiveItemId, string>> = Object.freeze({
-  "wind-blast": "장풍",
+  soap: "비누",
   "brick-bag": "벽돌 가방",
   boat: "배",
   bomb: "시한폭탄",
-  soap: "비누",
 });
 
 const SKILL_PERMUTATIONS = Object.freeze([
@@ -681,9 +680,6 @@ function runRound(roundIndex: number, result: WorkerResult): void {
             BOT_ACTIVE_ITEM_IDS.includes(event.itemDefinitionId as BotActiveItemId)
           ) {
             actor.itemUses[event.itemDefinitionId as BotActiveItemId] += 1;
-          }
-          if (event.kind === "wind-blast-hit") {
-            actor.itemHits["wind-blast"] += 1;
           }
           if (event.kind === "soap-triggered") {
             actor.itemHits.soap += 1;

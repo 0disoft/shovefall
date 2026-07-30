@@ -55,8 +55,8 @@ const definitions: readonly FixtureDefinition[] = [
         balance: 4,
         willpower: 0,
       },
-      startingItems: ["wind-blast", "iron-boots"],
-      startingSkills: ["force-palm", "blink-step", "arc-bolt"],
+      startingItems: ["soap", "iron-boots"],
+      startingSkills: ["arc-bolt", "blink-step"],
     },
   },
   {
@@ -97,7 +97,6 @@ await Promise.all(
     await writeFile(path, `${JSON.stringify(fixture, null, 2)}\n`, "utf8");
   }),
 );
-
 process.stdout.write(
   `${JSON.stringify({ ok: true, fixtures: definitions.map(({ name }) => name) })}\n`,
 );

@@ -124,8 +124,7 @@ export function mustApproachTarget(action: TargetedAction, distance: number): bo
     (action.targetMode === "ground" ||
       (action.targetMode === "direction" &&
         action.actionKind === "skill" &&
-        action.visualKind !== "blink-step" &&
-        action.visualKind !== "tidal-charge")) &&
+        action.visualKind !== "blink-step")) &&
     distance > action.castRange + 0.08
   );
 }
