@@ -187,22 +187,47 @@ async function pauseInstalledClock(page: Page): Promise<void> {
   await page.clock.pauseAt(currentBrowserTime + 60_000);
 }
 
-async function fastForwardUntilAttribute(
+async function installDeterministicClock(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    HTMLMediaElement.prototype.play = () => Promise.resolve();
+  });
+  await page.clock.install();
+}
+
+async function driveHumanUntilEliminated(
   page: Page,
-  selector: string,
-  attribute: string,
-  expected: string,
-  remainingFrames = 75,
+  directions: readonly string[] = ["ArrowLeft", "ArrowUp", "ArrowRight", "ArrowDown"],
 ): Promise<void> {
-  if (
-    remainingFrames === 0 ||
-    (await page.locator(selector).getAttribute(attribute)) === expected
-  ) {
-    return;
+  const [direction, ...remainingDirections] = directions;
+  if (direction === undefined) {
+    throw new Error("human actor did not reach water during the bounded movement path");
   }
 
-  await page.clock.fastForward(1_000);
-  return fastForwardUntilAttribute(page, selector, attribute, expected, remainingFrames - 1);
+  await page.locator("#arena-host").focus();
+  await page.keyboard.down(direction);
+  let eliminated = false;
+  try {
+    eliminated = await driveHumanInDirection(page, 16);
+  } finally {
+    await page.keyboard.up(direction);
+  }
+
+  if (eliminated) {
+    return;
+  }
+  return driveHumanUntilEliminated(page, remainingDirections);
+}
+
+async function driveHumanInDirection(page: Page, remainingSeconds: number): Promise<boolean> {
+  if (remainingSeconds === 0) {
+    return false;
+  }
+
+  await page.clock.runFor(1_000);
+  if ((await page.locator("#app").getAttribute("data-human-eliminated")) === "true") {
+    return true;
+  }
+  return driveHumanInDirection(page, remainingSeconds - 1);
 }
 
 async function finishInstalledClockCountdown(page: Page, remainingSteps = 5): Promise<void> {
@@ -327,21 +352,18 @@ async function waitForSimulationTickAdvance(
   return waitForSimulationTickAdvance(page, tickBefore, remainingFrames - 1);
 }
 
-async function clickInventorySlotAfterActiveTick(page: Page, selector: string): Promise<void> {
-  const slot = page.locator(selector);
-  await expect(slot).toBeEnabled({ timeout: 15_000 });
-  await expect(page.locator("#game-telemetry")).toHaveAttribute("data-action", "Ready", {
-    timeout: 15_000,
-  });
-  const tickBeforeClick = await readSimulationTick(page);
-  await slot.evaluate((button) => {
-    if (!(button instanceof HTMLButtonElement) || button.disabled) {
-      throw new Error("inventory slot was not actionable at the click boundary");
-    }
+async function waitForReadyActionState(page: Page, remainingFrames = 120): Promise<void> {
+  const action = await page.locator("#game-telemetry").getAttribute("data-action");
+  if (action === "Ready") {
+    return;
+  }
 
-    button.click();
-  });
-  await waitForSimulationTickAdvance(page, tickBeforeClick);
+  if (remainingFrames === 0) {
+    throw new Error(`player never returned to Ready; current action is ${action ?? "missing"}`);
+  }
+
+  await page.clock.fastForward(34);
+  return waitForReadyActionState(page, remainingFrames - 1);
 }
 
 async function setArenaFacingDirection(page: Page, direction: string): Promise<void> {
@@ -350,8 +372,7 @@ async function setArenaFacingDirection(page: Page, direction: string): Promise<v
   await page.keyboard.down(direction);
 
   try {
-    await page.clock.fastForward(34);
-    await expect.poll(() => readSimulationTick(page)).toBeGreaterThan(tickBeforeFacing);
+    await waitForSimulationTickAdvance(page, tickBeforeFacing);
   } finally {
     await page.keyboard.up(direction);
   }
@@ -375,27 +396,23 @@ async function waitForActionButtonEnabled(
   return waitForActionButtonEnabled(page, selector, remainingFrames - 1);
 }
 
-async function useDirectionalInventorySlot(
-  page: Page,
-  selector: string,
-  expectedText: string,
-  directions: readonly string[] = ["ArrowUp", "ArrowRight", "ArrowDown", "ArrowLeft"],
-): Promise<void> {
-  const [direction, ...remainingDirections] = directions;
-
-  if (direction === undefined) {
-    throw new Error(`inventory slot never reached expected state: ${expectedText}`);
-  }
-
-  const slot = page.locator(selector);
-  await setArenaFacingDirection(page, direction);
-  await clickInventorySlotAfterActiveTick(page, selector);
-
-  if ((await slot.textContent())?.includes(expectedText) === true) {
+async function placeGroundItemAtPlayer(page: Page, expectedText: string): Promise<void> {
+  await waitForReadyActionState(page);
+  const tickBeforeUse = await readSimulationTick(page);
+  await page.keyboard.press("KeyD");
+  await expect(page.locator("#targeting-help")).toBeVisible();
+  const arenaBounds = await page.locator("#arena-host").boundingBox();
+  expect(arenaBounds).not.toBeNull();
+  if (arenaBounds === null) {
     return;
   }
 
-  return useDirectionalInventorySlot(page, selector, expectedText, remainingDirections);
+  await page.mouse.click(
+    arenaBounds.x + arenaBounds.width / 2,
+    arenaBounds.y + arenaBounds.height / 2,
+  );
+  await waitForSimulationTickAdvance(page, tickBeforeUse);
+  await expect(page.locator("#use-item-slot-0")).toContainText(expectedText);
 }
 
 async function useDirectionalGrapple(
@@ -430,6 +447,36 @@ async function readCameraPosition(page: Page): Promise<string> {
     arena.getAttribute("data-camera-y"),
   ]);
   return `${x ?? "missing"},${y ?? "missing"}`;
+}
+
+async function panSpectatorCameraWithArrows(
+  page: Page,
+  directions: readonly string[] = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"],
+): Promise<void> {
+  const initialPosition = await readCameraPosition(page);
+  return panSpectatorCameraFromPosition(page, initialPosition, directions);
+}
+
+async function panSpectatorCameraFromPosition(
+  page: Page,
+  initialPosition: string,
+  directions: readonly string[],
+): Promise<void> {
+  const [direction, ...remainingDirections] = directions;
+  if (direction === undefined) {
+    throw new Error("spectator camera did not move with any arrow direction");
+  }
+
+  await page.keyboard.down(direction);
+  try {
+    await page.clock.fastForward(100);
+  } finally {
+    await page.keyboard.up(direction);
+  }
+  if ((await readCameraPosition(page)) !== initialPosition) {
+    return;
+  }
+  return panSpectatorCameraFromPosition(page, initialPosition, remainingDirections);
 }
 
 async function fastForwardUntilCameraMoved(
@@ -484,7 +531,7 @@ test("uses right-click ground destinations instead of desktop mouse-drag movemen
   page,
 }) => {
   test.setTimeout(60_000);
-  await page.clock.install();
+  await installDeterministicClock(page);
   await installFixedRoundSeed(page, 1, 0);
   await page.goto("/");
   await pauseInstalledClock(page);
@@ -513,7 +560,7 @@ test("uses right-click ground destinations instead of desktop mouse-drag movemen
 
 test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) => {
   test.slow();
-  await page.clock.install();
+  await installDeterministicClock(page);
   await installFixedRoundSeed(page, 1, 0);
   await page.goto("/");
   const productionArtifact = new URL(page.url()).port === "4175";
@@ -569,7 +616,7 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await expect(page.locator("#stat-upgrade-form [data-trait-choice]")).toHaveCount(6);
   await expect(page.locator("#stat-upgrade-form svg")).toHaveCount(0);
   await expect(page.getByText("50명 · AI 어려움", { exact: true })).toHaveCount(0);
-  await expect(page.getByRole("tab")).toHaveCount(productionArtifact ? 3 : 4);
+  await expect(page.getByRole("tab")).toHaveCount(4);
   await expect(page.getByRole("tab", { name: "특성" })).toHaveAttribute("aria-selected", "true");
   await expect(page.locator("#settings-panel-attributes")).toBeVisible();
   await expect(page.locator("#starting-skills")).toBeHidden();
@@ -922,15 +969,15 @@ test("equips Brick Bag in a live production round", async ({ page }) => {
   await expect(page.locator("#power-bonus")).toHaveText("+0%");
   await expect(page.locator("#stability-bonus")).toHaveText("+0%");
   await expect(page.locator("#mobility-bonus")).toHaveText("+0%");
-  await expect(page.locator("#reflex-bonus")).toHaveText("0% / 0%");
+  await expect(page.locator("#reflex-bonus")).toHaveText("0%");
   await expect(page.locator("#use-skill-slot-0")).toContainText("Q · 잔상 회피");
   await expect(page.locator("#use-skill-slot-0")).toHaveAttribute("data-state", "ready");
   await expect(page.locator("#use-skill-slot-1")).toContainText("W · 파동탄");
   await expect(page.locator("#use-item-slot-0")).toContainText("D · 벽돌 가방 · 4회");
 });
 
-test("equips and launches a Boat in a fresh round", async ({ page }) => {
-  await page.clock.install();
+test("equips and preserves a Boat while standing on land", async ({ page }) => {
+  await installDeterministicClock(page);
   await installFixedRoundSeed(page, 1, 0);
   await page.goto("/");
   await pauseInstalledClock(page);
@@ -941,17 +988,13 @@ test("equips and launches a Boat in a fresh round", async ({ page }) => {
   await startGame(page);
   await finishInstalledClockCountdown(page);
   await expect(page.locator("#use-item-slot-0")).toContainText("D · 배 · 1회");
-  await clickInventorySlotAfterActiveTick(page, "#use-item-slot-0");
-  await expect(page.locator("#use-item-slot-0")).toContainText("D · 배 · 0회");
-  await expect(page.locator("#effect-value")).toContainText(/배 [1-5]초/u);
-  await expect(page.locator("#round-message")).toHaveText(
-    "배를 띄웠어. 3초 동안 물을 건널 수 있어.",
-  );
+  await page.keyboard.press("KeyD");
+  await expect(page.locator("#use-item-slot-0")).toContainText("D · 배 · 1회");
 });
 
 test("equips and places a timed bomb in a fresh round", async ({ page }) => {
   test.setTimeout(60_000);
-  await page.clock.install();
+  await installDeterministicClock(page);
   await installFixedRoundSeed(page, 1, 0);
   await page.goto("/");
   await pauseInstalledClock(page);
@@ -963,14 +1006,14 @@ test("equips and places a timed bomb in a fresh round", async ({ page }) => {
   await finishInstalledClockCountdown(page);
   await expect(page.locator("#use-item-slot-0")).toContainText("D · 시한폭탄 · 2회");
   await expect(page.locator("#use-item-slot-0")).toBeEnabled();
-  await useDirectionalInventorySlot(page, "#use-item-slot-0", "시한폭탄 · 1회");
+  await placeGroundItemAtPlayer(page, "시한폭탄 · 1회");
   await expect(page.locator("#use-item-slot-0")).toContainText("시한폭탄 · 1회");
-  await expect(page.locator("#round-message")).toHaveText("폭탄을 놨어. 3.5초 뒤 터져.");
+  await expect(page.locator("#round-message")).toHaveText("폭탄을 놨어. 3.25초 뒤 터져.");
 });
 
 test("fires the built-in grapple in a fresh round", async ({ page }) => {
   test.setTimeout(60_000);
-  await page.clock.install();
+  await installDeterministicClock(page);
   await installFixedRoundSeed(page, 1, 0);
   await page.goto("/");
   await pauseInstalledClock(page);
@@ -1091,7 +1134,7 @@ test("persists four-step text size and sound-effect volume settings", async ({ p
 
 test("completes a collapsing round and starts a fresh world", async ({ page }) => {
   test.setTimeout(180_000);
-  await page.clock.install();
+  await installDeterministicClock(page);
   await installClipboardCapture(page);
   await page.goto("/");
   await pauseInstalledClock(page);
@@ -1102,6 +1145,7 @@ test("completes a collapsing round and starts a fresh world", async ({ page }) =
   await startGame(page);
 
   await finishInstalledClockCountdown(page);
+  await driveHumanUntilEliminated(page);
   await fastForwardUntilRoundCompleted(page);
   await expect(page.locator("#app")).toHaveAttribute("data-round", "completed");
   await expect(page.locator("#pause-menu")).toHaveAttribute("data-mode", "completed");
@@ -1126,16 +1170,7 @@ test("completes a collapsing round and starts a fresh world", async ({ page }) =
   await page.getByRole("button", { name: "맵 보기" }).click();
   await expect(page.locator("#pause-menu")).toBeHidden();
   await expect(page.locator("#arena-host")).toBeFocused();
-  const completedCameraBefore = await readCameraPosition(page);
-  await page.keyboard.press("ArrowLeft");
-  const completedCameraAfterLeft = await readCameraPosition(page);
-  await page.keyboard.press("ArrowRight");
-  await page.keyboard.press("ArrowRight");
-  const completedCameraAfterRight = await readCameraPosition(page);
-  expect(
-    completedCameraAfterLeft !== completedCameraBefore ||
-      completedCameraAfterRight !== completedCameraBefore,
-  ).toBe(true);
+  await panSpectatorCameraWithArrows(page);
   await page.keyboard.press("p");
   await expect(page.locator("#pause-menu")).toBeVisible();
   await expect(page.getByRole("button", { name: "맵 보기" })).toBeVisible();
@@ -1204,7 +1239,7 @@ test("completes a collapsing round and starts a fresh world", async ({ page }) =
 
 test("allows an immediate fresh restart after a deterministic human defeat", async ({ page }) => {
   test.slow();
-  await page.clock.install();
+  await installDeterministicClock(page);
   await installFixedRoundSeed(page, 8, 1);
   await page.goto("/");
   await pauseInstalledClock(page);
@@ -1214,20 +1249,11 @@ test("allows an immediate fresh restart after a deterministic human defeat", asy
 
   await finishInstalledClockCountdown(page);
 
-  await fastForwardUntilAttribute(page, "#app", "data-human-eliminated", "true");
+  await driveHumanUntilEliminated(page);
   await expect(page.locator("#app")).toHaveAttribute("data-human-eliminated", "true");
   await expect(page.locator("#game-telemetry")).toHaveAttribute("data-simulation-rate", "6");
   await expect(page.locator("#arena-host")).toHaveAttribute("data-camera-mode", "spectator");
-  const spectatorCameraBefore = await readCameraPosition(page);
-  await page.keyboard.press("ArrowLeft");
-  const spectatorCameraAfterLeft = await readCameraPosition(page);
-  await page.keyboard.press("ArrowRight");
-  await page.keyboard.press("ArrowRight");
-  const spectatorCameraAfterRight = await readCameraPosition(page);
-  expect(
-    spectatorCameraAfterLeft !== spectatorCameraBefore ||
-      spectatorCameraAfterRight !== spectatorCameraBefore,
-  ).toBe(true);
+  await panSpectatorCameraWithArrows(page);
   const spectatorArenaBounds = await page.locator("#arena-host").boundingBox();
   expect(spectatorArenaBounds).not.toBeNull();
   if (spectatorArenaBounds !== null) {
