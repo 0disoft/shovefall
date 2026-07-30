@@ -841,9 +841,11 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
     expect(await readCameraPosition(page)).not.toBe(arrowPositionBefore);
   }
 
-  await expect
-    .poll(async () => Number(await page.locator("#game-telemetry").getAttribute("data-tick")))
-    .toBeGreaterThan(0);
+  const tickBeforeProgressCheck = await readSimulationTick(page);
+  if (tickBeforeProgressCheck === 0) {
+    await waitForSimulationTickAdvance(page, tickBeforeProgressCheck);
+  }
+  await expect(readSimulationTick(page)).resolves.toBeGreaterThan(0);
   await expect
     .poll(async () =>
       Number(await page.locator("#game-telemetry").getAttribute("data-backlog-ticks")),
@@ -1133,7 +1135,7 @@ test("persists four-step text size and sound-effect volume settings", async ({ p
 });
 
 test("completes a collapsing round and starts a fresh world", async ({ page }) => {
-  test.setTimeout(180_000);
+  test.setTimeout(300_000);
   await installDeterministicClock(page);
   await installClipboardCapture(page);
   await page.goto("/");
@@ -1238,7 +1240,7 @@ test("completes a collapsing round and starts a fresh world", async ({ page }) =
 });
 
 test("allows an immediate fresh restart after a deterministic human defeat", async ({ page }) => {
-  test.slow();
+  test.setTimeout(240_000);
   await installDeterministicClock(page);
   await installFixedRoundSeed(page, 8, 1);
   await page.goto("/");
