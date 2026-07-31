@@ -14,16 +14,7 @@ import {
   type TileId,
   type UpgradeStatId,
 } from "../simulation/contracts";
-import {
-  addVectors,
-  dotVectors,
-  normalizeVector,
-  scaleVector,
-  subtractVectors,
-  type Vector2,
-  vectorLength,
-  ZERO_VECTOR,
-} from "../simulation/math";
+import { type Vector2, ZERO_VECTOR } from "../simulation/math";
 import { RandomStreamSet, type SeedInput, type XorShift32 } from "../simulation/random";
 import { ParticipantSpatialHash } from "../simulation/spatial-hash";
 import {
@@ -494,15 +485,36 @@ function getStalledEscapeMovement(
   terrain: BotNavigationTerrain,
   blockedTileIds: ReadonlySet<TileId>,
 ): Vector2 | undefined {
-  const desired = normalizeVector(desiredDirection);
-  const separation = normalizeVector(getCrowdAvoidance(current, perceivedParticipants));
+  const crowdAvoidance = getCrowdAvoidance(current, perceivedParticipants);
+  const desiredLength = Math.hypot(desiredDirection.x, desiredDirection.y);
+  const desiredX = desiredLength <= 1 ? desiredDirection.x : desiredDirection.x / desiredLength;
+  const desiredY = desiredLength <= 1 ? desiredDirection.y : desiredDirection.y / desiredLength;
+  const desiredIsZero = desiredX === 0 && desiredY === 0;
+  const separationLength = Math.hypot(crowdAvoidance.x, crowdAvoidance.y);
+  const separationX =
+    separationLength <= 1 ? crowdAvoidance.x : crowdAvoidance.x / separationLength;
+  const separationY =
+    separationLength <= 1 ? crowdAvoidance.y : crowdAvoidance.y / separationLength;
+  const separationIsZero = separationX === 0 && separationY === 0;
+  const inwardDeltaX = terrain.center.x - current.position.x;
+  const inwardDeltaY = terrain.center.y - current.position.y;
+  const inwardLength = Math.hypot(inwardDeltaX, inwardDeltaY);
+  const inwardX = inwardLength <= 1 ? inwardDeltaX : inwardDeltaX / inwardLength;
+  const inwardY = inwardLength <= 1 ? inwardDeltaY : inwardDeltaY / inwardLength;
   const actorOffset = (current.actorId % 8) * (Math.PI / 4);
-  const candidates = Array.from({ length: 8 }, (_, index) => {
+  let bestDirection: Vector2 | undefined;
+  let bestScore = Number.NEGATIVE_INFINITY;
+  for (let index = 0; index < 8; index += 1) {
+    const directionX = Math.cos(actorOffset + index * (Math.PI / 4));
+    const directionY = Math.sin(actorOffset + index * (Math.PI / 4));
     const direction = Object.freeze({
-      x: Math.cos(actorOffset + index * (Math.PI / 4)),
-      y: Math.sin(actorOffset + index * (Math.PI / 4)),
+      x: directionX,
+      y: directionY,
     });
-    const endpoint = addVectors(current.position, scaleVector(direction, 1.35));
+    const endpoint = Object.freeze({
+      x: current.position.x + directionX * 1.35,
+      y: current.position.y + directionY * 1.35,
+    });
 
     if (
       !isBotNavigationSegmentClear(
@@ -513,37 +525,39 @@ function getStalledEscapeMovement(
         current.radius,
       )
     ) {
-      return undefined;
+      continue;
     }
 
-    const crowdClearance = perceivedParticipants.reduce((minimum, participant) => {
+    let crowdClearance = CROWD_AVOIDANCE_DISTANCE * 2;
+    for (const participant of perceivedParticipants) {
       if (participant.actorId === current.actorId || !isControllable(participant)) {
-        return minimum;
+        continue;
       }
-      return Math.min(minimum, vectorLength(subtractVectors(endpoint, participant.position)));
-    }, CROWD_AVOIDANCE_DISTANCE * 2);
-    const desiredAlignment = vectorLength(desired) === 0 ? 0 : dotVectors(direction, desired);
-    const separationAlignment =
-      vectorLength(separation) === 0 ? 0 : dotVectors(direction, separation);
-    const inwardAlignment = dotVectors(
-      direction,
-      normalizeVector(subtractVectors(terrain.center, current.position)),
-    );
-    return Object.freeze({
-      direction,
-      score:
-        crowdClearance * 2.4 +
-        separationAlignment * 2.2 +
-        desiredAlignment * 0.55 +
-        inwardAlignment * 0.25 -
-        index * 0.001,
-    });
-  }).filter(
-    (candidate): candidate is Readonly<{ direction: Vector2; score: number }> =>
-      candidate !== undefined,
-  );
+      const offsetX = endpoint.x - participant.position.x;
+      const offsetY = endpoint.y - participant.position.y;
+      const clearance = Math.hypot(offsetX, offsetY);
+      if (clearance < crowdClearance) {
+        crowdClearance = clearance;
+      }
+    }
+    const desiredAlignment = desiredIsZero ? 0 : directionX * desiredX + directionY * desiredY;
+    const separationAlignment = separationIsZero
+      ? 0
+      : directionX * separationX + directionY * separationY;
+    const inwardAlignment = directionX * inwardX + directionY * inwardY;
+    const score =
+      crowdClearance * 2.4 +
+      separationAlignment * 2.2 +
+      desiredAlignment * 0.55 +
+      inwardAlignment * 0.25 -
+      index * 0.001;
+    if (score > bestScore) {
+      bestScore = score;
+      bestDirection = direction;
+    }
+  }
 
-  return candidates.toSorted((left, right) => right.score - left.score)[0]?.direction;
+  return bestDirection;
 }
 
 function getSteeredMovement(
@@ -554,7 +568,14 @@ function getSteeredMovement(
   blockedTileIds: ReadonlySet<TileId>,
   memory: BotMemory,
 ): Vector2 {
-  const desired = normalizeVector(desiredDirection);
+  const desiredLength = Math.hypot(desiredDirection.x, desiredDirection.y);
+  const desired =
+    desiredLength <= 1
+      ? desiredDirection
+      : Object.freeze({
+          x: desiredDirection.x / desiredLength,
+          y: desiredDirection.y / desiredLength,
+        });
   const stalled = memory.stalledDecisionCount >= STALL_DECISION_THRESHOLD;
   let nearbyCrowdCount = 0;
   for (const participant of perceivedParticipants) {

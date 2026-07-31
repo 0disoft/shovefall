@@ -1,8 +1,11 @@
 # Static Release Procedure
 
-- Status: `0.166.0` complete-island cannon-collapse candidate; hosted proof pending
+- Status: `0.167.0` complete-island cannon-collapse candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.166.0`
+- Current product version: `0.167.0`
+
+Product `0.167.0`, simulation `78.0.0`, and content `48.0.0` keep simulation `78.0.0`,
+content `48.0.0`, replay v8, and reports v11. Bot stalled escape now computes desired, separation, inward, and per-candidate direction from raw components instead of allocating addVectors, dotVectors, normalizeVector, scaleVector, subtractVectors, and vectorLength intermediate objects per escape decision, and selects the best candidate with a single-pass maximum-score scan instead of allocating, filtering, sorting, and indexing an eight-element array. Visible bot movement, combat results, replay hash, and balance are unchanged. Hosted proof, complete-collapse pacing, and human readability remain pending.
 
 Product `0.166.0`, simulation `78.0.0`, and content `48.0.0` keep simulation `78.0.0`,
 content `48.0.0`, replay v8, and reports v11. Bot blended movement now computes move-center blend and normalization from raw components instead of allocating addVectors, scaleVector, and normalizeVector intermediate objects per fallback decision. Visible bot movement, combat results, replay hash, and balance are unchanged. Hosted proof, complete-collapse pacing, and human readability remain pending.

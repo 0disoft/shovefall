@@ -9,6 +9,13 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.167.0",
+    title: "막힌 봇 탈출 길도 숫자로 바로 한다요 ㅇㅅㅇ",
+    reason: "봇이 막혀서 빠져나갈 길을 찾을 때마다 여덟 방향을 만들고 정렬했다요.",
+    change:
+      "막힌 탈출 길을 숫자로 바로 계산하고 정렬 대신 가장 좋은 한 길만 고른다요. 봇 행동과 전투 결과, 수치는 그대로다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.166.0",
     title: "혼합 이동 방향도 숫자로 바로 한다요 ㅇㅅㅇ",
     reason: "봇이 이동과 중심 방향을 섞을 때마다 정규화 껍데기를 새로 만들었다요.",
