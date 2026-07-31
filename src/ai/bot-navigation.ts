@@ -4,13 +4,7 @@ import type {
   TileId,
   TileState,
 } from "../simulation/contracts";
-import {
-  dotVectors,
-  normalizeVector,
-  subtractVectors,
-  type Vector2,
-  vectorLength,
-} from "../simulation/math";
+import { type Vector2 } from "../simulation/math";
 import { getStartingMovementMultiplier } from "../simulation/starting-attributes";
 import {
   DEFAULT_GAMEPLAY_TUNING,
@@ -64,15 +58,6 @@ function toTileId(column: number, row: number): TileId {
 function tileCenter(tileId: TileId): Vector2 {
   const [column = 0, row = 0] = tileId.split(":").map(Number);
   return Object.freeze({ x: column + 0.5, y: row + 0.5 });
-}
-
-function rotateVector(vector: Vector2, radians: number): Vector2 {
-  const cosine = Math.cos(radians);
-  const sine = Math.sin(radians);
-  return Object.freeze({
-    x: vector.x * cosine - vector.y * sine,
-    y: vector.x * sine + vector.y * cosine,
-  });
 }
 
 export function createBotNavigationTerrain(tiles: RenderFrameV1["tiles"]): BotNavigationTerrain {
@@ -265,7 +250,10 @@ export function getImmediateBotTileEscape(
       continue;
     }
     const position = Object.freeze({ x: tile.column + 0.5, y: tile.row + 0.5 });
-    const distance = vectorLength(subtractVectors(position, participant.position));
+    const distance = Math.hypot(
+      position.x - participant.position.x,
+      position.y - participant.position.y,
+    );
     const depth = terrain.stableTileDepths.get(tile.tileId) ?? 0;
     if (currentIsStable && (distance > 2.5 || depth === 0)) {
       continue;
@@ -332,10 +320,16 @@ export function findBotNavigationDirection(
   goal: Vector2,
   radius = 0,
 ): Vector2 | undefined {
-  const direct = normalizeVector(subtractVectors(goal, start));
-  if (vectorLength(direct) === 0) {
+  const directX = goal.x - start.x;
+  const directY = goal.y - start.y;
+  const directLength = Math.hypot(directX, directY);
+  if (directLength === 0) {
     return undefined;
   }
+  const direct =
+    directLength <= 1
+      ? Object.freeze({ x: directX, y: directY })
+      : Object.freeze({ x: directX / directLength, y: directY / directLength });
   if (isBotNavigationSegmentClear(terrain, blockedTileIds, start, goal, radius)) {
     return direct;
   }
@@ -349,7 +343,8 @@ export function findBotNavigationDirection(
   const parents = new Map<TileId, TileId | null>([[startId, null]]);
   let queueIndex = 0;
   let bestId = startId;
-  let bestDistance = vectorLength(subtractVectors(tileCenter(startId), goal));
+  const startCenter = tileCenter(startId);
+  let bestDistance = Math.hypot(startCenter.x - goal.x, startCenter.y - goal.y);
   let bestDepth = terrain.stableTileDepths.get(startId) ?? 0;
 
   while (queueIndex < queue.length && queueIndex < MAX_PATH_EXPANSIONS) {
@@ -362,7 +357,8 @@ export function findBotNavigationDirection(
     if (currentTile === undefined) {
       continue;
     }
-    const currentDistance = vectorLength(subtractVectors(tileCenter(currentId), goal));
+    const currentCenter = tileCenter(currentId);
+    const currentDistance = Math.hypot(currentCenter.x - goal.x, currentCenter.y - goal.y);
     const currentDepth = terrain.stableTileDepths.get(currentId) ?? 0;
     if (
       currentDistance < bestDistance ||
@@ -410,7 +406,14 @@ export function findBotNavigationDirection(
       break;
     }
   }
-  return normalizeVector(subtractVectors(waypoint, start));
+  const waypointX = waypoint.x - start.x;
+  const waypointY = waypoint.y - start.y;
+  const waypointLength = Math.hypot(waypointX, waypointY);
+  if (waypointLength <= 1) {
+    return Object.freeze({ x: waypointX, y: waypointY });
+  }
+  const waypointInverse = 1 / waypointLength;
+  return Object.freeze({ x: waypointX * waypointInverse, y: waypointY * waypointInverse });
 }
 
 function getBotDodgeDistance(
@@ -432,22 +435,24 @@ function getDodgeLandingDepth(
   blockedTileIds: ReadonlySet<TileId>,
   gameplayTuning: GameplayTuningV1,
 ): number | undefined {
-  const normalizedDirection = normalizeVector(direction);
-  if (vectorLength(normalizedDirection) === 0) {
+  const directionLength = Math.hypot(direction.x, direction.y);
+  if (directionLength === 0) {
     return undefined;
   }
+  const normalizedX = directionLength <= 1 ? direction.x : direction.x / directionLength;
+  const normalizedY = directionLength <= 1 ? direction.y : direction.y / directionLength;
   const distance = getBotDodgeDistance(participant, gameplayTuning);
   const sampleCount = Math.max(1, Math.ceil(distance / DODGE_SAFETY_SAMPLE_DISTANCE));
   for (let sample = 1; sample <= sampleCount; sample += 1) {
     const sampleRatio = distance * (sample / sampleCount);
-    const positionX = participant.position.x + normalizedDirection.x * sampleRatio;
-    const positionY = participant.position.y + normalizedDirection.y * sampleRatio;
+    const positionX = participant.position.x + normalizedX * sampleRatio;
+    const positionY = participant.position.y + normalizedY * sampleRatio;
     if (!isPositionTraversable(terrain, blockedTileIds, positionX, positionY, participant.radius)) {
       return undefined;
     }
   }
-  const landingX = participant.position.x + normalizedDirection.x * distance;
-  const landingY = participant.position.y + normalizedDirection.y * distance;
+  const landingX = participant.position.x + normalizedX * distance;
+  const landingY = participant.position.y + normalizedY * distance;
   return terrain.stableTileDepths.get(toTileId(Math.floor(landingX), Math.floor(landingY)));
 }
 
@@ -458,14 +463,25 @@ export function getSafeBotDodgeDirection(
   blockedTileIds: ReadonlySet<TileId>,
   gameplayTuning: GameplayTuningV1 = DEFAULT_GAMEPLAY_TUNING,
 ): Vector2 | undefined {
-  const preferred = normalizeVector(preferredDirection);
-  if (vectorLength(preferred) === 0) {
+  const preferredLength = Math.hypot(preferredDirection.x, preferredDirection.y);
+  if (preferredLength === 0) {
     return undefined;
   }
+  const preferredX =
+    preferredLength <= 1 ? preferredDirection.x : preferredDirection.x / preferredLength;
+  const preferredY =
+    preferredLength <= 1 ? preferredDirection.y : preferredDirection.y / preferredLength;
   let safestDirection: Vector2 | undefined;
   let bestScore = Number.NEGATIVE_INFINITY;
   for (const radians of DODGE_DIRECTION_OFFSETS) {
-    const candidate = normalizeVector(rotateVector(preferred, radians));
+    const cosine = Math.cos(radians);
+    const sine = Math.sin(radians);
+    const rotatedX = preferredX * cosine - preferredY * sine;
+    const rotatedY = preferredX * sine + preferredY * cosine;
+    const rotatedLength = Math.hypot(rotatedX, rotatedY);
+    const candidateX = rotatedLength <= 1 ? rotatedX : rotatedX / rotatedLength;
+    const candidateY = rotatedLength <= 1 ? rotatedY : rotatedY / rotatedLength;
+    const candidate = Object.freeze({ x: candidateX, y: candidateY });
     const landingDepth = getDodgeLandingDepth(
       participant,
       candidate,
@@ -476,7 +492,7 @@ export function getSafeBotDodgeDirection(
     if (landingDepth === undefined) {
       continue;
     }
-    const score = dotVectors(candidate, preferred) * 8 + landingDepth;
+    const score = (candidateX * preferredX + candidateY * preferredY) * 8 + landingDepth;
     if (score > bestScore) {
       safestDirection = candidate;
       bestScore = score;
