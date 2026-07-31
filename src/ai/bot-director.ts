@@ -530,13 +530,19 @@ function getSteeredMovement(
 ): Vector2 {
   const desired = normalizeVector(desiredDirection);
   const stalled = memory.stalledDecisionCount >= STALL_DECISION_THRESHOLD;
-  const nearbyCrowdCount = perceivedParticipants.filter(
-    (participant) =>
+  let nearbyCrowdCount = 0;
+  for (const participant of perceivedParticipants) {
+    if (
       participant.actorId !== current.actorId &&
       isControllable(participant) &&
-      vectorLength(subtractVectors(participant.position, current.position)) <
-        CROWD_AVOIDANCE_DISTANCE,
-  ).length;
+      Math.hypot(
+        participant.position.x - current.position.x,
+        participant.position.y - current.position.y,
+      ) < CROWD_AVOIDANCE_DISTANCE
+    ) {
+      nearbyCrowdCount += 1;
+    }
+  }
   if (stalled && (nearbyCrowdCount >= 2 || vectorLength(desired) === 0)) {
     const escape = getStalledEscapeMovement(
       current,
