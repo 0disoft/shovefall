@@ -1,8 +1,11 @@
 # Static Release Procedure
 
-- Status: `0.123.0` complete-island cannon-collapse candidate; hosted proof pending
+- Status: `0.124.0` complete-island cannon-collapse candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.123.0`
+- Current product version: `0.124.0`
+
+Product `0.124.0`, simulation `78.0.0`, and content `48.0.0` keep simulation `78.0.0`,
+content `48.0.0`, replay v8, and reports v11. The kill-reward trait dialog now traps Tab and Shift+Tab within its focusable choices and save button so keyboard focus cannot leave the modal while it is open. Combat results, replay hash, and balance are unchanged. Hosted proof, complete-collapse pacing, and human readability remain pending.
 
 Product `0.123.0`, simulation `78.0.0`, and content `48.0.0` keep simulation `78.0.0`,
 content `48.0.0`, replay v8, and reports v11. Saving a kill-reward trait upgrade now triggers a brief gold vignette pulse so growth feels more immediate. The effect respects the browser reduced-motion preference and is presentation-only. Combat results, replay hash, and balance are unchanged. Hosted proof, complete-collapse pacing, and human readability remain pending.

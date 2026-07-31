@@ -2034,6 +2034,29 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   closeVersionHistoryButton.addEventListener("click", closeVersionHistory);
 
   const handleGlobalKeyboard = (event: KeyboardEvent): void => {
+    if (event.key === "Tab" && root.dataset.upgrade === "pending") {
+      const focusable = statUpgradeOverlay.querySelectorAll<HTMLElement>(
+        'input[name="upgradeChoice"]:not(:disabled), button:not(:disabled)',
+      );
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (first === undefined || last === undefined) {
+        event.preventDefault();
+        return;
+      }
+      const active = document.activeElement;
+      if (event.shiftKey) {
+        if (active === first || !statUpgradeOverlay.contains(active)) {
+          event.preventDefault();
+          last.focus({ preventScroll: true });
+        }
+      } else if (active === last || !statUpgradeOverlay.contains(active)) {
+        event.preventDefault();
+        first.focus({ preventScroll: true });
+      }
+      return;
+    }
+
     const spectatorCameraActive =
       root.dataset.screen === "arena" &&
       (root.dataset.humanEliminated === "true" || root.dataset.round === "completed");

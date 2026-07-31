@@ -9,6 +9,14 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.124.0",
+    title: "특성 창에서 탭이 밖으로 안 나간다요 ㅇㅅㅇ",
+    reason:
+      "전투 특성 창이 네이티브 대화상자가 아니라서 탭 키를 누르면 창 밖으로 포커스가 튀어 나갔다요.",
+    change:
+      "전투 특성 창이 열려 있을 때 탭과 시프트+탭이 창 안의 선택지랑 저장 버튼 사이에서만 돌게 막았다요. 전투 결과와 수치는 그대로다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.123.0",
     title: "특성을 고르면 황금빛이 훅 지나간다요 ㅇㅅㅇ",
     reason: "처치 보상으로 특성을 올려도 화면이 조용해서 성장한 느낌이 잘 안 들었다요.",
