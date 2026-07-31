@@ -1319,9 +1319,16 @@ export class BotDirector {
           memory.personality === "Survivor" ||
           memory.personality === "Opportunist")
       ) {
-        const awayFromTarget = normalizeVector(
-          subtractVectors(current.position, bestTarget.position),
-        );
+        const awayFromTargetX = current.position.x - bestTarget.position.x;
+        const awayFromTargetY = current.position.y - bestTarget.position.y;
+        const awayFromTargetLength = Math.hypot(awayFromTargetX, awayFromTargetY);
+        const awayFromTarget =
+          awayFromTargetLength <= 1
+            ? Object.freeze({ x: awayFromTargetX, y: awayFromTargetY })
+            : Object.freeze({
+                x: awayFromTargetX / awayFromTargetLength,
+                y: awayFromTargetY / awayFromTargetLength,
+              });
         const towardCenter =
           findBotNavigationDirection(
             terrain,
@@ -1330,14 +1337,19 @@ export class BotDirector {
             terrain.center,
             current.radius,
           ) ?? ZERO_VECTOR;
-        const retreatDirection = normalizeVector(
-          addVectors(scaleVector(awayFromTarget, 0.75), scaleVector(towardCenter, 0.25)),
-        );
-        const safeRetreatDirection = vectorLength(retreatDirection) > 0 ? retreatDirection : move;
-        const soapTargetPosition = addVectors(
-          current.position,
-          scaleVector(safeRetreatDirection, SOAP_PLACEMENT_DISTANCE),
-        );
+        const retreatX = awayFromTarget.x * 0.75 + towardCenter.x * 0.25;
+        const retreatY = awayFromTarget.y * 0.75 + towardCenter.y * 0.25;
+        const retreatLength = Math.hypot(retreatX, retreatY);
+        const retreatDirection =
+          retreatLength <= 1
+            ? Object.freeze({ x: retreatX, y: retreatY })
+            : Object.freeze({ x: retreatX / retreatLength, y: retreatY / retreatLength });
+        const safeRetreatDirection =
+          retreatDirection.x !== 0 || retreatDirection.y !== 0 ? retreatDirection : move;
+        const soapTargetPosition = Object.freeze({
+          x: current.position.x + safeRetreatDirection.x * SOAP_PLACEMENT_DISTANCE,
+          y: current.position.y + safeRetreatDirection.y * SOAP_PLACEMENT_DISTANCE,
+        });
         memory.soapEscapeDirection = safeRetreatDirection;
         memory.soapEscapeUntilTick = tick + SOAP_ESCAPE_TICKS;
         return createDecision(
