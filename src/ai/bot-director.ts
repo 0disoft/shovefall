@@ -1076,7 +1076,16 @@ export class BotDirector {
             continue;
           }
 
-          const awayFromItem = normalizeVector(subtractVectors(current.position, item.position));
+          const awayFromItemX = current.position.x - item.position.x;
+          const awayFromItemY = current.position.y - item.position.y;
+          const awayFromItemLength = Math.hypot(awayFromItemX, awayFromItemY);
+          const awayFromItem =
+            awayFromItemLength <= 1
+              ? Object.freeze({ x: awayFromItemX, y: awayFromItemY })
+              : Object.freeze({
+                  x: awayFromItemX / awayFromItemLength,
+                  y: awayFromItemY / awayFromItemLength,
+                });
           const towardCenter =
             findBotNavigationDirection(
               terrain,
@@ -1086,14 +1095,17 @@ export class BotDirector {
               current.radius,
             ) ?? current.facing;
           const placementDirection =
-            occupiedSlot.definitionId === "soap" && vectorLength(awayFromItem) > 0
+            occupiedSlot.definitionId === "soap" && (awayFromItem.x !== 0 || awayFromItem.y !== 0)
               ? awayFromItem
               : towardCenter;
           const definition = getItemDefinition(occupiedSlot.definitionId);
           const placementDistance = Math.min(1, definition.castRange);
           const placementTarget =
             definition.targetMode === "ground"
-              ? addVectors(current.position, scaleVector(placementDirection, placementDistance))
+              ? Object.freeze({
+                  x: current.position.x + placementDirection.x * placementDistance,
+                  y: current.position.y + placementDirection.y * placementDistance,
+                })
               : null;
 
           if (occupiedSlot.definitionId === "soap") {
