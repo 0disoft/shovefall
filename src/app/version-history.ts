@@ -9,6 +9,13 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.125.0",
+    title: "처치하면 상쾌한 소리가 난다요 ㅇㅅㅇ",
+    reason: "적을 처치해도 소리가 없어서 득점한 느낌이 잘 안 들었다요.",
+    change:
+      "내가 처치해서 특성 포인트를 받으면 짧고 맑은 소리를 낸다요. 다른 참가자의 처치에는 소리가 나지 않는다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.124.0",
     title: "특성 창에서 탭이 밖으로 안 나간다요 ㅇㅅㅇ",
     reason:

@@ -211,6 +211,15 @@ const SOUND_DEFINITIONS: Partial<Record<SimulationEventKind, SoundDefinition>> =
   }),
 });
 
+const STAT_POINT_EARNED_SOUND: SoundDefinition = Object.freeze({
+  frequency: 560,
+  endFrequency: 880,
+  durationSeconds: 0.18,
+  gain: 0.07,
+  priority: 4,
+  oscillatorType: "triangle",
+});
+
 const GENERIC_SKILL_USE_SOUND: SoundDefinition = Object.freeze({
   frequency: 390,
   endFrequency: 660,
@@ -614,6 +623,11 @@ export function createAudioFeedback(
               : (SKILL_HIT_CUES[event.skillDefinitionId] ?? [GENERIC_SKILL_HIT_SOUND]),
             event.actorId === 1 || event.targetActorId === 1 ? 2 : 0,
           );
+          continue;
+        }
+
+        if (event.kind === "stat-point-earned" && event.actorId === 1) {
+          play(STAT_POINT_EARNED_SOUND);
           continue;
         }
 
