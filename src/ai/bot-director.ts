@@ -282,15 +282,6 @@ export function getBotDifficultyProfile(difficulty: BotDifficulty): BotDifficult
   return BOT_DIFFICULTY_PROFILES[difficulty];
 }
 
-function rotateVector(vector: Vector2, radians: number): Vector2 {
-  const cosine = Math.cos(radians);
-  const sine = Math.sin(radians);
-  return Object.freeze({
-    x: vector.x * cosine - vector.y * sine,
-    y: vector.x * sine + vector.y * cosine,
-  });
-}
-
 function getPerpendicularTowardCenter(
   threatFacing: Vector2,
   selfPosition: Vector2,
@@ -1204,7 +1195,13 @@ export class BotDirector {
       memory.targetLockUntilTick = tick + TARGET_LOCK_TICKS;
     }
 
-    const direct = normalizeVector(subtractVectors(bestTarget.position, perceived.position));
+    const directX = bestTarget.position.x - perceived.position.x;
+    const directY = bestTarget.position.y - perceived.position.y;
+    const directLength = Math.hypot(directX, directY);
+    const direct =
+      directLength <= 1
+        ? Object.freeze({ x: directX, y: directY })
+        : Object.freeze({ x: directX / directLength, y: directY / directLength });
     const pathDirection =
       findBotNavigationDirection(
         terrain,
@@ -1225,7 +1222,15 @@ export class BotDirector {
       memory.stalledDecisionCount > 0
         ? 0
         : (memory.jitter.nextFloat() * 2 - 1) * personality.jitterRadians;
-    const jitteredPath = normalizeVector(rotateVector(pathDirection, jitter));
+    const jitteredCosine = Math.cos(jitter);
+    const jitteredSine = Math.sin(jitter);
+    const jitteredX = pathDirection.x * jitteredCosine - pathDirection.y * jitteredSine;
+    const jitteredY = pathDirection.x * jitteredSine + pathDirection.y * jitteredCosine;
+    const jitteredLength = Math.hypot(jitteredX, jitteredY);
+    const jitteredPath =
+      jitteredLength <= 1
+        ? Object.freeze({ x: jitteredX, y: jitteredY })
+        : Object.freeze({ x: jitteredX / jitteredLength, y: jitteredY / jitteredLength });
     const move = getSteeredMovement(
       current,
       jitteredPath,
