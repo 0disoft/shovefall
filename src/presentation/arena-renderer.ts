@@ -1256,16 +1256,14 @@ function syncProjectileSprites(
         shot.origin.y + (shot.target.y - shot.origin.y) * progress,
         projection,
       );
-      const direction = projectArenaVector({
-        x: shot.target.x - shot.origin.x,
-        y: shot.target.y - shot.origin.y,
-      });
+      const directionX = shot.target.x - shot.origin.x;
+      const directionY = (shot.target.y - shot.origin.y) * ARENA_DEPTH_SCALE;
       const arc = reducedMotion ? 0 : Math.sin(Math.PI * progress) * projection.tileWidth * 1.35;
       const size = clamp(projection.tileWidth * (0.9 + progress * 0.48), 34, 88);
       sprite.position.set(projected.x, projected.y - arc);
       sprite.width = size;
       sprite.height = size;
-      sprite.rotation = Math.atan2(direction.y, direction.x) - Math.PI / 4;
+      sprite.rotation = Math.atan2(directionY, directionX) - Math.PI / 4;
       sprite.visible = true;
     }
   }
@@ -1996,22 +1994,25 @@ function drawParticipant(
   );
 
   if (motionPose.moving && !hasBoat) {
-    const velocity = projectArenaVector(participant.velocity);
-    const speed = Math.hypot(velocity.x, velocity.y);
+    const velocityX = participant.velocity.x;
+    const velocityY = participant.velocity.y * ARENA_DEPTH_SCALE;
+    const speed = Math.hypot(velocityX, velocityY);
 
     if (speed > Number.EPSILON) {
-      const direction = { x: velocity.x / speed, y: velocity.y / speed };
-      const perpendicular = { x: -direction.y, y: direction.x };
+      const directionX = velocityX / speed;
+      const directionY = velocityY / speed;
+      const perpendicularX = -directionY;
+      const perpendicularY = directionX;
       const footSpacing = visualRadius * 0.34;
       const stride = motionPose.stridePhase * visualRadius * 0.22;
 
       for (const side of [-1, 1]) {
-        const footX = x + perpendicular.x * footSpacing * side + direction.x * stride * side;
+        const footX = x + perpendicularX * footSpacing * side + directionX * stride * side;
         const footY =
           y +
           visualRadius * 0.62 +
-          perpendicular.y * footSpacing * side +
-          direction.y * stride * side;
+          perpendicularY * footSpacing * side +
+          directionY * stride * side;
         const alpha = side === Math.sign(motionPose.stridePhase || 1) ? 0.42 : 0.2;
         graphics
           .ellipse(footX, footY, visualRadius * 0.22, Math.max(1.5, visualRadius * 0.08))

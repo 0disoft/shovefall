@@ -9,6 +9,13 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.143.0",
+    title: "포탄 회전과 발자국도 껍데기 없이 그린다요 ㅇㅅㅇ",
+    reason: "포탄 방향과 걷는 발자국을 그릴 때마다 잠깐 쓸 껍데기를 새로 만들었다요.",
+    change:
+      "포탄 회전과 발자국을 숫자로 바로 계산해서 그린다요. 그림과 전투 결과, 수치는 그대로다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.142.0",
     title: "행동 표시도 껍데기 없이 받는다요 ㅇㅅㅇ",
     reason: "참가자 행동 표시를 그릴 때마다 방향과 속도 껍데기를 두 개 새로 만들었다요.",
