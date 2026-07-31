@@ -68,6 +68,26 @@ const DEPTH_SORT_BRICK_WALL = 0;
 const DEPTH_SORT_PARTICIPANT = 10_000_000;
 const DEPTH_SORT_TREE = 20_000_000;
 
+type DepthSortEntry =
+  | {
+      readonly kind: "participant";
+      readonly depth: number;
+      readonly sortKey: number;
+      readonly participant: RenderParticipantV1;
+    }
+  | {
+      readonly kind: "brick-wall";
+      readonly depth: number;
+      readonly sortKey: number;
+      readonly wall: BrickWallState;
+    }
+  | {
+      readonly kind: "tree";
+      readonly depth: number;
+      readonly sortKey: number;
+      readonly tree: TreeObstacleState;
+    };
+
 export interface ArenaRenderer {
   consumeEvents(events: readonly SimulationEventV1[], frame: RenderFrameV1): void;
   destroy(): void;
@@ -2896,29 +2916,35 @@ export async function createArenaRenderer(
       );
     }
 
-    const depthEntries = [
-      ...latestFrame.participants.map((participant) => ({
-        kind: "participant" as const,
+    const depthEntries: DepthSortEntry[] = [];
+    for (const participant of latestFrame.participants) {
+      depthEntries.push({
+        kind: "participant",
         depth:
           participant.previousPosition.y +
           (participant.position.y - participant.previousPosition.y) * latestInterpolationAlpha +
           (participant.action === "Anchored" ? 0.45 : 0),
         sortKey: DEPTH_SORT_PARTICIPANT + participant.actorId,
         participant,
-      })),
-      ...latestFrame.brickWalls.map((wall) => ({
-        kind: "brick-wall" as const,
+      });
+    }
+    for (const wall of latestFrame.brickWalls) {
+      depthEntries.push({
+        kind: "brick-wall",
         depth: wall.row + 0.72,
         sortKey: DEPTH_SORT_BRICK_WALL + tileKey(wall.column, wall.row),
         wall,
-      })),
-      ...latestFrame.trees.map((tree) => ({
-        kind: "tree" as const,
+      });
+    }
+    for (const tree of latestFrame.trees) {
+      depthEntries.push({
+        kind: "tree",
         depth: tree.row + 0.62,
         sortKey: DEPTH_SORT_TREE + tileKey(tree.column, tree.row),
         tree,
-      })),
-    ].toSorted((left, right) => left.depth - right.depth || left.sortKey - right.sortKey);
+      });
+    }
+    depthEntries.sort((left, right) => left.depth - right.depth || left.sortKey - right.sortKey);
     const humanParticipant = lastFrameHuman;
     const hasCharacterArtwork =
       visualAssets !== null &&
