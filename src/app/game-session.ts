@@ -200,9 +200,17 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
 
   const setLatestFrame = (frame: RenderFrameV1 | undefined): void => {
     latestFrame = frame;
-    supportedGroundTileIds = new Set(
-      frame?.tiles.filter(({ state }) => state !== "Void").map(({ tileId }) => tileId) ?? [],
-    );
+    if (frame === undefined) {
+      supportedGroundTileIds = new Set();
+    } else {
+      const nextTileIds = new Set<string>();
+      for (const tile of frame.tiles) {
+        if (tile.state !== "Void") {
+          nextTileIds.add(tile.tileId);
+        }
+      }
+      supportedGroundTileIds = nextTileIds;
+    }
   };
 
   const isSupportedGroundTarget = (target: Vector2): boolean => {
