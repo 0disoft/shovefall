@@ -9,6 +9,13 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.145.0",
+    title: "봇 길 찾기도 껍데기를 줄였다요 ㅇㅅㅇ",
+    reason: "봇이 갈 수 있는지 검사할 때마다 잠깐 쓸 껍데기를 여러 개 새로 만들었다요.",
+    change:
+      "길 막힘 검사와 구간 샘플링에서 껍데기를 만들지 않고 숫자로 바로 검사한다요. 봇 행동과 전투 결과, 수치는 그대로다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.144.0",
     title: "효과 화살표도 껍데기 없이 그린다요 ㅇㅅㅇ",
     reason: "스킬과 폭탄 효과 화살표를 그릴 때마다 방향 껍데기를 새로 만들었다요.",

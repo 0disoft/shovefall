@@ -1,11 +1,11 @@
 # Static Release Procedure
 
-- Status: `0.144.0` complete-island cannon-collapse candidate; hosted proof pending
+- Status: `0.145.0` complete-island cannon-collapse candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.144.0`
+- Current product version: `0.145.0`
 
-Product `0.144.0`, simulation `78.0.0`, and content `48.0.0` keep simulation `78.0.0`,
-content `48.0.0`, replay v8, and reports v11. Skill, bomb, and item effect arrows now compute direction from raw components instead of allocating a projected vector per effect, and the projectArenaVector helper is no longer imported by the renderer. Visible effect arrows, combat results, replay hash, and balance are unchanged. Hosted proof, complete-collapse pacing, and human readability remain pending.
+Product `0.145.0`, simulation `78.0.0`, and content `48.0.0` keep simulation `78.0.0`,
+content `48.0.0`, replay v8, and reports v11. Bot navigation traversal and segment-clear checks now avoid allocating probe arrays and intermediate vector objects per sample, reducing AI decision allocation. Visible bot movement and navigation, combat results, replay hash, and balance are unchanged. Hosted proof, complete-collapse pacing, and human readability remain pending.
 
 Product `0.125.0`, simulation `78.0.0`, and content `48.0.0` keep simulation `78.0.0`,
 content `48.0.0`, replay v8, and reports v11. Earning a stat point from a human kill now plays a brief bright cue, adding audible reward feedback to the existing kill flash. The cue fires only for the human player's kills and is presentation-only. Combat results, replay hash, and balance are unchanged. Hosted proof, complete-collapse pacing, and human readability remain pending.

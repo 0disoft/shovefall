@@ -161,15 +161,32 @@ function isPositionTraversable(
   radius: number,
 ): boolean {
   const clearance = Math.max(0, radius * 0.92);
-  const probes = [
-    position,
-    { x: position.x + clearance, y: position.y },
-    { x: position.x - clearance, y: position.y },
-    { x: position.x, y: position.y + clearance },
-    { x: position.x, y: position.y - clearance },
-  ];
-  return probes.every(({ x, y }) =>
-    isTileTraversable(terrain, blockedTileIds, Math.floor(x), Math.floor(y)),
+  return (
+    isTileTraversable(terrain, blockedTileIds, Math.floor(position.x), Math.floor(position.y)) &&
+    isTileTraversable(
+      terrain,
+      blockedTileIds,
+      Math.floor(position.x + clearance),
+      Math.floor(position.y),
+    ) &&
+    isTileTraversable(
+      terrain,
+      blockedTileIds,
+      Math.floor(position.x - clearance),
+      Math.floor(position.y),
+    ) &&
+    isTileTraversable(
+      terrain,
+      blockedTileIds,
+      Math.floor(position.x),
+      Math.floor(position.y + clearance),
+    ) &&
+    isTileTraversable(
+      terrain,
+      blockedTileIds,
+      Math.floor(position.x),
+      Math.floor(position.y - clearance),
+    )
   );
 }
 
@@ -192,12 +209,17 @@ export function isBotNavigationSegmentClear(
   end: Vector2,
   radius = 0,
 ): boolean {
-  const delta = subtractVectors(end, start);
-  const distance = vectorLength(delta);
+  const deltaX = end.x - start.x;
+  const deltaY = end.y - start.y;
+  const distance = Math.hypot(deltaX, deltaY);
   const sampleCount = Math.max(1, Math.ceil(distance / PATH_SAMPLE_DISTANCE));
 
   for (let sample = 0; sample <= sampleCount; sample += 1) {
-    const position = addVectors(start, scaleVector(delta, sample / sampleCount));
+    const ratio = sample / sampleCount;
+    const position: Vector2 = {
+      x: start.x + deltaX * ratio,
+      y: start.y + deltaY * ratio,
+    };
     if (!isPositionTraversable(terrain, blockedTileIds, position, radius)) {
       return false;
     }
