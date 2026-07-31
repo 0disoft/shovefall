@@ -292,6 +292,8 @@ const CAMERA_SHAKE_FULL_STRENGTH_DISTANCE = 4.5;
 const CAMERA_SHAKE_FALLOFF_DISTANCE = 14;
 const CAMERA_SHAKE_DECAY_PER_FRAME = 0.86;
 const CAMERA_SHAKE_MINIMUM = 0.02;
+const PROJECTION_ANGLE_DATASET = ARENA_CAMERA_ELEVATION_DEGREES.toString();
+const PROJECTION_SCALE_Y_DATASET = ARENA_DEPTH_SCALE.toFixed(4);
 
 function getCameraShakeMagnitude(
   event: SimulationEventV1,
@@ -2689,8 +2691,8 @@ export async function createArenaRenderer(
     host.dataset.cameraY = presentationCamera.y.toFixed(2);
     host.dataset.cameraMode = lastFrameSpectator ? "spectator" : "follow";
     host.dataset.cameraShake = shakeActive ? cameraShakeIntensity.toFixed(2) : "0.00";
-    host.dataset.projectionAngle = ARENA_CAMERA_ELEVATION_DEGREES.toString();
-    host.dataset.projectionScaleY = ARENA_DEPTH_SCALE.toFixed(4);
+    host.dataset.projectionAngle = PROJECTION_ANGLE_DATASET;
+    host.dataset.projectionScaleY = PROJECTION_SCALE_Y_DATASET;
     host.dataset.cliffDepth = projection.cliffDepth.toFixed(2);
     items.clear();
     artillery.clear();
