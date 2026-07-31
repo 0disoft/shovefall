@@ -9,6 +9,14 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.120.0",
+    title: "겹치는 그림을 고를 때 글자를 덜 만든다요 ㅇㅅㅇ",
+    reason:
+      "매 프레임마다 참가자·벽·나무를 그릴 순서를 정하려고 문자열 키를 만들고 글자끼리 비교해서, 60명이 움직일 때 정렬이 무거웠다요.",
+    change:
+      "그림 순서 정렬에 숫자 키를 쓰고 문자열 보간과 글자 비교를 없앴다요. 그려지는 순서와 모양, 전투 결과와 수치는 그대로다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.119.0",
     title: "섬이 그려질 때 문자열을 덜 만든다요 ㅇㅅㅇ",
     reason:

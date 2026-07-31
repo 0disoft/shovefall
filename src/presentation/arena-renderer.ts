@@ -62,6 +62,12 @@ export function tileKey(column: number, row: number): number {
   return (column + TILE_KEY_OFFSET) * TILE_KEY_STRIDE + (row + TILE_KEY_OFFSET);
 }
 
+// Depth-sort tie-break keys keep the alphabetic kind order (brick-wall, participant, tree)
+// without allocating per-frame sort strings or calling localeCompare.
+const DEPTH_SORT_BRICK_WALL = 0;
+const DEPTH_SORT_PARTICIPANT = 10_000_000;
+const DEPTH_SORT_TREE = 20_000_000;
+
 export interface ArenaRenderer {
   consumeEvents(events: readonly SimulationEventV1[], frame: RenderFrameV1): void;
   destroy(): void;
@@ -2867,24 +2873,22 @@ export async function createArenaRenderer(
           participant.previousPosition.y +
           (participant.position.y - participant.previousPosition.y) * latestInterpolationAlpha +
           (participant.action === "Anchored" ? 0.45 : 0),
-        sortKey: `participant:${participant.actorId.toString().padStart(4, "0")}`,
+        sortKey: DEPTH_SORT_PARTICIPANT + participant.actorId,
         participant,
       })),
       ...latestFrame.brickWalls.map((wall) => ({
         kind: "brick-wall" as const,
         depth: wall.row + 0.72,
-        sortKey: `wall:${wall.tileId}`,
+        sortKey: DEPTH_SORT_BRICK_WALL + tileKey(wall.column, wall.row),
         wall,
       })),
       ...latestFrame.trees.map((tree) => ({
         kind: "tree" as const,
         depth: tree.row + 0.62,
-        sortKey: `tree:${tree.tileId}`,
+        sortKey: DEPTH_SORT_TREE + tileKey(tree.column, tree.row),
         tree,
       })),
-    ].toSorted(
-      (left, right) => left.depth - right.depth || left.sortKey.localeCompare(right.sortKey),
-    );
+    ].toSorted((left, right) => left.depth - right.depth || left.sortKey - right.sortKey);
     const humanParticipant = latestFrame.participants.find(
       ({ actorId }) => actorId === latestHumanActorId,
     );
