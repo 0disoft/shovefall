@@ -778,12 +778,18 @@ export class BotDirector {
         }
         memory.nextDecisionTick = Math.min(memory.nextDecisionTick, tick + 1);
       } else if (escapingOwnBomb) {
-        const awayFromBomb = normalizeVector(
-          subtractVectors(current.position, memory.bombEscapePosition ?? current.position),
-        );
+        const bombEscapePosition = memory.bombEscapePosition ?? current.position;
+        const awayFromBombX = current.position.x - bombEscapePosition.x;
+        const awayFromBombY = current.position.y - bombEscapePosition.y;
+        const awayFromBombLength = Math.hypot(awayFromBombX, awayFromBombY);
         memory.intent =
-          vectorLength(awayFromBomb) > 0
-            ? awayFromBomb
+          awayFromBombX !== 0 || awayFromBombY !== 0
+            ? awayFromBombLength <= 1
+              ? Object.freeze({ x: awayFromBombX, y: awayFromBombY })
+              : Object.freeze({
+                  x: awayFromBombX / awayFromBombLength,
+                  y: awayFromBombY / awayFromBombLength,
+                })
             : (findBotNavigationDirection(
                 terrain,
                 blockedTileIds,
