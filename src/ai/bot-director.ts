@@ -951,7 +951,10 @@ export class BotDirector {
       .filter((candidate) => candidate.actorId !== perceived.actorId && isControllable(candidate))
       .map((candidate) => ({
         candidate,
-        distance: vectorLength(subtractVectors(candidate.position, perceived.position)),
+        distance: Math.hypot(
+          candidate.position.x - perceived.position.x,
+          candidate.position.y - perceived.position.y,
+        ),
       }))
       .toSorted(
         (left, right) =>
@@ -964,7 +967,10 @@ export class BotDirector {
     const itemCandidates = perceivedItems
       .map((item) => ({
         item,
-        distance: vectorLength(subtractVectors(item.position, perceived.position)),
+        distance: Math.hypot(
+          item.position.x - perceived.position.x,
+          item.position.y - perceived.position.y,
+        ),
       }))
       .filter(
         ({ item, distance }) =>
