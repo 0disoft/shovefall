@@ -1636,6 +1636,50 @@ button:disabled {
   }
 }
 
+.kill-flash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  box-shadow: inset 0 0 clamp(70px, 18vw, 180px) rgba(255, 224, 130, 0.8);
+  transition: none;
+}
+
+.kill-flash.is-active {
+  animation: kill-flash-fade 0.5s ease-out forwards;
+}
+
+.kill-flash.is-down {
+  box-shadow: inset 0 0 clamp(90px, 26vw, 260px) rgba(196, 36, 36, 0.92);
+  animation: kill-flash-down 1.1s ease-out forwards;
+}
+
+@keyframes kill-flash-fade {
+  0% {
+    opacity: 0.75;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes kill-flash-down {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kill-flash.is-active,
+  .kill-flash.is-down {
+    animation: none;
+    opacity: 0;
+  }
+}
+
 .arena-host[data-targeting] {
   cursor: crosshair;
 }

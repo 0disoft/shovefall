@@ -696,6 +696,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   const soundButton = requireElement(root, "#toggle-sound", HTMLButtonElement);
   const arenaHost = requireElement(root, "#arena-host", HTMLElement);
   const damageFlash = requireElement(root, "#damage-flash", HTMLElement);
+  const killFlash = requireElement(root, "#kill-flash", HTMLElement);
   const pointerJoystick = requireElement(root, "#pointer-joystick", HTMLElement);
   const pointerJoystickKnob = requireElement(root, "#pointer-joystick-knob", HTMLElement);
   const touchSkillButtons = Object.freeze([
@@ -1530,6 +1531,8 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
       onEvents(events): void {
         audio?.consumeEvents(events);
 
+        let humanDown = false;
+        let nearbyKill = false;
         for (const event of events) {
           if (
             event.kind === "stat-upgraded" &&
@@ -1551,6 +1554,22 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
             void damageFlash.offsetWidth;
             damageFlash.classList.add("is-active");
           }
+          if (event.kind === "eliminated") {
+            if (event.actorId === 1) {
+              humanDown = true;
+            } else if (!humanDown) {
+              nearbyKill = true;
+            }
+          }
+        }
+        if (humanDown) {
+          killFlash.classList.remove("is-active");
+          void killFlash.offsetWidth;
+          killFlash.classList.add("is-down");
+        } else if (nearbyKill) {
+          killFlash.classList.remove("is-down");
+          void killFlash.offsetWidth;
+          killFlash.classList.add("is-active");
         }
 
         const message = events
