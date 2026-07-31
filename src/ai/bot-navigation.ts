@@ -157,35 +157,36 @@ function isTileTraversable(
 function isPositionTraversable(
   terrain: BotNavigationTerrain,
   blockedTileIds: ReadonlySet<TileId>,
-  position: Vector2,
+  positionX: number,
+  positionY: number,
   radius: number,
 ): boolean {
   const clearance = Math.max(0, radius * 0.92);
   return (
-    isTileTraversable(terrain, blockedTileIds, Math.floor(position.x), Math.floor(position.y)) &&
+    isTileTraversable(terrain, blockedTileIds, Math.floor(positionX), Math.floor(positionY)) &&
     isTileTraversable(
       terrain,
       blockedTileIds,
-      Math.floor(position.x + clearance),
-      Math.floor(position.y),
+      Math.floor(positionX + clearance),
+      Math.floor(positionY),
     ) &&
     isTileTraversable(
       terrain,
       blockedTileIds,
-      Math.floor(position.x - clearance),
-      Math.floor(position.y),
+      Math.floor(positionX - clearance),
+      Math.floor(positionY),
     ) &&
     isTileTraversable(
       terrain,
       blockedTileIds,
-      Math.floor(position.x),
-      Math.floor(position.y + clearance),
+      Math.floor(positionX),
+      Math.floor(positionY + clearance),
     ) &&
     isTileTraversable(
       terrain,
       blockedTileIds,
-      Math.floor(position.x),
-      Math.floor(position.y - clearance),
+      Math.floor(positionX),
+      Math.floor(positionY - clearance),
     )
   );
 }
@@ -196,7 +197,7 @@ export function getBotNavigationPositionDepth(
   position: Vector2,
   radius = 0,
 ): number | undefined {
-  if (!isPositionTraversable(terrain, blockedTileIds, position, radius)) {
+  if (!isPositionTraversable(terrain, blockedTileIds, position.x, position.y, radius)) {
     return undefined;
   }
   return terrain.stableTileDepths.get(toTileId(Math.floor(position.x), Math.floor(position.y)));
@@ -216,11 +217,15 @@ export function isBotNavigationSegmentClear(
 
   for (let sample = 0; sample <= sampleCount; sample += 1) {
     const ratio = sample / sampleCount;
-    const position: Vector2 = {
-      x: start.x + deltaX * ratio,
-      y: start.y + deltaY * ratio,
-    };
-    if (!isPositionTraversable(terrain, blockedTileIds, position, radius)) {
+    if (
+      !isPositionTraversable(
+        terrain,
+        blockedTileIds,
+        start.x + deltaX * ratio,
+        start.y + deltaY * ratio,
+        radius,
+      )
+    ) {
       return false;
     }
   }
@@ -440,7 +445,9 @@ function getDodgeLandingDepth(
       participant.position,
       scaleVector(normalizedDirection, distance * (sample / sampleCount)),
     );
-    if (!isPositionTraversable(terrain, blockedTileIds, position, participant.radius)) {
+    if (
+      !isPositionTraversable(terrain, blockedTileIds, position.x, position.y, participant.radius)
+    ) {
       return undefined;
     }
   }
