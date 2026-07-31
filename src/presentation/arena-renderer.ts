@@ -378,7 +378,7 @@ function createCameraOffset(
       : human.previousPosition.y +
         (human.position.y - human.previousPosition.y) * interpolationAlpha;
   const worldSize = getProjectedArenaSize(columns, rows, projection);
-  const focus = projectArenaPoint({ x: focusX, y: focusY }, projection);
+  const focus = projectArenaXY(focusX, focusY, projection);
   const oceanMargin = projection.tileWidth * CAMERA_OCEAN_MARGIN_TILES;
   const unclampedX = width / 2 - focus.x;
   const unclampedY = height / 2 - focus.y;
@@ -535,7 +535,7 @@ function drawTileHazardMarker(
   critical: boolean,
   projection: ArenaProjection,
 ): void {
-  const center = projectArenaPoint({ x: tile.column + 0.5, y: tile.row + 0.5 }, projection);
+  const center = projectArenaXY(tile.column + 0.5, tile.row + 0.5, projection);
   const radius = Math.max(8, projection.tileWidth * 0.19);
   const color = critical ? 0xff5c4d : 0xffc857;
 
@@ -1034,7 +1034,7 @@ function syncTreeSprites(
       layer.addChild(sprite);
     }
 
-    const point = projectArenaPoint({ x: tree.column + 0.5, y: tree.row + 0.5 }, projection);
+    const point = projectArenaXY(tree.column + 0.5, tree.row + 0.5, projection);
     const targetHeight = clamp(projection.tileWidth * 2.4, 68, 152);
     sprite.position.set(point.x, point.y + projection.tileDepth * 0.42);
     sprite.height = targetHeight;
@@ -1051,7 +1051,7 @@ function drawTreeObstacle(
   tree: TreeObstacleState,
   projection: ArenaProjection,
 ): void {
-  const point = projectArenaPoint({ x: tree.column + 0.5, y: tree.row + 0.5 }, projection);
+  const point = projectArenaXY(tree.column + 0.5, tree.row + 0.5, projection);
   const trunkWidth = Math.max(5, projection.tileWidth * 0.13);
   const trunkHeight = Math.max(14, projection.tileWidth * 0.48);
   const canopyRadius = Math.max(14, projection.tileWidth * 0.42);
@@ -1800,7 +1800,7 @@ function drawSoapPatch(
   projection: ArenaProjection,
   humanActorId: number,
 ): void {
-  const { x, y } = projectArenaPoint({ x: patch.column + 0.5, y: patch.row + 0.5 }, projection);
+  const { x, y } = projectArenaXY(patch.column + 0.5, patch.row + 0.5, projection);
   const width = projection.tileWidth * 0.76;
   const height = Math.max(8, projection.tileDepth * 0.5);
   const ownerColor = getActorIdentityColor(patch.ownerActorId, humanActorId);
