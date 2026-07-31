@@ -440,29 +440,30 @@ function getCrowdAvoidance(
   current: RenderParticipantV1,
   nearby: readonly RenderParticipantV1[],
 ): Vector2 {
-  let avoidance = ZERO_VECTOR;
+  let avoidanceX = 0;
+  let avoidanceY = 0;
   for (const candidate of nearby) {
     if (candidate.actorId === current.actorId || !isControllable(candidate)) {
       continue;
     }
-    const away = subtractVectors(current.position, candidate.position);
-    const distance = vectorLength(away);
+    const awayX = current.position.x - candidate.position.x;
+    const awayY = current.position.y - candidate.position.y;
+    const distance = Math.hypot(awayX, awayY);
     if (distance >= CROWD_AVOIDANCE_DISTANCE) {
       continue;
     }
-    const separationDirection =
-      distance <= Number.EPSILON
-        ? Object.freeze({
-            x: Math.cos((current.actorId * 2.399963229728653) % (Math.PI * 2)),
-            y: Math.sin((current.actorId * 2.399963229728653) % (Math.PI * 2)),
-          })
-        : normalizeVector(away);
-    avoidance = addVectors(
-      avoidance,
-      scaleVector(separationDirection, 1 - distance / CROWD_AVOIDANCE_DISTANCE),
-    );
+    const weight = 1 - distance / CROWD_AVOIDANCE_DISTANCE;
+    if (distance <= Number.EPSILON) {
+      const angle = (current.actorId * 2.399963229728653) % (Math.PI * 2);
+      avoidanceX += Math.cos(angle) * weight;
+      avoidanceY += Math.sin(angle) * weight;
+    } else {
+      const inverseDistance = 1 / distance;
+      avoidanceX += awayX * inverseDistance * weight;
+      avoidanceY += awayY * inverseDistance * weight;
+    }
   }
-  return avoidance;
+  return Object.freeze({ x: avoidanceX, y: avoidanceY });
 }
 
 function getStalledEscapeMovement(

@@ -1,8 +1,11 @@
 # Static Release Procedure
 
-- Status: `0.151.0` complete-island cannon-collapse candidate; hosted proof pending
+- Status: `0.152.0` complete-island cannon-collapse candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.151.0`
+- Current product version: `0.152.0`
+
+Product `0.152.0`, simulation `78.0.0`, and content `48.0.0` keep simulation `78.0.0`,
+content `48.0.0`, replay v8, and reports v11. Bot crowd avoidance now accumulates separation vectors from raw components instead of allocating subtractVectors, vectorLength, normalizeVector, scaleVector, and addVectors intermediate objects per candidate per decision. Visible bot movement, combat results, replay hash, and balance are unchanged. Hosted proof, complete-collapse pacing, and human readability remain pending.
 
 Product `0.151.0`, simulation `78.0.0`, and content `48.0.0` keep simulation `78.0.0`,
 content `48.0.0`, replay v8, and reports v11. Bot threat detection now computes distance, direction, and dot products from raw components instead of allocating subtractVectors, vectorLength, scaleVector, and dotVectors intermediate objects per candidate per decision. Visible bot dodge timing, combat results, replay hash, and balance are unchanged. Hosted proof, complete-collapse pacing, and human readability remain pending.
