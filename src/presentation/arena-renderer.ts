@@ -3267,6 +3267,9 @@ export async function createArenaRenderer(
       );
       const durationTicks = reducedMotion ? 3 : frame.participants.length >= 25 ? 7 : 12;
       const cap = frame.participants.length >= 25 ? MAYHEM_EFFECT_CAP : NORMAL_EFFECT_CAP;
+      const participantsById = new Map(
+        frame.participants.map((participant) => [participant.actorId, participant] as const),
+      );
       const appended = accepted.flatMap((event): readonly VisualEffect[] => {
         if (!isVisualEffectKind(event.kind)) {
           return [];
@@ -3286,9 +3289,8 @@ export async function createArenaRenderer(
           return [];
         }
 
-        const actorPosition = frame.participants.find(
-          ({ actorId }) => actorId === event.actorId,
-        )?.position;
+        const actorPosition =
+          event.actorId === undefined ? undefined : participantsById.get(event.actorId)?.position;
         const travelsAsProjectile =
           !reducedMotion &&
           event.kind === "skill-hit" &&

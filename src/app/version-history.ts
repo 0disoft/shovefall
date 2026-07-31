@@ -9,6 +9,13 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.134.0",
+    title: "효과 자리를 찾을 때 줄을 뒤지지 않는다요 ㅇㅅㅇ",
+    reason: "효과가 생길 때마다 참가자 줄을 처음부터 뒤져서 자리를 찾았다요.",
+    change:
+      "참가자 줄을 한 번만 뒤져서 번호표를 만들고, 효과가 생길 때 번호표로 바로 찾는다요. 그림과 전투 결과, 수치는 그대로다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.133.0",
     title: "깊이 정렬 줄을 한 번에 담는다요 ㅇㅅㅇ",
     reason: "매 그림마다 참가자·벽·나무 줄을 각각 새로 만들고 합쳐서 정렬했다요.",
