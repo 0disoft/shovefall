@@ -287,16 +287,20 @@ function isControllable(participant: RenderParticipantV1): boolean {
 }
 
 function isThreatening(candidate: RenderParticipantV1, self: RenderParticipantV1): boolean {
-  const delta = subtractVectors(self.position, candidate.position);
-  const distance = vectorLength(delta);
+  const deltaX = self.position.x - candidate.position.x;
+  const deltaY = self.position.y - candidate.position.y;
+  const distance = Math.hypot(deltaX, deltaY);
 
   if (distance > THREAT_DISTANCE || distance === 0) {
     return false;
   }
 
-  const towardSelf = scaleVector(delta, 1 / distance);
-  const facingSelf = dotVectors(candidate.facing, towardSelf) >= THREAT_FACING_DOT;
-  const advancing = dotVectors(candidate.velocity, towardSelf) > 0.035;
+  const inverseDistance = 1 / distance;
+  const towardSelfX = deltaX * inverseDistance;
+  const towardSelfY = deltaY * inverseDistance;
+  const facingSelf =
+    candidate.facing.x * towardSelfX + candidate.facing.y * towardSelfY >= THREAT_FACING_DOT;
+  const advancing = candidate.velocity.x * towardSelfX + candidate.velocity.y * towardSelfY > 0.035;
   return (
     facingSelf &&
     (advancing || candidate.action === "ShoveWindup" || candidate.action === "ShoveActive")
