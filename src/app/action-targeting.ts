@@ -2,7 +2,7 @@ import { GRAPPLING_HOOK_DEFINITION } from "../content/built-in-actions";
 import { getItemDefinition } from "../content/items";
 import { getSkillDefinition } from "../content/skills";
 import type { ItemDefinitionId, SkillDefinitionId, SkillSlotIndex } from "../simulation/contracts";
-import { normalizeVector, type Vector2 } from "../simulation/math";
+import { type Vector2 } from "../simulation/math";
 
 export type ActionTargetMode = "self" | "direction" | "ground";
 export type TargetedActionKind = "skill" | "item" | "grapple";
@@ -149,7 +149,11 @@ export function moveAimTargetWithKeyboard(
     });
   }
 
-  const direction = normalizeVector(input);
+  const inputLength = Math.hypot(input.x, input.y);
+  const direction =
+    inputLength <= 1
+      ? input
+      : Object.freeze({ x: input.x / inputLength, y: input.y / inputLength });
   const previewDistance = getInitialTargetDistance(targetMode, castRange);
   return Object.freeze({
     x: source.x + direction.x * previewDistance,

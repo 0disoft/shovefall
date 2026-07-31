@@ -1,8 +1,11 @@
 # Static Release Procedure
 
-- Status: `0.168.0` complete-island cannon-collapse candidate; hosted proof pending
+- Status: `0.169.0` complete-island cannon-collapse candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.168.0`
+- Current product version: `0.169.0`
+
+Product `0.169.0`, simulation `78.0.0`, and content `48.0.0` keep simulation `78.0.0`,
+content `48.0.0`, replay v8, and reports v11. Skill targeting and projectile travel now compute direction normalization and travel distance from raw components instead of allocating normalizeVector, subtractVectors, and vectorLength intermediate objects per targeting and projectile render decision. Visible bot movement, combat results, replay hash, and balance are unchanged. Hosted proof, complete-collapse pacing, and human readability remain pending.
 
 Product `0.168.0`, simulation `78.0.0`, and content `48.0.0` keep simulation `78.0.0`,
 content `48.0.0`, replay v8, and reports v11. Bot navigation now computes pathfinding distances, direct direction, waypoint direction, tile escape distance, dodge landing depth, and safe dodge candidate rotation from raw components instead of allocating normalizeVector, subtractVectors, vectorLength, dotVectors, and rotateVector intermediate objects per navigation and dodge decision. Visible bot movement, combat results, replay hash, and balance are unchanged. Hosted proof, complete-collapse pacing, and human readability remain pending.

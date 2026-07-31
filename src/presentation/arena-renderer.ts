@@ -18,7 +18,7 @@ import type {
   TreasureShipState,
   PirateShipState,
 } from "../simulation/contracts";
-import { clamp, subtractVectors, vectorLength, type Vector2 } from "../simulation/math";
+import { clamp, type Vector2 } from "../simulation/math";
 import { FIXED_TICKS_PER_SECOND } from "../simulation/versions";
 import {
   ARENA_CAMERA_ELEVATION_DEGREES,
@@ -3315,7 +3315,9 @@ export async function createArenaRenderer(
           PROJECTILE_SKILL_EFFECTS.has(event.skillDefinitionId) &&
           actorPosition !== undefined;
         const travelTicks = travelsAsProjectile
-          ? getSkillProjectileTravelTicks(vectorLength(subtractVectors(position, actorPosition)))
+          ? getSkillProjectileTravelTicks(
+              Math.hypot(position.x - actorPosition.x, position.y - actorPosition.y),
+            )
           : 0;
         const travelEndTick = travelsAsProjectile ? event.tick + travelTicks : undefined;
         const impactDuration =
