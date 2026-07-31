@@ -7,6 +7,7 @@ export default defineConfig({
   outputDir: ".cache/playwright-dist/test-results",
   fullyParallel: true,
   forbidOnly: true,
+  grep: /@ci-smoke/u,
   grepInvert: /@profile|@extended|@dev-only|@submission-capture/u,
   retries: 0,
   workers: 4,

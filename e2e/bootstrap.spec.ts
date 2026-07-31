@@ -528,6 +528,35 @@ async function faceArenaDirection(page: Page, direction: string): Promise<void> 
   }
 }
 
+test("@ci-smoke boots the production artifact into a live arena", async ({ page }) => {
+  test.setTimeout(45_000);
+  await installDeterministicClock(page);
+  await installFixedRoundSeed(page, 1, 0);
+  await page.goto("/");
+  await pauseInstalledClock(page);
+
+  await expect(page).toHaveTitle("바닥이 사라지는 술래잡기");
+  await expect(page.locator("#arena-host canvas")).toBeHidden();
+  await saveBalancedDefaults(page);
+  await startGame(page);
+  await finishInstalledClockCountdown(page);
+
+  await expect(page.locator("#app")).toHaveAttribute("data-screen", "arena");
+  await expect(page.locator("#app")).toHaveAttribute("data-round", "active");
+  await expect(page.locator("#arena-host")).toHaveAttribute("data-visual-assets", "generated");
+  await expect(page.locator("#arena-host")).toHaveAttribute("data-skill-effect-assets", "6");
+  await expect
+    .poll(async () =>
+      Number(await page.locator("#arena-host").getAttribute("data-terrain-sprites")),
+    )
+    .toBeGreaterThan(0);
+  await expect(page.locator("#developer-telemetry")).toHaveCount(0);
+  await expect(page.locator("#debug-tuning")).toHaveCount(0);
+  await expect(page.locator("#game-telemetry")).toHaveAttribute("data-action", "Ready");
+  await expect(page.locator("#skill-actions")).toBeVisible();
+  await expect(page.locator("#inventory-actions")).toBeVisible();
+});
+
 test("centers the fullscreen menu actions on the viewport", async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto("/");

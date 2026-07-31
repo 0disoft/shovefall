@@ -11,7 +11,7 @@ The workflow performs these stages in parallel where dependencies allow:
 1. Check out only the triggering source revision without persisted Git credentials.
 2. Install the exact Bun version and locked dependency graph without dependency lifecycle scripts.
 3. The `Validate` job runs `check`, the same aggregate merge-blocking command defined in `package.json` and `VALIDATION.md`.
-4. The `Production Chrome` job builds and exercises the generated production artifact through `smoke-dist`, then uploads that tested `dist` artifact on non-PR runs.
+4. The `Production Chrome` job builds and exercises one tagged production critical journey through `smoke-dist`, then uploads that tested `dist` artifact on non-PR runs. Broader browser interactions remain in the local `smoke` suite so the hosted blocking job stays inside its two-minute cap.
 5. On `main` pushes and manual runs only, the optional capture job attempts a clean exact-SHA submission-media bundle with
    two PNGs, one WebM, and its provenance manifest; upload it only when capture succeeds.
 6. After both blocking jobs pass, the deploy job configures Pages and deploys the already-tested artifact.
