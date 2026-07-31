@@ -5,6 +5,7 @@ export interface PointerMovementVector {
 
 export interface PointerControls {
   destroy(): void;
+  interrupt(): void;
 }
 
 export interface PointerControlsOptions {
@@ -298,6 +299,9 @@ export function createPointerControls(options: PointerControlsOptions): PointerC
       }
       window.removeEventListener("blur", handleWindowBlur);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
+      resetMovement();
+    },
+    interrupt(): void {
       resetMovement();
     },
   });

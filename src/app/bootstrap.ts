@@ -1643,6 +1643,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
         saveTraitUpgradeButton.disabled = true;
 
         statUpgradeOverlay.hidden = false;
+        pointerControls?.interrupt();
         setPauseMenu(false);
         root.dataset.upgrade = "pending";
         rendererStatus.dataset.state = "paused";
@@ -1743,10 +1744,12 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
       ],
       isActive: () =>
         session?.active === true &&
+        !session.paused &&
         root.dataset.round === "active" &&
         root.dataset.humanEliminated !== "true",
       isMovementActive: () =>
         session?.active === true &&
+        !session.paused &&
         (root.dataset.round === "active" || root.dataset.round === "countdown") &&
         root.dataset.humanEliminated !== "true",
       isSpectating: () =>

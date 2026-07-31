@@ -9,6 +9,14 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.118.0",
+    title: "성장 창이 뜰 때 손가락이 떨어지지 않는다요 ㅇㅅㅇ",
+    reason:
+      "처치 보상으로 전투 특성을 고르는 창이 떠도 손가락을 떼기 전까지 조이스틱 이동이 멈추지 않아, 창을 닫자마자 엉뚱한 방향으로 달려나갈 뻔했다요.",
+    change:
+      "전투 특성 창이 열리면 진행 중이던 조이스틱·탭 이동을 즉시 끊고, 시뮬레이션이 멈춰 있는 동안에는 어떤 포인터 조작도 새로 시작되지 않게 막았다요. 전투 결과와 수치는 그대로다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.117.0",
     title: "맞고 맞히는 순간이 더 울린다요 ㅇㅅㅇ",
     reason:

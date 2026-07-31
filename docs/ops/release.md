@@ -1,8 +1,16 @@
 # Static Release Procedure
 
-- Status: `0.117.0` complete-island cannon-collapse candidate; hosted proof pending
+- Status: `0.118.0` complete-island cannon-collapse candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.117.0`
+- Current product version: `0.118.0`
+
+Product `0.118.0`, simulation `78.0.0`, and content `48.0.0` keep simulation `78.0.0`,
+content `48.0.0`, replay v8, and reports v11. Opening the kill-reward trait dialog
+now interrupts any in-progress pointer movement or destination tap, and pointer
+controls stay inert while the simulation is paused for the upgrade choice, so the
+movement vector cannot bleed into the resumed round. None of this enters the
+simulation, replay hash, or combat balance. Hosted proof, complete-collapse pacing,
+and human readability remain pending.
 
 Product `0.117.0`, simulation `78.0.0`, and content `48.0.0` add presentation-only
 combat feedback: a distance-falloff camera shake on Bomb detonations, cannon
