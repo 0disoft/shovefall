@@ -1036,8 +1036,9 @@ export class BotDirector {
           getNearestEligibleItemPursuerActorId(
             item,
             perceptionFrame.participants.filter((participant) => {
-              const candidateDistance = vectorLength(
-                subtractVectors(participant.position, item.position),
+              const candidateDistance = Math.hypot(
+                participant.position.x - item.position.x,
+                participant.position.y - item.position.y,
               );
               if (participant.actorId === this.#humanActorId) {
                 return (
@@ -1262,7 +1263,10 @@ export class BotDirector {
       );
       const nearbyBomb = perceptionFrame.bombs.some(
         (bomb) =>
-          vectorLength(subtractVectors(bomb.position, perceived.position)) <=
+          Math.hypot(
+            bomb.position.x - perceived.position.x,
+            bomb.position.y - perceived.position.y,
+          ) <=
           this.#gameplayTuning.bombBlastRadius * 2,
       );
       const bombSlot = getChargedItemSlot(current, "bomb");

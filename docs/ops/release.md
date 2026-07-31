@@ -1,8 +1,11 @@
 # Static Release Procedure
 
-- Status: `0.162.0` complete-island cannon-collapse candidate; hosted proof pending
+- Status: `0.163.0` complete-island cannon-collapse candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.162.0`
+- Current product version: `0.163.0`
+
+Product `0.163.0`, simulation `78.0.0`, and content `48.0.0` keep simulation `78.0.0`,
+content `48.0.0`, replay v8, and reports v11. Bot item candidate filtering and bomb proximity now compute distances from raw components instead of allocating subtractVectors and vectorLength intermediate objects per candidate per check. Visible bot movement, combat results, replay hash, and balance are unchanged. Hosted proof, complete-collapse pacing, and human readability remain pending.
 
 Product `0.162.0`, simulation `78.0.0`, and content `48.0.0` keep simulation `78.0.0`,
 content `48.0.0`, replay v8, and reports v11. Bot bomb escape now computes away-from-bomb direction from raw components instead of allocating subtractVectors, normalizeVector, and vectorLength intermediate objects per escape decision. Visible bot movement, combat results, replay hash, and balance are unchanged. Hosted proof, complete-collapse pacing, and human readability remain pending.
