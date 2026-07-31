@@ -1,10 +1,10 @@
 # Static Release Procedure
 
-- Status: `0.113.1` copy-consistency candidate; hosted proof pending
+- Status: `0.114.0` projectile-presentation candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.113.1`
+- Current product version: `0.114.0`
 
-Product `0.113.1`, simulation `76.0.0`, and content `48.0.0` keep the same game rules. Starting attributes and kill-reward traits now use the same six Korean names. The live
+Product `0.114.0`, simulation `76.0.0`, and content `48.0.0` keep the same game rules. Arc Bolt and Chain Bind keep immediate deterministic hit resolution while their generated projectile art travels from caster to impact at three tiles per second. Starting attributes and kill-reward traits use the same six Korean names. The live
 defense readout names damage reduction and shield strength instead of Dodge
 reuse, skill descriptions call their cone assistance automatic aiming, and the
 pre-round briefing plus recent version notes use one concise casual tone.

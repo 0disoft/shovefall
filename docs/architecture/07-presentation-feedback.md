@@ -16,6 +16,8 @@ The PixiJS renderer derives short-lived shove, dodge, fall, item, water-impact, 
 
 The browser reduced-motion preference removes nonessential movement and flash amplitude without changing simulation timing, collision windows, cooldowns, or event delivery. Reduced motion is presentation policy, not a lower game-speed mode.
 
+Arc Bolt and Chain Bind hit events retain their deterministic tick but animate their generated projectile texture from caster to impact at three tiles per second. The travel is presentation-only, ends in a bounded impact cue, and collapses to the existing short stationary feedback under reduced motion.
+
 ## Optional Audio
 
 Procedural sound effects and licensed background music are separate browser-local channels. Web Audio creates the six-voice effect mixer only after a user gesture. When the cap is full, a higher-priority fall or result cue may replace a lower-priority miss or pickup cue; equal or lower priority is dropped. A same-origin `HTMLAudioElement` loops `HYP - Catch Me If You Can` from the first accepted pointer or keyboard gesture and remains alive through menu, settings, and arena transitions.

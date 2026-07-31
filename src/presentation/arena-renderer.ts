@@ -19,7 +19,8 @@ import type {
   TreasureShipState,
   PirateShipState,
 } from "../simulation/contracts";
-import { clamp, type Vector2 } from "../simulation/math";
+import { clamp, subtractVectors, vectorLength, type Vector2 } from "../simulation/math";
+import { FIXED_TICKS_PER_SECOND } from "../simulation/versions";
 import {
   ARENA_CAMERA_ELEVATION_DEGREES,
   ARENA_DEPTH_SCALE,
@@ -106,6 +107,8 @@ interface VisualEffect {
   readonly startTick: number;
   readonly endTick: number;
   readonly position: Vector2;
+  readonly originPosition: Vector2 | undefined;
+  readonly travelEndTick: number | undefined;
   readonly vector: Vector2 | undefined;
   readonly itemDefinitionId: ItemDefinitionId | undefined;
   readonly skillDefinitionId: SimulationEventV1["skillDefinitionId"];
@@ -126,6 +129,11 @@ const DEFAULT_RESOLUTION_CAP = 1.5;
 const MAYHEM_RESOLUTION_CAP = 1;
 const NORMAL_EFFECT_CAP = 36;
 const MAYHEM_EFFECT_CAP = 14;
+const SKILL_PROJECTILE_SPEED_TILES_PER_SECOND = 3;
+const PROJECTILE_SKILL_EFFECTS: ReadonlySet<SkillDefinitionId> = new Set([
+  "arc-bolt",
+  "chain-bind",
+]);
 const GENERATED_SKILL_EFFECT_KINDS: ReadonlySet<VisualEffectKind> = new Set([
   "skill-used",
   "skill-hit",
@@ -182,6 +190,64 @@ export function shouldDrawProceduralWorldEffect(
     skillDefinitionId !== undefined &&
     GENERATED_SKILL_EFFECT_KINDS.has(kind)
   );
+}
+
+export function getSkillProjectileTravelTicks(distanceTiles: number): number {
+  if (!Number.isFinite(distanceTiles) || distanceTiles <= 0) {
+    return 0;
+  }
+
+  return Math.max(
+    1,
+    Math.round((distanceTiles / SKILL_PROJECTILE_SPEED_TILES_PER_SECOND) * FIXED_TICKS_PER_SECOND),
+  );
+}
+
+export function getSkillProjectilePosition(
+  origin: Vector2,
+  target: Vector2,
+  startTick: number,
+  travelEndTick: number,
+  frameTick: number,
+): Vector2 {
+  const duration = Math.max(1, travelEndTick - startTick);
+  const progress = clamp((frameTick - startTick) / duration, 0, 1);
+  return Object.freeze({
+    x: origin.x + (target.x - origin.x) * progress,
+    y: origin.y + (target.y - origin.y) * progress,
+  });
+}
+
+function getVisualEffectState(
+  effect: VisualEffect,
+  frameTick: number,
+): { position: Vector2; progress: number } {
+  if (effect.originPosition === undefined || effect.travelEndTick === undefined) {
+    const duration = Math.max(1, effect.endTick - effect.startTick);
+    return {
+      position: effect.position,
+      progress: clamp((frameTick - effect.startTick) / duration, 0, 1),
+    };
+  }
+
+  if (frameTick < effect.travelEndTick) {
+    return {
+      position: getSkillProjectilePosition(
+        effect.originPosition,
+        effect.position,
+        effect.startTick,
+        effect.travelEndTick,
+        frameTick,
+      ),
+      progress: 0,
+    };
+  }
+
+  const impactDuration = Math.max(1, effect.endTick - effect.travelEndTick);
+  return {
+    position: effect.position,
+    progress: clamp((frameTick - effect.travelEndTick) / impactDuration, 0, 1),
+  };
 }
 
 function getItemColor(definitionId: ItemDefinitionId): number | undefined {
@@ -1247,9 +1313,9 @@ function syncImpactSprites(
       sprite.texture = texture;
     }
 
-    const duration = Math.max(1, effect.endTick - effect.startTick);
-    const progress = clamp((frameTick - effect.startTick) / duration, 0, 1);
-    const point = projectArenaPoint(effect.position, projection);
+    const effectState = getVisualEffectState(effect, frameTick);
+    const progress = effectState.progress;
+    const point = projectArenaPoint(effectState.position, projection);
     const baseSize = projection.tileWidth * (isWaterImpact ? 2.25 : 2.85);
     const scale = reducedMotion ? 1 : 0.72 + progress * 0.48;
     const size = clamp(baseSize * scale, isWaterImpact ? 54 : 68, isWaterImpact ? 142 : 176);
@@ -1300,9 +1366,9 @@ function syncSkillEffectSprites(
       sprite.texture = texture;
     }
 
-    const duration = Math.max(1, effect.endTick - effect.startTick);
-    const progress = clamp((frameTick - effect.startTick) / duration, 0, 1);
-    const point = projectArenaPoint(effect.position, projection);
+    const effectState = getVisualEffectState(effect, frameTick);
+    const progress = effectState.progress;
+    const point = projectArenaPoint(effectState.position, projection);
     const baseSize = projection.tileWidth * SKILL_EFFECT_SIZE[definitionId];
     const hitScale = effect.kind === "skill-hit" || effect.kind === "status-applied" ? 0.82 : 1;
     const animatedScale = reducedMotion ? 0.9 : 0.7 + progress * 0.48;
@@ -2252,9 +2318,9 @@ function drawWorldEffect(
   projection: ArenaProjection,
   reducedMotion: boolean,
 ): void {
-  const duration = Math.max(1, effect.endTick - effect.startTick);
-  const progress = clamp((frameTick - effect.startTick) / duration, 0, 1);
-  const { x, y } = projectArenaPoint(effect.position, projection);
+  const effectState = getVisualEffectState(effect, frameTick);
+  const progress = effectState.progress;
+  const { x, y } = projectArenaPoint(effectState.position, projection);
   const baseRadius = Math.max(5, projection.tileWidth * 0.14);
   const expansion = reducedMotion ? 1 : 1 + progress * 1.8;
   const alpha = Math.max(0, 1 - progress);
@@ -3191,11 +3257,41 @@ export async function createArenaRenderer(
           return [];
         }
 
+        if (
+          event.kind === "status-applied" &&
+          event.skillDefinitionId !== undefined &&
+          PROJECTILE_SKILL_EFFECTS.has(event.skillDefinitionId)
+        ) {
+          return [];
+        }
+
         const position = getEffectPosition(event, frame);
 
         if (position === undefined) {
           return [];
         }
+
+        const actorPosition = frame.participants.find(
+          ({ actorId }) => actorId === event.actorId,
+        )?.position;
+        const travelsAsProjectile =
+          !reducedMotion &&
+          event.kind === "skill-hit" &&
+          event.skillDefinitionId !== undefined &&
+          PROJECTILE_SKILL_EFFECTS.has(event.skillDefinitionId) &&
+          actorPosition !== undefined;
+        const travelTicks = travelsAsProjectile
+          ? getSkillProjectileTravelTicks(vectorLength(subtractVectors(position, actorPosition)))
+          : 0;
+        const travelEndTick = travelsAsProjectile ? event.tick + travelTicks : undefined;
+        const impactDuration =
+          event.kind === "tile-void" || event.kind === "rock-impact"
+            ? reducedMotion
+              ? 5
+              : 18
+            : event.kind === "grappling-hook-hit"
+              ? 10
+              : durationTicks;
 
         return [
           Object.freeze({
@@ -3203,16 +3299,10 @@ export async function createArenaRenderer(
             kind: event.kind,
             roundId: event.roundId,
             startTick: event.tick,
-            endTick:
-              event.tick +
-              (event.kind === "tile-void" || event.kind === "rock-impact"
-                ? reducedMotion
-                  ? 5
-                  : 18
-                : event.kind === "grappling-hook-hit"
-                  ? 10
-                  : durationTicks),
+            endTick: (travelEndTick ?? event.tick) + impactDuration,
             position,
+            originPosition: travelsAsProjectile ? actorPosition : undefined,
+            travelEndTick,
             vector: event.vector,
             itemDefinitionId: event.itemDefinitionId,
             skillDefinitionId: event.skillDefinitionId,

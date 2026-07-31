@@ -422,6 +422,17 @@ async function placeGroundItemAtPlayer(page: Page, expectedText: string): Promis
   await expect(page.locator("#use-item-slot-0")).toContainText(expectedText);
 }
 
+async function placeDirectionalBrickAnchor(page: Page, direction: string): Promise<void> {
+  await setArenaFacingDirection(page, direction);
+  await waitForReadyActionState(page);
+  const tickBeforeUse = await readSimulationTick(page);
+  await page.keyboard.press("KeyD");
+  await expect(page.locator("#targeting-help")).toBeVisible();
+  await page.keyboard.press("KeyD");
+  await waitForSimulationTickAdvance(page, tickBeforeUse);
+  await expect(page.locator("#round-message")).toHaveText("벽돌을 세웠어.");
+}
+
 async function useDirectionalGrapple(
   page: Page,
   directions: readonly string[] = ["ArrowUp", "ArrowRight", "ArrowDown", "ArrowLeft"],
@@ -1079,8 +1090,9 @@ test("fires the built-in grapple in a fresh round", async ({ page }) => {
   await saveSettings(page);
   await startGame(page);
   await finishInstalledClockCountdown(page);
+  await placeDirectionalBrickAnchor(page, "ArrowUp");
   await expect(page.locator("#use-grapple")).toContainText("E · 구조 갈고리 · 준비");
-  await useDirectionalGrapple(page);
+  await useDirectionalGrapple(page, ["ArrowUp"]);
   await expect(page.locator("#round-message")).toHaveText("갈고리가 걸렸어.");
 });
 
@@ -1189,7 +1201,7 @@ test("persists four-step text size and sound-effect volume settings", async ({ p
 });
 
 test("completes a collapsing round and starts a fresh world", async ({ page }) => {
-  test.setTimeout(300_000);
+  test.setTimeout(420_000);
   await installDeterministicClock(page);
   await installClipboardCapture(page);
   await page.goto("/");

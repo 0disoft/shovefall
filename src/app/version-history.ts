@@ -9,6 +9,14 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.114.0",
+    title: "날아오는 기술이 눈에 보인다요 ㅇㅅㅇ",
+    reason:
+      "파동탄과 사슬 속박이 시전과 적중 사이를 건너뛰듯 번쩍여서 투사체가 날아오는 과정이 잘 보이지 않았다요.",
+    change:
+      "파동탄과 사슬 속박의 투사체 연출이 초당 세 칸 속도로 시전자부터 적중점까지 날아간다요. 피해 판정과 전투 수치는 그대로 유지한다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.113.1",
     title: "같은 뜻은 같은 말로 읽는다요 ㅇㅅㅇ",
     reason:

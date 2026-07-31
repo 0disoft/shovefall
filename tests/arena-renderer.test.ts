@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TERRAIN_DIAGONAL_VARIANT_START } from "../src/presentation/arena-assets";
 import {
   createArenaRenderer,
+  getSkillProjectilePosition,
+  getSkillProjectileTravelTicks,
   getTerrainTextureIndex,
   shouldDrawProceduralWorldEffect,
 } from "../src/presentation/arena-renderer";
@@ -18,6 +20,16 @@ const graphicsStroke = vi.hoisted(() =>
 const spriteTint = vi.hoisted(() => vi.fn<(value: number) => void>());
 
 describe("arena renderer effect routing", () => {
+  it("moves projectile skill presentation at three tiles per second", () => {
+    expect(getSkillProjectileTravelTicks(0)).toBe(0);
+    expect(getSkillProjectileTravelTicks(3)).toBe(60);
+    expect(getSkillProjectileTravelTicks(5.5)).toBe(110);
+    expect(getSkillProjectilePosition({ x: 2, y: 3 }, { x: 5, y: 3 }, 10, 70, 40)).toEqual({
+      x: 3.5,
+      y: 3,
+    });
+  });
+
   it("does not draw the procedural duplicate when a generated skill texture is available", () => {
     expect(shouldDrawProceduralWorldEffect("skill-used", "arc-bolt", true)).toBe(false);
     expect(shouldDrawProceduralWorldEffect("skill-hit", "arc-bolt", true)).toBe(false);

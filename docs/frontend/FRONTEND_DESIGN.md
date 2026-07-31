@@ -53,6 +53,8 @@ The 2.5D depth contract keeps tile tops rectangular and only exposes a dark 6–
 
 When a generated skill texture is available, it replaces the same event's procedural world geometry instead of drawing both layers. If that texture is missing, the procedural geometry remains the non-blocking fallback.
 
+Arc Bolt and Chain Bind keep immediate deterministic combat resolution, but their normal-motion hit presentation travels from the caster to the impact point at three world tiles per second before the impact cue fades. Reduced-motion presentation keeps a short stationary cue and does not animate the projectile path. This visual pacing cannot alter hit timing, AI decisions, replay hashes, or balance results.
+
 ## 9. Interaction and Accessibility Contract
 
 The current kill-reward dialog uses the same Strength, Agility, Constitution, Spirit, Balance, and Willpower labels as pre-round setup. One reward level applies exactly one matching setup-point increment, including every secondary effect, and each card shows the complete `current → after` bundle. Legacy progression IDs remain below the presentation boundary for replay and report compatibility.
