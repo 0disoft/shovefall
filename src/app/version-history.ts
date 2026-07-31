@@ -9,6 +9,12 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.141.0",
+    title: "얼굴 방향도 껍데기 없이 계산한다요 ㅇㅅㅇ",
+    reason: "참가자가 바라보는 방향을 그릴 때마다 잠깐 쓸 껍데기를 두 개 새로 만들었다요.",
+    change: "얼굴 방향을 숫자로 바로 계산해서 그린다요. 그림과 전투 결과, 수치는 그대로다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.140.0",
     title: "포탄과 보물선 궤적도 껍데기 없이 옮긴다요 ㅇㅅㅇ",
     reason: "포탄과 보물선이 날아가는 자리를 그릴 때마다 잠깐 쓸 껍데기를 얼려서 만들었다요.",

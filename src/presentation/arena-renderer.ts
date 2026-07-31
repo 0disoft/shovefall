@@ -772,20 +772,22 @@ function drawFacingFeatures(
     return;
   }
 
-  const direction = projectArenaVector(participant.facing);
-  const length = Math.hypot(direction.x, direction.y);
+  const facingX = participant.facing.x;
+  const facingY = participant.facing.y * ARENA_DEPTH_SCALE;
+  const length = Math.hypot(facingX, facingY);
 
-  if (length <= Number.EPSILON || direction.y < -0.18) {
+  if (length <= Number.EPSILON || facingY < -0.18) {
     return;
   }
 
-  const normalized = { x: direction.x / length, y: direction.y / length };
+  const normalizedX = facingX / length;
+  const normalizedY = facingY / length;
   const faceY = y - radius * 1.28;
   const eyeRadius = Math.max(1.5, radius * 0.1);
   const eyeOffset = Math.max(2.5, radius * 0.24);
-  const faceX = x + normalized.x * radius * 0.34;
+  const faceX = x + normalizedX * radius * 0.34;
 
-  if (normalized.y > 0.35) {
+  if (normalizedY > 0.35) {
     graphics
       .circle(faceX - eyeOffset, faceY, eyeRadius)
       .circle(faceX + eyeOffset, faceY, eyeRadius)
@@ -794,7 +796,7 @@ function drawFacingFeatures(
   }
 
   graphics
-    .circle(faceX + Math.sign(normalized.x) * eyeOffset * 0.35, faceY, eyeRadius)
+    .circle(faceX + Math.sign(normalizedX) * eyeOffset * 0.35, faceY, eyeRadius)
     .fill({ color: 0x161b19, alpha: 0.96 });
 }
 
