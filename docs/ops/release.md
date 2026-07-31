@@ -1,8 +1,15 @@
 # Static Release Procedure
 
-- Status: `0.116.0` complete-island cannon-collapse candidate; hosted proof pending
+- Status: `0.117.0` complete-island cannon-collapse candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.116.0`
+- Current product version: `0.117.0`
+
+Product `0.117.0`, simulation `78.0.0`, and content `48.0.0` add presentation-only
+combat feedback: a distance-falloff camera shake on Bomb detonations, cannon
+impacts, skill hits, and eliminations, plus a red vignette flash when the human
+takes damage. Both respect the browser reduced-motion preference and neither
+enters the simulation or replay hash. Replay stays v8 and reports remain v11.
+Hosted proof, complete-collapse pacing, and human readability remain pending.
 
 Product `0.116.0`, simulation `78.0.0`, and content `48.0.0` remove the
 surviving rock-shot state, launch scheduling, prediction, audio, presentation,

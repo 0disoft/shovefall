@@ -16,6 +16,8 @@ The PixiJS renderer derives short-lived shove, dodge, fall, item, water-impact, 
 
 The browser reduced-motion preference removes nonessential movement and flash amplitude without changing simulation timing, collision windows, cooldowns, or event delivery. Reduced motion is presentation policy, not a lower game-speed mode.
 
+A presentation-only camera shake decays each frame and is boosted by Bomb detonations, cannon impacts, skill hits, and eliminations with a human-distance falloff, so nearby combat kicks the view while distant action stays calm. A red vignette flash overlays the arena when the human takes damage. Both are suppressed under reduced motion and neither enters the simulation or replay hash.
+
 Arc Bolt and Chain Bind hit events retain their deterministic tick but animate their generated projectile texture from caster to impact at three tiles per second. The travel is presentation-only, ends in a bounded impact cue, and collapses to the existing short stationary feedback under reduced motion.
 
 ## Optional Audio

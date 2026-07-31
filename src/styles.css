@@ -1607,6 +1607,35 @@ button:disabled {
   border: 0;
 }
 
+.damage-flash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  box-shadow: inset 0 0 clamp(80px, 22vw, 220px) rgba(196, 36, 36, 0.85);
+  transition: none;
+}
+
+.damage-flash.is-active {
+  animation: damage-flash-fade 0.42s ease-out forwards;
+}
+
+@keyframes damage-flash-fade {
+  0% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .damage-flash.is-active {
+    animation: none;
+    opacity: 0;
+  }
+}
+
 .arena-host[data-targeting] {
   cursor: crosshair;
 }

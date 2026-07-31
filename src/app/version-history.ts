@@ -9,6 +9,14 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.117.0",
+    title: "맞고 맞히는 순간이 더 울린다요 ㅇㅅㅇ",
+    reason:
+      "폭탄이 터지고 대포가 떨어지고 스킬이 꽂혀도 화면이 조용해서 치열한 난전이 밋밋하게 느껴졌다요.",
+    change:
+      "폭탄·대포·스킬·처치에 거리에 따라 줄어드는 카메라 흔들림을 넣고, 맞을 때 화면 가장자리에 빨간 빛이 훅 지나가게 했다요. 줄임 동작을 켠 사람은 흔들림과 빛이 켜지지 않는다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.116.0",
     title: "남은 돌탄 자국까지 다 걷었다요 ㅇㅅㅇ",
     reason:

@@ -271,6 +271,56 @@ function getArenaDimensions(frame: RenderFrameV1): { columns: number; rows: numb
   );
 }
 
+const CAMERA_SHAKE_BOMB_MAGNITUDE = 0.62;
+const CAMERA_SHAKE_ELIMINATION_MAGNITUDE = 0.5;
+const CAMERA_SHAKE_SKILL_HIT_MAGNITUDE = 0.34;
+const CAMERA_SHAKE_TILE_IMPACT_MAGNITUDE = 0.22;
+const CAMERA_SHAKE_FULL_STRENGTH_DISTANCE = 4.5;
+const CAMERA_SHAKE_FALLOFF_DISTANCE = 14;
+const CAMERA_SHAKE_DECAY_PER_FRAME = 0.86;
+const CAMERA_SHAKE_MINIMUM = 0.02;
+
+function getCameraShakeMagnitude(
+  event: SimulationEventV1,
+  human: RenderParticipantV1 | undefined,
+  frame: RenderFrameV1,
+): number {
+  let base = 0;
+  if (event.kind === "bomb-detonated") {
+    base = CAMERA_SHAKE_BOMB_MAGNITUDE;
+  } else if (event.kind === "eliminated") {
+    base = CAMERA_SHAKE_ELIMINATION_MAGNITUDE;
+  } else if (event.kind === "skill-hit") {
+    base = CAMERA_SHAKE_SKILL_HIT_MAGNITUDE;
+  } else if (event.kind === "tile-void") {
+    base = CAMERA_SHAKE_TILE_IMPACT_MAGNITUDE;
+  } else {
+    return 0;
+  }
+
+  if (human === undefined) {
+    return base;
+  }
+
+  const position = getEffectPosition(event, frame);
+  if (position === undefined) {
+    return base;
+  }
+
+  const distance = Math.hypot(human.position.x - position.x, human.position.y - position.y);
+  if (distance <= CAMERA_SHAKE_FULL_STRENGTH_DISTANCE) {
+    return base;
+  }
+  if (distance >= CAMERA_SHAKE_FALLOFF_DISTANCE) {
+    return 0;
+  }
+  const falloff =
+    1 -
+    (distance - CAMERA_SHAKE_FULL_STRENGTH_DISTANCE) /
+      (CAMERA_SHAKE_FALLOFF_DISTANCE - CAMERA_SHAKE_FULL_STRENGTH_DISTANCE);
+  return base * falloff;
+}
+
 function createCameraOffset(
   frame: RenderFrameV1,
   width: number,
@@ -2507,6 +2557,8 @@ export async function createArenaRenderer(
   const motionPreference = window.matchMedia("(prefers-reduced-motion: reduce)");
   let reducedMotion = motionPreference.matches;
   let visualEffects: readonly VisualEffect[] = Object.freeze([]);
+  let cameraShakeIntensity = 0;
+  let cameraShakeSeed = 0;
   let latestFrame: RenderFrameV1 | undefined;
   let latestInterpolationAlpha = 0;
   let latestHumanActorId = 1;
@@ -2562,6 +2614,19 @@ export async function createArenaRenderer(
       oceanSprite.alpha = 0.92;
     }
 
+    const shakeActive = cameraShakeIntensity > CAMERA_SHAKE_MINIMUM;
+    let shakeX = 0;
+    let shakeY = 0;
+    if (shakeActive) {
+      cameraShakeSeed = (cameraShakeSeed + 1) & 0xffff;
+      const angle = cameraShakeSeed * 40503 * (Math.PI / 180);
+      const amplitude = cameraShakeIntensity * projection.tileWidth * 0.32;
+      shakeX = Math.cos(angle) * amplitude;
+      shakeY = Math.sin(angle) * amplitude * ARENA_DEPTH_SCALE;
+      cameraShakeIntensity *= CAMERA_SHAKE_DECAY_PER_FRAME;
+    } else {
+      cameraShakeIntensity = 0;
+    }
     for (const layer of [
       tiles,
       terrainSprites,
@@ -2580,15 +2645,15 @@ export async function createArenaRenderer(
       impactSprites,
       artilleryLabels,
     ]) {
-      layer.x = presentationCamera.x;
-      layer.y = presentationCamera.y;
+      layer.x = presentationCamera.x + shakeX;
+      layer.y = presentationCamera.y + shakeY;
     }
     host.dataset.cameraX = presentationCamera.x.toFixed(2);
     host.dataset.cameraY = presentationCamera.y.toFixed(2);
     host.dataset.cameraMode = isSpectatorFrame(latestFrame, latestHumanActorId)
       ? "spectator"
       : "follow";
-    host.dataset.cameraShake = "0.00";
+    host.dataset.cameraShake = shakeActive ? cameraShakeIntensity.toFixed(2) : "0.00";
     host.dataset.projectionAngle = ARENA_CAMERA_ELEVATION_DEGREES.toString();
     host.dataset.projectionScaleY = ARENA_DEPTH_SCALE.toFixed(4);
     host.dataset.cliffDepth = projection.cliffDepth.toFixed(2);
@@ -3082,6 +3147,15 @@ export async function createArenaRenderer(
   return Object.freeze({
     consumeEvents(events: readonly SimulationEventV1[], frame: RenderFrameV1): void {
       const accepted = eventLedger.consume(events);
+      if (!reducedMotion) {
+        const human = frame.participants.find(({ actorId }) => actorId === latestHumanActorId);
+        for (const event of accepted) {
+          const magnitude = getCameraShakeMagnitude(event, human, frame);
+          if (magnitude > cameraShakeIntensity) {
+            cameraShakeIntensity = magnitude;
+          }
+        }
+      }
       for (const event of accepted) {
         if (event.kind === "skill-used" && event.actorId !== undefined) {
           castAnimationsByActorId.set(
