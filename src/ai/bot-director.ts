@@ -548,7 +548,8 @@ function getSteeredMovement(
       nearbyCrowdCount += 1;
     }
   }
-  if (stalled && (nearbyCrowdCount >= 2 || vectorLength(desired) === 0)) {
+  const desiredIsZero = desired.x === 0 && desired.y === 0;
+  if (stalled && (nearbyCrowdCount >= 2 || desiredIsZero)) {
     const escape = getStalledEscapeMovement(
       current,
       desired,
@@ -560,47 +561,65 @@ function getSteeredMovement(
       return escape;
     }
   }
-  if (vectorLength(desired) === 0) {
+  if (desiredIsZero) {
     return ZERO_VECTOR;
   }
   const crowdAvoidance = getCrowdAvoidance(current, perceivedParticipants);
-  let steered = normalizeVector(
-    addVectors(desired, scaleVector(crowdAvoidance, stalled ? 1.2 : 0.38)),
-  );
+  const avoidanceScale = stalled ? 1.2 : 0.38;
+  let steeredX = desired.x + crowdAvoidance.x * avoidanceScale;
+  let steeredY = desired.y + crowdAvoidance.y * avoidanceScale;
+  const steeredLength = Math.hypot(steeredX, steeredY);
+  if (steeredLength > 1) {
+    const steeredInverse = 1 / steeredLength;
+    steeredX *= steeredInverse;
+    steeredY *= steeredInverse;
+  }
   const probeDistance = stalled ? 1.35 : 0.9;
-  const steeredEnd = addVectors(current.position, scaleVector(steered, probeDistance));
+  const steeredEndX = current.position.x + steeredX * probeDistance;
+  const steeredEndY = current.position.y + steeredY * probeDistance;
   if (
     !isBotNavigationSegmentClear(
       terrain,
       blockedTileIds,
       current.position,
-      steeredEnd,
+      Object.freeze({ x: steeredEndX, y: steeredEndY }),
       current.radius,
     )
   ) {
-    steered = desired;
+    steeredX = desired.x;
+    steeredY = desired.y;
   }
   if (!stalled) {
-    return steered;
+    return Object.freeze({ x: steeredX, y: steeredY });
   }
 
   const side = current.actorId % 2 === 0 ? 1 : -1;
   for (const offset of [side * (Math.PI / 3), -side * (Math.PI / 3), side * (Math.PI / 2)]) {
-    const detour = normalizeVector(rotateVector(desired, offset));
-    const detourEnd = addVectors(current.position, scaleVector(detour, probeDistance));
+    const cosine = Math.cos(offset);
+    const sine = Math.sin(offset);
+    let detourX = desired.x * cosine - desired.y * sine;
+    let detourY = desired.x * sine + desired.y * cosine;
+    const detourLength = Math.hypot(detourX, detourY);
+    if (detourLength > 1) {
+      const detourInverse = 1 / detourLength;
+      detourX *= detourInverse;
+      detourY *= detourInverse;
+    }
+    const detourEndX = current.position.x + detourX * probeDistance;
+    const detourEndY = current.position.y + detourY * probeDistance;
     if (
       isBotNavigationSegmentClear(
         terrain,
         blockedTileIds,
         current.position,
-        detourEnd,
+        Object.freeze({ x: detourEndX, y: detourEndY }),
         current.radius,
       )
     ) {
-      return detour;
+      return Object.freeze({ x: detourX, y: detourY });
     }
   }
-  return steered;
+  return Object.freeze({ x: steeredX, y: steeredY });
 }
 
 function chooseEmergencyItemSlot(
