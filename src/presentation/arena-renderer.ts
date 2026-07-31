@@ -586,11 +586,11 @@ function drawCannonShot(
   reducedMotion: boolean,
 ): void {
   const progress = getShotProgress(tick, shot.launchTick, shot.impactTick);
-  const worldPosition = Object.freeze({
-    x: shot.origin.x + (shot.target.x - shot.origin.x) * progress,
-    y: shot.origin.y + (shot.target.y - shot.origin.y) * progress,
-  });
-  const projected = projectArenaPoint(worldPosition, projection);
+  const projected = projectArenaXY(
+    shot.origin.x + (shot.target.x - shot.origin.x) * progress,
+    shot.origin.y + (shot.target.y - shot.origin.y) * progress,
+    projection,
+  );
   const arc = reducedMotion ? 0 : Math.sin(Math.PI * progress) * projection.tileWidth * 1.35;
   const radius = Math.max(3, projection.tileWidth * (0.07 + progress * 0.04));
   graphics
@@ -677,11 +677,11 @@ function drawGiftDelivery(
   reducedMotion: boolean,
 ): void {
   const progress = getShotProgress(tick, delivery.launchTick, delivery.impactTick);
-  const worldPosition = Object.freeze({
-    x: delivery.origin.x + (delivery.target.x - delivery.origin.x) * progress,
-    y: delivery.origin.y + (delivery.target.y - delivery.origin.y) * progress,
-  });
-  const projected = projectArenaPoint(worldPosition, projection);
+  const projected = projectArenaXY(
+    delivery.origin.x + (delivery.target.x - delivery.origin.x) * progress,
+    delivery.origin.y + (delivery.target.y - delivery.origin.y) * progress,
+    projection,
+  );
   const target = projectArenaPoint(delivery.target, projection);
   const arc = reducedMotion ? 0 : Math.sin(Math.PI * progress) * projection.tileWidth * 1.15;
   const size = clamp(projection.tileWidth * (0.28 + progress * 0.1), 14, 32);
