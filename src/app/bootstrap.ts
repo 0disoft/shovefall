@@ -1691,6 +1691,11 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
           mapViewAvailable: true,
           mode: "completed",
         });
+        if (round.winnerActorId === 1) {
+          upgradeFlash.classList.remove("is-active");
+          void upgradeFlash.offsetWidth;
+          upgradeFlash.classList.add("is-active");
+        }
         restartButton.focus();
       },
       onPauseChanged(paused): void {

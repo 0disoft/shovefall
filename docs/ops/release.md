@@ -1,11 +1,11 @@
 # Static Release Procedure
 
-- Status: `0.126.0` complete-island cannon-collapse candidate; hosted proof pending
+- Status: `0.127.0` complete-island cannon-collapse candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.126.0`
+- Current product version: `0.127.0`
 
-Product `0.126.0`, simulation `78.0.0`, and content `48.0.0` keep simulation `78.0.0`,
-content `48.0.0`, replay v8, and reports v11. The arena projection is now cached and reused while the screen size is unchanged instead of recomputing and reallocating it each frame across the draw, screen-to-world, and aim-preview paths. Visible projection, combat results, replay hash, and balance are unchanged. Hosted proof, complete-collapse pacing, and human readability remain pending.
+Product `0.127.0`, simulation `78.0.0`, and content `48.0.0` keep simulation `78.0.0`,
+content `48.0.0`, replay v8, and reports v11. Winning a round now triggers the same gold vignette pulse used by the trait upgrade save so the final victory moment reads more clearly. The pulse respects the browser reduced-motion preference and is presentation-only. Combat results, replay hash, and balance are unchanged. Hosted proof, complete-collapse pacing, and human readability remain pending.
 
 Product `0.125.0`, simulation `78.0.0`, and content `48.0.0` keep simulation `78.0.0`,
 content `48.0.0`, replay v8, and reports v11. Earning a stat point from a human kill now plays a brief bright cue, adding audible reward feedback to the existing kill flash. The cue fires only for the human player's kills and is presentation-only. Combat results, replay hash, and balance are unchanged. Hosted proof, complete-collapse pacing, and human readability remain pending.

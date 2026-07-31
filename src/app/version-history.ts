@@ -9,6 +9,13 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.127.0",
+    title: "이기면 황금빛이 훅 감싼다요 ㅇㅅㅇ",
+    reason: "라운드를 이겨도 화면이 조용해서 마지막 승리의 순간이 잘 안 와닿았다요.",
+    change:
+      "내가 라운드를 이기면 화면 가장자리에 황금빛이 짧게 훅 감싼다요. 줄임 동작을 켠 사람은 빛이 켜지지 않는다요. 전투 결과와 수치는 그대로다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.126.0",
     title: "화면 크기가 안 바뀌면 투영을 다시 안 만든다요 ㅇㅅㅇ",
     reason:
