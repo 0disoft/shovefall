@@ -27,8 +27,10 @@ export interface ActionFeedbackInput {
   readonly actorId: number;
   readonly center: Vector2;
   readonly previousCenter: Vector2;
-  readonly direction: Vector2;
-  readonly velocity: Vector2;
+  readonly directionX: number;
+  readonly directionY: number;
+  readonly velocityX: number;
+  readonly velocityY: number;
   readonly radius: number;
   readonly frameTick: number;
   readonly reducedMotion: boolean;
@@ -44,14 +46,14 @@ const COLORS = Object.freeze({
   neutral: 0xc9d0cd,
 } as const);
 
-function normalizeOrFallback(vector: Vector2, fallback: Vector2): Vector2 {
-  const length = Math.hypot(vector.x, vector.y);
+function normalizeOrFallback(x: number, y: number, fallback: Vector2): Vector2 {
+  const length = Math.hypot(x, y);
 
   if (length <= Number.EPSILON) {
     return fallback;
   }
 
-  return Object.freeze({ x: vector.x / length, y: vector.y / length });
+  return Object.freeze({ x: x / length, y: y / length });
 }
 
 function pointFrom(origin: Vector2, direction: Vector2, distance: number): Vector2 {
@@ -130,9 +132,13 @@ function createBrokenRing(
 }
 
 export function createActionFeedbackGeometry(input: ActionFeedbackInput): ActionFeedbackGeometry {
-  const direction = normalizeOrFallback(input.direction, Object.freeze({ x: 1, y: 0 }));
+  const direction = normalizeOrFallback(
+    input.directionX,
+    input.directionY,
+    Object.freeze({ x: 1, y: 0 }),
+  );
   const perpendicular = Object.freeze({ x: -direction.y, y: direction.x });
-  const velocity = normalizeOrFallback(input.velocity, direction);
+  const velocity = normalizeOrFallback(input.velocityX, input.velocityY, direction);
   const strokes: ActionFeedbackStroke[] = [];
   const circles: ActionFeedbackCircle[] = [];
   const displaced = input.action === "Stumbling" || input.action === "Slipping";
@@ -216,7 +222,7 @@ export function createActionFeedbackGeometry(input: ActionFeedbackInput): Action
       x: input.center.x - input.previousCenter.x,
       y: input.center.y - input.previousCenter.y,
     });
-    const dodgeDirection = normalizeOrFallback(displacement, direction);
+    const dodgeDirection = normalizeOrFallback(displacement.x, displacement.y, direction);
     const dodgePerpendicular = Object.freeze({ x: -dodgeDirection.y, y: dodgeDirection.x });
     const wedgeTip = pointFrom(input.center, dodgeDirection, input.radius * 1.45);
     const wedgeBack = pointFrom(input.center, dodgeDirection, -input.radius * 0.36);

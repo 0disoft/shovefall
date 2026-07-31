@@ -5,8 +5,10 @@ const BASE_INPUT = Object.freeze({
   actorId: 1,
   center: Object.freeze({ x: 100, y: 100 }),
   previousCenter: Object.freeze({ x: 92, y: 100 }),
-  direction: Object.freeze({ x: 1, y: 0 }),
-  velocity: Object.freeze({ x: 0.3, y: 0 }),
+  directionX: 1,
+  directionY: 0,
+  velocityX: 0.3,
+  velocityY: 0,
   radius: 12,
   frameTick: 30,
   reducedMotion: false,
@@ -48,7 +50,8 @@ describe("action feedback geometry", () => {
     const geometry = createActionFeedbackGeometry({
       ...BASE_INPUT,
       action: "Stumbling",
-      velocity: Object.freeze({ x: 0.4, y: -0.2 }),
+      velocityX: 0.4,
+      velocityY: -0.2,
     });
 
     expect(geometry.strokes).toHaveLength(3);
