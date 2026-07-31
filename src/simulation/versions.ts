@@ -1,4 +1,4 @@
-export const PRODUCT_VERSION = "0.156.0";
+export const PRODUCT_VERSION = "0.157.0";
 export const SIMULATION_VERSION = "78.0.0";
 export const CONTENT_VERSION = "48.0.0";
 export const REPLAY_FORMAT_VERSION = 8;

@@ -288,8 +288,15 @@ function getPerpendicularTowardCenter(
 ): Vector2 {
   const left = Object.freeze({ x: -threatFacing.y, y: threatFacing.x });
   const right = Object.freeze({ x: threatFacing.y, y: -threatFacing.x });
-  const towardCenter = normalizeVector(subtractVectors(center, selfPosition));
-  return dotVectors(left, towardCenter) >= dotVectors(right, towardCenter) ? left : right;
+  const towardCenterX = center.x - selfPosition.x;
+  const towardCenterY = center.y - selfPosition.y;
+  const towardCenterLength = Math.hypot(towardCenterX, towardCenterY);
+  const normalizedX = towardCenterLength <= 1 ? towardCenterX : towardCenterX / towardCenterLength;
+  const normalizedY = towardCenterLength <= 1 ? towardCenterY : towardCenterY / towardCenterLength;
+  return left.x * normalizedX + left.y * normalizedY >=
+    right.x * normalizedX + right.y * normalizedY
+    ? left
+    : right;
 }
 
 function isControllable(participant: RenderParticipantV1): boolean {
