@@ -1,8 +1,11 @@
 # Static Release Procedure
 
-- Status: `0.155.0` complete-island cannon-collapse candidate; hosted proof pending
+- Status: `0.156.0` complete-island cannon-collapse candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.155.0`
+- Current product version: `0.156.0`
+
+Product `0.156.0`, simulation `78.0.0`, and content `48.0.0` keep simulation `78.0.0`,
+content `48.0.0`, replay v8, and reports v11. Bot skill selection now computes target distance from raw components instead of allocating subtractVectors and vectorLength intermediate objects per skill slot per decision. Visible bot movement, combat results, replay hash, and balance are unchanged. Hosted proof, complete-collapse pacing, and human readability remain pending.
 
 Product `0.155.0`, simulation `78.0.0`, and content `48.0.0` keep simulation `78.0.0`,
 content `48.0.0`, replay v8, and reports v11. Bot item assignment now finds the nearest eligible pursuer in a single pass instead of allocating filter, map, sort, and index intermediate arrays per item. Visible bot movement, combat results, replay hash, and balance are unchanged. Hosted proof, complete-collapse pacing, and human readability remain pending.

@@ -399,8 +399,9 @@ function chooseReadySkillSlot(
       continue;
     }
 
-    const distance = vectorLength(
-      subtractVectors(attackContext.target.position, participant.position),
+    const distance = Math.hypot(
+      attackContext.target.position.x - participant.position.x,
+      attackContext.target.position.y - participant.position.y,
     );
     const requiresClearSegment =
       definition.castKind === "melee" ||
