@@ -28,7 +28,6 @@ import {
   getProjectedArenaSize,
   projectArenaPoint,
   projectArenaXY,
-  projectArenaVector,
   type ArenaProjection,
 } from "./arena-projection";
 import { SimulationEventLedger } from "./event-ledger";
@@ -1367,12 +1366,14 @@ function syncSkillEffectSprites(
     const hitScale = effect.kind === "skill-hit" || effect.kind === "status-applied" ? 0.82 : 1;
     const animatedScale = reducedMotion ? 0.9 : 0.7 + progress * 0.48;
     const size = clamp(baseSize * hitScale * animatedScale, 42, 280);
-    const direction = projectArenaVector(effect.vector ?? { x: 1, y: 0 });
+    const effectVector = effect.vector;
+    const directionX = effectVector === undefined ? 1 : effectVector.x;
+    const directionY = (effectVector === undefined ? 0 : effectVector.y) * ARENA_DEPTH_SCALE;
     sprite.position.set(point.x, point.y);
     sprite.width = size;
     sprite.height = size;
     sprite.rotation = DIRECTIONAL_SKILL_EFFECTS.has(definitionId)
-      ? Math.atan2(direction.y, direction.x)
+      ? Math.atan2(directionY, directionX)
       : definitionId === "frost-field" && !reducedMotion
         ? progress * 0.18
         : 0;
@@ -2233,8 +2234,11 @@ function drawSkillEffect(
   progress: number,
   alpha: number,
 ): void {
-  const direction = projectArenaVector(effect.vector ?? { x: 1, y: 0 });
-  const perpendicular = { x: -direction.y, y: direction.x };
+  const effectVector = effect.vector;
+  const directionX = effectVector === undefined ? 1 : effectVector.x;
+  const directionY = (effectVector === undefined ? 0 : effectVector.y) * ARENA_DEPTH_SCALE;
+  const perpendicularX = -directionY;
+  const perpendicularY = directionX;
   const radius = baseRadius * (1.15 + progress * 1.8);
   const color = effect.kind === "skill-hit" ? 0xffc857 : 0x72d8ff;
 
@@ -2244,26 +2248,26 @@ function drawSkillEffect(
         const offset = index * radius * 0.85;
         graphics
           .moveTo(
-            x - direction.x * offset - perpendicular.x * radius,
-            y - direction.y * offset - perpendicular.y * radius,
+            x - directionX * offset - perpendicularX * radius,
+            y - directionY * offset - perpendicularY * radius,
           )
-          .lineTo(x - direction.x * (offset + radius), y - direction.y * (offset + radius))
+          .lineTo(x - directionX * (offset + radius), y - directionY * (offset + radius))
           .lineTo(
-            x - direction.x * offset + perpendicular.x * radius,
-            y - direction.y * offset + perpendicular.y * radius,
+            x - directionX * offset + perpendicularX * radius,
+            y - directionY * offset + perpendicularY * radius,
           );
       }
       graphics.stroke({ color: 0x74f1e6, width: 3, alpha, cap: "round" });
       break;
     case "arc-bolt": {
       const length = radius * 5.5;
-      graphics.moveTo(x - direction.x * length, y - direction.y * length);
+      graphics.moveTo(x - directionX * length, y - directionY * length);
       for (let index = 1; index <= 6; index += 1) {
         const ratio = index / 6;
         const jitter = index % 2 === 0 ? -radius * 0.55 : radius * 0.55;
         graphics.lineTo(
-          x - direction.x * length * (1 - ratio) + perpendicular.x * jitter,
-          y - direction.y * length * (1 - ratio) + perpendicular.y * jitter,
+          x - directionX * length * (1 - ratio) + perpendicularX * jitter,
+          y - directionY * length * (1 - ratio) + perpendicularY * jitter,
         );
       }
       graphics.stroke({ color: 0x62e7ff, width: 6, alpha, cap: "round", join: "round" });
@@ -2273,8 +2277,8 @@ function drawSkillEffect(
       for (let index = 0; index < 4; index += 1) {
         const offset = radius * index * 1.25;
         graphics.ellipse(
-          x - direction.x * offset,
-          y - direction.y * offset,
+          x - directionX * offset,
+          y - directionY * offset,
           radius * 0.62,
           radius * 0.34,
         );
@@ -2394,19 +2398,21 @@ function drawWorldEffect(
       .circle(x, y, baseRadius * (reducedMotion ? 1 : 0.8 + progress * 0.2))
       .stroke({ color: ITEM_COLORS.bomb, width: 3, alpha });
   } else if (effect.kind === "item-used") {
-    const direction = projectArenaVector(effect.vector ?? { x: 1, y: 0 });
+    const effectVector = effect.vector;
+    const directionX = effectVector === undefined ? 1 : effectVector.x;
+    const directionY = (effectVector === undefined ? 0 : effectVector.y) * ARENA_DEPTH_SCALE;
     const length = baseRadius * (reducedMotion ? 2.2 : 2.2 + progress * 3.2);
     const spread = baseRadius * 0.8;
     graphics
       .moveTo(x, y)
       .lineTo(
-        x + direction.x * length - direction.y * spread,
-        y + direction.y * length + direction.x * spread,
+        x + directionX * length - directionY * spread,
+        y + directionY * length + directionX * spread,
       )
       .moveTo(x, y)
       .lineTo(
-        x + direction.x * length + direction.y * spread,
-        y + direction.y * length - direction.x * spread,
+        x + directionX * length + directionY * spread,
+        y + directionY * length - directionX * spread,
       )
       .stroke({
         color: getItemColor(effect.itemDefinitionId ?? "soap") ?? 0x68d8d6,
@@ -2429,11 +2435,13 @@ function drawWorldEffect(
       .lineTo(x, y + size)
       .stroke({ color: 0xffd166, width: 2, alpha, cap: "round" });
   } else {
-    const direction = projectArenaVector(effect.vector ?? { x: 1, y: 0 });
+    const effectVector = effect.vector;
+    const directionX = effectVector === undefined ? 1 : effectVector.x;
+    const directionY = (effectVector === undefined ? 0 : effectVector.y) * ARENA_DEPTH_SCALE;
     const length = baseRadius * (reducedMotion ? 1.4 : 1.4 + progress * 1.6);
     graphics
       .moveTo(x, y)
-      .lineTo(x + direction.x * length, y + direction.y * length)
+      .lineTo(x + directionX * length, y + directionY * length)
       .stroke({
         color: effect.kind === "falling-started" ? 0x727b78 : 0xd58bea,
         width: 3,
