@@ -161,15 +161,25 @@ export function getBotMapItemClaimantActorId(
   item: RenderItemV1,
   participants: readonly RenderParticipantV1[],
 ): ActorId | null {
-  const claimant = participants
-    .filter(isControllable)
-    .filter((participant) => canBotCollectMapItem(participant, item))
-    .map((participant) => ({
-      actorId: participant.actorId,
-      distance: vectorLength(subtractVectors(participant.position, item.position)),
-    }))
-    .toSorted((left, right) => left.distance - right.distance || left.actorId - right.actorId)[0];
-  return claimant?.actorId ?? null;
+  let nearestActorId: ActorId | null = null;
+  let nearestDistance = Infinity;
+  for (const participant of participants) {
+    if (!isControllable(participant) || !canBotCollectMapItem(participant, item)) {
+      continue;
+    }
+    const distance = Math.hypot(
+      participant.position.x - item.position.x,
+      participant.position.y - item.position.y,
+    );
+    if (
+      distance < nearestDistance ||
+      (distance === nearestDistance && participant.actorId < (nearestActorId ?? 0))
+    ) {
+      nearestActorId = participant.actorId;
+      nearestDistance = distance;
+    }
+  }
+  return nearestActorId;
 }
 
 function canCollectorClearActiveSlotForItem(

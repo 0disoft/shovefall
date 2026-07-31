@@ -1,8 +1,11 @@
 # Static Release Procedure
 
-- Status: `0.157.0` complete-island cannon-collapse candidate; hosted proof pending
+- Status: `0.158.0` complete-island cannon-collapse candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.157.0`
+- Current product version: `0.158.0`
+
+Product `0.158.0`, simulation `78.0.0`, and content `48.0.0` keep simulation `78.0.0`,
+content `48.0.0`, replay v8, and reports v11. Bot item claimant selection now finds the nearest eligible collector in a single pass instead of allocating filter, map, sort, and index intermediate arrays per item. Visible bot movement, combat results, replay hash, and balance are unchanged. Hosted proof, complete-collapse pacing, and human readability remain pending.
 
 Product `0.157.0`, simulation `78.0.0`, and content `48.0.0` keep simulation `78.0.0`,
 content `48.0.0`, replay v8, and reports v11. Bot perpendicular evasion now computes center direction and dot products from raw components instead of allocating subtractVectors, normalizeVector, and dotVectors intermediate objects per decision. Visible bot movement, combat results, replay hash, and balance are unchanged. Hosted proof, complete-collapse pacing, and human readability remain pending.
