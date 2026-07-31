@@ -2602,6 +2602,7 @@ export async function createArenaRenderer(
   let spectatorCamera: Vector2 | undefined;
   let spectatorRoundId: number | undefined;
   let lastFrameSpectator = false;
+  let lastFrameHuman: RenderParticipantV1 | undefined;
   let tileLayerDirty = true;
   let oceanSprite: Sprite | undefined;
   let cachedProjection: ArenaProjection | undefined;
@@ -2635,7 +2636,14 @@ export async function createArenaRenderer(
       latestHumanActorId,
       latestInterpolationAlpha,
     );
-    lastFrameSpectator = isSpectatorFrame(latestFrame, latestHumanActorId);
+    const human = latestFrame.participants.find(({ actorId }) => actorId === latestHumanActorId);
+    lastFrameHuman = human;
+    lastFrameSpectator =
+      latestFrame.round.status === "Completed" ||
+      human === undefined ||
+      !human.active ||
+      human.action === "Falling" ||
+      human.action === "Eliminated";
     if (!lastFrameSpectator) {
       spectatorCamera = undefined;
       return camera;
@@ -2911,9 +2919,7 @@ export async function createArenaRenderer(
         tree,
       })),
     ].toSorted((left, right) => left.depth - right.depth || left.sortKey - right.sortKey);
-    const humanParticipant = latestFrame.participants.find(
-      ({ actorId }) => actorId === latestHumanActorId,
-    );
+    const humanParticipant = lastFrameHuman;
     const hasCharacterArtwork =
       visualAssets !== null &&
       ((visualAssets.characterTextures?.length ?? 0) > 0 ||

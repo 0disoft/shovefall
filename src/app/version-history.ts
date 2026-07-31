@@ -9,6 +9,13 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.130.0",
+    title: "내 참가자를 두 번 찾지 않는다요 ㅇㅅㅇ",
+    reason: "매 그림마다 내 참가자를 카메라 잡을 때 한 번, 거리 잴 때 또 한 번 찾았다요.",
+    change:
+      "내 참가자를 한 번만 찾아서 카메라와 거리 계산에 함께 쓴다요. 그림과 전투 결과, 수치는 그대로다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.129.0",
     title: "바뀌지 않는 투영 값은 미리 만들어둔다요 ㅇㅅㅇ",
     reason: "매 그림마다 똑같은 투영 각도와 깊이 비율을 글자로 바꿔서 새로 만들었다요.",
