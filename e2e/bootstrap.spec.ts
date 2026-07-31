@@ -324,6 +324,13 @@ async function allocateStrengthBuild(page: Page): Promise<void> {
 
 async function startGame(page: Page): Promise<void> {
   await page.getByRole("button", { name: "게임 시작" }).click();
+  const briefing = page.getByRole("dialog", {
+    name: "포격으로 무너지는 섬에서 끝까지 살아남아.",
+  });
+  await expect(briefing).toBeVisible();
+  const confirm = page.getByRole("button", { name: "알겠다요 ㅇㅅㅇ" });
+  await expect(confirm).toBeEnabled();
+  await confirm.click();
 }
 
 async function saveBalancedDefaults(page: Page): Promise<void> {
@@ -525,6 +532,12 @@ test("centers the fullscreen menu actions on the viewport", async ({ page }) => 
   expect(Math.abs(geometry.actionCenter - geometry.viewportCenter)).toBeLessThanOrEqual(1);
   await expect(page.locator(".masthead h1")).toBeVisible();
   await expect(page.locator(".fullscreen-guide")).toBeVisible();
+  const menuContextMenuPrevented = await page.locator("#app").evaluate((app) => {
+    const event = new MouseEvent("contextmenu", { bubbles: true, cancelable: true });
+    return !app.dispatchEvent(event);
+  });
+
+  expect(menuContextMenuPrevented).toBe(true);
 });
 
 test("uses right-click ground destinations instead of desktop mouse-drag movement", async ({
@@ -614,6 +627,9 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await expect(page.locator('input[name="botDifficulty"]')).toHaveCount(0);
   await expect(page.locator("#player-count")).toHaveCount(0);
   await expect(page.locator("#stat-upgrade-form [data-trait-choice]")).toHaveCount(6);
+  await expect(
+    page.locator("#stat-upgrade-form [data-trait-choice] > .trait-upgrade__copy > strong"),
+  ).toHaveText(["완력", "균형", "민첩", "의지", "체질", "정신"]);
   await expect(page.locator("#stat-upgrade-form svg")).toHaveCount(0);
   await expect(page.getByText("50명 · AI 어려움", { exact: true })).toHaveCount(0);
   await expect(page.getByRole("tab")).toHaveCount(4);
@@ -663,8 +679,8 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
     '[data-skill-definition="blink-step"] .loadout-card__effect-row',
   );
   await expect(blinkStepRows).toHaveCount(2);
-  await expect(blinkStepRows.nth(0)).toHaveText("지정 방향으로 최대 3칸 이동");
-  await expect(blinkStepRows.nth(1)).toHaveText("1초 동안 공격 회피");
+  await expect(blinkStepRows.nth(0)).toHaveText("지정 방향으로 최대 4칸 이동");
+  await expect(blinkStepRows.nth(1)).toHaveText("2초 동안 공격 회피");
   await expect(page.getByText("바위 감옥", { exact: true })).toHaveCount(0);
   await expect(page.locator(".skill-art--arc-bolt")).toHaveCSS(
     "background-image",
@@ -692,8 +708,8 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await expect(bombEffect).toContainText("내 위치에서 최대 0.75칸 떨어진 곳에 폭탄 설치");
   await expect(bombEffect).toContainText("3.25초 뒤 폭발");
   await expect(bombEffect).toContainText("폭발 반경 3칸");
-  await expect(bombEffect).toContainText("피해 65");
-  await expect(bombEffect).toContainText("설치자는 피해의 20%를 받음");
+  await expect(bombEffect).toContainText("피해 60");
+  await expect(bombEffect).toContainText("설치자는 피해의 25%를 받음");
   await expect(page.locator("#starting-items .item-art")).toHaveCount(4);
   await expectAlignedLoadoutCards(page.locator("#starting-items .preset-card"));
   await expect(page.locator(".item-art--soap")).toHaveCSS("background-image", /item-icons/u);
@@ -715,9 +731,39 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await expect(page.locator("#starting-item-count")).toHaveText("1");
 
   await saveSettings(page);
-  const countdownPauseSnapshot = await page.locator("#start-game").evaluate((button) => {
+  await page.getByRole("button", { name: "게임 시작" }).click();
+  const roundBriefing = page.getByRole("dialog", {
+    name: "포격으로 무너지는 섬에서 끝까지 살아남아.",
+  });
+  await expect(roundBriefing).toBeVisible();
+  await expect(
+    roundBriefing.getByText("해적선의 대포에 맞은 해안 타일은 바다로 변해."),
+  ).toBeVisible();
+  await expect(roundBriefing.getByText("포격이 이어질수록 육지는 점점 좁아져.")).toBeVisible();
+  await expect(roundBriefing.getByText("마지막 한 명이 될 때까지 섬에서 살아남아.")).toBeVisible();
+  await expect(page.getByText("방향키 · 땅 우클릭", { exact: true })).toBeVisible();
+  await expect(page.getByText("Q · W", { exact: true })).toBeVisible();
+  await expect(page.getByText("E · D", { exact: true })).toBeVisible();
+  await expect(page.locator("#app")).toHaveAttribute("data-screen", "menu");
+  const confirmRoundBriefing = page.getByRole("button", { name: "알겠다요 ㅇㅅㅇ" });
+  const confirmRoundBriefingControl = page.locator("#confirm-round-briefing");
+  await expect(confirmRoundBriefing).toBeEnabled();
+  await expect(page.locator("#game-telemetry")).toHaveAttribute("data-tick", "0");
+  await page.clock.fastForward(2_000);
+  await expect(page.locator("#game-telemetry")).toHaveAttribute("data-tick", "0");
+  await page.locator("#arena-host canvas").dispatchEvent("webglcontextlost");
+  await expect(confirmRoundBriefingControl).toBeDisabled();
+  await expect(confirmRoundBriefingControl).toHaveText("게임 불러오는 중…");
+  await expect(page.getByText("그래픽 연결을 다시 기다리는 중…", { exact: true })).toBeVisible();
+  await expect(page.locator("#game-telemetry")).toHaveAttribute("data-tick", "0");
+  await page.locator("#arena-host canvas").dispatchEvent("webglcontextrestored");
+  await expect(confirmRoundBriefingControl).toHaveText("알겠다요 ㅇㅅㅇ");
+  await expect(confirmRoundBriefing).toBeEnabled();
+  await expect(confirmRoundBriefing).toBeFocused();
+
+  const countdownPauseSnapshot = await confirmRoundBriefing.evaluate((button) => {
     if (!(button instanceof HTMLButtonElement)) {
-      throw new Error("Game start control is not a button.");
+      throw new Error("Round briefing confirmation is not a button.");
     }
 
     button.click();
@@ -784,7 +830,7 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await expect(page.locator("#use-skill-slot-0")).toContainText("Q · 잔상 회피");
   await expect(page.locator("#use-skill-slot-1")).toContainText("W · 파동탄");
   await expect(page.locator("#use-grapple")).toContainText("E · 구조 갈고리");
-  await expect(page.locator("#use-item-slot-0")).toContainText("D · 비누 · 5회");
+  await expect(page.locator("#use-item-slot-0")).toContainText("D · 비누 · 4회");
   const actionHudButtons = page.locator(".action-hud button");
   await expect(actionHudButtons).toHaveCount(4);
   const actionHudPositions = await actionHudButtons.evaluateAll((buttons) =>
@@ -1090,7 +1136,7 @@ test("offers a working touch joystick and action buttons on a narrow viewport", 
     pointerId: 100,
     pointerType: "touch",
   });
-  await expect(page.locator("#use-skill-slot-0")).toHaveAttribute("data-state", "cooldown");
+  await expect(page.locator("#targeting-help")).toBeHidden();
   await expect(page.locator("#mana-value")).not.toHaveText("100 / 100");
 
   const joystick = page.locator("#pointer-joystick");
@@ -1194,7 +1240,7 @@ test("completes a collapsing round and starts a fresh world", async ({ page }) =
   );
   const parsedReport: unknown = JSON.parse(copiedReport ?? "null");
   expect(parsedReport).toMatchObject({
-    schemaVersion: "shovefall-playtest-round/v10",
+    schemaVersion: "shovefall-playtest-round/v11",
     seed: expect.any(String),
     stateHash: expect.stringMatching(/^fnv1a32:[0-9a-f]{8}$/u),
     settings: {
@@ -1207,7 +1253,7 @@ test("completes a collapsing round and starts a fresh world", async ({ page }) =
         balance: 4,
         willpower: 0,
       },
-      roundLimitSeconds: 120,
+      roundLimitSeconds: null,
     },
     result: {
       completedTick: expect.any(Number),

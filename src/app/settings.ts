@@ -20,7 +20,8 @@ export const BOT_DIFFICULTIES = [FORCED_BOT_DIFFICULTY] as const;
 export const FIXED_COLLAPSE_SPEED = "slow" as const;
 export const FIXED_INITIAL_ITEM_COUNT = 8;
 export const FIXED_ITEM_RESPAWN_SECONDS = 7;
-export const PUBLIC_ROUND_LIMIT_SECONDS = 120;
+export const PUBLIC_ROUND_LIMIT_SECONDS = null;
+export const AUTOMATION_ROUND_LIMIT_SECONDS = 120;
 
 export type PresetName = (typeof PRESET_NAMES)[number];
 export type CollapseSpeed = "slow" | "normal" | "fast";

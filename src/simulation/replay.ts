@@ -47,6 +47,13 @@ function readInteger(record: Readonly<Record<string, unknown>>, key: string): nu
   return value;
 }
 
+function readNullableInteger(
+  record: Readonly<Record<string, unknown>>,
+  key: string,
+): number | null {
+  return record[key] === null ? null : readInteger(record, key);
+}
+
 function readString(record: Readonly<Record<string, unknown>>, key: string): string {
   const value = record[key];
 
@@ -90,7 +97,7 @@ function parseConfig(value: unknown): GameConfigV1 {
     participantCount: readInteger(value, "participantCount"),
     arenaColumns: readInteger(value, "arenaColumns"),
     arenaRows: readInteger(value, "arenaRows"),
-    roundLimitTicks: readInteger(value, "roundLimitTicks"),
+    roundLimitTicks: readNullableInteger(value, "roundLimitTicks"),
     density: value.density === "normal" ? "normal" : fail("config.density is unsupported"),
     difficulty:
       value.difficulty === "easy" || value.difficulty === "normal" || value.difficulty === "hard"
@@ -141,7 +148,10 @@ function parseConfig(value: unknown): GameConfigV1 {
     "config arena",
   );
 
-  if (config.roundLimitTicks < 1 || config.roundLimitTicks > MAX_REPLAY_TICKS) {
+  if (
+    config.roundLimitTicks !== null &&
+    (config.roundLimitTicks < 1 || config.roundLimitTicks > MAX_REPLAY_TICKS)
+  ) {
     throw new SimulationContractError("config round limit is outside replay bounds");
   }
 
@@ -346,7 +356,7 @@ function validateReplayTimeline(fixture: ReplayFixtureV4): void {
     fixture.endTick,
     "endTick",
     0,
-    Math.min(MAX_REPLAY_TICKS, fixture.config.roundLimitTicks),
+    fixture.config.roundLimitTicks ?? MAX_REPLAY_TICKS,
   );
 
   let previousTick = -1;

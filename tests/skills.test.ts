@@ -62,13 +62,13 @@ describe("mana-backed reusable skills", () => {
 
   it("derives every description from the skill's balance fields", () => {
     const expected = {
-      "blink-step": "지정 방향으로 최대 3칸 이동, 1초 동안 공격 회피",
-      "arc-bolt": "전방 3.5칸 안의 첫 적을 조준 보정, 피해 22, 기준 넉백 약 7.3칸, 1초 휘청",
+      "blink-step": "지정 방향으로 최대 4칸 이동, 2초 동안 공격 회피",
+      "arc-bolt": "전방 3.5칸 안의 첫 적을 자동 조준해 피해 25, 기준 넉백 약 7.3칸, 1초 휘청",
       "chain-bind":
-        "전방 5.5칸의 첫 적, 전방 약 15도까지 조준 보정, 피해 20, 1초 이동 봉쇄, 적중 시 마나 10 강탈",
+        "전방 5.5칸의 첫 적, 전방 약 23도까지 자동 조준, 피해 20, 1초 이동 봉쇄, 적중 시 마나 10 강탈",
       "meteor-mark":
-        "5칸 앞에 표식, 1.5초 뒤 반경 3칸, 피해 36, 기준 넉백 약 2.3칸, 기본 0.8초 기절",
-      "frost-field": "3.5칸 앞에 4초간 초당 피해 4와 20% 둔화 지대, 준 피해의 15% 체력 회복",
+        "5칸 앞에 표식, 1.5초 뒤 반경 3칸, 피해 32, 기준 넉백 약 2.3칸, 기본 0.8초 기절",
+      "frost-field": "3.5칸 앞에 4초간 초당 피해 4와 20% 둔화 지대, 준 피해의 10% 체력 회복",
       aegis: "4초간 피해 22 흡수, 제어 시간 30% 감소",
     } as const;
 
@@ -78,7 +78,7 @@ describe("mana-backed reusable skills", () => {
 
     expect(
       formatSkillDescription({ ...getSkillDefinition("arc-bolt"), range: 6.5, damage: 22 }),
-    ).toContain("6.5칸 안의 첫 적을 조준 보정, 피해 22");
+    ).toContain("6.5칸 안의 첫 적을 자동 조준해 피해 22");
   });
 
   it("derives displayed knockback distance from the same impulse, duration, drag, and speed cap as runtime", () => {
@@ -109,13 +109,14 @@ describe("mana-backed reusable skills", () => {
       manaCost: 30,
       cooldownTicks: 300,
       range: 3.5,
-      damage: 22,
+      minimumAimDot: 0.88,
+      damage: 25,
       impulse: 0.3,
       stumbleTicks: 60,
     });
     expect(getSkillDefinition("chain-bind")).toMatchObject({
       manaCost: 30,
-      minimumAimDot: 0.966,
+      minimumAimDot: 0.92,
       range: 5.5,
       damage: 20,
       rootTicks: 60,
@@ -124,21 +125,22 @@ describe("mana-backed reusable skills", () => {
     expect(getSkillDefinition("meteor-mark")).toMatchObject({
       manaCost: 36,
       cooldownTicks: 480,
+      damage: 32,
       radius: 3,
       delayTicks: 90,
     });
     expect(getSkillDefinition("frost-field")).toMatchObject({
-      manaCost: 34,
-      cooldownTicks: 540,
+      manaCost: 38,
+      cooldownTicks: 600,
       damage: 4,
       slowMultiplier: 0.8,
-      damageHealingRatio: 0.15,
+      damageHealingRatio: 0.1,
       durationTicks: 240,
     });
     expect(getSkillDefinition("blink-step")).toMatchObject({
       manaCost: 20,
-      range: 3,
-      durationTicks: 60,
+      range: 4,
+      durationTicks: 120,
     });
   });
 
@@ -192,7 +194,7 @@ describe("mana-backed reusable skills", () => {
     expect(targetManaBefore + passiveManaRegeneration - getParticipantMana(world, 2)).toBe(10);
   });
 
-  it("heals the Frost Field caster for fifteen percent of actual health damage dealt", () => {
+  it("heals the Frost Field caster for ten percent of actual health damage dealt", () => {
     const world = new SimulationWorld(
       normalizeGameConfig({
         participantCount: 4,
@@ -263,7 +265,7 @@ describe("mana-backed reusable skills", () => {
     );
   });
 
-  it("keeps Blink Step evasion active for one second without extending its travel", () => {
+  it("keeps Blink Step evasion active for two seconds without extending its travel", () => {
     const world = new SimulationWorld(
       normalizeGameConfig({
         participantCount: 4,
@@ -321,7 +323,7 @@ describe("mana-backed reusable skills", () => {
       expect.objectContaining({ kind: "skill-hit", targetActorId: 1 }),
     );
 
-    while (world.tick < 60) {
+    while (world.tick < 120) {
       world.step([]);
     }
     expect(

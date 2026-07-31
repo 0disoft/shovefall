@@ -135,6 +135,7 @@ export function createActionFeedbackGeometry(input: ActionFeedbackInput): Action
   const velocity = normalizeOrFallback(input.velocity, direction);
   const strokes: ActionFeedbackStroke[] = [];
   const circles: ActionFeedbackCircle[] = [];
+  const displaced = input.action === "Stumbling" || input.action === "Slipping";
   const pulse = input.reducedMotion
     ? 0
     : (Math.sin((input.frameTick + input.actorId * 3) * 0.72) + 1) * 0.5;
@@ -150,7 +151,7 @@ export function createActionFeedbackGeometry(input: ActionFeedbackInput): Action
       ),
     );
 
-    if (input.action === "Stumbling" || input.action === "Falling") {
+    if (displaced || input.action === "Falling") {
       const size = input.radius * 0.46;
       strokes.push(
         stroke(
@@ -158,7 +159,7 @@ export function createActionFeedbackGeometry(input: ActionFeedbackInput): Action
             Object.freeze({ x: input.center.x - size, y: input.center.y - size }),
             Object.freeze({ x: input.center.x + size, y: input.center.y + size }),
           ],
-          input.action === "Stumbling" ? COLORS.stumble : COLORS.falling,
+          displaced ? COLORS.stumble : COLORS.falling,
           2,
         ),
       );
@@ -245,9 +246,9 @@ export function createActionFeedbackGeometry(input: ActionFeedbackInput): Action
         0.48,
       ),
     );
-  } else if (input.action === "Stumbling" || input.action === "GrapplePull") {
+  } else if (displaced || input.action === "GrapplePull") {
     const trailDirection = Object.freeze({ x: -velocity.x, y: -velocity.y });
-    const color = input.action === "Stumbling" ? COLORS.stumble : COLORS.windup;
+    const color = displaced ? COLORS.stumble : COLORS.windup;
 
     for (const [index, offset] of [-0.42, 0, 0.42].entries()) {
       const start = offsetPoint(input.center, perpendicular, offset * input.radius);

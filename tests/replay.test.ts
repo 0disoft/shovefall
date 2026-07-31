@@ -76,6 +76,22 @@ describe("replay fixture contract", () => {
     expect(runReplayFixture(parsed).finalHash).toBe(fixture.finalHash);
   });
 
+  it("round-trips an untimed public configuration", () => {
+    const fixture = createReplayFixture({
+      buildId: "untimed-public-round",
+      config: normalizeGameConfig({ participantCount: 4, roundLimitSeconds: null }),
+      masterSeed: "untimed-public-round",
+      humanActorId: 1,
+      endTick: 1,
+      commands: [],
+      checkpointTicks: [1],
+    });
+    const parsed = parseReplayFixtureJson(JSON.stringify(fixture));
+
+    expect(parsed.config.roundLimitTicks).toBeNull();
+    expect(runReplayFixture(parsed).finalHash).toBe(fixture.finalHash);
+  });
+
   it("rejects a replay config without enough unique spawn tiles", () => {
     const fixture = createFixture();
 

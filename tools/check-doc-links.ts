@@ -4,7 +4,6 @@ import {
   FIXED_COLLAPSE_SPEED,
   FIXED_INITIAL_ITEM_COUNT,
   FIXED_ITEM_RESPAWN_SECONDS,
-  PUBLIC_ROUND_LIMIT_SECONDS,
 } from "../src/app/settings";
 import {
   PUBLIC_LAKE_COUNT,
@@ -58,15 +57,15 @@ const CURRENT_PRODUCT_CONTRACTS = [
       `Product \`${PRODUCT_VERSION}\`, simulation \`${SIMULATION_VERSION}\`, and content \`${CONTENT_VERSION}\``,
       `${PUBLIC_LAKE_COUNT} separated ${PUBLIC_MINIMUM_LAKE_SIZE}–${PUBLIC_MAXIMUM_LAKE_SIZE}-tile lakes`,
       `${PUBLIC_TOTAL_LAKE_BUDGET}-tile budget`,
-      `${PUBLIC_ROUND_LIMIT_SECONDS}-second limit`,
-      "reports remain v10",
+      "No public round time limit.",
+      "reports remain v11",
     ],
     forbidden: ["16-participant normal round", "32-participant Mayhem boot"],
   },
   {
     path: "docs/product/02-spec.md",
     required: [
-      `${PUBLIC_ROUND_LIMIT_SECONDS}-second hard round limit`,
+      "no public round time limit",
       `exactly ${PUBLIC_LAKE_COUNT} separated ${PUBLIC_MINIMUM_LAKE_SIZE}–${PUBLIC_MAXIMUM_LAKE_SIZE}-tile lakes under a ${PUBLIC_TOTAL_LAKE_BUDGET}-tile total budget`,
       "kill-triggered direct six-trait progression",
       `fixed ${FIXED_COLLAPSE_SPEED[0]?.toUpperCase()}${FIXED_COLLAPSE_SPEED.slice(1)} collapse`,

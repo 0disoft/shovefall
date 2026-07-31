@@ -6,11 +6,11 @@ import { BOT_ACTIVE_ITEM_IDS, createBotLoadoutAssignments } from "../src/ai/bot-
 import { BOT_PERSONALITY_KINDS, type BotPersonalityKind } from "../src/ai/personalities";
 import { ITEM_DEFINITION_IDS, MAP_ITEM_DEFINITION_IDS } from "../src/content/items";
 import {
+  AUTOMATION_ROUND_LIMIT_SECONDS,
   getArenaSize,
   getPresetCollapseSpeed,
   getPresetItemRespawnSeconds,
   getRecommendedInitialItemCount,
-  PUBLIC_ROUND_LIMIT_SECONDS,
   type PresetName,
 } from "../src/app/settings";
 import {
@@ -397,7 +397,7 @@ function createAuditConfig(participantCount: (typeof PARTICIPANT_COUNTS)[number]
     participantCount,
     arenaColumns: arena.columns,
     arenaRows: arena.rows,
-    roundLimitSeconds: PUBLIC_ROUND_LIMIT_SECONDS,
+    roundLimitSeconds: AUTOMATION_ROUND_LIMIT_SECONDS,
     collapseSpeed: getPresetCollapseSpeed(preset),
     difficulty: "hard",
     itemsEnabled: true,
@@ -465,6 +465,14 @@ function createRoundObservation(
   });
 }
 
+function requireRoundLimitTicks(config: GameConfigV1): number {
+  if (config.roundLimitTicks === null) {
+    throw new Error("balance audit requires a configured round limit");
+  }
+
+  return config.roundLimitTicks;
+}
+
 function auditRoundCompletion(config: GameConfigV1, seed: string): RoundObservation {
   const world = new SimulationWorld(config, seed, {
     humanActorId: 1,
@@ -477,7 +485,7 @@ function auditRoundCompletion(config: GameConfigV1, seed: string): RoundObservat
     frame = world.step(bots.createCommands(world.tick, frame)).frame;
   }
 
-  return createRoundObservation(frame, seed, config.roundLimitTicks);
+  return createRoundObservation(frame, seed, requireRoundLimitTicks(config));
 }
 
 function auditRound(config: GameConfigV1, seed: string): RoundAuditResult {
@@ -574,7 +582,7 @@ function auditRound(config: GameConfigV1, seed: string): RoundAuditResult {
     }
   }
 
-  const round = createRoundObservation(frame, seed, config.roundLimitTicks);
+  const round = createRoundObservation(frame, seed, requireRoundLimitTicks(config));
 
   return Object.freeze({
     activeItemUses: Object.freeze(activeItemUses),
@@ -1518,7 +1526,7 @@ function auditControlledCollapse() {
 }
 
 const PRODUCTION_DECISION_RULES = Object.freeze([
-  `Every sampled production-preset round must produce a structurally valid terminal result within ${PUBLIC_ROUND_LIMIT_SECONDS} seconds.`,
+  `Every sampled production-preset round must produce a structurally valid terminal result within ${AUTOMATION_ROUND_LIMIT_SECONDS} seconds.`,
   "No sampled all-bot production-preset round may rely on the time-limit draw to terminate.",
   "At least 60% of observed item spawns must land in the outer two stable tile rings.",
   "Aggressor win rate must remain at least 0.75x Survivor unless their 95% Wilson intervals overlap, and its credited-elimination rate must not trail Survivor in every production preset sample.",

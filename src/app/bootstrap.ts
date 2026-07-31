@@ -123,6 +123,7 @@ const ACTION_LABELS = Object.freeze({
   DodgeActive: "회피",
   GrapplePull: "갈고리 이동",
   Stumbling: "휘청거림",
+  Slipping: "미끄러짐",
   Anchored: "고정",
   Falling: "낙하",
   Eliminated: "탈락",
@@ -506,7 +507,7 @@ function getEventMessage(event: SimulationEventV1): string | undefined {
     case "grappling-hook-hit":
       return event.actorId === 1 ? "갈고리가 걸렸어." : undefined;
     case "stat-point-earned":
-      return event.actorId === 1 ? "처치 인정! 스탯 포인트를 얻었어." : undefined;
+      return event.actorId === 1 ? "처치 성공! 특성 포인트 1 획득." : undefined;
     case "stat-upgraded":
       return event.actorId === 1
         ? event.upgradeSkillSlot === undefined
@@ -533,6 +534,13 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     HTMLButtonElement,
   );
   const closeSetupRequiredButton = requireElement(root, "#close-setup-required", HTMLButtonElement);
+  const roundBriefingDialog = requireElement(root, "#round-briefing-dialog", HTMLDialogElement);
+  const roundBriefingStatus = requireElement(root, "#round-briefing-status", HTMLElement);
+  const confirmRoundBriefingButton = requireElement(
+    root,
+    "#confirm-round-briefing",
+    HTMLButtonElement,
+  );
   const openScoreboardButton = requireElement(root, "#open-scoreboard", HTMLButtonElement);
   const closeScoreboardButton = requireElement(root, "#close-scoreboard", HTMLButtonElement);
   const scoreboardTitle = requireElement(root, "#scoreboard-title", HTMLElement);
@@ -777,6 +785,8 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
 
   let renderer: ArenaRenderer | undefined;
   let session: GameSession | undefined;
+  let roundPreparationId = 0;
+  let preparedRoundId: number | undefined;
   let audio: AudioFeedback | undefined;
   let backgroundMusic: BackgroundMusic | undefined;
   let pointerControls: PointerControls | undefined;
@@ -800,6 +810,10 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     }
   })();
   let userPreferences: UserPreferences = loadUserPreferences(scoreboardStorage);
+
+  root.addEventListener("contextmenu", (event) => {
+    event.preventDefault();
+  });
 
   const applyUserPreferences = (preferences: UserPreferences): void => {
     userPreferences = normalizeUserPreferences(preferences);
@@ -1479,9 +1493,22 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
         rendererStatus.dataset.state = "error";
         rendererStatus.textContent = "그래픽 연결이 끊겼어";
         readyMessage.textContent = "화면이 돌아올 때까지 멈췄어.";
+        if (roundBriefingDialog.open) {
+          roundBriefingDialog.dataset.state = "loading";
+          roundBriefingStatus.textContent = "그래픽 연결을 다시 기다리는 중…";
+          confirmRoundBriefingButton.textContent = "게임 불러오는 중…";
+          confirmRoundBriefingButton.disabled = true;
+        }
       },
       onContextRestored(): void {
         session?.setRendererAvailable(true);
+        if (roundBriefingDialog.open && preparedRoundId !== undefined) {
+          roundBriefingDialog.dataset.state = "ready";
+          roundBriefingStatus.textContent = "준비 끝. 버튼을 누르면 시작해.";
+          confirmRoundBriefingButton.textContent = "알겠다요 ㅇㅅㅇ";
+          confirmRoundBriefingButton.disabled = false;
+          confirmRoundBriefingButton.focus({ preventScroll: true });
+        }
         const countingDown = root.dataset.round === "countdown";
         rendererStatus.dataset.state =
           session?.active === true
@@ -1722,9 +1749,12 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     console.error("Unable to initialize the PixiJS renderer.", error);
   }
 
-  const startRound = (settings: GameSettings): void => {
+  const startRound = (
+    settings: GameSettings,
+    options: { readonly deferPresentation?: boolean } = {},
+  ): boolean => {
     if (session === undefined) {
-      return;
+      return false;
     }
 
     latestSettings = settings;
@@ -1738,8 +1768,12 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     copyRoundReportButton.hidden = true;
     copyRoundReportButton.textContent = "기록 복사";
     void unlockAudio();
-    setScreen("arena");
-    root.dataset.round = "countdown";
+    if (options.deferPresentation !== true) {
+      setScreen("arena");
+      root.dataset.round = "countdown";
+    } else {
+      root.dataset.round = "preparing";
+    }
     statUpgradeOverlay.hidden = true;
     setPauseMenu(false);
     delete root.dataset.upgrade;
@@ -1767,8 +1801,18 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
         startingItems: settings.startingItems,
         startingSkills: settings.startingSkills,
       });
-      arenaHost.focus();
+      if (options.deferPresentation === true) {
+        session.setPaused(true);
+        root.dataset.round = "prepared";
+      } else {
+        arenaHost.focus();
+      }
+      return true;
     } catch (error: unknown) {
+      if (roundBriefingDialog.open) {
+        roundBriefingDialog.close();
+      }
+      setScreen("arena");
       latestRoundReport = undefined;
       copyRoundReportButton.hidden = true;
       root.dataset.round = "fatal";
@@ -1778,7 +1822,76 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
       setPauseMenu(true, { title: "게임 시작 실패", resumable: false, mode: "fatal" });
       restartButton.focus();
       console.error("The Shovefall round failed during startup.", error);
+      return false;
     }
+  };
+
+  const prepareRoundBehindBriefing = async (settings: GameSettings): Promise<void> => {
+    const preparationId = ++roundPreparationId;
+    preparedRoundId = undefined;
+    roundBriefingDialog.dataset.state = "loading";
+    roundBriefingStatus.textContent = "섬을 불러오는 중…";
+    confirmRoundBriefingButton.disabled = true;
+    confirmRoundBriefingButton.textContent = "게임 불러오는 중…";
+    roundBriefingDialog.showModal();
+    roundBriefingDialog.querySelector<HTMLElement>("h2")?.focus({ preventScroll: true });
+
+    await new Promise<void>((resolve) => {
+      const channel = new MessageChannel();
+      channel.port1.addEventListener(
+        "message",
+        () => {
+          channel.port1.close();
+          channel.port2.close();
+          resolve();
+        },
+        { once: true },
+      );
+      channel.port1.start();
+      channel.port2.postMessage(undefined);
+    });
+    if (preparationId !== roundPreparationId) {
+      return;
+    }
+
+    if (!startRound(settings, { deferPresentation: true })) {
+      return;
+    }
+
+    preparedRoundId = preparationId;
+    if (arenaHost.dataset.renderer === "lost") {
+      roundBriefingDialog.dataset.state = "loading";
+      roundBriefingStatus.textContent = "그래픽 연결을 다시 기다리는 중…";
+      confirmRoundBriefingButton.textContent = "게임 불러오는 중…";
+      confirmRoundBriefingButton.disabled = true;
+    } else {
+      roundBriefingDialog.dataset.state = "ready";
+      roundBriefingStatus.textContent = "준비 끝. 버튼을 누르면 시작해.";
+      confirmRoundBriefingButton.textContent = "알겠다요 ㅇㅅㅇ";
+      confirmRoundBriefingButton.disabled = false;
+      confirmRoundBriefingButton.focus({ preventScroll: true });
+    }
+  };
+
+  const revealPreparedRound = (): void => {
+    if (
+      preparedRoundId === undefined ||
+      preparedRoundId !== roundPreparationId ||
+      session?.active !== true ||
+      arenaHost.dataset.renderer === "lost"
+    ) {
+      return;
+    }
+
+    preparedRoundId = undefined;
+    roundBriefingDialog.close();
+    setScreen("arena");
+    root.dataset.round = "countdown";
+    readyMessage.textContent = "3";
+    rendererStatus.dataset.state = "countdown";
+    rendererStatus.textContent = "시작까지 3";
+    session.setPaused(false);
+    arenaHost.focus({ preventScroll: true });
   };
 
   for (const id of STARTING_ATTRIBUTE_IDS) {
@@ -1845,8 +1958,14 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
       setupRequiredDialog.showModal();
       return;
     }
-    startRound(latestSettings);
+    void prepareRoundBehindBriefing(latestSettings);
   });
+
+  roundBriefingDialog.addEventListener("cancel", (event) => {
+    event.preventDefault();
+  });
+
+  confirmRoundBriefingButton.addEventListener("click", revealPreparedRound);
 
   openSettingsButton.addEventListener("click", openSettings);
 

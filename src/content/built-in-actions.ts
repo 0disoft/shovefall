@@ -21,7 +21,7 @@ export const GRAPPLING_HOOK_DEFINITION: GrapplingHookDefinition = Object.freeze(
   minimumAnchorDistance: 1.25,
   targetSpeed: 0.3,
   acceleration: 0.24,
-  pullTicks: 12,
+  pullTicks: 16,
 });
 
 function formatNumber(value: number): string {
@@ -31,7 +31,7 @@ function formatNumber(value: number): string {
 export function formatGrapplingHookDescription(
   definition: GrapplingHookDefinition = GRAPPLING_HOOK_DEFINITION,
 ): string {
-  return `${formatNumber(definition.cooldownTicks / 60)}초 재사용 · 사거리 ${formatNumber(
-    definition.minimumAnchorDistance,
-  )}~${formatNumber(definition.castRange)}칸 · 땅·나무·벽으로 이동`;
+  return `${formatNumber(definition.cooldownTicks / 60)}초 재사용 · 최대 ${formatNumber(
+    definition.castRange,
+  )}칸 앞의 나무·벽돌에만 걸림 · 장애물 앞까지 이동`;
 }

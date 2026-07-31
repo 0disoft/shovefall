@@ -46,11 +46,18 @@ const PARTICIPANT_OVERRIDES: readonly ParticipantSpawnOverride[] = Object.freeze
   { actorId: 4, position: { x: 1.5, y: 7.5 }, startingAttributes: NEUTRAL_ATTRIBUTES },
 ]);
 
-function createItemConfig(overrides: { initialItemCount?: number; respawnSeconds?: number } = {}) {
+function createItemConfig(
+  overrides: {
+    arenaColumns?: number;
+    arenaRows?: number;
+    initialItemCount?: number;
+    respawnSeconds?: number;
+  } = {},
+) {
   return normalizeGameConfig({
     participantCount: 4,
-    arenaColumns: 9,
-    arenaRows: 9,
+    arenaColumns: overrides.arenaColumns ?? 9,
+    arenaRows: overrides.arenaRows ?? 9,
     roundLimitSeconds: 120,
     collapseSpeed: "slow",
     itemsEnabled: true,
@@ -524,55 +531,80 @@ describe("deterministic item effects", () => {
   });
 
   it("keeps the Soap owner safe and damages another actor after the slip ends", () => {
-    const world = new SimulationWorld(createItemConfig(), "soap-trigger", {
-      arenaLayout: "rectangular-fixture",
-      participantOverrides: [
-        {
-          startingAttributes: NEUTRAL_ATTRIBUTES,
-          actorId: 1,
-          position: { x: 2.5, y: 4.5 },
-          facing: { x: 1, y: 0 },
-          startingItems: ["soap"],
-        },
-        {
-          startingAttributes: NEUTRAL_ATTRIBUTES,
-          actorId: 2,
-          position: { x: 5.5, y: 4.5 },
-          facing: { x: -1, y: 0 },
-        },
-        { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 3, position: { x: 8.5, y: 1.5 } },
-        { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 4, position: { x: 1.5, y: 7.5 } },
-      ],
-    });
+    const world = new SimulationWorld(
+      createItemConfig({ arenaColumns: 17, arenaRows: 9 }),
+      "soap-trigger",
+      {
+        arenaLayout: "rectangular-fixture",
+        participantOverrides: [
+          {
+            startingAttributes: NEUTRAL_ATTRIBUTES,
+            actorId: 1,
+            position: { x: 2.5, y: 4.5 },
+            facing: { x: 1, y: 0 },
+            startingItems: ["soap"],
+          },
+          {
+            startingAttributes: NEUTRAL_ATTRIBUTES,
+            actorId: 2,
+            position: { x: 4.5, y: 4.5 },
+            facing: { x: 1, y: 0 },
+          },
+          {
+            startingAttributes: NEUTRAL_ATTRIBUTES,
+            actorId: 3,
+            position: { x: 15.5, y: 1.5 },
+          },
+          {
+            startingAttributes: NEUTRAL_ATTRIBUTES,
+            actorId: 4,
+            position: { x: 1.5, y: 7.5 },
+          },
+        ],
+      },
+    );
     world.step([
       {
         ...createNeutralCommand(world.tick, 1),
         useItemSlot: 0,
-        targetPosition: { x: 3.5, y: 4.5 },
+        targetPosition: { x: 5.5, y: 4.5 },
       },
     ]);
 
     let triggerTick: number | undefined;
+    let triggerPositionX: number | undefined;
     for (let index = 0; index < 90 && triggerTick === undefined; index += 1) {
-      const result = world.step([
-        { ...createNeutralCommand(world.tick, 2), move: { x: -1, y: 0 } },
-      ]);
+      const result = world.step([{ ...createNeutralCommand(world.tick, 2), move: { x: 1, y: 0 } }]);
       if (
         result.events.some(
           ({ kind, targetActorId }) => kind === "soap-triggered" && targetActorId === 2,
         )
       ) {
         triggerTick = result.frame.tick - 1;
+        triggerPositionX = getActor(world, 2).position.x;
       }
     }
 
     expect(triggerTick).toBeDefined();
     expect(getActor(world, 1).combat.health).toBe(100);
-    expect(getActor(world, 2).action).toBe("Stumbling");
+    expect(getActor(world, 2).action).toBe("Slipping");
+    expect(getActor(world, 2).velocity.x).toBeGreaterThanOrEqual(
+      getItemDefinition("soap").slideMinimumSpeed,
+    );
     const healthBeforeDamage = getActor(world, 2).combat.health;
+    world.step([{ ...createNeutralCommand(world.tick, 2), move: { x: -1, y: 0 } }]);
+    expect(getActor(world, 2).position.x - (triggerPositionX ?? 0)).toBeGreaterThan(0.1);
+    for (let index = 1; index < 60; index += 1) {
+      world.step([{ ...createNeutralCommand(world.tick, 2), move: { x: -1, y: 0 } }]);
+    }
+    const halfwayActor = getActor(world, 2);
+    expect(halfwayActor.action).toBe("Slipping");
+    expect(halfwayActor.position.x - (triggerPositionX ?? 0)).toBeGreaterThan(4);
+    expect(halfwayActor.position.y).toBeCloseTo(4.5, 6);
+
     let damageEvent;
     let stunEvent;
-    for (let index = 0; index <= getItemDefinition("soap").stumbleTicks; index += 1) {
+    for (let index = 60; index <= getItemDefinition("soap").stumbleTicks; index += 1) {
       const result = world.step();
       damageEvent = result.events.find(
         ({ kind, itemDefinitionId, targetActorId }) =>
@@ -602,8 +634,8 @@ describe("deterministic item effects", () => {
     );
   });
 
-  it("pulls toward the farthest static tile anchor and ignores bodies on the ray", () => {
-    const world = new SimulationWorld(createItemConfig(), "grapple-static-anchor", {
+  it("does not grapple toward a body or bare ground and spends no cooldown", () => {
+    const world = new SimulationWorld(createItemConfig(), "grapple-bare-ground", {
       arenaLayout: "rectangular-fixture",
       participantOverrides: [
         {
@@ -618,35 +650,50 @@ describe("deterministic item effects", () => {
       ],
     });
     const result = world.step([{ ...createNeutralCommand(world.tick, 1), grapplePressed: true }]);
+
+    expect(result.events.some(({ kind }) => kind === "grappling-hook-hit")).toBe(false);
+    expect(getActor(world, 1).grappleReadyTick).toBe(0);
+    expect(getActor(world, 1).action).toBe("Ready");
+    expect(getActor(world, 1).position).toEqual({ x: 2, y: 4.5 });
+  });
+
+  it("ignores bodies, catches a tree, and pulls close to the obstacle", () => {
+    const world = new SimulationWorld(createItemConfig(), "grapple-tree-anchor", {
+      arenaLayout: "rectangular-fixture",
+      participantOverrides: [
+        {
+          actorId: 1,
+          startingAttributes: NEUTRAL_ATTRIBUTES,
+          position: { x: 2.5, y: 4.5 },
+          facing: { x: 1, y: 0 },
+        },
+        { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 2, position: { x: 3.2, y: 5.5 } },
+        { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 3, position: { x: 7.5, y: 1.5 } },
+        { startingAttributes: NEUTRAL_ATTRIBUTES, actorId: 4, position: { x: 1.5, y: 7.5 } },
+      ],
+      treeOverrides: [{ definitionId: "tree", tileId: "7:4", column: 7, row: 4 }],
+    });
+    const start = getActor(world, 1).position;
+    const result = world.step([{ ...createNeutralCommand(world.tick, 1), grapplePressed: true }]);
     const hit = result.events.find(({ kind }) => kind === "grappling-hook-hit");
 
     expect(hit).toMatchObject({
       actorId: 1,
-      tileId: "6:4",
-      position: { x: 2, y: 4.5 },
+      tileId: "7:4",
+      position: start,
       vector: { x: 4.5, y: 0 },
     });
     expect(getActor(world, 1).grappleReadyTick).toBe(SIMULATION_TUNING.grapplingHook.cooldownTicks);
     expect(getActor(world, 1).action).toBe("GrapplePull");
-    expect(getActor(world, 1).velocity.x).toBeCloseTo(
-      SIMULATION_TUNING.grapplingHook.acceleration * SIMULATION_TUNING.movement.stumbleDrag,
-      10,
-    );
-    expect(getActor(world, 2).velocity).toEqual({ x: 0, y: 0 });
-    const blocked = world.step([
-      {
-        ...createNeutralCommand(world.tick, 1),
-        dodgePressed: true,
-        grapplePressed: true,
-      },
-    ]);
-    expect(
-      blocked.events.some(
-        ({ kind }) =>
-          kind === "dodge-started" || kind === "grappling-hook-hit" || kind === "item-used",
-      ),
-    ).toBe(false);
-    expect(getActor(world, 1).action).toBe("GrapplePull");
+
+    while (getActor(world, 1).action === "GrapplePull") {
+      world.step();
+    }
+
+    const travelled = getActor(world, 1).position.x - start.x;
+    expect(travelled).toBeGreaterThan(3.8);
+    expect(travelled).toBeLessThanOrEqual(SIMULATION_TUNING.grapplingHook.range);
+    expect(getActor(world, 1).action).toBe("Ready");
   });
 
   it("uses a same-tick Brick as the nearer static anchor independent of command order", () => {
@@ -760,7 +807,7 @@ describe("deterministic item effects", () => {
     expect(getActor(world, 1).grappleReadyTick).toBe(0);
   });
 
-  it("scales Grapple acceleration by self mass and expires after twelve ticks", () => {
+  it("scales Grapple acceleration by self mass and expires after sixteen ticks", () => {
     const pullSpeed = (massFactor: number) => {
       const world = new SimulationWorld(createItemConfig(), `grapple-mass-${massFactor}`, {
         arenaLayout: "rectangular-fixture",
@@ -774,6 +821,7 @@ describe("deterministic item effects", () => {
           },
           ...PARTICIPANT_OVERRIDES.slice(1),
         ],
+        treeOverrides: [{ definitionId: "tree", tileId: "6:4", column: 6, row: 4 }],
       });
       world.step([{ ...createNeutralCommand(world.tick, 1), grapplePressed: true }]);
       const speed = getActor(world, 1).velocity.x;
@@ -1140,6 +1188,7 @@ describe("deterministic item effects", () => {
         itemOverrides: boosted
           ? [{ itemId: 1, definitionId: "spring-glove", position: { x: 4, y: 4.5 } }]
           : [],
+        treeOverrides: [{ definitionId: "tree", tileId: "6:4", column: 6, row: 4 }],
       });
       world.step();
       const result = beginGrapple(world);

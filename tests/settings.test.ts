@@ -17,6 +17,7 @@ import {
 } from "../src/app/settings";
 import {
   DEFAULT_STARTING_ATTRIBUTES,
+  STARTING_ATTRIBUTE_EFFECTS,
   getStartingControlDurationMultiplier,
   getStartingCooldownMultiplier,
   getStartingDamageTakenMultiplier,
@@ -92,13 +93,15 @@ describe("settings normalization", () => {
       willpower: 0,
     });
     expect(getStartingMassFactor(DEFAULT_STARTING_ATTRIBUTES)).toBe(1.1);
-    expect(getStartingMovementMultiplier(DEFAULT_STARTING_ATTRIBUTES)).toBe(1.14);
+    expect(getStartingMovementMultiplier(DEFAULT_STARTING_ATTRIBUTES)).toBe(
+      1 + DEFAULT_STARTING_ATTRIBUTES.agility * STARTING_ATTRIBUTE_EFFECTS.agility.movementPerPoint,
+    );
     expect(getStartingCooldownMultiplier(DEFAULT_STARTING_ATTRIBUTES)).toBe(0.84);
     expect(getStartingManaCostMultiplier(DEFAULT_STARTING_ATTRIBUTES)).toBe(0.92);
     expect(getStartingOutgoingMultiplier(DEFAULT_STARTING_ATTRIBUTES)).toBe(1.15);
     expect(getStartingIncomingImpulseMultiplier(DEFAULT_STARTING_ATTRIBUTES)).toBe(0.8);
     expect(getStartingControlDurationMultiplier(DEFAULT_STARTING_ATTRIBUTES)).toBe(0.84);
-    expect(getStartingMaximumHealthBonus(DEFAULT_STARTING_ATTRIBUTES)).toBe(7);
+    expect(getStartingMaximumHealthBonus(DEFAULT_STARTING_ATTRIBUTES)).toBe(6);
     expect(getStartingMaximumManaBonus(DEFAULT_STARTING_ATTRIBUTES)).toBe(32);
     expect(getStartingDamageTakenMultiplier(DEFAULT_STARTING_ATTRIBUTES)).toBe(1);
     expect(getStartingShieldMultiplier(DEFAULT_STARTING_ATTRIBUTES)).toBe(1);
@@ -133,7 +136,7 @@ describe("settings normalization", () => {
     });
     expect(getStartingMassFactor(strength)).toBe(1.5);
     expect(getStartingOutgoingMultiplier(strength)).toBe(1.75);
-    expect(getStartingMovementMultiplier(agility)).toBe(1.7);
+    expect(getStartingMovementMultiplier(agility)).toBe(1.9);
     expect(getStartingCooldownMultiplier(agility)).toBe(0.2);
     expect(getStartingManaCostMultiplier(agility)).toBe(0.6);
     expect(getStartingStumbleDurationMultiplier(agility)).toBe(0.5);

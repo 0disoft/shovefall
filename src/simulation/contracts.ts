@@ -60,6 +60,7 @@ export type ParticipantActionKind =
   | "DodgeActive"
   | "GrapplePull"
   | "Stumbling"
+  | "Slipping"
   | "Anchored"
   | "Falling"
   | "Eliminated";
@@ -69,7 +70,7 @@ export interface GameConfigV1 {
   readonly participantCount: number;
   readonly arenaColumns: number;
   readonly arenaRows: number;
-  readonly roundLimitTicks: number;
+  readonly roundLimitTicks: number | null;
   readonly density: "normal";
   readonly difficulty: BotDifficulty;
   readonly collapseSpeed: CollapseSpeed;
@@ -84,7 +85,7 @@ export interface GameConfigInput {
   readonly participantCount?: number;
   readonly arenaColumns?: number;
   readonly arenaRows?: number;
-  readonly roundLimitSeconds?: number;
+  readonly roundLimitSeconds?: number | null;
   readonly collapseSpeed?: CollapseSpeed;
   readonly difficulty?: BotDifficulty;
   readonly itemsEnabled?: boolean;
@@ -508,7 +509,8 @@ export function normalizeGameConfig(input: GameConfigInput): GameConfigV1 {
   const participantCount = Math.round(input.participantCount ?? 16);
   const arenaColumns = Math.round(input.arenaColumns ?? 12);
   const arenaRows = Math.round(input.arenaRows ?? 10);
-  const roundLimitSeconds = Math.round(input.roundLimitSeconds ?? 75);
+  const roundLimitSeconds =
+    input.roundLimitSeconds === null ? null : Math.round(input.roundLimitSeconds ?? 75);
   const collapseSpeed = input.collapseSpeed ?? "normal";
   const difficulty = input.difficulty ?? "normal";
   const itemsEnabled = input.itemsEnabled ?? false;
@@ -528,7 +530,9 @@ export function normalizeGameConfig(input: GameConfigInput): GameConfigV1 {
   assertIntegerInRange(arenaColumns, "arenaColumns", MINIMUM_ARENA_COLUMNS, MAXIMUM_ARENA_COLUMNS);
   assertIntegerInRange(arenaRows, "arenaRows", MINIMUM_ARENA_ROWS, MAXIMUM_ARENA_ROWS);
   assertArenaParticipantCapacity(arenaColumns, arenaRows, participantCount);
-  assertIntegerInRange(roundLimitSeconds, "roundLimitSeconds", 1, 120);
+  if (roundLimitSeconds !== null) {
+    assertIntegerInRange(roundLimitSeconds, "roundLimitSeconds", 1, 120);
+  }
   assertIntegerInRange(initialItemCount, "initialItemCount", 0, maximumItemCount);
   assertIntegerInRange(itemRespawnSeconds, "itemRespawnSeconds", 0, 30);
 
@@ -545,7 +549,7 @@ export function normalizeGameConfig(input: GameConfigInput): GameConfigV1 {
     participantCount,
     arenaColumns,
     arenaRows,
-    roundLimitTicks: roundLimitSeconds * FIXED_TICKS_PER_SECOND,
+    roundLimitTicks: roundLimitSeconds === null ? null : roundLimitSeconds * FIXED_TICKS_PER_SECOND,
     density: "normal",
     difficulty,
     collapseSpeed,

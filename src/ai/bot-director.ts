@@ -1,5 +1,6 @@
 import { BOT_PERSONALITIES, BOT_PERSONALITY_KINDS, type BotPersonalityKind } from "./personalities";
 import {
+  createTileId,
   createNeutralCommand,
   type ActorCommandV1,
   type ActorId,
@@ -78,6 +79,8 @@ interface BotMemory {
   lastProgressPosition: Vector2;
   lastProgressTick: number;
   nextDecisionTick: number;
+  soapEscapeDirection: Vector2;
+  soapEscapeUntilTick: number;
   stalledDecisionCount: number;
   targetActorId: ActorId | null;
   targetLockUntilTick: number;
@@ -89,6 +92,7 @@ interface BotDecision {
   readonly dodgePressed: boolean;
   readonly useItemSlot: InventorySlotIndex | null;
   readonly useSkillSlot: SkillSlotIndex | null;
+  readonly targetPosition: Vector2 | null;
 }
 
 const DEFAULT_REACTION_DELAY_TICKS = 10;
@@ -130,6 +134,11 @@ const STALL_DECISION_THRESHOLD = 2;
 const CROWD_AVOIDANCE_DISTANCE = 1.15;
 const ITEM_COMBAT_PRIORITY_DISTANCE = 1.8;
 const IMMEDIATE_PICKUP_DISTANCE = 0.7;
+const COLLECTOR_MAXIMUM_ITEM_PURSUIT_DISTANCE = 2.75;
+const COLLECTOR_MINIMUM_SAFE_TILE_DEPTH = 2;
+const COLLECTOR_OPPONENT_CLEARANCE_DISTANCE = 2.5;
+const SOAP_ESCAPE_TICKS = 120;
+const SOAP_PLACEMENT_DISTANCE = 1.2;
 
 const ACTIVE_ITEM_IDS = Object.freeze([
   "soap",
@@ -164,6 +173,82 @@ export function getBotMapItemClaimantActorId(
     }))
     .toSorted((left, right) => left.distance - right.distance || left.actorId - right.actorId)[0];
   return claimant?.actorId ?? null;
+}
+
+function canCollectorClearActiveSlotForItem(
+  participant: RenderParticipantV1,
+  item: RenderItemV1,
+): boolean {
+  if (getItemDefinition(item.definitionId).loadoutKind !== "active") {
+    return false;
+  }
+
+  return participant.inventory.some(
+    ({ slotIndex, definitionId, charges }) =>
+      slotIndex === 0 &&
+      getItemDefinition(definitionId).loadoutKind === "active" &&
+      charges !== null &&
+      charges > 0,
+  );
+}
+
+function canBotPursueMapItem(
+  participant: RenderParticipantV1,
+  item: RenderItemV1,
+  personality: BotPersonalityKind,
+  terrain: BotNavigationTerrain,
+  participants: readonly RenderParticipantV1[],
+): boolean {
+  const distance = vectorLength(subtractVectors(participant.position, item.position));
+  const profile = BOT_PERSONALITIES[personality];
+
+  if (distance > 3.5 * profile.itemInterestWeight) {
+    return false;
+  }
+
+  if (canBotCollectMapItem(participant, item)) {
+    if (personality !== "Collector") {
+      return true;
+    }
+  } else if (
+    personality !== "Collector" ||
+    !canCollectorClearActiveSlotForItem(participant, item)
+  ) {
+    return false;
+  }
+
+  if (distance > COLLECTOR_MAXIMUM_ITEM_PURSUIT_DISTANCE) {
+    return false;
+  }
+
+  const tileId = createTileId(Math.floor(item.position.x), Math.floor(item.position.y));
+  if ((terrain.stableTileDepths.get(tileId) ?? 0) < COLLECTOR_MINIMUM_SAFE_TILE_DEPTH) {
+    return false;
+  }
+
+  return !participants.some(
+    (candidate) =>
+      candidate.actorId !== participant.actorId &&
+      isControllable(candidate) &&
+      vectorLength(subtractVectors(candidate.position, item.position)) <=
+        COLLECTOR_OPPONENT_CLEARANCE_DISTANCE,
+  );
+}
+
+function getNearestEligibleItemPursuerActorId(
+  item: RenderItemV1,
+  participants: readonly RenderParticipantV1[],
+): ActorId | null {
+  return (
+    participants
+      .filter(isControllable)
+      .map((participant) => ({
+        actorId: participant.actorId,
+        distance: vectorLength(subtractVectors(participant.position, item.position)),
+      }))
+      .toSorted((left, right) => left.distance - right.distance || left.actorId - right.actorId)[0]
+      ?.actorId ?? null
+  );
 }
 
 function assertPositiveInteger(value: number, name: string, allowZero = false): void {
@@ -308,8 +393,16 @@ function createDecision(
   dodgePressed = false,
   useItemSlot: InventorySlotIndex | null = null,
   useSkillSlot: SkillSlotIndex | null = null,
+  targetPosition: Vector2 | null = null,
 ): BotDecision {
-  return Object.freeze({ move, grapplePressed, dodgePressed, useItemSlot, useSkillSlot });
+  return Object.freeze({
+    move,
+    grapplePressed,
+    dodgePressed,
+    useItemSlot,
+    useSkillSlot,
+    targetPosition,
+  });
 }
 
 function chooseReadySkillSlot(
@@ -676,12 +769,14 @@ export class BotDirector {
       let dodgePressed = false;
       let useItemSlot: InventorySlotIndex | null = null;
       let useSkillSlot: SkillSlotIndex | null = null;
+      let targetPosition: Vector2 | null = null;
       const upgradeStat = this.#chooseUpgrade(memory.personality, current);
       const edgeDistance = getBotEdgeDistance(current, terrain);
       const rockEscape = getImmediateRockEscape(current, currentFrame, terrain, blockedTileIds);
       const tileEscape = getImmediateBotTileEscape(current, terrain, blockedTileIds);
       const escapingOwnBomb =
         memory.bombEscapePosition !== null && tick < memory.bombEscapeUntilTick;
+      const escapingOwnSoap = tick < memory.soapEscapeUntilTick;
 
       if (rockEscape !== undefined) {
         const safeDodgeDirection = getSafeBotDodgeDirection(
@@ -740,6 +835,16 @@ export class BotDirector {
                 current.radius,
               ) ?? ZERO_VECTOR);
         memory.nextDecisionTick = Math.min(memory.nextDecisionTick, tick + 1);
+      } else if (escapingOwnSoap) {
+        memory.intent = getSteeredMovement(
+          current,
+          memory.soapEscapeDirection,
+          perceivedSpatialHash.queryNearby(perceived.position, 2),
+          terrain,
+          blockedTileIds,
+          memory,
+        );
+        memory.nextDecisionTick = Math.min(memory.nextDecisionTick, tick + 1);
       } else if (tick >= memory.nextDecisionTick) {
         const decision = this.#decide(
           tick,
@@ -756,6 +861,7 @@ export class BotDirector {
         dodgePressed = decision.dodgePressed;
         useItemSlot = decision.useItemSlot;
         useSkillSlot = decision.useSkillSlot;
+        targetPosition = decision.targetPosition;
 
         if (useItemSlot !== null) {
           memory.lastItemUseTick = tick;
@@ -777,6 +883,7 @@ export class BotDirector {
           dodgePressed,
           useItemSlot,
           useSkillSlot,
+          targetPosition,
           upgradeStat,
         }),
       );
@@ -809,6 +916,8 @@ export class BotDirector {
       lastProgressPosition: participant.position,
       lastProgressTick: 0,
       nextDecisionTick: (actorId * 3) % this.#decisionIntervalTicks,
+      soapEscapeDirection: ZERO_VECTOR,
+      soapEscapeUntilTick: Number.NEGATIVE_INFINITY,
       stalledDecisionCount: 0,
       targetActorId: null,
       targetLockUntilTick: Number.NEGATIVE_INFINITY,
@@ -938,20 +1047,32 @@ export class BotDirector {
       }))
       .filter(
         ({ item, distance }) =>
-          distance <= 3.5 * personality.itemInterestWeight &&
-          canBotCollectMapItem(current, item) &&
-          getBotMapItemClaimantActorId(
+          canBotPursueMapItem(
+            current,
+            item,
+            memory.personality,
+            terrain,
+            perceptionFrame.participants,
+          ) &&
+          getNearestEligibleItemPursuerActorId(
             item,
             perceptionFrame.participants.filter((participant) => {
               const candidateDistance = vectorLength(
                 subtractVectors(participant.position, item.position),
               );
               if (participant.actorId === this.#humanActorId) {
-                return candidateDistance <= IMMEDIATE_PICKUP_DISTANCE;
+                return (
+                  candidateDistance <= IMMEDIATE_PICKUP_DISTANCE &&
+                  canBotCollectMapItem(participant, item)
+                );
               }
-              const candidatePersonality =
-                BOT_PERSONALITIES[this.#getMemory(participant).personality];
-              return candidateDistance <= 3.5 * candidatePersonality.itemInterestWeight;
+              return canBotPursueMapItem(
+                participant,
+                item,
+                this.#getMemory(participant).personality,
+                terrain,
+                perceptionFrame.participants,
+              );
             }),
           ) === current.actorId &&
           (!hasCloseOpponent || distance <= IMMEDIATE_PICKUP_DISTANCE),
@@ -962,6 +1083,53 @@ export class BotDirector {
       .slice(0, 4);
     if (current.action === "Ready") {
       for (const { item } of itemCandidates) {
+        if (!canBotCollectMapItem(current, item)) {
+          if (memory.personality !== "Collector" || !canUseActiveItem) {
+            continue;
+          }
+
+          const occupiedSlot = current.inventory.find(
+            ({ slotIndex, charges }) => slotIndex === 0 && charges !== null && charges > 0,
+          );
+          if (occupiedSlot === undefined || occupiedSlot.definitionId === "boat") {
+            continue;
+          }
+
+          const awayFromItem = normalizeVector(subtractVectors(current.position, item.position));
+          const towardCenter =
+            findBotNavigationDirection(
+              terrain,
+              blockedTileIds,
+              current.position,
+              terrain.center,
+              current.radius,
+            ) ?? current.facing;
+          const placementDirection =
+            occupiedSlot.definitionId === "soap" && vectorLength(awayFromItem) > 0
+              ? awayFromItem
+              : towardCenter;
+          const definition = getItemDefinition(occupiedSlot.definitionId);
+          const placementDistance = Math.min(1, definition.castRange);
+          const placementTarget =
+            definition.targetMode === "ground"
+              ? addVectors(current.position, scaleVector(placementDirection, placementDistance))
+              : null;
+
+          if (occupiedSlot.definitionId === "soap") {
+            memory.soapEscapeDirection = placementDirection;
+            memory.soapEscapeUntilTick = tick + SOAP_ESCAPE_TICKS;
+          }
+
+          return createDecision(
+            placementDirection,
+            false,
+            false,
+            occupiedSlot.slotIndex,
+            null,
+            placementTarget,
+          );
+        }
+
         const itemDirection = findBotNavigationDirection(
           terrain,
           blockedTileIds,
@@ -986,7 +1154,8 @@ export class BotDirector {
 
     const scoredTargets = nearby.map(({ candidate, distance }) => {
       const edgeOpportunity = Math.max(0, 2.2 - getBotEdgeDistance(candidate, terrain));
-      const stumblingOpportunity = candidate.action === "Stumbling" ? 1 : 0;
+      const stumblingOpportunity =
+        candidate.action === "Stumbling" || candidate.action === "Slipping" ? 1 : 0;
       const massPenalty = Math.max(0, candidate.massFactor - perceived.massFactor);
       const healthOpportunity =
         1 - candidate.combat.health / Math.max(1, candidate.combat.maximumHealth);
@@ -1136,20 +1305,40 @@ export class BotDirector {
       const soapSlot = getChargedItemSlot(current, "soap");
       if (
         soapSlot !== null &&
-        bestDistance <= 1.3 &&
+        bestDistance <= 2.2 &&
         (threat !== undefined ||
           memory.personality === "Survivor" ||
           memory.personality === "Opportunist")
       ) {
-        const retreatDirection =
+        const awayFromTarget = normalizeVector(
+          subtractVectors(current.position, bestTarget.position),
+        );
+        const towardCenter =
           findBotNavigationDirection(
             terrain,
             blockedTileIds,
             current.position,
             terrain.center,
             current.radius,
-          ) ?? move;
-        return createDecision(retreatDirection, false, false, soapSlot);
+          ) ?? ZERO_VECTOR;
+        const retreatDirection = normalizeVector(
+          addVectors(scaleVector(awayFromTarget, 0.75), scaleVector(towardCenter, 0.25)),
+        );
+        const safeRetreatDirection = vectorLength(retreatDirection) > 0 ? retreatDirection : move;
+        const soapTargetPosition = addVectors(
+          current.position,
+          scaleVector(safeRetreatDirection, SOAP_PLACEMENT_DISTANCE),
+        );
+        memory.soapEscapeDirection = safeRetreatDirection;
+        memory.soapEscapeUntilTick = tick + SOAP_ESCAPE_TICKS;
+        return createDecision(
+          safeRetreatDirection,
+          false,
+          false,
+          soapSlot,
+          null,
+          soapTargetPosition,
+        );
       }
     }
 

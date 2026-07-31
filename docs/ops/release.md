@@ -1,8 +1,95 @@
 # Static Release Procedure
 
-- Status: `0.104.0` contract-hardening candidate; hosted proof pending
+- Status: `0.113.1` copy-consistency candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.104.0`
+- Current product version: `0.113.1`
+
+Product `0.113.1`, simulation `76.0.0`, and content `48.0.0` keep the same game rules. Starting attributes and kill-reward traits now use the same six Korean names. The live
+defense readout names damage reduction and shield strength instead of Dodge
+reuse, skill descriptions call their cone assistance automatic aiming, and the
+pre-round briefing plus recent version notes use one concise casual tone.
+Replay stays v8 and reports remain v11. Hosted proof and a fresh balance audit
+remain pending.
+
+Product `0.113.0`, simulation `76.0.0`, and content `48.0.0` reduce Soap to
+four charges and Meteor Mark to 32 damage. Forward-target selection no longer
+allocates and sorts all candidates per cast, skill zones reuse one actor ordering
+per tick, and generated skill sprites suppress the duplicate procedural pass.
+Replay stays v8 and reports remain v11. The `0.112.0` balance artifact is stale;
+hosted proof, a fresh balance audit, and measured browser-frame evidence remain pending.
+
+Product `0.112.0`, simulation `75.0.0`, and content `47.0.0` raise Soap's
+delayed damage to 30, move Frost Field to 38 mana and a ten-second cooldown,
+and change Bomb to 60 damage with a 25% installer share. Agility movement rises
+to 4.5% per point while Constitution health falls to 1.5 per point. Replay stays
+v8 and reports remain v11. Prior balance evidence is stale; hosted proof and a
+fresh balance audit remain pending.
+
+Product `0.111.0`, simulation `74.0.0`, and content `46.0.0` remove ordinary
+ground from Grappling Hook acquisition. Only a tree or Brick wall can accept a
+cast, and a miss spends no cooldown. A successful pull now accelerates for all
+16 pull ticks and stops through shared obstacle collision instead of decaying
+after its initial impulse. Replay stays v8 and reports remain v11. Hosted proof
+and human movement-feel validation remain pending.
+
+Product `0.110.0`, simulation `73.0.0`, and content `45.0.0` separate the
+public survival rule from bounded automation. No public round time limit. The
+browser continues until one participant remains or nobody survives. Balance,
+profile, replay-fixture, and test worlds still provide explicit numeric limits.
+Replay stays v8 and reports remain v11. Hosted proof and long human-round pacing
+validation remain pending.
+
+Product `0.109.0`, simulation `72.0.0`, and content `45.0.0` explain the
+pirate-cannon flooding loop in the held pre-round briefing. Every pirate ship
+retains an independent seeded firing clock but launches every 90–135 ticks
+instead of every 120–180 ticks. The 185-tick flight and launch-synchronized
+warning remain unchanged. Replay stays v8 and reports remain v10. Hosted proof,
+a fresh balance audit, and human pacing validation remain pending.
+
+Product `0.108.0`, simulation `71.0.0`, and content `45.0.0` separate Soap
+from generic stumble motion. The victim keeps moving in the captured entry
+direction for the definition-owned two-second slide, opposing input cannot
+cancel it, and blocking obstacles still stop the body. Replay stays v8 and
+reports remain v10. Hosted proof and a fresh balance audit remain pending.
+
+Product `0.107.0`, simulation `70.0.0`, and content `44.0.0` add a
+main-menu pre-round briefing. The round is constructed behind the dialog and
+held at tick zero; the arena and existing countdown begin only after the ready
+confirmation. Restart remains an immediate rematch path. Replay stays v8 and
+reports remain v10. Local focused browser proof, hosted CI, Pages, and
+physical-device proof are pending.
+
+Product `0.106.1`, simulation `70.0.0`, and content `44.0.0` suppress browser
+context menus inside the game application. Active-arena right-click movement and
+target cancellation still run through the existing pointer controller before
+the event bubbles to the application guard. Replay stays v8 and reports remain
+v10. Local browser, hosted CI, Pages, and physical-device proof are pending.
+
+Product `0.106.0`, simulation `70.0.0`, and content `44.0.0` raise Arc Bolt
+damage to 25 and Blink Step to four tiles plus two seconds of attack evasion.
+Collector bots restrict pursuit to nearby safe interior items and consume usable
+occupied active slots before collecting a replacement. Final rocks predict a
+bounded 24-tick movement lead and launch one through three distinct-target
+shots per 48–72-tick volley with a 0.95-tile lethal radius. Replay stays v8 and
+reports remain v10. Deterministic fixtures, local validation, a fresh balance
+audit, hosted CI, Pages, and human playtest proof are pending.
+
+Product `0.105.0`, simulation `69.0.0`, and content `43.0.0` widen Arc Bolt
+and Chain Bind aim assistance, lower Frost Field damage healing from 15% to
+10%, and shorten protected-core rock launch intervals to 66, 48, and 36 ticks.
+Soap bots place ahead of their retreat and retain a two-second escape intent;
+Survivor and Collector weights reduce passive avoidance and distant-item
+pursuit. Replay stays v8 and reports remain v10. Deterministic fixtures and the
+requested same-seed 80-round random-trait artifact are current: all 80 rounds
+and 4,800 actor-rounds completed with zero automatic balance flags. Hosted CI,
+Pages, and human playtest proof remain pending.
+
+Product `0.104.1`, simulation `68.0.0`, and content `42.0.0` preserve the
+visible 0–100 sound controls while remapping level 50 from -20 dB to -8 dB,
+equal to the former level-80 output. Zero remains silent, 100 remains full
+output, the music reference trim and combat ducking remain unchanged, and
+persisted browser values require no migration. Replay stays v8 and reports
+remain v10. Hosted CI, Pages, and device-level listening proof are pending.
 
 Product `0.104.0`, simulation `68.0.0`, and content `42.0.0` reject arena
 bounds that cannot provide one unique tile per participant, accept the public

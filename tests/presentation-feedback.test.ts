@@ -106,6 +106,14 @@ describe("presentation event ledger", () => {
 });
 
 describe("optional Web Audio feedback", () => {
+  it("maps the visible midpoint to the former 80-volume output", () => {
+    expect(volumeToGain(0)).toBe(0);
+    expect(volumeToGain(50)).toBeCloseTo(10 ** (-8 / 20), 10);
+    expect(volumeToGain(100)).toBe(1);
+    expect(volumeToGain(25)).toBeLessThan(volumeToGain(50));
+    expect(volumeToGain(75)).toBeGreaterThan(volumeToGain(50));
+  });
+
   it("falls back to unavailable without throwing when no context exists", async () => {
     const states: string[] = [];
     const audio = createAudioFeedback(

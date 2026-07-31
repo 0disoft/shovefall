@@ -95,7 +95,7 @@ function formatAimAssist(minimumAimDot: number): string {
 
   const clampedDot = Math.max(-1, Math.min(1, minimumAimDot));
   const degrees = Math.round((Math.acos(clampedDot) * 180) / Math.PI);
-  return `전방 약 ${degrees}도까지 조준 보정`;
+  return `전방 약 ${degrees}도까지 자동 조준`;
 }
 
 export function formatSkillDescription(skill: SkillDefinition): string {
@@ -139,8 +139,8 @@ export function formatSkillDescription(skill: SkillDefinition): string {
         formatControl(skill),
       ].filter((effect): effect is string => effect !== undefined);
       return effects.length > 0
-        ? `${target}을 조준 보정, ${effects.join(", ")}`
-        : `${target}을 조준 보정`;
+        ? `${target}을 자동 조준해 ${effects.join(", ")}`
+        : `${target}을 자동 조준`;
     }
     case "zone": {
       const placement = skill.range > 0 ? `${formatNumber(skill.range)}칸 앞에` : "현재 위치에";
@@ -202,7 +202,7 @@ export const SKILL_DEFINITIONS: Readonly<Record<SkillDefinitionId, SkillDefiniti
       zoneKind: null,
       cooldownTicks: 132,
       manaCost: 20,
-      range: 3,
+      range: 4,
       minimumAimDot: 1,
       radius: 0,
       damage: 0,
@@ -211,7 +211,7 @@ export const SKILL_DEFINITIONS: Readonly<Record<SkillDefinitionId, SkillDefiniti
       stunTicks: 0,
       rootTicks: 0,
       slowMultiplier: 1,
-      durationTicks: 60,
+      durationTicks: 120,
       delayTicks: 0,
       shield: 0,
       controlDurationMultiplier: 1,
@@ -224,9 +224,9 @@ export const SKILL_DEFINITIONS: Readonly<Record<SkillDefinitionId, SkillDefiniti
       cooldownTicks: 300,
       manaCost: 30,
       range: 3.5,
-      minimumAimDot: 0.94,
+      minimumAimDot: 0.88,
       radius: 0,
-      damage: 22,
+      damage: 25,
       impulse: 0.3,
       stumbleTicks: 60,
       stunTicks: 0,
@@ -245,7 +245,7 @@ export const SKILL_DEFINITIONS: Readonly<Record<SkillDefinitionId, SkillDefiniti
       cooldownTicks: 360,
       manaCost: 30,
       range: 5.5,
-      minimumAimDot: 0.966,
+      minimumAimDot: 0.92,
       radius: 0,
       damage: 20,
       impulse: 0,
@@ -269,7 +269,7 @@ export const SKILL_DEFINITIONS: Readonly<Record<SkillDefinitionId, SkillDefiniti
       range: 5,
       minimumAimDot: 1,
       radius: 3,
-      damage: 36,
+      damage: 32,
       impulse: 0.18,
       stumbleTicks: 18,
       stunTicks: 48,
@@ -285,8 +285,8 @@ export const SKILL_DEFINITIONS: Readonly<Record<SkillDefinitionId, SkillDefiniti
       label: "빙결 지대",
       castKind: "zone",
       zoneKind: "frost",
-      cooldownTicks: 540,
-      manaCost: 34,
+      cooldownTicks: 600,
+      manaCost: 38,
       range: 3.5,
       minimumAimDot: 1,
       radius: 2.3,
@@ -300,7 +300,7 @@ export const SKILL_DEFINITIONS: Readonly<Record<SkillDefinitionId, SkillDefiniti
       delayTicks: 0,
       shield: 0,
       controlDurationMultiplier: 1,
-      damageHealingRatio: 0.15,
+      damageHealingRatio: 0.1,
     }),
     aegis: defineSkill({
       id: "aegis",

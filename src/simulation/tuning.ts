@@ -75,8 +75,9 @@ export const SIMULATION_TUNING = Object.freeze({
     eliminationCreditTicks: 180,
   }),
   soap: Object.freeze({
-    minimumSpeed: 0.105,
-    maximumSpeed: 0.42,
+    minimumSpeed: getItemDefinition("soap").slideMinimumSpeed,
+    maximumSpeed: getItemDefinition("soap").slideMaximumSpeed,
+    dragPerTick: getItemDefinition("soap").slideDragPerTick,
     stumbleTicks: getItemDefinition("soap").stumbleTicks,
   }),
   grapplingHook: Object.freeze({

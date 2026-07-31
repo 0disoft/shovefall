@@ -15,8 +15,8 @@ export interface HumanUpgradeSelection {
   readonly skillSlot?: 0 | 1 | 2;
 }
 
-export interface PlaytestRoundReportV9 {
-  readonly schemaVersion: "shovefall-playtest-round/v10";
+export interface PlaytestRoundReportV11 {
+  readonly schemaVersion: "shovefall-playtest-round/v11";
   readonly versions: {
     readonly product: string;
     readonly simulation: string;
@@ -35,7 +35,7 @@ export interface PlaytestRoundReportV9 {
     readonly startingAttributes: GameSettings["startingAttributes"];
     readonly startingItems: GameSettings["startingItems"];
     readonly startingSkills: GameSettings["startingSkills"];
-    readonly roundLimitSeconds: number;
+    readonly roundLimitSeconds: number | null;
   };
   readonly gameplayTuning: GameplayTuningV1;
   readonly result: {
@@ -56,7 +56,7 @@ export function createPlaytestRoundReport(
   frame: RenderFrameV1,
   gameplayTuning: GameplayTuningV1,
   humanUpgradeSelections: readonly HumanUpgradeSelection[] = Object.freeze([]),
-): PlaytestRoundReportV9 {
+): PlaytestRoundReportV11 {
   const { round } = frame;
 
   if (round.status !== "Completed" || round.completedTick === null || round.reason === null) {
@@ -76,7 +76,7 @@ export function createPlaytestRoundReport(
   }
 
   return Object.freeze({
-    schemaVersion: "shovefall-playtest-round/v10",
+    schemaVersion: "shovefall-playtest-round/v11",
     versions: Object.freeze({
       product: PRODUCT_VERSION,
       simulation: SIMULATION_VERSION,
@@ -113,6 +113,6 @@ export function createPlaytestRoundReport(
   });
 }
 
-export function serializePlaytestRoundReport(report: PlaytestRoundReportV9): string {
+export function serializePlaytestRoundReport(report: PlaytestRoundReportV11): string {
   return JSON.stringify(report, null, 2);
 }

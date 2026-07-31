@@ -6,6 +6,7 @@ import {
   getBotMapItemClaimantActorId,
 } from "../src/ai/bot-director";
 import { BOT_ACTIVE_ITEM_IDS, createBotLoadoutAssignments } from "../src/ai/bot-loadouts";
+import { BOT_PERSONALITIES } from "../src/ai/personalities";
 import { getArenaSize } from "../src/app/settings";
 import { createNeutralCommand, normalizeGameConfig } from "../src/simulation/contracts";
 import { SimulationWorld, type ParticipantSpawnOverride } from "../src/simulation/world";
@@ -27,6 +28,90 @@ function createBotWorld(
 }
 
 describe("utility bot director", () => {
+  it("keeps Survivor and Collector engaged instead of overvaluing retreat or distant items", () => {
+    expect(BOT_PERSONALITIES.Survivor).toMatchObject({
+      approachWeight: 0.68,
+      edgeOpportunityWeight: 0.7,
+      safetyWeight: 1.5,
+      itemInterestWeight: 0.32,
+    });
+    expect(BOT_PERSONALITIES.Collector).toMatchObject({
+      approachWeight: 1,
+      edgeOpportunityWeight: 1.3,
+      safetyWeight: 1,
+      itemInterestWeight: 1,
+    });
+  });
+
+  it("makes a Collector spend a carried active item before pursuing a safe replacement", () => {
+    const world = createBotWorld(4, [
+      { actorId: 1, position: { x: 10.5, y: 1.5 } },
+      {
+        actorId: 2,
+        position: { x: 5.5, y: 4.5 },
+        facing: { x: 1, y: 0 },
+        startingItems: ["brick-bag"],
+      },
+      { actorId: 3, position: { x: 10.5, y: 7.5 } },
+      { actorId: 4, position: { x: 1.5, y: 7.5 } },
+    ]);
+    const frame = world.createRenderFrame();
+    const replacementFrame = Object.freeze({
+      ...frame,
+      items: Object.freeze([
+        Object.freeze({
+          itemId: 1,
+          definitionId: "bomb" as const,
+          position: Object.freeze({ x: 7.5, y: 4.5 }),
+          spawnedTick: frame.tick,
+        }),
+      ]),
+    });
+    const director = new BotDirector("collector-clears-slot", 1, {
+      reactionDelayTicks: 0,
+      decisionIntervalTicks: 1,
+      personalityOverrides: [{ actorId: 2, personality: "Collector" }],
+    });
+    const command = director
+      .createCommands(replacementFrame.tick, replacementFrame)
+      .find(({ actorId }) => actorId === 2);
+
+    expect(command?.useItemSlot).toBe(0);
+    expect(command?.targetPosition).not.toBeNull();
+  });
+
+  it("keeps a Collector fighting instead of chasing an exposed shoreline item", () => {
+    const world = createBotWorld(4, [
+      { actorId: 1, position: { x: 10.5, y: 1.5 } },
+      { actorId: 2, position: { x: 3.5, y: 4.5 }, facing: { x: 1, y: 0 } },
+      { actorId: 3, position: { x: 6.5, y: 4.5 } },
+      { actorId: 4, position: { x: 10.5, y: 7.5 } },
+    ]);
+    const frame = world.createRenderFrame();
+    const exposedFrame = Object.freeze({
+      ...frame,
+      items: Object.freeze([
+        Object.freeze({
+          itemId: 1,
+          definitionId: "bomb" as const,
+          position: Object.freeze({ x: 1.5, y: 4.5 }),
+          spawnedTick: frame.tick,
+        }),
+      ]),
+    });
+    const director = new BotDirector("collector-rejects-edge-item", 1, {
+      reactionDelayTicks: 0,
+      decisionIntervalTicks: 1,
+      personalityOverrides: [{ actorId: 2, personality: "Collector" }],
+    });
+    const command = director
+      .createCommands(exposedFrame.tick, exposedFrame)
+      .find(({ actorId }) => actorId === 2);
+
+    expect(command?.useItemSlot).toBeNull();
+    expect(command?.move.x).toBeGreaterThan(0);
+  });
+
   it("gives all fifty-nine public bots one evenly distributed active item", () => {
     const assignments = createBotLoadoutAssignments("public-loadouts", 60, 1);
     const activeCounts = new Map<(typeof BOT_ACTIVE_ITEM_IDS)[number], number>(
@@ -362,6 +447,15 @@ describe("utility bot director", () => {
 
     expect(command?.useItemSlot).toBe(0);
     expect(command?.grapplePressed).toBe(false);
+    expect(command?.move.x).toBeLessThan(-0.5);
+    expect(command?.targetPosition?.x).toBeLessThan(6.5);
+
+    world.step(command === undefined ? [] : [command]);
+    const escape = director
+      .createCommands(world.tick, world.createRenderFrame())
+      .find(({ actorId }) => actorId === 2);
+    expect(escape?.useItemSlot).toBeNull();
+    expect(escape?.move.x).toBeLessThan(-0.5);
   });
 
   it("uses a Brick Bag as cover during a readable edge fight", () => {

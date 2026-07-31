@@ -1,12 +1,12 @@
 {
   "schemaVersion": "shovefall.balance-dashboard/v1",
-  "generatedAt": "2026-07-30T13:43:14.856Z",
+  "generatedAt": "2026-07-31T09:32:57.330Z",
   "source": {
-    "commitSha": "1aa1ca18449eb9482a0344f83b71c2c8f2e6474e",
+    "commitSha": "eee2a900528a6aabfaa14d03596b5b4e9d69c09f",
     "dirty": true,
-    "productVersion": "0.104.0",
-    "simulationVersion": "68.0.0",
-    "contentVersion": "42.0.0"
+    "productVersion": "0.112.0",
+    "simulationVersion": "75.0.0",
+    "contentVersion": "47.0.0"
   },
   "methodology": {
     "mode": "deterministic-paired-seed-bots",
@@ -32,7 +32,7 @@
     "completedRounds": 80,
     "actorRounds": 4800,
     "flaggedCount": 2,
-    "elapsedWallSeconds": 1315.6783
+    "elapsedWallSeconds": 1704.7415
   },
   "phases": [
     {
@@ -40,25 +40,69 @@
       "roundCount": 80,
       "actorRounds": 4800,
       "reasonCounts": {
-        "last-standing": 20,
+        "last-standing": 22,
         "no-survivors": 0,
-        "time-limit": 60
+        "time-limit": 58
       },
       "durationSeconds": {
-        "minimum": 46.4333,
-        "mean": 112.7771,
+        "minimum": 54.1667,
+        "mean": 112.8335,
         "p50": 120,
         "p95": 120,
         "maximum": 120
       },
       "deathCauses": {
-        "fall": 360,
-        "health": 3553,
-        "bomb": 633,
+        "fall": 559,
+        "health": 3421,
+        "bomb": 585,
         "rock": 0,
         "other": 0
       },
       "aggregates": [
+        {
+          "category": "attribute",
+          "id": "willpower",
+          "label": "의지 투자 포인트",
+          "exposures": 16000,
+          "wins": 77,
+          "winRate": 0.0048,
+          "winRate95": {
+            "lower": 0.0039,
+            "upper": 0.006
+          },
+          "winIndex": 1.0435,
+          "averageRank": 29.8629,
+          "top10Rate": 0.1793,
+          "top5Rate": 0.0913,
+          "averageSurvivalSeconds": 26.8803,
+          "eliminationsPerRound": 0.9116,
+          "damageDealtPerRound": 126.2547,
+          "usesPerRound": 4.6914,
+          "hitsPerUse": 1.384,
+          "signal": "watch"
+        },
+        {
+          "category": "attribute",
+          "id": "strength",
+          "label": "완력 투자 포인트",
+          "exposures": 16000,
+          "wins": 77,
+          "winRate": 0.0048,
+          "winRate95": {
+            "lower": 0.0039,
+            "upper": 0.006
+          },
+          "winIndex": 1.0435,
+          "averageRank": 29.9302,
+          "top10Rate": 0.1758,
+          "top5Rate": 0.0939,
+          "averageSurvivalSeconds": 26.8786,
+          "eliminationsPerRound": 0.938,
+          "damageDealtPerRound": 130.244,
+          "usesPerRound": 4.6694,
+          "hitsPerUse": 1.3444,
+          "signal": "watch"
+        },
         {
           "category": "attribute",
           "id": "constitution",
@@ -70,103 +114,15 @@
             "lower": 0.0032,
             "upper": 0.0052
           },
-          "winIndex": 0.9762,
-          "averageRank": 29.7293,
-          "top10Rate": 0.1737,
-          "top5Rate": 0.0918,
-          "averageSurvivalSeconds": 28.2491,
-          "eliminationsPerRound": 0.9041,
-          "damageDealtPerRound": 128.3823,
-          "usesPerRound": 5.0866,
-          "hitsPerUse": 1.5627,
-          "signal": "watch"
-        },
-        {
-          "category": "attribute",
-          "id": "willpower",
-          "label": "의지 투자 포인트",
-          "exposures": 16000,
-          "wins": 72,
-          "winRate": 0.0045,
-          "winRate95": {
-            "lower": 0.0036,
-            "upper": 0.0057
-          },
-          "winIndex": 1.0714,
-          "averageRank": 29.8843,
-          "top10Rate": 0.1743,
-          "top5Rate": 0.0893,
-          "averageSurvivalSeconds": 27.9684,
-          "eliminationsPerRound": 0.9266,
-          "damageDealtPerRound": 130.3565,
-          "usesPerRound": 5.0781,
-          "hitsPerUse": 1.5498,
-          "signal": "watch"
-        },
-        {
-          "category": "attribute",
-          "id": "strength",
-          "label": "완력 투자 포인트",
-          "exposures": 16000,
-          "wins": 65,
-          "winRate": 0.0041,
-          "winRate95": {
-            "lower": 0.0032,
-            "upper": 0.0052
-          },
-          "winIndex": 0.9762,
-          "averageRank": 30.0501,
-          "top10Rate": 0.1689,
-          "top5Rate": 0.0876,
-          "averageSurvivalSeconds": 27.7833,
-          "eliminationsPerRound": 0.9308,
-          "damageDealtPerRound": 132.5727,
-          "usesPerRound": 5.0102,
-          "hitsPerUse": 1.5256,
-          "signal": "watch"
-        },
-        {
-          "category": "attribute",
-          "id": "balance",
-          "label": "균형 투자 포인트",
-          "exposures": 16000,
-          "wins": 56,
-          "winRate": 0.0035,
-          "winRate95": {
-            "lower": 0.0027,
-            "upper": 0.0045
-          },
-          "winIndex": 0.8333,
-          "averageRank": 30.199,
-          "top10Rate": 0.1688,
-          "top5Rate": 0.0873,
-          "averageSurvivalSeconds": 27.745,
-          "eliminationsPerRound": 0.8905,
-          "damageDealtPerRound": 127.3537,
-          "usesPerRound": 5.0287,
-          "hitsPerUse": 1.5324,
-          "signal": "watch"
-        },
-        {
-          "category": "attribute",
-          "id": "agility",
-          "label": "민첩 투자 포인트",
-          "exposures": 16000,
-          "wins": 64,
-          "winRate": 0.004,
-          "winRate95": {
-            "lower": 0.0031,
-            "upper": 0.0051
-          },
-          "winIndex": 0.9524,
-          "averageRank": 30.2413,
-          "top10Rate": 0.1698,
-          "top5Rate": 0.088,
-          "averageSurvivalSeconds": 27.6878,
-          "eliminationsPerRound": 0.9148,
-          "damageDealtPerRound": 129.7381,
-          "usesPerRound": 5.1718,
-          "hitsPerUse": 1.4857,
+          "winIndex": 0.8913,
+          "averageRank": 30.1483,
+          "top10Rate": 0.1669,
+          "top5Rate": 0.0844,
+          "averageSurvivalSeconds": 26.1084,
+          "eliminationsPerRound": 0.8876,
+          "damageDealtPerRound": 124.0924,
+          "usesPerRound": 4.5334,
+          "hitsPerUse": 1.432,
           "signal": "watch"
         },
         {
@@ -174,21 +130,87 @@
           "id": "spirit",
           "label": "정신 투자 포인트",
           "exposures": 16000,
-          "wins": 78,
-          "winRate": 0.0049,
+          "wins": 91,
+          "winRate": 0.0057,
           "winRate95": {
-            "lower": 0.0039,
-            "upper": 0.0061
+            "lower": 0.0046,
+            "upper": 0.007
           },
-          "winIndex": 1.1667,
-          "averageRank": 30.3522,
-          "top10Rate": 0.1669,
-          "top5Rate": 0.086,
-          "averageSurvivalSeconds": 27.4328,
-          "eliminationsPerRound": 0.9719,
-          "damageDealtPerRound": 134.6583,
-          "usesPerRound": 5.1122,
-          "hitsPerUse": 1.598,
+          "winIndex": 1.2391,
+          "averageRank": 30.1771,
+          "top10Rate": 0.1719,
+          "top5Rate": 0.0894,
+          "averageSurvivalSeconds": 26.2739,
+          "eliminationsPerRound": 0.9551,
+          "damageDealtPerRound": 131.0657,
+          "usesPerRound": 4.6563,
+          "hitsPerUse": 1.4499,
+          "signal": "watch"
+        },
+        {
+          "category": "attribute",
+          "id": "balance",
+          "label": "균형 투자 포인트",
+          "exposures": 16000,
+          "wins": 70,
+          "winRate": 0.0044,
+          "winRate95": {
+            "lower": 0.0035,
+            "upper": 0.0055
+          },
+          "winIndex": 0.9565,
+          "averageRank": 30.2169,
+          "top10Rate": 0.1653,
+          "top5Rate": 0.0856,
+          "averageSurvivalSeconds": 26.0653,
+          "eliminationsPerRound": 0.8943,
+          "damageDealtPerRound": 125.4378,
+          "usesPerRound": 4.5751,
+          "hitsPerUse": 1.3941,
+          "signal": "watch"
+        },
+        {
+          "category": "attribute",
+          "id": "agility",
+          "label": "민첩 투자 포인트",
+          "exposures": 16000,
+          "wins": 60,
+          "winRate": 0.0038,
+          "winRate95": {
+            "lower": 0.0029,
+            "upper": 0.0048
+          },
+          "winIndex": 0.8261,
+          "averageRank": 30.3747,
+          "top10Rate": 0.1621,
+          "top5Rate": 0.0828,
+          "averageSurvivalSeconds": 25.7267,
+          "eliminationsPerRound": 0.9171,
+          "damageDealtPerRound": 127.9521,
+          "usesPerRound": 4.6082,
+          "hitsPerUse": 1.4031,
+          "signal": "watch"
+        },
+        {
+          "category": "item",
+          "id": "soap",
+          "label": "비누",
+          "exposures": 1200,
+          "wins": 8,
+          "winRate": 0.0067,
+          "winRate95": {
+            "lower": 0.0034,
+            "upper": 0.0131
+          },
+          "winIndex": 1.4565,
+          "averageRank": 29.4383,
+          "top10Rate": 0.1833,
+          "top5Rate": 0.0925,
+          "averageSurvivalSeconds": 27.0443,
+          "eliminationsPerRound": 1.1108,
+          "damageDealtPerRound": 146.7467,
+          "usesPerRound": 1.765,
+          "hitsPerUse": 0.8645,
           "signal": "watch"
         },
         {
@@ -196,20 +218,20 @@
           "id": "boat",
           "label": "배",
           "exposures": 1200,
-          "wins": 3,
-          "winRate": 0.0025,
+          "wins": 5,
+          "winRate": 0.0042,
           "winRate95": {
-            "lower": 0.0009,
-            "upper": 0.0073
+            "lower": 0.0018,
+            "upper": 0.0097
           },
-          "winIndex": 0.5952,
-          "averageRank": 29.3417,
-          "top10Rate": 0.1883,
-          "top5Rate": 0.0883,
-          "averageSurvivalSeconds": 28.7689,
-          "eliminationsPerRound": 0.7492,
-          "damageDealtPerRound": 112.7992,
-          "usesPerRound": 0.175,
+          "winIndex": 0.913,
+          "averageRank": 30.145,
+          "top10Rate": 0.1625,
+          "top5Rate": 0.085,
+          "averageSurvivalSeconds": 26.1008,
+          "eliminationsPerRound": 0.6642,
+          "damageDealtPerRound": 101.5366,
+          "usesPerRound": 0.225,
           "hitsPerUse": 0,
           "signal": "watch"
         },
@@ -218,20 +240,20 @@
           "id": "bomb",
           "label": "시한폭탄",
           "exposures": 1200,
-          "wins": 5,
-          "winRate": 0.0042,
+          "wins": 3,
+          "winRate": 0.0025,
           "winRate95": {
-            "lower": 0.0018,
-            "upper": 0.0097
+            "lower": 0.0009,
+            "upper": 0.0073
           },
-          "winIndex": 1,
-          "averageRank": 29.3467,
-          "top10Rate": 0.1875,
-          "top5Rate": 0.0958,
-          "averageSurvivalSeconds": 28.7711,
-          "eliminationsPerRound": 1.2617,
-          "damageDealtPerRound": 168.6793,
-          "usesPerRound": 0.3983,
+          "winIndex": 0.5435,
+          "averageRank": 30.4283,
+          "top10Rate": 0.165,
+          "top5Rate": 0.085,
+          "averageSurvivalSeconds": 26.0584,
+          "eliminationsPerRound": 1.2067,
+          "damageDealtPerRound": 161.0191,
+          "usesPerRound": 0.4042,
           "hitsPerUse": 0,
           "signal": "watch"
         },
@@ -240,43 +262,21 @@
           "id": "brick-bag",
           "label": "벽돌 가방",
           "exposures": 1200,
-          "wins": 7,
-          "winRate": 0.0058,
+          "wins": 6,
+          "winRate": 0.005,
           "winRate95": {
-            "lower": 0.0028,
-            "upper": 0.012
+            "lower": 0.0023,
+            "upper": 0.0109
           },
-          "winIndex": 1.381,
-          "averageRank": 30.03,
-          "top10Rate": 0.1742,
-          "top5Rate": 0.0942,
-          "averageSurvivalSeconds": 28.2968,
-          "eliminationsPerRound": 0.7375,
-          "damageDealtPerRound": 108.6565,
-          "usesPerRound": 1.475,
+          "winIndex": 1.087,
+          "averageRank": 30.4617,
+          "top10Rate": 0.17,
+          "top5Rate": 0.0892,
+          "averageSurvivalSeconds": 26.0853,
+          "eliminationsPerRound": 0.6875,
+          "damageDealtPerRound": 100.7287,
+          "usesPerRound": 1.5358,
           "hitsPerUse": 0,
-          "signal": "watch"
-        },
-        {
-          "category": "item",
-          "id": "soap",
-          "label": "비누",
-          "exposures": 1200,
-          "wins": 5,
-          "winRate": 0.0042,
-          "winRate95": {
-            "lower": 0.0018,
-            "upper": 0.0097
-          },
-          "winIndex": 1,
-          "averageRank": 31.5858,
-          "top10Rate": 0.1317,
-          "top5Rate": 0.075,
-          "averageSurvivalSeconds": 25.4074,
-          "eliminationsPerRound": 0.9442,
-          "damageDealtPerRound": 131.9062,
-          "usesPerRound": 1.67,
-          "hitsPerUse": 0.8703,
           "signal": "watch"
         },
         {
@@ -284,65 +284,43 @@
           "id": "Aggressor",
           "label": "Aggressor",
           "exposures": 960,
-          "wins": 3,
-          "winRate": 0.0031,
+          "wins": 2,
+          "winRate": 0.0021,
           "winRate95": {
-            "lower": 0.0011,
-            "upper": 0.0091
+            "lower": 0.0006,
+            "upper": 0.0076
           },
-          "winIndex": 0.7381,
-          "averageRank": 29.049,
-          "top10Rate": 0.1802,
-          "top5Rate": 0.0969,
-          "averageSurvivalSeconds": 29.1235,
-          "eliminationsPerRound": 1.1354,
-          "damageDealtPerRound": 156.9602,
-          "usesPerRound": 5.325,
-          "hitsPerUse": 1.4621,
+          "winIndex": 0.4565,
+          "averageRank": 29.325,
+          "top10Rate": 0.1823,
+          "top5Rate": 0.0885,
+          "averageSurvivalSeconds": 27.1758,
+          "eliminationsPerRound": 1.1271,
+          "damageDealtPerRound": 153.2444,
+          "usesPerRound": 4.8125,
+          "hitsPerUse": 1.3831,
           "signal": "watch"
         },
         {
           "category": "personality",
-          "id": "Disruptor",
-          "label": "Disruptor",
+          "id": "Opportunist",
+          "label": "Opportunist",
           "exposures": 960,
-          "wins": 6,
-          "winRate": 0.0063,
+          "wins": 5,
+          "winRate": 0.0052,
           "winRate95": {
-            "lower": 0.0029,
-            "upper": 0.0136
+            "lower": 0.0022,
+            "upper": 0.0121
           },
-          "winIndex": 1.5,
-          "averageRank": 29.2427,
-          "top10Rate": 0.201,
-          "top5Rate": 0.1094,
-          "averageSurvivalSeconds": 29.8357,
-          "eliminationsPerRound": 1.1531,
-          "damageDealtPerRound": 153.8496,
-          "usesPerRound": 5.3344,
-          "hitsPerUse": 1.5241,
-          "signal": "watch"
-        },
-        {
-          "category": "personality",
-          "id": "Collector",
-          "label": "Collector",
-          "exposures": 960,
-          "wins": 3,
-          "winRate": 0.0031,
-          "winRate95": {
-            "lower": 0.0011,
-            "upper": 0.0091
-          },
-          "winIndex": 0.7381,
-          "averageRank": 30.55,
-          "top10Rate": 0.1604,
-          "top5Rate": 0.075,
-          "averageSurvivalSeconds": 26.2136,
-          "eliminationsPerRound": 0.7792,
-          "damageDealtPerRound": 110.9828,
-          "usesPerRound": 5.0094,
-          "hitsPerUse": 1.5552,
+          "winIndex": 1.1304,
+          "averageRank": 29.4667,
+          "top10Rate": 0.1792,
+          "top5Rate": 0.0948,
+          "averageSurvivalSeconds": 27.6675,
+          "eliminationsPerRound": 0.8865,
+          "damageDealtPerRound": 121.056,
+          "usesPerRound": 4.6667,
+          "hitsPerUse": 1.3551,
           "signal": "watch"
         },
         {
@@ -356,21 +334,43 @@
             "lower": 0.0016,
             "upper": 0.0107
           },
-          "winIndex": 1,
-          "averageRank": 30.7125,
-          "top10Rate": 0.149,
-          "top5Rate": 0.0729,
-          "averageSurvivalSeconds": 26.469,
-          "eliminationsPerRound": 0.7875,
-          "damageDealtPerRound": 112.8221,
-          "usesPerRound": 4.7552,
-          "hitsPerUse": 1.5834,
+          "winIndex": 0.913,
+          "averageRank": 29.9354,
+          "top10Rate": 0.1875,
+          "top5Rate": 0.0917,
+          "averageSurvivalSeconds": 27.1667,
+          "eliminationsPerRound": 0.8479,
+          "damageDealtPerRound": 118.9398,
+          "usesPerRound": 4.6427,
+          "hitsPerUse": 1.3953,
           "signal": "watch"
         },
         {
           "category": "personality",
-          "id": "Opportunist",
-          "label": "Opportunist",
+          "id": "Disruptor",
+          "label": "Disruptor",
+          "exposures": 960,
+          "wins": 7,
+          "winRate": 0.0073,
+          "winRate95": {
+            "lower": 0.0035,
+            "upper": 0.015
+          },
+          "winIndex": 1.587,
+          "averageRank": 30.076,
+          "top10Rate": 0.1635,
+          "top5Rate": 0.0865,
+          "averageSurvivalSeconds": 25.915,
+          "eliminationsPerRound": 1.0354,
+          "damageDealtPerRound": 141.3953,
+          "usesPerRound": 4.6438,
+          "hitsPerUse": 1.4347,
+          "signal": "watch"
+        },
+        {
+          "category": "personality",
+          "id": "Collector",
+          "label": "Collector",
           "exposures": 960,
           "wins": 4,
           "winRate": 0.0042,
@@ -378,37 +378,37 @@
             "lower": 0.0016,
             "upper": 0.0107
           },
-          "winIndex": 1,
-          "averageRank": 30.826,
-          "top10Rate": 0.1615,
-          "top5Rate": 0.0875,
-          "averageSurvivalSeconds": 27.4135,
-          "eliminationsPerRound": 0.7604,
-          "damageDealtPerRound": 117.9367,
-          "usesPerRound": 4.9823,
-          "hitsPerUse": 1.5954,
+          "winIndex": 0.913,
+          "averageRank": 31.7885,
+          "top10Rate": 0.1385,
+          "top5Rate": 0.0781,
+          "averageSurvivalSeconds": 23.6861,
+          "eliminationsPerRound": 0.6896,
+          "damageDealtPerRound": 102.9035,
+          "usesPerRound": 4.3458,
+          "hitsPerUse": 1.4406,
           "signal": "watch"
         },
         {
           "category": "skill",
-          "id": "frost-field",
-          "label": "빙결 지대",
+          "id": "chain-bind",
+          "label": "사슬 속박",
           "exposures": 1600,
-          "wins": 9,
-          "winRate": 0.0056,
+          "wins": 6,
+          "winRate": 0.0038,
           "winRate95": {
-            "lower": 0.003,
-            "upper": 0.0107
+            "lower": 0.0017,
+            "upper": 0.0082
           },
-          "winIndex": 1.3333,
-          "averageRank": 29.165,
-          "top10Rate": 0.2025,
-          "top5Rate": 0.1119,
-          "averageSurvivalSeconds": 29.7256,
-          "eliminationsPerRound": 1.1063,
-          "damageDealtPerRound": 71.4843,
-          "usesPerRound": 2.7413,
-          "hitsPerUse": 5.9462,
+          "winIndex": 0.8261,
+          "averageRank": 29.395,
+          "top10Rate": 0.1725,
+          "top5Rate": 0.0906,
+          "averageSurvivalSeconds": 27.5133,
+          "eliminationsPerRound": 0.7294,
+          "damageDealtPerRound": 36.9718,
+          "usesPerRound": 3.76,
+          "hitsPerUse": 0.4378,
           "signal": "watch"
         },
         {
@@ -416,20 +416,20 @@
           "id": "aegis",
           "label": "수호 방패",
           "exposures": 1600,
-          "wins": 8,
-          "winRate": 0.005,
+          "wins": 4,
+          "winRate": 0.0025,
           "winRate95": {
-            "lower": 0.0025,
-            "upper": 0.0098
+            "lower": 0.001,
+            "upper": 0.0064
           },
-          "winIndex": 1.1905,
-          "averageRank": 29.5631,
-          "top10Rate": 0.1875,
-          "top5Rate": 0.0913,
-          "averageSurvivalSeconds": 28.8103,
-          "eliminationsPerRound": 0.7663,
+          "winIndex": 0.5435,
+          "averageRank": 29.6469,
+          "top10Rate": 0.185,
+          "top5Rate": 0.0975,
+          "averageSurvivalSeconds": 27.5549,
+          "eliminationsPerRound": 0.7113,
           "damageDealtPerRound": 0,
-          "usesPerRound": 0.9563,
+          "usesPerRound": 0.8363,
           "hitsPerUse": 0,
           "signal": "watch"
         },
@@ -438,62 +438,40 @@
           "id": "meteor-mark",
           "label": "낙석 표식",
           "exposures": 1600,
-          "wins": 14,
-          "winRate": 0.0088,
+          "wins": 16,
+          "winRate": 0.01,
           "winRate95": {
-            "lower": 0.0052,
-            "upper": 0.0146
+            "lower": 0.0062,
+            "upper": 0.0162
           },
-          "winIndex": 2.0952,
-          "averageRank": 30.1506,
-          "top10Rate": 0.1663,
-          "top5Rate": 0.0906,
-          "averageSurvivalSeconds": 26.7929,
-          "eliminationsPerRound": 1.7688,
-          "damageDealtPerRound": 186.1393,
-          "usesPerRound": 2.6406,
-          "hitsPerUse": 1.7124,
-          "signal": "watch"
-        },
-        {
-          "category": "skill",
-          "id": "chain-bind",
-          "label": "사슬 속박",
-          "exposures": 1600,
-          "wins": 1,
-          "winRate": 0.0006,
-          "winRate95": {
-            "lower": 0.0001,
-            "upper": 0.0035
-          },
-          "winIndex": 0.1429,
-          "averageRank": 30.2294,
-          "top10Rate": 0.1544,
-          "top5Rate": 0.0738,
-          "averageSurvivalSeconds": 27.1434,
-          "eliminationsPerRound": 0.61,
-          "damageDealtPerRound": 31.5441,
-          "usesPerRound": 4.1731,
-          "hitsPerUse": 0.3334,
-          "signal": "watch"
+          "winIndex": 2.1739,
+          "averageRank": 30.2488,
+          "top10Rate": 0.1688,
+          "top5Rate": 0.0919,
+          "averageSurvivalSeconds": 25.5755,
+          "eliminationsPerRound": 1.66,
+          "damageDealtPerRound": 172.6966,
+          "usesPerRound": 2.5369,
+          "hitsPerUse": 1.6514,
+          "signal": "nerf-review"
         },
         {
           "category": "skill",
           "id": "blink-step",
           "label": "잔상 회피",
           "exposures": 1600,
-          "wins": 4,
-          "winRate": 0.0025,
+          "wins": 6,
+          "winRate": 0.0038,
           "winRate95": {
-            "lower": 0.001,
-            "upper": 0.0064
+            "lower": 0.0017,
+            "upper": 0.0082
           },
-          "winIndex": 0.5952,
-          "averageRank": 30.4013,
-          "top10Rate": 0.1594,
-          "top5Rate": 0.0838,
-          "averageSurvivalSeconds": 27.3223,
-          "eliminationsPerRound": 0.745,
+          "winIndex": 0.8261,
+          "averageRank": 30.3188,
+          "top10Rate": 0.1644,
+          "top5Rate": 0.0819,
+          "averageSurvivalSeconds": 25.7397,
+          "eliminationsPerRound": 0.7625,
           "damageDealtPerRound": 0,
           "usesPerRound": 0,
           "hitsPerUse": null,
@@ -501,288 +479,46 @@
         },
         {
           "category": "skill",
+          "id": "frost-field",
+          "label": "빙결 지대",
+          "exposures": 1600,
+          "wins": 10,
+          "winRate": 0.0063,
+          "winRate95": {
+            "lower": 0.0034,
+            "upper": 0.0115
+          },
+          "winIndex": 1.3696,
+          "averageRank": 30.5038,
+          "top10Rate": 0.1638,
+          "top5Rate": 0.0806,
+          "averageSurvivalSeconds": 25.2645,
+          "eliminationsPerRound": 0.9069,
+          "damageDealtPerRound": 52.2334,
+          "usesPerRound": 2.0456,
+          "hitsPerUse": 5.8216,
+          "signal": "watch"
+        },
+        {
+          "category": "skill",
           "id": "arc-bolt",
           "label": "파동탄",
           "exposures": 1600,
-          "wins": 4,
-          "winRate": 0.0025,
-          "winRate95": {
-            "lower": 0.001,
-            "upper": 0.0064
-          },
-          "winIndex": 0.5952,
-          "averageRank": 30.9469,
-          "top10Rate": 0.1525,
-          "top5Rate": 0.0788,
-          "averageSurvivalSeconds": 27.0718,
-          "eliminationsPerRound": 0.5425,
-          "damageDealtPerRound": 32.1761,
-          "usesPerRound": 4.7325,
-          "hitsPerUse": 0.2742,
-          "signal": "watch"
-        },
-        {
-          "category": "skill-combination",
-          "id": "aegis+frost-field",
-          "label": "빙결 지대 · 수호 방패",
-          "exposures": 320,
-          "wins": 1,
-          "winRate": 0.0031,
-          "winRate95": {
-            "lower": 0.0006,
-            "upper": 0.0175
-          },
-          "winIndex": 0.7381,
-          "averageRank": 28.1719,
-          "top10Rate": 0.225,
-          "top5Rate": 0.1313,
-          "averageSurvivalSeconds": 32.0159,
-          "eliminationsPerRound": 0.8844,
-          "damageDealtPerRound": 127.1492,
-          "usesPerRound": 5.0813,
-          "hitsPerUse": 4.3032,
-          "signal": "watch"
-        },
-        {
-          "category": "skill-combination",
-          "id": "frost-field+meteor-mark",
-          "label": "낙석 표식 · 빙결 지대",
-          "exposures": 320,
-          "wins": 6,
-          "winRate": 0.0188,
-          "winRate95": {
-            "lower": 0.0086,
-            "upper": 0.0403
-          },
-          "winIndex": 4.4762,
-          "averageRank": 28.5,
-          "top10Rate": 0.2094,
-          "top5Rate": 0.1375,
-          "averageSurvivalSeconds": 29.4518,
-          "eliminationsPerRound": 2.4938,
-          "damageDealtPerRound": 288.1776,
-          "usesPerRound": 5.2813,
-          "hitsPerUse": 3.7882,
-          "signal": "nerf-review"
-        },
-        {
-          "category": "skill-combination",
-          "id": "aegis+meteor-mark",
-          "label": "낙석 표식 · 수호 방패",
-          "exposures": 320,
-          "wins": 6,
-          "winRate": 0.0188,
-          "winRate95": {
-            "lower": 0.0086,
-            "upper": 0.0403
-          },
-          "winIndex": 4.4762,
-          "averageRank": 28.8281,
-          "top10Rate": 0.2188,
-          "top5Rate": 0.0969,
-          "averageSurvivalSeconds": 28.8157,
-          "eliminationsPerRound": 2.1219,
-          "damageDealtPerRound": 276.6175,
-          "usesPerRound": 4.7625,
-          "hitsPerUse": 1.3025,
-          "signal": "nerf-review"
-        },
-        {
-          "category": "skill-combination",
-          "id": "aegis+arc-bolt",
-          "label": "파동탄 · 수호 방패",
-          "exposures": 320,
-          "wins": 1,
-          "winRate": 0.0031,
-          "winRate95": {
-            "lower": 0.0006,
-            "upper": 0.0175
-          },
-          "winIndex": 0.7381,
-          "averageRank": 29.1969,
-          "top10Rate": 0.1875,
-          "top5Rate": 0.0875,
-          "averageSurvivalSeconds": 28.8533,
-          "eliminationsPerRound": 0.4188,
-          "damageDealtPerRound": 60.4666,
-          "usesPerRound": 6.2188,
-          "hitsPerUse": 0.2467,
-          "signal": "watch"
-        },
-        {
-          "category": "skill-combination",
-          "id": "blink-step+frost-field",
-          "label": "잔상 회피 · 빙결 지대",
-          "exposures": 320,
-          "wins": 1,
-          "winRate": 0.0031,
-          "winRate95": {
-            "lower": 0.0006,
-            "upper": 0.0175
-          },
-          "winIndex": 0.7381,
-          "averageRank": 29.2844,
-          "top10Rate": 0.2063,
-          "top5Rate": 0.1125,
-          "averageSurvivalSeconds": 29.2843,
-          "eliminationsPerRound": 0.825,
-          "damageDealtPerRound": 124.094,
-          "usesPerRound": 3.8031,
-          "hitsPerUse": 5.9737,
-          "signal": "watch"
-        },
-        {
-          "category": "skill-combination",
-          "id": "chain-bind+frost-field",
-          "label": "사슬 속박 · 빙결 지대",
-          "exposures": 320,
-          "wins": 0,
-          "winRate": 0,
-          "winRate95": {
-            "lower": 0,
-            "upper": 0.0119
-          },
-          "winIndex": 0,
-          "averageRank": 29.3875,
-          "top10Rate": 0.1938,
-          "top5Rate": 0.0938,
-          "averageSurvivalSeconds": 29.6872,
-          "eliminationsPerRound": 0.7219,
-          "damageDealtPerRound": 122.0996,
-          "usesPerRound": 6.6031,
-          "hitsPerUse": 2.54,
-          "signal": "watch"
-        },
-        {
-          "category": "skill-combination",
-          "id": "chain-bind+meteor-mark",
-          "label": "사슬 속박 · 낙석 표식",
-          "exposures": 320,
-          "wins": 0,
-          "winRate": 0,
-          "winRate95": {
-            "lower": 0,
-            "upper": 0.0119
-          },
-          "winIndex": 0,
-          "averageRank": 29.8875,
-          "top10Rate": 0.1531,
-          "top5Rate": 0.0781,
-          "averageSurvivalSeconds": 26.4418,
-          "eliminationsPerRound": 1.4406,
-          "damageDealtPerRound": 211.4579,
-          "usesPerRound": 5.6563,
-          "hitsPerUse": 0.9094,
-          "signal": "watch"
-        },
-        {
-          "category": "skill-combination",
-          "id": "blink-step+chain-bind",
-          "label": "잔상 회피 · 사슬 속박",
-          "exposures": 320,
-          "wins": 0,
-          "winRate": 0,
-          "winRate95": {
-            "lower": 0,
-            "upper": 0.0119
-          },
-          "winIndex": 0,
-          "averageRank": 30.175,
-          "top10Rate": 0.1438,
-          "top5Rate": 0.0688,
-          "averageSurvivalSeconds": 26.731,
-          "eliminationsPerRound": 0.2656,
-          "damageDealtPerRound": 58.203,
-          "usesPerRound": 5.2219,
-          "hitsPerUse": 0.2968,
-          "signal": "watch"
-        },
-        {
-          "category": "skill-combination",
-          "id": "aegis+blink-step",
-          "label": "잔상 회피 · 수호 방패",
-          "exposures": 320,
-          "wins": 0,
-          "winRate": 0,
-          "winRate95": {
-            "lower": 0,
-            "upper": 0.0119
-          },
-          "winIndex": 0,
-          "averageRank": 30.45,
-          "top10Rate": 0.1563,
-          "top5Rate": 0.075,
-          "averageSurvivalSeconds": 27.8607,
-          "eliminationsPerRound": 0.1375,
-          "damageDealtPerRound": 20.617,
-          "usesPerRound": 1.2406,
-          "hitsPerUse": 0,
-          "signal": "watch"
-        },
-        {
-          "category": "skill-combination",
-          "id": "arc-bolt+frost-field",
-          "label": "파동탄 · 빙결 지대",
-          "exposures": 320,
-          "wins": 1,
-          "winRate": 0.0031,
-          "winRate95": {
-            "lower": 0.0006,
-            "upper": 0.0175
-          },
-          "winIndex": 0.7381,
-          "averageRank": 30.4813,
-          "top10Rate": 0.1781,
-          "top5Rate": 0.0844,
-          "averageSurvivalSeconds": 28.1889,
-          "eliminationsPerRound": 0.6063,
-          "damageDealtPerRound": 82.3839,
-          "usesPerRound": 6.0875,
-          "hitsPerUse": 1.2515,
-          "signal": "watch"
-        },
-        {
-          "category": "skill-combination",
-          "id": "arc-bolt+chain-bind",
-          "label": "파동탄 · 사슬 속박",
-          "exposures": 320,
-          "wins": 1,
-          "winRate": 0.0031,
-          "winRate95": {
-            "lower": 0.0006,
-            "upper": 0.0175
-          },
-          "winIndex": 0.7381,
-          "averageRank": 30.5281,
-          "top10Rate": 0.1313,
-          "top5Rate": 0.0625,
-          "averageSurvivalSeconds": 26.3513,
-          "eliminationsPerRound": 0.3531,
-          "damageDealtPerRound": 67.6793,
-          "usesPerRound": 6.0813,
-          "hitsPerUse": 0.3155,
-          "signal": "watch"
-        },
-        {
-          "category": "skill-combination",
-          "id": "blink-step+meteor-mark",
-          "label": "잔상 회피 · 낙석 표식",
-          "exposures": 320,
           "wins": 2,
-          "winRate": 0.0063,
+          "winRate": 0.0013,
           "winRate95": {
-            "lower": 0.0017,
-            "upper": 0.0225
+            "lower": 0.0003,
+            "upper": 0.0045
           },
-          "winIndex": 1.5,
-          "averageRank": 30.5531,
-          "top10Rate": 0.1375,
-          "top5Rate": 0.0719,
-          "averageSurvivalSeconds": 25.0126,
-          "eliminationsPerRound": 1.975,
-          "damageDealtPerRound": 266.8186,
-          "usesPerRound": 3.4813,
-          "hitsPerUse": 1.6903,
+          "winIndex": 0.2826,
+          "averageRank": 30.5969,
+          "top10Rate": 0.1669,
+          "top5Rate": 0.085,
+          "averageSurvivalSeconds": 26.2853,
+          "eliminationsPerRound": 0.7338,
+          "damageDealtPerRound": 47.6261,
+          "usesPerRound": 4.6881,
+          "hitsPerUse": 0.3593,
           "signal": "watch"
         },
         {
@@ -797,15 +533,37 @@
             "upper": 0.0119
           },
           "winIndex": 0,
-          "averageRank": 31.1688,
-          "top10Rate": 0.15,
-          "top5Rate": 0.0656,
-          "averageSurvivalSeconds": 26.5058,
-          "eliminationsPerRound": 0.2688,
-          "damageDealtPerRound": 57.9473,
-          "usesPerRound": 5.6813,
-          "hitsPerUse": 0.2657,
+          "averageRank": 28.0156,
+          "top10Rate": 0.2156,
+          "top5Rate": 0.1031,
+          "averageSurvivalSeconds": 30.3388,
+          "eliminationsPerRound": 0.3563,
+          "damageDealtPerRound": 68.4406,
+          "usesPerRound": 6.0625,
+          "hitsPerUse": 0.3005,
           "signal": "watch"
+        },
+        {
+          "category": "skill-combination",
+          "id": "chain-bind+meteor-mark",
+          "label": "사슬 속박 · 낙석 표식",
+          "exposures": 320,
+          "wins": 5,
+          "winRate": 0.0156,
+          "winRate95": {
+            "lower": 0.0067,
+            "upper": 0.036
+          },
+          "winIndex": 3.3913,
+          "averageRank": 28.6188,
+          "top10Rate": 0.175,
+          "top5Rate": 0.1,
+          "averageSurvivalSeconds": 27.5094,
+          "eliminationsPerRound": 1.6406,
+          "damageDealtPerRound": 222.9041,
+          "usesPerRound": 5.8156,
+          "hitsPerUse": 0.9635,
+          "signal": "nerf-review"
         },
         {
           "category": "skill-combination",
@@ -818,21 +576,65 @@
             "lower": 0.0006,
             "upper": 0.0175
           },
-          "winIndex": 0.7381,
-          "averageRank": 31.5438,
-          "top10Rate": 0.1531,
-          "top5Rate": 0.0906,
-          "averageSurvivalSeconds": 27.723,
-          "eliminationsPerRound": 0.5219,
-          "damageDealtPerRound": 65.4831,
-          "usesPerRound": 5.8063,
-          "hitsPerUse": 0.2982,
+          "winIndex": 0.6739,
+          "averageRank": 29.2188,
+          "top10Rate": 0.1906,
+          "top5Rate": 0.1,
+          "averageSurvivalSeconds": 28.1303,
+          "eliminationsPerRound": 0.6625,
+          "damageDealtPerRound": 84.6926,
+          "usesPerRound": 5.5719,
+          "hitsPerUse": 0.3836,
           "signal": "watch"
         },
         {
           "category": "skill-combination",
-          "id": "arc-bolt+meteor-mark",
-          "label": "파동탄 · 낙석 표식",
+          "id": "aegis+frost-field",
+          "label": "빙결 지대 · 수호 방패",
+          "exposures": 320,
+          "wins": 3,
+          "winRate": 0.0094,
+          "winRate95": {
+            "lower": 0.0032,
+            "upper": 0.0272
+          },
+          "winIndex": 2.0435,
+          "averageRank": 29.5125,
+          "top10Rate": 0.2031,
+          "top5Rate": 0.1125,
+          "averageSurvivalSeconds": 29.5491,
+          "eliminationsPerRound": 0.6656,
+          "damageDealtPerRound": 96.8588,
+          "usesPerRound": 4.15,
+          "hitsPerUse": 4.0949,
+          "signal": "watch"
+        },
+        {
+          "category": "skill-combination",
+          "id": "aegis+meteor-mark",
+          "label": "낙석 표식 · 수호 방패",
+          "exposures": 320,
+          "wins": 1,
+          "winRate": 0.0031,
+          "winRate95": {
+            "lower": 0.0006,
+            "upper": 0.0175
+          },
+          "winIndex": 0.6739,
+          "averageRank": 29.825,
+          "top10Rate": 0.175,
+          "top5Rate": 0.1094,
+          "averageSurvivalSeconds": 25.8068,
+          "eliminationsPerRound": 1.7344,
+          "damageDealtPerRound": 235.3327,
+          "usesPerRound": 3.9344,
+          "hitsPerUse": 1.3201,
+          "signal": "watch"
+        },
+        {
+          "category": "skill-combination",
+          "id": "chain-bind+frost-field",
+          "label": "사슬 속박 · 빙결 지대",
           "exposures": 320,
           "wins": 0,
           "winRate": 0,
@@ -841,14 +643,212 @@
             "upper": 0.0119
           },
           "winIndex": 0,
-          "averageRank": 32.9844,
-          "top10Rate": 0.1125,
-          "top5Rate": 0.0688,
-          "averageSurvivalSeconds": 24.2427,
-          "eliminationsPerRound": 0.8125,
-          "damageDealtPerRound": 128.4598,
-          "usesPerRound": 5.2125,
-          "hitsPerUse": 0.5941,
+          "averageRank": 29.9031,
+          "top10Rate": 0.1438,
+          "top5Rate": 0.0656,
+          "averageSurvivalSeconds": 25.1242,
+          "eliminationsPerRound": 0.6563,
+          "damageDealtPerRound": 112.1819,
+          "usesPerRound": 5.5094,
+          "hitsPerUse": 2.4861,
+          "signal": "watch"
+        },
+        {
+          "category": "skill-combination",
+          "id": "aegis+blink-step",
+          "label": "잔상 회피 · 수호 방패",
+          "exposures": 320,
+          "wins": 0,
+          "winRate": 0,
+          "winRate95": {
+            "lower": 0,
+            "upper": 0.0119
+          },
+          "winIndex": 0,
+          "averageRank": 29.9719,
+          "top10Rate": 0.15,
+          "top5Rate": 0.0781,
+          "averageSurvivalSeconds": 26.2627,
+          "eliminationsPerRound": 0.1844,
+          "damageDealtPerRound": 27.5344,
+          "usesPerRound": 1.0688,
+          "hitsPerUse": 0,
+          "signal": "watch"
+        },
+        {
+          "category": "skill-combination",
+          "id": "blink-step+chain-bind",
+          "label": "잔상 회피 · 사슬 속박",
+          "exposures": 320,
+          "wins": 1,
+          "winRate": 0.0031,
+          "winRate95": {
+            "lower": 0.0006,
+            "upper": 0.0175
+          },
+          "winIndex": 0.6739,
+          "averageRank": 30.0281,
+          "top10Rate": 0.1563,
+          "top5Rate": 0.0781,
+          "averageSurvivalSeconds": 26.5803,
+          "eliminationsPerRound": 0.3469,
+          "damageDealtPerRound": 66.5324,
+          "usesPerRound": 4.7688,
+          "hitsPerUse": 0.4037,
+          "signal": "watch"
+        },
+        {
+          "category": "skill-combination",
+          "id": "arc-bolt+chain-bind",
+          "label": "파동탄 · 사슬 속박",
+          "exposures": 320,
+          "wins": 0,
+          "winRate": 0,
+          "winRate95": {
+            "lower": 0,
+            "upper": 0.0119
+          },
+          "winIndex": 0,
+          "averageRank": 30.4094,
+          "top10Rate": 0.1719,
+          "top5Rate": 0.1063,
+          "averageSurvivalSeconds": 28.0141,
+          "eliminationsPerRound": 0.6469,
+          "damageDealtPerRound": 88.8426,
+          "usesPerRound": 6.3656,
+          "hitsPerUse": 0.405,
+          "signal": "watch"
+        },
+        {
+          "category": "skill-combination",
+          "id": "frost-field+meteor-mark",
+          "label": "낙석 표식 · 빙결 지대",
+          "exposures": 320,
+          "wins": 6,
+          "winRate": 0.0188,
+          "winRate95": {
+            "lower": 0.0086,
+            "upper": 0.0403
+          },
+          "winIndex": 4.087,
+          "averageRank": 30.5406,
+          "top10Rate": 0.175,
+          "top5Rate": 0.0938,
+          "averageSurvivalSeconds": 24.5103,
+          "eliminationsPerRound": 1.8875,
+          "damageDealtPerRound": 241.1267,
+          "usesPerRound": 4.2656,
+          "hitsPerUse": 3.3084,
+          "signal": "watch"
+        },
+        {
+          "category": "skill-combination",
+          "id": "blink-step+meteor-mark",
+          "label": "잔상 회피 · 낙석 표식",
+          "exposures": 320,
+          "wins": 3,
+          "winRate": 0.0094,
+          "winRate95": {
+            "lower": 0.0032,
+            "upper": 0.0272
+          },
+          "winIndex": 2.0435,
+          "averageRank": 30.7875,
+          "top10Rate": 0.1594,
+          "top5Rate": 0.075,
+          "averageSurvivalSeconds": 24.2271,
+          "eliminationsPerRound": 1.9563,
+          "damageDealtPerRound": 253.5918,
+          "usesPerRound": 3.2344,
+          "hitsPerUse": 1.714,
+          "signal": "watch"
+        },
+        {
+          "category": "skill-combination",
+          "id": "aegis+arc-bolt",
+          "label": "파동탄 · 수호 방패",
+          "exposures": 320,
+          "wins": 0,
+          "winRate": 0,
+          "winRate95": {
+            "lower": 0,
+            "upper": 0.0119
+          },
+          "winIndex": 0,
+          "averageRank": 30.9094,
+          "top10Rate": 0.1813,
+          "top5Rate": 0.0844,
+          "averageSurvivalSeconds": 25.8173,
+          "eliminationsPerRound": 0.6156,
+          "damageDealtPerRound": 73.0713,
+          "usesPerRound": 5.3344,
+          "hitsPerUse": 0.3333,
+          "signal": "watch"
+        },
+        {
+          "category": "skill-combination",
+          "id": "arc-bolt+frost-field",
+          "label": "파동탄 · 빙결 지대",
+          "exposures": 320,
+          "wins": 0,
+          "winRate": 0,
+          "winRate95": {
+            "lower": 0,
+            "upper": 0.0119
+          },
+          "winIndex": 0,
+          "averageRank": 30.975,
+          "top10Rate": 0.1313,
+          "top5Rate": 0.0531,
+          "averageSurvivalSeconds": 23.6407,
+          "eliminationsPerRound": 0.6625,
+          "damageDealtPerRound": 91.6658,
+          "usesPerRound": 5.0438,
+          "hitsPerUse": 1.2088,
+          "signal": "watch"
+        },
+        {
+          "category": "skill-combination",
+          "id": "arc-bolt+meteor-mark",
+          "label": "파동탄 · 낙석 표식",
+          "exposures": 320,
+          "wins": 1,
+          "winRate": 0.0031,
+          "winRate95": {
+            "lower": 0.0006,
+            "upper": 0.0175
+          },
+          "winIndex": 0.6739,
+          "averageRank": 31.4719,
+          "top10Rate": 0.1594,
+          "top5Rate": 0.0813,
+          "averageSurvivalSeconds": 25.8241,
+          "eliminationsPerRound": 1.0813,
+          "damageDealtPerRound": 151.9728,
+          "usesPerRound": 5.4156,
+          "hitsPerUse": 0.644,
+          "signal": "watch"
+        },
+        {
+          "category": "skill-combination",
+          "id": "blink-step+frost-field",
+          "label": "잔상 회피 · 빙결 지대",
+          "exposures": 320,
+          "wins": 1,
+          "winRate": 0.0031,
+          "winRate95": {
+            "lower": 0.0006,
+            "upper": 0.0175
+          },
+          "winIndex": 0.6739,
+          "averageRank": 31.5875,
+          "top10Rate": 0.1656,
+          "top5Rate": 0.0781,
+          "averageSurvivalSeconds": 23.4981,
+          "eliminationsPerRound": 0.6625,
+          "damageDealtPerRound": 97.8683,
+          "usesPerRound": 2.7938,
+          "hitsPerUse": 5.7897,
           "signal": "watch"
         }
       ],
@@ -858,22 +858,22 @@
           "seedFamily": 0,
           "assignmentPass": 0,
           "seed": "random-trait-skill-item-audit-v1-000",
-          "durationSeconds": 120,
-          "reason": "time-limit",
-          "winnerActorId": null,
-          "winnerPersonality": null,
-          "stateHash": "fnv1a32:ace99fb8"
+          "durationSeconds": 58.2333,
+          "reason": "last-standing",
+          "winnerActorId": 28,
+          "winnerPersonality": "Collector",
+          "stateHash": "fnv1a32:a06addb7"
         },
         {
           "index": 1,
           "seedFamily": 0,
           "assignmentPass": 1,
           "seed": "random-trait-skill-item-audit-v1-000",
-          "durationSeconds": 100.55,
+          "durationSeconds": 54.1667,
           "reason": "last-standing",
-          "winnerActorId": 35,
+          "winnerActorId": 24,
           "winnerPersonality": "Disruptor",
-          "stateHash": "fnv1a32:61366424"
+          "stateHash": "fnv1a32:6eb235a1"
         },
         {
           "index": 2,
@@ -884,29 +884,29 @@
           "reason": "time-limit",
           "winnerActorId": null,
           "winnerPersonality": null,
-          "stateHash": "fnv1a32:24fa504b"
+          "stateHash": "fnv1a32:2f32fe9e"
         },
         {
           "index": 3,
           "seedFamily": 1,
           "assignmentPass": 1,
           "seed": "random-trait-skill-item-audit-v1-001",
-          "durationSeconds": 120,
-          "reason": "time-limit",
-          "winnerActorId": null,
-          "winnerPersonality": null,
-          "stateHash": "fnv1a32:21423d93"
+          "durationSeconds": 119.8667,
+          "reason": "last-standing",
+          "winnerActorId": 36,
+          "winnerPersonality": "Opportunist",
+          "stateHash": "fnv1a32:26543aa2"
         },
         {
           "index": 4,
           "seedFamily": 2,
           "assignmentPass": 0,
           "seed": "random-trait-skill-item-audit-v1-002",
-          "durationSeconds": 96.55,
-          "reason": "last-standing",
-          "winnerActorId": 24,
-          "winnerPersonality": "Opportunist",
-          "stateHash": "fnv1a32:a03b817f"
+          "durationSeconds": 120,
+          "reason": "time-limit",
+          "winnerActorId": null,
+          "winnerPersonality": null,
+          "stateHash": "fnv1a32:5da8f7f0"
         },
         {
           "index": 5,
@@ -917,7 +917,7 @@
           "reason": "time-limit",
           "winnerActorId": null,
           "winnerPersonality": null,
-          "stateHash": "fnv1a32:7d7288da"
+          "stateHash": "fnv1a32:8b3208b6"
         },
         {
           "index": 6,
@@ -928,7 +928,7 @@
           "reason": "time-limit",
           "winnerActorId": null,
           "winnerPersonality": null,
-          "stateHash": "fnv1a32:54bf1434"
+          "stateHash": "fnv1a32:ed759ecd"
         },
         {
           "index": 7,
@@ -939,51 +939,51 @@
           "reason": "time-limit",
           "winnerActorId": null,
           "winnerPersonality": null,
-          "stateHash": "fnv1a32:4b2cb0cb"
+          "stateHash": "fnv1a32:67d12d00"
         },
         {
           "index": 8,
           "seedFamily": 4,
           "assignmentPass": 0,
           "seed": "random-trait-skill-item-audit-v1-004",
-          "durationSeconds": 102.6167,
-          "reason": "last-standing",
-          "winnerActorId": 22,
-          "winnerPersonality": "Opportunist",
-          "stateHash": "fnv1a32:ccd73a17"
+          "durationSeconds": 120,
+          "reason": "time-limit",
+          "winnerActorId": null,
+          "winnerPersonality": null,
+          "stateHash": "fnv1a32:09837caa"
         },
         {
           "index": 9,
           "seedFamily": 4,
           "assignmentPass": 1,
           "seed": "random-trait-skill-item-audit-v1-004",
-          "durationSeconds": 120,
-          "reason": "time-limit",
-          "winnerActorId": null,
-          "winnerPersonality": null,
-          "stateHash": "fnv1a32:3779b7a5"
+          "durationSeconds": 98.2333,
+          "reason": "last-standing",
+          "winnerActorId": 17,
+          "winnerPersonality": "Disruptor",
+          "stateHash": "fnv1a32:a8316fc2"
         },
         {
           "index": 10,
           "seedFamily": 5,
           "assignmentPass": 0,
           "seed": "random-trait-skill-item-audit-v1-005",
-          "durationSeconds": 120,
-          "reason": "time-limit",
-          "winnerActorId": null,
-          "winnerPersonality": null,
-          "stateHash": "fnv1a32:09b0e74e"
+          "durationSeconds": 106,
+          "reason": "last-standing",
+          "winnerActorId": 7,
+          "winnerPersonality": "Opportunist",
+          "stateHash": "fnv1a32:30836205"
         },
         {
           "index": 11,
           "seedFamily": 5,
           "assignmentPass": 1,
           "seed": "random-trait-skill-item-audit-v1-005",
-          "durationSeconds": 46.4333,
-          "reason": "last-standing",
-          "winnerActorId": 30,
-          "winnerPersonality": "Survivor",
-          "stateHash": "fnv1a32:3d66056f"
+          "durationSeconds": 120,
+          "reason": "time-limit",
+          "winnerActorId": null,
+          "winnerPersonality": null,
+          "stateHash": "fnv1a32:7e38fbfe"
         },
         {
           "index": 12,
@@ -994,7 +994,7 @@
           "reason": "time-limit",
           "winnerActorId": null,
           "winnerPersonality": null,
-          "stateHash": "fnv1a32:e64c9d14"
+          "stateHash": "fnv1a32:4549e5a3"
         },
         {
           "index": 13,
@@ -1005,7 +1005,7 @@
           "reason": "time-limit",
           "winnerActorId": null,
           "winnerPersonality": null,
-          "stateHash": "fnv1a32:874f2547"
+          "stateHash": "fnv1a32:ac4b2257"
         },
         {
           "index": 14,
@@ -1016,7 +1016,7 @@
           "reason": "time-limit",
           "winnerActorId": null,
           "winnerPersonality": null,
-          "stateHash": "fnv1a32:7eedf49b"
+          "stateHash": "fnv1a32:a8743ec7"
         },
         {
           "index": 15,
@@ -1027,7 +1027,7 @@
           "reason": "time-limit",
           "winnerActorId": null,
           "winnerPersonality": null,
-          "stateHash": "fnv1a32:fafd72fd"
+          "stateHash": "fnv1a32:7df9a17b"
         },
         {
           "index": 16,
@@ -1038,7 +1038,7 @@
           "reason": "time-limit",
           "winnerActorId": null,
           "winnerPersonality": null,
-          "stateHash": "fnv1a32:522a70c2"
+          "stateHash": "fnv1a32:ea428090"
         },
         {
           "index": 17,
@@ -1049,18 +1049,18 @@
           "reason": "time-limit",
           "winnerActorId": null,
           "winnerPersonality": null,
-          "stateHash": "fnv1a32:e529eb86"
+          "stateHash": "fnv1a32:6a146628"
         },
         {
           "index": 18,
           "seedFamily": 9,
           "assignmentPass": 0,
           "seed": "random-trait-skill-item-audit-v1-009",
-          "durationSeconds": 87.4667,
-          "reason": "last-standing",
-          "winnerActorId": 26,
-          "winnerPersonality": "Aggressor",
-          "stateHash": "fnv1a32:50c6502b"
+          "durationSeconds": 120,
+          "reason": "time-limit",
+          "winnerActorId": null,
+          "winnerPersonality": null,
+          "stateHash": "fnv1a32:69fdc5bb"
         },
         {
           "index": 19,
@@ -1071,29 +1071,29 @@
           "reason": "time-limit",
           "winnerActorId": null,
           "winnerPersonality": null,
-          "stateHash": "fnv1a32:12290b13"
+          "stateHash": "fnv1a32:946f16f9"
         },
         {
           "index": 20,
           "seedFamily": 10,
           "assignmentPass": 0,
           "seed": "random-trait-skill-item-audit-v1-010",
-          "durationSeconds": 120,
-          "reason": "time-limit",
-          "winnerActorId": null,
-          "winnerPersonality": null,
-          "stateHash": "fnv1a32:0eecf0ee"
+          "durationSeconds": 87.3,
+          "reason": "last-standing",
+          "winnerActorId": 5,
+          "winnerPersonality": "Collector",
+          "stateHash": "fnv1a32:807c2756"
         },
         {
           "index": 21,
           "seedFamily": 10,
           "assignmentPass": 1,
           "seed": "random-trait-skill-item-audit-v1-010",
-          "durationSeconds": 95.3667,
-          "reason": "last-standing",
-          "winnerActorId": 16,
-          "winnerPersonality": "Collector",
-          "stateHash": "fnv1a32:32b0cb08"
+          "durationSeconds": 120,
+          "reason": "time-limit",
+          "winnerActorId": null,
+          "winnerPersonality": null,
+          "stateHash": "fnv1a32:56283c30"
         },
         {
           "index": 22,
@@ -1104,18 +1104,18 @@
           "reason": "time-limit",
           "winnerActorId": null,
           "winnerPersonality": null,
-          "stateHash": "fnv1a32:c909a7ea"
+          "stateHash": "fnv1a32:10b4492c"
         },
         {
           "index": 23,
           "seedFamily": 11,
           "assignmentPass": 1,
           "seed": "random-trait-skill-item-audit-v1-011",
-          "durationSeconds": 120,
-          "reason": "time-limit",
-          "winnerActorId": null,
-          "winnerPersonality": null,
-          "stateHash": "fnv1a32:d0a63f79"
+          "durationSeconds": 94.2333,
+          "reason": "last-standing",
+          "winnerActorId": 29,
+          "winnerPersonality": "Disruptor",
+          "stateHash": "fnv1a32:b3776307"
         },
         {
           "index": 24,
@@ -1126,7 +1126,7 @@
           "reason": "time-limit",
           "winnerActorId": null,
           "winnerPersonality": null,
-          "stateHash": "fnv1a32:60527e75"
+          "stateHash": "fnv1a32:0726b2f2"
         },
         {
           "index": 25,
@@ -1137,7 +1137,7 @@
           "reason": "time-limit",
           "winnerActorId": null,
           "winnerPersonality": null,
-          "stateHash": "fnv1a32:15cb7876"
+          "stateHash": "fnv1a32:db8976a6"
         },
         {
           "index": 26,
@@ -1148,7 +1148,7 @@
           "reason": "time-limit",
           "winnerActorId": null,
           "winnerPersonality": null,
-          "stateHash": "fnv1a32:a00d0876"
+          "stateHash": "fnv1a32:baa63d47"
         },
         {
           "index": 27,
@@ -1159,18 +1159,18 @@
           "reason": "time-limit",
           "winnerActorId": null,
           "winnerPersonality": null,
-          "stateHash": "fnv1a32:e1d6ca08"
+          "stateHash": "fnv1a32:32f98da7"
         },
         {
           "index": 28,
           "seedFamily": 14,
           "assignmentPass": 0,
           "seed": "random-trait-skill-item-audit-v1-014",
-          "durationSeconds": 120,
-          "reason": "time-limit",
-          "winnerActorId": null,
-          "winnerPersonality": null,
-          "stateHash": "fnv1a32:c311bcab"
+          "durationSeconds": 112.25,
+          "reason": "last-standing",
+          "winnerActorId": 17,
+          "winnerPersonality": "Survivor",
+          "stateHash": "fnv1a32:45d4b7a4"
         },
         {
           "index": 29,
@@ -1181,18 +1181,18 @@
           "reason": "time-limit",
           "winnerActorId": null,
           "winnerPersonality": null,
-          "stateHash": "fnv1a32:8bb8a96f"
+          "stateHash": "fnv1a32:1b4b011a"
         },
         {
           "index": 30,
           "seedFamily": 15,
           "assignmentPass": 0,
           "seed": "random-trait-skill-item-audit-v1-015",
-          "durationSeconds": 73.9667,
-          "reason": "last-standing",
-          "winnerActorId": 17,
-          "winnerPersonality": "Disruptor",
-          "stateHash": "fnv1a32:98203cd9"
+          "durationSeconds": 120,
+          "reason": "time-limit",
+          "winnerActorId": null,
+          "winnerPersonality": null,
+          "stateHash": "fnv1a32:7ffd0032"
         },
         {
           "index": 31,
@@ -1203,18 +1203,18 @@
           "reason": "time-limit",
           "winnerActorId": null,
           "winnerPersonality": null,
-          "stateHash": "fnv1a32:bc770c0f"
+          "stateHash": "fnv1a32:fe5c3fae"
         },
         {
           "index": 32,
           "seedFamily": 16,
           "assignmentPass": 0,
           "seed": "random-trait-skill-item-audit-v1-016",
-          "durationSeconds": 105.5333,
-          "reason": "last-standing",
-          "winnerActorId": 11,
-          "winnerPersonality": "Collector",
-          "stateHash": "fnv1a32:c8dbdcc8"
+          "durationSeconds": 120,
+          "reason": "time-limit",
+          "winnerActorId": null,
+          "winnerPersonality": null,
+          "stateHash": "fnv1a32:f10aebe7"
         },
         {
           "index": 33,
@@ -1225,18 +1225,18 @@
           "reason": "time-limit",
           "winnerActorId": null,
           "winnerPersonality": null,
-          "stateHash": "fnv1a32:8afc1473"
+          "stateHash": "fnv1a32:3986bf27"
         },
         {
           "index": 34,
           "seedFamily": 17,
           "assignmentPass": 0,
           "seed": "random-trait-skill-item-audit-v1-017",
-          "durationSeconds": 120,
-          "reason": "time-limit",
-          "winnerActorId": null,
-          "winnerPersonality": null,
-          "stateHash": "fnv1a32:bda4e8d3"
+          "durationSeconds": 119.7667,
+          "reason": "last-standing",
+          "winnerActorId": 8,
+          "winnerPersonality": "Survivor",
+          "stateHash": "fnv1a32:df8aed37"
         },
         {
           "index": 35,
@@ -1247,7 +1247,7 @@
           "reason": "time-limit",
           "winnerActorId": null,
           "winnerPersonality": null,
-          "stateHash": "fnv1a32:3422f16a"
+          "stateHash": "fnv1a32:7fb1a535"
         },
         {
           "index": 36,
@@ -1258,18 +1258,18 @@
           "reason": "time-limit",
           "winnerActorId": null,
           "winnerPersonality": null,
-          "stateHash": "fnv1a32:13a18e78"
+          "stateHash": "fnv1a32:cb34168d"
         },
         {
           "index": 37,
           "seedFamily": 18,
           "assignmentPass": 1,
           "seed": "random-trait-skill-item-audit-v1-018",
-          "durationSeconds": 120,
-          "reason": "time-limit",
-          "winnerActorId": null,
-          "winnerPersonality": null,
-          "stateHash": "fnv1a32:a83fbd20"
+          "durationSeconds": 119.55,
+          "reason": "last-standing",
+          "winnerActorId": 2,
+          "winnerPersonality": "Survivor",
+          "stateHash": "fnv1a32:247df339"
         },
         {
           "index": 38,
@@ -1280,7 +1280,7 @@
           "reason": "time-limit",
           "winnerActorId": null,
           "winnerPersonality": null,
-          "stateHash": "fnv1a32:2d5747cb"
+          "stateHash": "fnv1a32:4a08dc82"
         },
         {
           "index": 39,
@@ -1291,7 +1291,7 @@
           "reason": "time-limit",
           "winnerActorId": null,
           "winnerPersonality": null,
-          "stateHash": "fnv1a32:dbc4c380"
+          "stateHash": "fnv1a32:0cd196ca"
         },
         {
           "index": 40,
@@ -1302,18 +1302,18 @@
           "reason": "time-limit",
           "winnerActorId": null,
           "winnerPersonality": null,
-          "stateHash": "fnv1a32:82eaf862"
+          "stateHash": "fnv1a32:1f260a52"
         },
         {
           "index": 41,
           "seedFamily": 20,
           "assignmentPass": 1,
           "seed": "random-trait-skill-item-audit-v1-020",
-          "durationSeconds": 120,
-          "reason": "time-limit",
-          "winnerActorId": null,
-          "winnerPersonality": null,
-          "stateHash": "fnv1a32:547cc6ca"
+          "durationSeconds": 80.3667,
+          "reason": "last-standing",
+          "winnerActorId": 13,
+          "winnerPersonality": "Disruptor",
+          "stateHash": "fnv1a32:16a861b5"
         },
         {
           "index": 42,
@@ -1324,18 +1324,18 @@
           "reason": "time-limit",
           "winnerActorId": null,
           "winnerPersonality": null,
-          "stateHash": "fnv1a32:529e337c"
+          "stateHash": "fnv1a32:66eec4c8"
         },
         {
           "index": 43,
           "seedFamily": 21,
           "assignmentPass": 1,
           "seed": "random-trait-skill-item-audit-v1-021",
-          "durationSeconds": 120,
-          "reason": "time-limit",
-          "winnerActorId": null,
-          "winnerPersonality": null,
-          "stateHash": "fnv1a32:86d50d71"
+          "durationSeconds": 63.0667,
+          "reason": "last-standing",
+          "winnerActorId": 5,
+          "winnerPersonality": "Aggressor",
+          "stateHash": "fnv1a32:44301579"
         },
         {
           "index": 44,
@@ -1346,7 +1346,7 @@
           "reason": "time-limit",
           "winnerActorId": null,
           "winnerPersonality": null,
-          "stateHash": "fnv1a32:af25e6ea"
+          "stateHash": "fnv1a32:af0cada4"
         },
         {
           "index": 45,
@@ -1357,18 +1357,18 @@
           "reason": "time-limit",
           "winnerActorId": null,
           "winnerPersonality": null,
-          "stateHash": "fnv1a32:b2b30f56"
+          "stateHash": "fnv1a32:71dd1f1c"
         },
         {
           "index": 46,
           "seedFamily": 23,
           "assignmentPass": 0,
           "seed": "random-trait-skill-item-audit-v1-023",
-          "durationSeconds": 94.85,
-          "reason": "last-standing",
-          "winnerActorId": 34,
-          "winnerPersonality": "Disruptor",
-          "stateHash": "fnv1a32:21a33bca"
+          "durationSeconds": 120,
+          "reason": "time-limit",
+          "winnerActorId": null,
+          "winnerPersonality": null,
+          "stateHash": "fnv1a32:c036f2e4"
         },
         {
           "index": 47,
@@ -1379,7 +1379,7 @@
           "reason": "time-limit",
           "winnerActorId": null,
           "winnerPersonality": null,
-          "stateHash": "fnv1a32:748a2bb4"
+          "stateHash": "fnv1a32:d515e61f"
         },
         {
           "index": 48,
@@ -1390,29 +1390,29 @@
           "reason": "time-limit",
           "winnerActorId": null,
           "winnerPersonality": null,
-          "stateHash": "fnv1a32:c8c2b86e"
+          "stateHash": "fnv1a32:b1daab20"
         },
         {
           "index": 49,
           "seedFamily": 24,
           "assignmentPass": 1,
           "seed": "random-trait-skill-item-audit-v1-024",
-          "durationSeconds": 120,
-          "reason": "time-limit",
-          "winnerActorId": null,
-          "winnerPersonality": null,
-          "stateHash": "fnv1a32:c37b3a95"
+          "durationSeconds": 110.7167,
+          "reason": "last-standing",
+          "winnerActorId": 23,
+          "winnerPersonality": "Disruptor",
+          "stateHash": "fnv1a32:1acc57c8"
         },
         {
           "index": 50,
           "seedFamily": 25,
           "assignmentPass": 0,
           "seed": "random-trait-skill-item-audit-v1-025",
-          "durationSeconds": 120,
-          "reason": "time-limit",
-          "winnerActorId": null,
-          "winnerPersonality": null,
-          "stateHash": "fnv1a32:0525426e"
+          "durationSeconds": 72.5167,
+          "reason": "last-standing",
+          "winnerActorId": 47,
+          "winnerPersonality": "Disruptor",
+          "stateHash": "fnv1a32:05c7cf02"
         },
         {
           "index": 51,
@@ -1423,7 +1423,7 @@
           "reason": "time-limit",
           "winnerActorId": null,
           "winnerPersonality": null,
-          "stateHash": "fnv1a32:8443dc8a"
+          "stateHash": "fnv1a32:e4732bba"
         },
         {
           "index": 52,
@@ -1434,7 +1434,7 @@
           "reason": "time-limit",
           "winnerActorId": null,
           "winnerPersonality": null,
-          "stateHash": "fnv1a32:e93706d4"
+          "stateHash": "fnv1a32:b0c685fc"
         },
         {
           "index": 53,
@@ -1445,7 +1445,7 @@
           "reason": "time-limit",
           "winnerActorId": null,
           "winnerPersonality": null,
-          "stateHash": "fnv1a32:46325dca"
+          "stateHash": "fnv1a32:f4d3ba2c"
         },
         {
           "index": 54,
@@ -1456,7 +1456,7 @@
           "reason": "time-limit",
           "winnerActorId": null,
           "winnerPersonality": null,
-          "stateHash": "fnv1a32:e3fb6533"
+          "stateHash": "fnv1a32:089c11fb"
         },
         {
           "index": 55,
@@ -1467,84 +1467,84 @@
           "reason": "time-limit",
           "winnerActorId": null,
           "winnerPersonality": null,
-          "stateHash": "fnv1a32:332fa86e"
+          "stateHash": "fnv1a32:790f8f14"
         },
         {
           "index": 56,
           "seedFamily": 28,
           "assignmentPass": 0,
           "seed": "random-trait-skill-item-audit-v1-028",
-          "durationSeconds": 120,
-          "reason": "time-limit",
-          "winnerActorId": null,
-          "winnerPersonality": null,
-          "stateHash": "fnv1a32:3358a0ee"
+          "durationSeconds": 100.1333,
+          "reason": "last-standing",
+          "winnerActorId": 15,
+          "winnerPersonality": "Opportunist",
+          "stateHash": "fnv1a32:8f879327"
         },
         {
           "index": 57,
           "seedFamily": 28,
           "assignmentPass": 1,
           "seed": "random-trait-skill-item-audit-v1-028",
-          "durationSeconds": 76,
+          "durationSeconds": 107.1333,
           "reason": "last-standing",
-          "winnerActorId": 38,
-          "winnerPersonality": "Aggressor",
-          "stateHash": "fnv1a32:14f7fe22"
+          "winnerActorId": 21,
+          "winnerPersonality": "Collector",
+          "stateHash": "fnv1a32:3780504c"
         },
         {
           "index": 58,
           "seedFamily": 29,
           "assignmentPass": 0,
           "seed": "random-trait-skill-item-audit-v1-029",
-          "durationSeconds": 67.2167,
+          "durationSeconds": 65.75,
           "reason": "last-standing",
-          "winnerActorId": 8,
+          "winnerActorId": 24,
           "winnerPersonality": "Aggressor",
-          "stateHash": "fnv1a32:6efb37fb"
+          "stateHash": "fnv1a32:9f59cc45"
         },
         {
           "index": 59,
           "seedFamily": 29,
           "assignmentPass": 1,
           "seed": "random-trait-skill-item-audit-v1-029",
-          "durationSeconds": 79.5667,
-          "reason": "last-standing",
-          "winnerActorId": 45,
-          "winnerPersonality": "Survivor",
-          "stateHash": "fnv1a32:494e8245"
+          "durationSeconds": 120,
+          "reason": "time-limit",
+          "winnerActorId": null,
+          "winnerPersonality": null,
+          "stateHash": "fnv1a32:3825e8d9"
         },
         {
           "index": 60,
           "seedFamily": 30,
           "assignmentPass": 0,
           "seed": "random-trait-skill-item-audit-v1-030",
-          "durationSeconds": 120,
-          "reason": "time-limit",
-          "winnerActorId": null,
-          "winnerPersonality": null,
-          "stateHash": "fnv1a32:0167ddc8"
+          "durationSeconds": 61.7667,
+          "reason": "last-standing",
+          "winnerActorId": 17,
+          "winnerPersonality": "Survivor",
+          "stateHash": "fnv1a32:3fa9ef1a"
         },
         {
           "index": 61,
           "seedFamily": 30,
           "assignmentPass": 1,
           "seed": "random-trait-skill-item-audit-v1-030",
-          "durationSeconds": 75.5333,
-          "reason": "last-standing",
-          "winnerActorId": 57,
-          "winnerPersonality": "Disruptor",
-          "stateHash": "fnv1a32:a2296d20"
+          "durationSeconds": 120,
+          "reason": "time-limit",
+          "winnerActorId": null,
+          "winnerPersonality": null,
+          "stateHash": "fnv1a32:dcdd344b"
         },
         {
           "index": 62,
           "seedFamily": 31,
           "assignmentPass": 0,
           "seed": "random-trait-skill-item-audit-v1-031",
-          "durationSeconds": 99.2333,
-          "reason": "last-standing",
-          "winnerActorId": 9,
-          "winnerPersonality": "Opportunist",
-          "stateHash": "fnv1a32:c86fa2d9"
+          "durationSeconds": 120,
+          "reason": "time-limit",
+          "winnerActorId": null,
+          "winnerPersonality": null,
+          "stateHash": "fnv1a32:a65c2e5d"
         },
         {
           "index": 63,
@@ -1555,7 +1555,7 @@
           "reason": "time-limit",
           "winnerActorId": null,
           "winnerPersonality": null,
-          "stateHash": "fnv1a32:cdb70b85"
+          "stateHash": "fnv1a32:d1747fa8"
         },
         {
           "index": 64,
@@ -1566,29 +1566,29 @@
           "reason": "time-limit",
           "winnerActorId": null,
           "winnerPersonality": null,
-          "stateHash": "fnv1a32:731c083d"
+          "stateHash": "fnv1a32:662896f4"
         },
         {
           "index": 65,
           "seedFamily": 32,
           "assignmentPass": 1,
           "seed": "random-trait-skill-item-audit-v1-032",
-          "durationSeconds": 100.2,
+          "durationSeconds": 118.9167,
           "reason": "last-standing",
-          "winnerActorId": 24,
-          "winnerPersonality": "Disruptor",
-          "stateHash": "fnv1a32:f6d262cc"
+          "winnerActorId": 10,
+          "winnerPersonality": "Opportunist",
+          "stateHash": "fnv1a32:9bf5e8ee"
         },
         {
           "index": 66,
           "seedFamily": 33,
           "assignmentPass": 0,
           "seed": "random-trait-skill-item-audit-v1-033",
-          "durationSeconds": 102.6667,
-          "reason": "last-standing",
-          "winnerActorId": 1,
-          "winnerPersonality": "Disruptor",
-          "stateHash": "fnv1a32:e423e69d"
+          "durationSeconds": 120,
+          "reason": "time-limit",
+          "winnerActorId": null,
+          "winnerPersonality": null,
+          "stateHash": "fnv1a32:4ae9f42c"
         },
         {
           "index": 67,
@@ -1599,51 +1599,51 @@
           "reason": "time-limit",
           "winnerActorId": null,
           "winnerPersonality": null,
-          "stateHash": "fnv1a32:9f341d64"
+          "stateHash": "fnv1a32:bb85b6b4"
         },
         {
           "index": 68,
           "seedFamily": 34,
           "assignmentPass": 0,
           "seed": "random-trait-skill-item-audit-v1-034",
-          "durationSeconds": 94.0667,
-          "reason": "last-standing",
-          "winnerActorId": 14,
-          "winnerPersonality": "Survivor",
-          "stateHash": "fnv1a32:9f3a848c"
+          "durationSeconds": 120,
+          "reason": "time-limit",
+          "winnerActorId": null,
+          "winnerPersonality": null,
+          "stateHash": "fnv1a32:c688d76a"
         },
         {
           "index": 69,
           "seedFamily": 34,
           "assignmentPass": 1,
           "seed": "random-trait-skill-item-audit-v1-034",
-          "durationSeconds": 119.1333,
-          "reason": "last-standing",
-          "winnerActorId": 14,
-          "winnerPersonality": "Opportunist",
-          "stateHash": "fnv1a32:b7b637a9"
+          "durationSeconds": 120,
+          "reason": "time-limit",
+          "winnerActorId": null,
+          "winnerPersonality": null,
+          "stateHash": "fnv1a32:1acb6de8"
         },
         {
           "index": 70,
           "seedFamily": 35,
           "assignmentPass": 0,
           "seed": "random-trait-skill-item-audit-v1-035",
-          "durationSeconds": 120,
-          "reason": "time-limit",
-          "winnerActorId": null,
-          "winnerPersonality": null,
-          "stateHash": "fnv1a32:d808b233"
+          "durationSeconds": 107.3,
+          "reason": "last-standing",
+          "winnerActorId": 44,
+          "winnerPersonality": "Collector",
+          "stateHash": "fnv1a32:0fdcbadf"
         },
         {
           "index": 71,
           "seedFamily": 35,
           "assignmentPass": 1,
           "seed": "random-trait-skill-item-audit-v1-035",
-          "durationSeconds": 97.4333,
-          "reason": "last-standing",
-          "winnerActorId": 13,
-          "winnerPersonality": "Collector",
-          "stateHash": "fnv1a32:3bef59a4"
+          "durationSeconds": 120,
+          "reason": "time-limit",
+          "winnerActorId": null,
+          "winnerPersonality": null,
+          "stateHash": "fnv1a32:63225c10"
         },
         {
           "index": 72,
@@ -1654,7 +1654,7 @@
           "reason": "time-limit",
           "winnerActorId": null,
           "winnerPersonality": null,
-          "stateHash": "fnv1a32:02b783e2"
+          "stateHash": "fnv1a32:d218918a"
         },
         {
           "index": 73,
@@ -1665,29 +1665,29 @@
           "reason": "time-limit",
           "winnerActorId": null,
           "winnerPersonality": null,
-          "stateHash": "fnv1a32:baf437f5"
+          "stateHash": "fnv1a32:2683da9c"
         },
         {
           "index": 74,
           "seedFamily": 37,
           "assignmentPass": 0,
           "seed": "random-trait-skill-item-audit-v1-037",
-          "durationSeconds": 107.7833,
+          "durationSeconds": 91.6667,
           "reason": "last-standing",
-          "winnerActorId": 21,
-          "winnerPersonality": "Survivor",
-          "stateHash": "fnv1a32:31f0a640"
+          "winnerActorId": 35,
+          "winnerPersonality": "Disruptor",
+          "stateHash": "fnv1a32:64a0f07c"
         },
         {
           "index": 75,
           "seedFamily": 37,
           "assignmentPass": 1,
           "seed": "random-trait-skill-item-audit-v1-037",
-          "durationSeconds": 120,
-          "reason": "time-limit",
-          "winnerActorId": null,
-          "winnerPersonality": null,
-          "stateHash": "fnv1a32:9df4fc43"
+          "durationSeconds": 117.75,
+          "reason": "last-standing",
+          "winnerActorId": 20,
+          "winnerPersonality": "Opportunist",
+          "stateHash": "fnv1a32:dde9a897"
         },
         {
           "index": 76,
@@ -1698,7 +1698,7 @@
           "reason": "time-limit",
           "winnerActorId": null,
           "winnerPersonality": null,
-          "stateHash": "fnv1a32:a705381d"
+          "stateHash": "fnv1a32:2005a4ec"
         },
         {
           "index": 77,
@@ -1709,7 +1709,7 @@
           "reason": "time-limit",
           "winnerActorId": null,
           "winnerPersonality": null,
-          "stateHash": "fnv1a32:746ae91e"
+          "stateHash": "fnv1a32:d71e3959"
         },
         {
           "index": 78,
@@ -1720,7 +1720,7 @@
           "reason": "time-limit",
           "winnerActorId": null,
           "winnerPersonality": null,
-          "stateHash": "fnv1a32:18886d6c"
+          "stateHash": "fnv1a32:c01eb5c8"
         },
         {
           "index": 79,
@@ -1731,7 +1731,7 @@
           "reason": "time-limit",
           "winnerActorId": null,
           "winnerPersonality": null,
-          "stateHash": "fnv1a32:318eed1b"
+          "stateHash": "fnv1a32:4208e635"
         }
       ]
     },

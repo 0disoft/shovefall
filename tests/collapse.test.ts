@@ -162,4 +162,21 @@ describe("collapse and round lifecycle", () => {
     });
     expect(events.find(({ kind }) => kind === "round-completed")?.reason).toBe("time-limit");
   });
+
+  it("keeps an untimed public round active while multiple actors are standing", () => {
+    const world = new SimulationWorld(
+      normalizeGameConfig({ participantCount: 4, roundLimitSeconds: null }),
+      "untimed-public-round",
+    );
+
+    stepUntil(world, 60);
+
+    expect(world.config.roundLimitTicks).toBeNull();
+    expect(world.createRenderFrame().round).toEqual({
+      status: "Active",
+      winnerActorId: null,
+      reason: null,
+      completedTick: null,
+    });
+  });
 });

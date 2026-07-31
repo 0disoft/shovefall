@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TERRAIN_DIAGONAL_VARIANT_START } from "../src/presentation/arena-assets";
-import { createArenaRenderer, getTerrainTextureIndex } from "../src/presentation/arena-renderer";
+import {
+  createArenaRenderer,
+  getTerrainTextureIndex,
+  shouldDrawProceduralWorldEffect,
+} from "../src/presentation/arena-renderer";
 import { normalizeGameConfig, type TileState } from "../src/simulation/contracts";
 import { SimulationWorld } from "../src/simulation/world";
 
@@ -12,6 +16,15 @@ const graphicsStroke = vi.hoisted(() =>
   vi.fn<(options?: { readonly color?: number; readonly alpha?: number }) => void>(),
 );
 const spriteTint = vi.hoisted(() => vi.fn<(value: number) => void>());
+
+describe("arena renderer effect routing", () => {
+  it("does not draw the procedural duplicate when a generated skill texture is available", () => {
+    expect(shouldDrawProceduralWorldEffect("skill-used", "arc-bolt", true)).toBe(false);
+    expect(shouldDrawProceduralWorldEffect("skill-hit", "arc-bolt", true)).toBe(false);
+    expect(shouldDrawProceduralWorldEffect("tile-void", undefined, true)).toBe(true);
+    expect(shouldDrawProceduralWorldEffect("skill-used", "arc-bolt", false)).toBe(true);
+  });
+});
 
 vi.mock("pixi.js", () => {
   class FakeGraphics {

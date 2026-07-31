@@ -14,12 +14,12 @@ export const STARTING_ATTRIBUTE_LIMITS = Object.freeze({ minimum: 0, maximum: 20
 export const STARTING_ATTRIBUTE_EFFECTS = Object.freeze({
   strength: Object.freeze({ massPerPoint: 0.025, outgoingPerPoint: 0.0375 }),
   agility: Object.freeze({
-    movementPerPoint: 0.035,
+    movementPerPoint: 0.045,
     cooldownReductionPerPoint: 0.04,
     manaCostReductionPerPoint: 0.02,
     stumbleReductionPerPoint: 0.025,
   }),
-  constitution: Object.freeze({ maximumHealthPerPoint: 1.75, healthRegenPerPoint: 0.0125 }),
+  constitution: Object.freeze({ maximumHealthPerPoint: 1.5, healthRegenPerPoint: 0.0125 }),
   spirit: Object.freeze({
     maximumManaPerPoint: 8,
     manaRegenPerPoint: 0.1,

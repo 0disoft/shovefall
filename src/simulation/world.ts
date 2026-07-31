@@ -56,8 +56,10 @@ import {
   createArtilleryPlan,
   createRockShot,
   getActiveCannonShots,
+  getPredictedRockTarget,
   getPirateShipStates,
   getRockIntervalTicks,
+  getRockVolleySize,
   type ArtilleryPlan,
 } from "./artillery";
 import { ParticipantSpatialHash, type ActorPair } from "./spatial-hash";
@@ -227,11 +229,6 @@ interface SweptWallContact {
   readonly wall: BlockingObstacleState;
 }
 
-interface RayBoundsInterval {
-  readonly entryDistance: number;
-  readonly exitDistance: number;
-}
-
 interface GrapplingAnchor {
   readonly tileId: TileId;
   readonly position: Vector2;
@@ -332,6 +329,19 @@ function createTimedAction(
 function normalizeDirectionOrFallback(direction: Vector2, fallback: Vector2): Vector2 {
   const normalized = normalizeVector(direction);
   return isZeroVector(normalized) ? normalizeVector(fallback) : normalized;
+}
+
+function normalizeUnitDirectionOrFallback(direction: Vector2, fallback: Vector2): Vector2 {
+  const directionLength = vectorLength(direction);
+
+  if (directionLength > Number.EPSILON) {
+    return scaleVector(direction, 1 / directionLength);
+  }
+
+  const fallbackLength = vectorLength(fallback);
+  return fallbackLength > Number.EPSILON
+    ? scaleVector(fallback, 1 / fallbackLength)
+    : Object.freeze({ x: 1, y: 0 });
 }
 
 function chooseOffensiveCredit(
@@ -548,48 +558,6 @@ function getRayTileEntryDistance(
     getTileBounds(wall.column, wall.row),
   );
   return contact === undefined ? undefined : contact.time * maximumDistance;
-}
-
-function getRayBoundsInterval(
-  origin: Vector2,
-  direction: Vector2,
-  maximumDistance: number,
-  bounds: AxisAlignedBounds,
-): RayBoundsInterval | undefined {
-  let entryDistance = 0;
-  let exitDistance = maximumDistance;
-
-  for (const axis of ["x", "y"] as const) {
-    const originValue = origin[axis];
-    const directionValue = direction[axis];
-    const minimum = axis === "x" ? bounds.minimumX : bounds.minimumY;
-    const maximum = axis === "x" ? bounds.maximumX : bounds.maximumY;
-
-    if (directionValue === 0) {
-      if (originValue < minimum || originValue > maximum) {
-        return undefined;
-      }
-      continue;
-    }
-
-    const first = (minimum - originValue) / directionValue;
-    const second = (maximum - originValue) / directionValue;
-    entryDistance = Math.max(entryDistance, Math.min(first, second));
-    exitDistance = Math.min(exitDistance, Math.max(first, second));
-
-    if (entryDistance > exitDistance + WALL_CONTACT_EPSILON) {
-      return undefined;
-    }
-  }
-
-  if (exitDistance < 0 || entryDistance > maximumDistance) {
-    return undefined;
-  }
-
-  return Object.freeze({
-    entryDistance: clamp(entryDistance, 0, maximumDistance),
-    exitDistance: clamp(exitDistance, 0, maximumDistance),
-  });
 }
 
 function validateOverride(override: ParticipantSpawnOverride, participantCount: number): void {
@@ -959,7 +927,7 @@ export class SimulationWorld {
       throw new SimulationContractError("round has already completed");
     }
 
-    if (this.#tick >= this.#config.roundLimitTicks) {
+    if (this.#config.roundLimitTicks !== null && this.#tick >= this.#config.roundLimitTicks) {
       throw new SimulationContractError("round tick limit has been reached");
     }
 
@@ -1315,7 +1283,8 @@ export class SimulationWorld {
         action.kind === "DodgeActive" ||
         action.kind === "GrapplePull" ||
         action.kind === "ShoveRecovery" ||
-        action.kind === "Stumbling"
+        action.kind === "Stumbling" ||
+        action.kind === "Slipping"
       ) {
         return Object.freeze({ ...participant, action: createReadyAction(this.#tick) });
       }
@@ -1626,39 +1595,61 @@ export class SimulationWorld {
     attacker: ParticipantState,
     direction: Vector2,
     range: number,
-    participants: readonly ParticipantState[],
+    participants: Iterable<ParticipantState>,
     minimumAimDot: number,
   ): ForwardTargetHit | undefined {
-    const targetHits = participants
-      .filter((candidate) => candidate.actorId !== attacker.actorId && isCollidable(candidate))
-      .map((target): ForwardTargetHit | undefined => {
-        const hit = getAimAssistedCircleHit(
+    let nearestTarget: ForwardTargetHit | undefined;
+    for (const target of participants) {
+      if (target.actorId === attacker.actorId || !isCollidable(target)) {
+        continue;
+      }
+      const hit = getAimAssistedCircleHit(
+        attacker.body.position,
+        direction,
+        target.body.position,
+        target.body.radius,
+        range,
+        minimumAimDot,
+      );
+      if (hit === undefined) {
+        continue;
+      }
+      let nearestObstacleDistance = Number.POSITIVE_INFINITY;
+      for (const obstacle of this.#brickWalls) {
+        const distance = getRayTileEntryDistance(
           attacker.body.position,
-          direction,
-          target.body.position,
-          target.body.radius,
+          hit.direction,
           range,
-          minimumAimDot,
+          obstacle,
         );
-        return hit === undefined ? undefined : Object.freeze({ target, ...hit });
-      })
-      .filter((candidate): candidate is ForwardTargetHit => candidate !== undefined)
-      .toSorted(
-        (left, right) =>
-          left.entryDistance - right.entryDistance || left.target.actorId - right.target.actorId,
-      );
-
-    return targetHits.find((targetHit) => {
-      const nearestObstacleDistance = [...this.#brickWalls, ...this.#trees]
-        .map((obstacle) =>
-          getRayTileEntryDistance(attacker.body.position, targetHit.direction, range, obstacle),
-        )
-        .filter((distance): distance is number => distance !== undefined)
-        .toSorted((left, right) => left - right)[0];
-      return (
-        nearestObstacleDistance === undefined || targetHit.entryDistance < nearestObstacleDistance
-      );
-    });
+        if (distance !== undefined && distance < nearestObstacleDistance) {
+          nearestObstacleDistance = distance;
+        }
+      }
+      for (const obstacle of this.#trees) {
+        const distance = getRayTileEntryDistance(
+          attacker.body.position,
+          hit.direction,
+          range,
+          obstacle,
+        );
+        if (distance !== undefined && distance < nearestObstacleDistance) {
+          nearestObstacleDistance = distance;
+        }
+      }
+      if (hit.entryDistance >= nearestObstacleDistance) {
+        continue;
+      }
+      if (
+        nearestTarget === undefined ||
+        hit.entryDistance < nearestTarget.entryDistance ||
+        (hit.entryDistance === nearestTarget.entryDistance &&
+          target.actorId < nearestTarget.target.actorId)
+      ) {
+        nearestTarget = Object.freeze({ target, ...hit });
+      }
+    }
+    return nearestTarget;
   }
 
   #getSkillZonePosition(
@@ -1694,6 +1685,7 @@ export class SimulationWorld {
     const participantsById = new Map(
       participants.map((participant) => [participant.actorId, participant] as const),
     );
+    const createdZones: SkillZoneState[] = [];
 
     for (const cast of casts.toSorted((left, right) => left.actorId - right.actorId)) {
       const attacker = participantsById.get(cast.actorId);
@@ -1723,7 +1715,7 @@ export class SimulationWorld {
           rank: cast.metrics.rank,
         } satisfies SkillZoneState);
         this.#nextSkillZoneId += 1;
-        this.#skillZones = Object.freeze([...this.#skillZones, zone]);
+        createdZones.push(zone);
         events.push(
           this.#createEvent("skill-zone-created", {
             actorId: attacker.actorId,
@@ -1740,7 +1732,7 @@ export class SimulationWorld {
         attacker,
         cast.direction,
         definition.range,
-        [...participantsById.values()],
+        participantsById.values(),
         definition.minimumAimDot,
       );
       if (targetHit === undefined) {
@@ -1867,6 +1859,10 @@ export class SimulationWorld {
           healthAfter: updatedTarget.combat.health,
         }),
       );
+    }
+
+    if (createdZones.length > 0) {
+      this.#skillZones = Object.freeze([...this.#skillZones, ...createdZones]);
     }
 
     return Object.freeze(
@@ -2359,6 +2355,9 @@ export class SimulationWorld {
             this.#tick,
             this.#gameplayTuning.grapplingHookPullTicks,
             direction,
+            [],
+            [],
+            springBoosted,
           ),
           cooldowns: Object.freeze({
             ...withoutSpring.cooldowns,
@@ -2435,7 +2434,6 @@ export class SimulationWorld {
     const normalizedDirection = normalizeDirectionOrFallback(direction, participant.body.facing);
     const range = this.#gameplayTuning.grapplingHookRange * Math.max(1, rangeMultiplier);
     const minimumDistance = SIMULATION_TUNING.grapplingHook.minimumAnchorDistance;
-    const currentTileId = createTileId(Math.floor(origin.x), Math.floor(origin.y));
     const nearestWall = [...this.#brickWalls, ...this.#trees]
       .map((wall) => {
         const distance = getRayTileEntryDistance(origin, normalizedDirection, range, wall);
@@ -2454,42 +2452,15 @@ export class SimulationWorld {
           left.distance - right.distance || left.wall.tileId.localeCompare(right.wall.tileId),
       )[0];
 
-    if (nearestWall !== undefined) {
-      if (nearestWall.distance < minimumDistance) {
-        return undefined;
-      }
-
-      return Object.freeze({
-        tileId: nearestWall.wall.tileId,
-        position: addVectors(origin, scaleVector(normalizedDirection, nearestWall.distance)),
-        distance: nearestWall.distance,
-      });
+    if (nearestWall === undefined || nearestWall.distance < minimumDistance) {
+      return undefined;
     }
 
-    return this.#tiles
-      .filter(({ tileId, state }) => tileId !== currentTileId && state !== "Void")
-      .map((tile) => {
-        const interval = getRayBoundsInterval(
-          origin,
-          normalizedDirection,
-          range,
-          getTileBounds(tile.column, tile.row),
-        );
-
-        if (interval === undefined || interval.exitDistance < minimumDistance) {
-          return undefined;
-        }
-
-        return Object.freeze({
-          tileId: tile.tileId,
-          position: addVectors(origin, scaleVector(normalizedDirection, interval.exitDistance)),
-          distance: interval.exitDistance,
-        });
-      })
-      .filter((anchor): anchor is GrapplingAnchor => anchor !== undefined)
-      .toSorted(
-        (left, right) => right.distance - left.distance || left.tileId.localeCompare(right.tileId),
-      )[0];
+    return Object.freeze({
+      tileId: nearestWall.wall.tileId,
+      position: addVectors(origin, scaleVector(normalizedDirection, nearestWall.distance)),
+      distance: nearestWall.distance,
+    });
   }
 
   #getBrickPlacement(
@@ -2672,7 +2643,7 @@ export class SimulationWorld {
         return participant;
       }
 
-      const direction = normalizeDirectionOrFallback(
+      const direction = normalizeUnitDirectionOrFallback(
         participant.body.velocity,
         participant.body.facing,
       );
@@ -2697,7 +2668,7 @@ export class SimulationWorld {
           ...participant.body,
           velocity: scaleVector(direction, speed),
         }),
-        action: createTimedAction("Stumbling", this.#tick, stumbleTicks, direction),
+        action: createTimedAction("Slipping", this.#tick, stumbleTicks, direction),
       });
     });
 
@@ -2853,12 +2824,36 @@ export class SimulationWorld {
           break;
         }
         case "GrapplePull": {
-          velocity = scaleVector(velocity, SIMULATION_TUNING.movement.stumbleDrag);
-          facing = participant.action.lockedDirection ?? facing;
+          const direction = participant.action.lockedDirection ?? facing;
+          const springDefinition = getItemDefinition("spring-glove");
+          const speedMultiplier = participant.action.springBoosted
+            ? springDefinition.shoveImpulseMultiplier
+            : 1;
+          const targetSpeed = SIMULATION_TUNING.grapplingHook.targetSpeed * speedMultiplier;
+          const acceleration =
+            (SIMULATION_TUNING.grapplingHook.acceleration * speedMultiplier) /
+            participant.body.massFactor;
+          velocity =
+            participant.action.startedTick === this.#tick
+              ? clampVectorLength(velocity, targetSpeed)
+              : clampVectorLength(
+                  moveVectorToward(velocity, scaleVector(direction, targetSpeed), acceleration),
+                  targetSpeed,
+                );
+          facing = direction;
           break;
         }
         case "Stumbling": {
           velocity = scaleVector(velocity, SIMULATION_TUNING.movement.stumbleDrag);
+          break;
+        }
+        case "Slipping": {
+          const direction = participant.action.lockedDirection ?? facing;
+          velocity = scaleVector(
+            direction,
+            vectorLength(velocity) * SIMULATION_TUNING.soap.dragPerTick,
+          );
+          facing = direction;
           break;
         }
         case "Anchored": {
@@ -2878,7 +2873,9 @@ export class SimulationWorld {
       const maximumSpeed =
         participant.action.kind === "DodgeActive"
           ? Math.max(SIMULATION_TUNING.body.maximumLaunchSpeed, vectorLength(velocity))
-          : vectorLength(participant.body.velocity) > SIMULATION_TUNING.body.maximumSpeed ||
+          : participant.action.kind === "GrapplePull" ||
+              participant.action.kind === "Slipping" ||
+              vectorLength(participant.body.velocity) > SIMULATION_TUNING.body.maximumSpeed ||
               (participant.action.kind === "Stumbling" &&
                 participant.action.startedTick === this.#tick)
             ? SIMULATION_TUNING.body.maximumLaunchSpeed
@@ -2975,21 +2972,35 @@ export class SimulationWorld {
       this.#tick >= this.#nextRockLaunchTick &&
       this.#tick >= this.#artilleryPlan.rockPhaseStartTick
     ) {
-      const target = standing[this.#artilleryRandom.nextUint32() % standing.length];
-      const ship =
-        this.#artilleryPlan.ships[(this.#nextRockShotId - 1) % this.#artilleryPlan.ships.length];
+      const supportedTileIds = new Set(
+        this.#tiles.filter(({ state }) => state !== "Void").map(({ tileId }) => tileId),
+      );
+      const firstTargetIndex = this.#artilleryRandom.nextUint32() % standing.length;
+      const volleySize = Math.min(getRockVolleySize(standing.length), standing.length);
+      const launchedShots: RockShotState[] = [];
 
-      if (target !== undefined && ship !== undefined) {
+      for (let offset = 0; offset < volleySize; offset += 1) {
+        const target = standing[(firstTargetIndex + offset) % standing.length];
+        const ship =
+          this.#artilleryPlan.ships[(this.#nextRockShotId - 1) % this.#artilleryPlan.ships.length];
+
+        if (target === undefined || ship === undefined) {
+          continue;
+        }
+
+        const predictedTarget = getPredictedRockTarget(target.body.position, target.body.velocity);
+        const targetPosition = hasTileSupport(predictedTarget, supportedTileIds)
+          ? predictedTarget
+          : target.body.position;
         const shot = createRockShot(
           this.#nextRockShotId,
           ship,
           target.actorId,
-          target.body.position,
+          targetPosition,
           this.#tick,
         );
-        this.#rockShots = Object.freeze([...this.#rockShots, shot]);
+        launchedShots.push(shot);
         this.#nextRockShotId += 1;
-        this.#nextRockLaunchTick = this.#tick + getRockIntervalTicks(standing.length);
         events.push(
           this.#createEvent("rock-fired", {
             actorId: target.actorId,
@@ -2999,6 +3010,9 @@ export class SimulationWorld {
           }),
         );
       }
+
+      this.#rockShots = Object.freeze([...this.#rockShots, ...launchedShots]);
+      this.#nextRockLaunchTick = this.#tick + getRockIntervalTicks(standing.length);
     }
 
     return resolved;
@@ -3093,6 +3107,9 @@ export class SimulationWorld {
       .filter(({ activateTick, endsTick }) => activateTick <= this.#tick && endsTick > this.#tick)
       .toSorted((left, right) => left.zoneId - right.zoneId);
     const byId = new Map(participants.map((participant) => [participant.actorId, participant]));
+    const participantsByActorId = participants.toSorted(
+      (left, right) => left.actorId - right.actorId,
+    );
 
     for (const zone of activeZones) {
       const owner = byId.get(zone.ownerActorId);
@@ -3116,7 +3133,7 @@ export class SimulationWorld {
           ? this.#tick === zone.activateTick
           : zone.kind === "frost" && (this.#tick - zone.activateTick) % 60 === 0;
 
-      for (const original of participants.toSorted((left, right) => left.actorId - right.actorId)) {
+      for (const original of participantsByActorId) {
         let participant = byId.get(original.actorId) ?? original;
         if (!isCollidable(participant)) {
           continue;
@@ -3875,7 +3892,8 @@ export class SimulationWorld {
         participant.action.kind === "Falling" ||
         participant.action.kind === "Eliminated",
     );
-    const reachedTimeLimit = this.#tick + 1 >= this.#config.roundLimitTicks;
+    const reachedTimeLimit =
+      this.#config.roundLimitTicks !== null && this.#tick + 1 >= this.#config.roundLimitTicks;
 
     if ((!attritionStarted || standing.length > 1) && !reachedTimeLimit) {
       return;
@@ -3951,7 +3969,7 @@ export function runHeadless(
   if (
     !Number.isSafeInteger(endTick) ||
     endTick < world.tick ||
-    endTick > world.config.roundLimitTicks
+    (world.config.roundLimitTicks !== null && endTick > world.config.roundLimitTicks)
   ) {
     throw new SimulationContractError("endTick is outside the current round range");
   }

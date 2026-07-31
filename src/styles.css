@@ -306,6 +306,99 @@ button:disabled {
   min-height: 48px;
 }
 
+.round-briefing-dialog {
+  width: min(620px, calc(100% - 32px));
+  padding: clamp(24px, 4vw, 38px);
+  border: 1px solid var(--line-strong);
+  border-radius: 22px;
+  background: color-mix(in srgb, var(--surface) 96%, transparent);
+  color: var(--ink);
+  box-shadow: 0 32px 100px rgb(0 0 0 / 68%);
+}
+
+.round-briefing-dialog::backdrop {
+  background: rgb(3 6 5 / 84%);
+  backdrop-filter: blur(7px);
+}
+
+.round-briefing-dialog__heading p {
+  margin: 0 0 8px;
+  color: var(--accent);
+  font-size: 0.9rem;
+  font-weight: 850;
+}
+
+.round-briefing-dialog__heading h2 {
+  margin: 0;
+  color: var(--ink-strong);
+  font-size: clamp(1.7rem, 4vw, 2.35rem);
+  line-height: 1.15;
+}
+
+.round-briefing-dialog__objective {
+  display: grid;
+  gap: 6px;
+  margin: 18px 0 0;
+  color: var(--ink);
+  font-size: 1rem;
+  font-weight: 750;
+  line-height: 1.55;
+}
+
+.round-briefing-dialog__objective span {
+  display: block;
+}
+
+.round-briefing-dialog__controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 22px 0 0;
+}
+
+.round-briefing-dialog__controls > div {
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--surface-strong) 90%, transparent);
+}
+
+.round-briefing-dialog__controls dt {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
+.round-briefing-dialog__controls dd {
+  margin: 5px 0 0;
+  color: var(--ink-strong);
+  font-weight: 850;
+}
+
+.round-briefing-dialog__status {
+  min-height: 1.5em;
+  margin: 22px 0 12px;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  font-weight: 750;
+}
+
+.round-briefing-dialog[data-state="ready"] .round-briefing-dialog__status {
+  color: var(--success);
+}
+
+.round-briefing-dialog > .primary-action {
+  width: 100%;
+  min-height: 58px;
+  justify-content: center;
+}
+
+@media (max-width: 560px) {
+  .round-briefing-dialog__controls {
+    grid-template-columns: 1fr;
+  }
+}
+
 .settings-tabs {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

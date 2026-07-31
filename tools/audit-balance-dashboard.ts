@@ -6,11 +6,11 @@ import { BotDirector } from "../src/ai/bot-director";
 import { BOT_ACTIVE_ITEM_IDS, type BotActiveItemId } from "../src/ai/bot-loadouts";
 import { BOT_PERSONALITY_KINDS, type BotPersonalityKind } from "../src/ai/personalities";
 import {
+  AUTOMATION_ROUND_LIMIT_SECONDS,
   getArenaSize,
   getPresetCollapseSpeed,
   getPresetItemRespawnSeconds,
   getRecommendedInitialItemCount,
-  PUBLIC_ROUND_LIMIT_SECONDS,
 } from "../src/app/settings";
 import { SKILL_DEFINITIONS, SKILL_DEFINITION_IDS } from "../src/content/skills";
 import {
@@ -382,7 +382,7 @@ function createConfig(phase: BalancePhase) {
     participantCount: PARTICIPANT_COUNT,
     arenaColumns: arena.columns,
     arenaRows: arena.rows,
-    roundLimitSeconds: PUBLIC_ROUND_LIMIT_SECONDS,
+    roundLimitSeconds: AUTOMATION_ROUND_LIMIT_SECONDS,
     collapseSpeed: getPresetCollapseSpeed("massive"),
     difficulty: "hard",
     itemsEnabled: phase === "production",

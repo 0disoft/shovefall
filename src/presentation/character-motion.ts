@@ -85,7 +85,7 @@ export function createCharacterMotionPose(input: CharacterMotionInput): Characte
     scaleY = 0.88;
     liftRatio = input.reducedMotion ? 0 : Math.sin(actionPhase * Math.PI) * 0.36;
     rotation = input.reducedMotion ? 0 : horizontalDirection * 0.06;
-  } else if (input.action === "Stumbling") {
+  } else if (input.action === "Stumbling" || input.action === "Slipping") {
     liftRatio = 0;
     rotation = input.reducedMotion ? 0 : Math.sin(actionPhase * Math.PI * 2) * 0.13;
   } else if (input.action === "GrapplePull") {
@@ -114,7 +114,12 @@ export function createCharacterMotionPose(input: CharacterMotionInput): Characte
 export function selectCharacterAnimationState(
   input: CharacterAnimationStateInput,
 ): CharacterAnimationState {
-  if (input.hitActive || input.action === "Stumbling" || input.action === "Falling") {
+  if (
+    input.hitActive ||
+    input.action === "Stumbling" ||
+    input.action === "Slipping" ||
+    input.action === "Falling"
+  ) {
     return "hit";
   }
   if (

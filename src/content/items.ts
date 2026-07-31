@@ -1,7 +1,7 @@
 import type { ItemDefinitionId } from "../simulation/contracts";
 
 export interface ItemDefinition {
-  readonly definitionVersion: 4;
+  readonly definitionVersion: 5;
   readonly id: ItemDefinitionId;
   readonly label: string;
   readonly visualKey: string;
@@ -24,6 +24,9 @@ export interface ItemDefinition {
   readonly healing: number;
   readonly stumbleTicks: number;
   readonly stunTicks: number;
+  readonly slideMinimumSpeed: number;
+  readonly slideMaximumSpeed: number;
+  readonly slideDragPerTick: number;
   readonly ownerDamageMultiplier: number;
   readonly aiTags: readonly (
     | "mass"
@@ -46,12 +49,23 @@ type ItemDefinitionInput = Omit<
   | "healing"
   | "stumbleTicks"
   | "stunTicks"
+  | "slideMinimumSpeed"
+  | "slideMaximumSpeed"
+  | "slideDragPerTick"
   | "ownerDamageMultiplier"
 > &
   Partial<
     Pick<
       ItemDefinition,
-      "damage" | "fuseTicks" | "healing" | "stumbleTicks" | "stunTicks" | "ownerDamageMultiplier"
+      | "damage"
+      | "fuseTicks"
+      | "healing"
+      | "stumbleTicks"
+      | "stunTicks"
+      | "slideMinimumSpeed"
+      | "slideMaximumSpeed"
+      | "slideDragPerTick"
+      | "ownerDamageMultiplier"
     >
   >;
 
@@ -84,12 +98,15 @@ function formatNumber(value: number): string {
 
 function defineItem(input: ItemDefinitionInput): ItemDefinition {
   return Object.freeze({
-    definitionVersion: 4,
+    definitionVersion: 5,
     damage: 0,
     fuseTicks: 0,
     healing: 0,
     stumbleTicks: 0,
     stunTicks: 0,
+    slideMinimumSpeed: 0,
+    slideMaximumSpeed: 0,
+    slideDragPerTick: 1,
     ownerDamageMultiplier: 0,
     ...input,
   });
@@ -112,7 +129,7 @@ export function formatItemEffectDescription(item: ItemDefinition): string {
     case "soap": {
       const stumble =
         item.stumbleTicks > 0
-          ? `밟은 상대는 ${formatNumber(item.stumbleTicks / 60)}초 동안 미끄러짐`
+          ? `밟은 상대는 진행하던 방향으로 ${formatNumber(item.stumbleTicks / 60)}초 동안 길게 미끄러짐`
           : undefined;
       const damage =
         item.damage > 0 ? `미끄러짐이 끝나면 피해 ${formatNumber(item.damage)}` : undefined;
@@ -271,7 +288,7 @@ export const ITEM_DEFINITIONS: Readonly<Record<ItemDefinitionId, ItemDefinition>
     visualKey: "item.soap",
     audioKey: "item.use.soap",
     loadoutKind: "active",
-    startingCharges: 5,
+    startingCharges: 4,
     mapSpawnEligible: true,
     durationTicks: null,
     consumePolicy: "inventory-charge",
@@ -283,9 +300,12 @@ export const ITEM_DEFINITIONS: Readonly<Record<ItemDefinitionId, ItemDefinition>
     targetMode: "ground",
     castRange: 3,
     effectRadius: 0.5,
-    damage: 25,
+    damage: 30,
     stumbleTicks: 120,
     stunTicks: 120,
+    slideMinimumSpeed: 0.105,
+    slideMaximumSpeed: 0.42,
+    slideDragPerTick: 0.992,
     aiTags: Object.freeze(["trap", "mobility"] as const),
   }),
   "brick-bag": defineItem({
@@ -347,9 +367,9 @@ export const ITEM_DEFINITIONS: Readonly<Record<ItemDefinitionId, ItemDefinition>
     targetMode: "ground",
     castRange: 0.75,
     effectRadius: 3,
-    damage: 65,
+    damage: 60,
     fuseTicks: 195,
-    ownerDamageMultiplier: 0.2,
+    ownerDamageMultiplier: 0.25,
     aiTags: Object.freeze(["area", "shove"] as const),
   }),
 });

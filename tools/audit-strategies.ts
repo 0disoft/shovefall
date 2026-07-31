@@ -2,11 +2,11 @@ import { BotDirector } from "../src/ai/bot-director";
 import { BOT_ACTIVE_ITEM_IDS, createBotLoadoutAssignments } from "../src/ai/bot-loadouts";
 import { BOT_PERSONALITY_KINDS, type BotPersonalityKind } from "../src/ai/personalities";
 import {
+  AUTOMATION_ROUND_LIMIT_SECONDS,
   getArenaSize,
   getPresetCollapseSpeed,
   getPresetItemRespawnSeconds,
   getRecommendedInitialItemCount,
-  PUBLIC_ROUND_LIMIT_SECONDS,
   type PresetName,
 } from "../src/app/settings";
 import { ITEM_DEFINITION_IDS } from "../src/content/items";
@@ -26,7 +26,7 @@ import { SimulationWorld } from "../src/simulation/world";
 
 const PARTICIPANT_COUNTS = [60] as const;
 const SAMPLE_COUNT = 8;
-const ROUND_LIMIT_SECONDS = PUBLIC_ROUND_LIMIT_SECONDS;
+const ROUND_LIMIT_SECONDS = AUTOMATION_ROUND_LIMIT_SECONDS;
 const PRESET_BY_COUNT: Readonly<Record<(typeof PARTICIPANT_COUNTS)[number], PresetName>> =
   Object.freeze({ 60: "massive" });
 

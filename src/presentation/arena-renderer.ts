@@ -81,7 +81,7 @@ export interface ArenaRendererOptions {
   readonly onContextRestored?: () => void;
 }
 
-type VisualEffectKind =
+export type VisualEffectKind =
   | "skill-used"
   | "skill-hit"
   | "shield-applied"
@@ -126,6 +126,12 @@ const DEFAULT_RESOLUTION_CAP = 1.5;
 const MAYHEM_RESOLUTION_CAP = 1;
 const NORMAL_EFFECT_CAP = 36;
 const MAYHEM_EFFECT_CAP = 14;
+const GENERATED_SKILL_EFFECT_KINDS: ReadonlySet<VisualEffectKind> = new Set([
+  "skill-used",
+  "skill-hit",
+  "status-applied",
+  "shield-applied",
+]);
 const DIRECTIONAL_SKILL_EFFECTS: ReadonlySet<SkillDefinitionId> = new Set([
   "blink-step",
   "arc-bolt",
@@ -148,6 +154,7 @@ const ACTION_COLORS: Readonly<Record<ParticipantActionKind, number>> = Object.fr
   DodgeActive: 0x68d8d6,
   GrapplePull: 0xffc857,
   Stumbling: 0xd58bea,
+  Slipping: 0x8be4ea,
   Anchored: 0x9ca5a1,
   Falling: 0x727b78,
   Eliminated: 0x727b78,
@@ -164,6 +171,18 @@ const ITEM_COLORS = Object.freeze({
 const GRAPPLING_HOOK_COLOR = 0xffc857;
 const HUMAN_MARKER_COLOR = 0x3b8cff;
 const PICKUP_MARKER_COLOR = 0xffd166;
+
+export function shouldDrawProceduralWorldEffect(
+  kind: VisualEffectKind,
+  skillDefinitionId: SkillDefinitionId | undefined,
+  hasGeneratedSkillTexture: boolean,
+): boolean {
+  return !(
+    hasGeneratedSkillTexture &&
+    skillDefinitionId !== undefined &&
+    GENERATED_SKILL_EFFECT_KINDS.has(kind)
+  );
+}
 
 function getItemColor(definitionId: ItemDefinitionId): number | undefined {
   const colors: Readonly<Partial<Record<ItemDefinitionId, number>>> = ITEM_COLORS;
@@ -1882,7 +1901,11 @@ function drawParticipant(
         color: actionColor,
         width: Math.max(1.5, participant.massFactor * 1.4),
       });
-    if (participant.action === "Stumbling" || participant.action === "Falling") {
+    if (
+      participant.action === "Stumbling" ||
+      participant.action === "Slipping" ||
+      participant.action === "Falling"
+    ) {
       const markerSize = visualRadius * 0.48;
       graphics
         .moveTo(x - markerSize, y - markerSize)
@@ -2006,7 +2029,11 @@ function drawParticipant(
     }
   }
 
-  if (participant.action === "Stumbling" || participant.action === "Falling") {
+  if (
+    participant.action === "Stumbling" ||
+    participant.action === "Slipping" ||
+    participant.action === "Falling"
+  ) {
     const markerSize = visualRadius * 0.55;
     graphics
       .moveTo(x - markerSize, y - markerSize)
@@ -2972,7 +2999,19 @@ export async function createArenaRenderer(
     );
 
     for (const effect of visualEffects) {
-      drawWorldEffect(effectLayer, effect, latestFrame.tick, projection, reducedMotion);
+      const hasGeneratedSkillTexture =
+        visualAssets !== null &&
+        effect.skillDefinitionId !== undefined &&
+        visualAssets.skillEffectTextures[effect.skillDefinitionId] !== undefined;
+      if (
+        shouldDrawProceduralWorldEffect(
+          effect.kind,
+          effect.skillDefinitionId,
+          hasGeneratedSkillTexture,
+        )
+      ) {
+        drawWorldEffect(effectLayer, effect, latestFrame.tick, projection, reducedMotion);
+      }
     }
 
     if (visualAssets !== null) {

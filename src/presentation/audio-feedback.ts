@@ -101,6 +101,7 @@ export const MASTER_GAIN_SCALE = 0.7;
 export const MUSIC_REFERENCE_GAIN = 0.08;
 export const MUSIC_DUCKING_GAIN = 10 ** (-5 / 20);
 export const AUDIO_MIN_DECIBELS = -40;
+export const AUDIO_VOLUME_CURVE_EXPONENT = Math.log2(5);
 const COMBAT_DUCKING_MILLISECONDS = 350;
 
 export function volumeToGain(volume: number): number {
@@ -108,7 +109,7 @@ export function volumeToGain(volume: number): number {
   if (normalized === 0) {
     return 0;
   }
-  const decibels = AUDIO_MIN_DECIBELS * (1 - normalized / 100);
+  const decibels = AUDIO_MIN_DECIBELS * (1 - normalized / 100) ** AUDIO_VOLUME_CURVE_EXPONENT;
   return 10 ** (decibels / 20);
 }
 const SOUND_DEFINITIONS: Partial<Record<SimulationEventKind, SoundDefinition>> = Object.freeze({

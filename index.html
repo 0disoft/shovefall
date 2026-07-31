@@ -52,6 +52,47 @@
         </div>
       </dialog>
 
+      <dialog
+        id="round-briefing-dialog"
+        class="round-briefing-dialog"
+        aria-labelledby="round-briefing-title"
+        aria-describedby="round-briefing-objective round-briefing-status"
+      >
+        <div class="round-briefing-dialog__heading">
+          <p>게임 목표</p>
+          <h2 id="round-briefing-title" tabindex="-1">포격으로 무너지는 섬에서 끝까지 살아남아.</h2>
+        </div>
+        <p id="round-briefing-objective" class="round-briefing-dialog__objective">
+          <span>해적선의 대포에 맞은 해안 타일은 바다로 변해.</span>
+          <span>포격이 이어질수록 육지는 점점 좁아져.</span>
+          <span>마지막 한 명이 될 때까지 섬에서 살아남아.</span>
+        </p>
+        <dl class="round-briefing-dialog__controls" aria-label="조작법">
+          <div>
+            <dt>이동</dt>
+            <dd>방향키 · 땅 우클릭</dd>
+          </div>
+          <div>
+            <dt>스킬</dt>
+            <dd>Q · W</dd>
+          </div>
+          <div>
+            <dt>갈고리 · 아이템</dt>
+            <dd>E · D</dd>
+          </div>
+          <div>
+            <dt>일시정지</dt>
+            <dd>P</dd>
+          </div>
+        </dl>
+        <p id="round-briefing-status" class="round-briefing-dialog__status" aria-live="polite">
+          섬을 불러오는 중…
+        </p>
+        <button id="confirm-round-briefing" class="primary-action" type="button" disabled>
+          게임 불러오는 중…
+        </button>
+      </dialog>
+
       <section id="scoreboard" class="scoreboard-panel" aria-labelledby="scoreboard-title">
         <header class="scoreboard__header">
           <h2 id="scoreboard-title" tabindex="-1">점수표</h2>
@@ -530,7 +571,7 @@
               <strong>방향키·마우스 조준</strong>
               <span>같은 키·Enter·좌클릭 확정 · Esc·우클릭 취소</span>
             </p>
-            <dl id="stat-status" class="stat-status" aria-label="스탯 상태" hidden>
+            <dl id="stat-status" class="stat-status" aria-label="전투 수치" hidden>
               <div>
                 <dt>체력</dt>
                 <dd><output id="health-value">100 / 100</output></dd>
@@ -552,7 +593,7 @@
                 <dd><output id="mobility-bonus">+0%</output></dd>
               </div>
               <div>
-                <dt>회피 재사용</dt>
+                <dt>피해·보호막</dt>
                 <dd><output id="reflex-bonus">0%</output></dd>
               </div>
               <div>
@@ -588,9 +629,9 @@
                 <div class="trait-upgrade__choices" aria-label="올릴 특성">
                   <label class="trait-upgrade__choice" data-trait-choice="power">
                     <input type="radio" name="upgradeChoice" value="power" />
-                    <span class="trait-upgrade__icon" aria-hidden="true">힘</span>
+                    <span class="trait-upgrade__icon" aria-hidden="true">완</span>
                     <span class="trait-upgrade__copy">
-                      <strong>압박</strong>
+                      <strong>완력</strong>
                       <span class="trait-upgrade__delta" data-upgrade-effects="power"></span>
                     </span>
                     <output id="trait-rank-power">0/5</output>
@@ -598,9 +639,9 @@
                   </label>
                   <label class="trait-upgrade__choice" data-trait-choice="stability">
                     <input type="radio" name="upgradeChoice" value="stability" />
-                    <span class="trait-upgrade__icon" aria-hidden="true">중</span>
+                    <span class="trait-upgrade__icon" aria-hidden="true">균</span>
                     <span class="trait-upgrade__copy">
-                      <strong>중심</strong>
+                      <strong>균형</strong>
                       <span class="trait-upgrade__delta" data-upgrade-effects="stability"></span>
                     </span>
                     <output id="trait-rank-stability">0/5</output>
@@ -608,9 +649,9 @@
                   </label>
                   <label class="trait-upgrade__choice" data-trait-choice="mobility">
                     <input type="radio" name="upgradeChoice" value="mobility" />
-                    <span class="trait-upgrade__icon" aria-hidden="true">발</span>
+                    <span class="trait-upgrade__icon" aria-hidden="true">민</span>
                     <span class="trait-upgrade__copy">
-                      <strong>기동</strong>
+                      <strong>민첩</strong>
                       <span class="trait-upgrade__delta" data-upgrade-effects="mobility"></span>
                     </span>
                     <output id="trait-rank-mobility">0/5</output>
@@ -618,9 +659,9 @@
                   </label>
                   <label class="trait-upgrade__choice" data-trait-choice="reflex">
                     <input type="radio" name="upgradeChoice" value="reflex" />
-                    <span class="trait-upgrade__icon" aria-hidden="true">반</span>
+                    <span class="trait-upgrade__icon" aria-hidden="true">의</span>
                     <span class="trait-upgrade__copy">
-                      <strong>반사</strong>
+                      <strong>의지</strong>
                       <span class="trait-upgrade__delta" data-upgrade-effects="reflex"></span>
                     </span>
                     <output id="trait-rank-reflex">0/5</output>
@@ -628,9 +669,9 @@
                   </label>
                   <label class="trait-upgrade__choice" data-trait-choice="vitality">
                     <input type="radio" name="upgradeChoice" value="vitality" />
-                    <span class="trait-upgrade__icon" aria-hidden="true">생</span>
+                    <span class="trait-upgrade__icon" aria-hidden="true">체</span>
                     <span class="trait-upgrade__copy">
-                      <strong>생존</strong>
+                      <strong>체질</strong>
                       <span class="trait-upgrade__delta" data-upgrade-effects="vitality"></span>
                     </span>
                     <output id="trait-rank-vitality">0/5</output>
@@ -638,9 +679,9 @@
                   </label>
                   <label class="trait-upgrade__choice" data-trait-choice="focus">
                     <input type="radio" name="upgradeChoice" value="focus" />
-                    <span class="trait-upgrade__icon" aria-hidden="true">집</span>
+                    <span class="trait-upgrade__icon" aria-hidden="true">정</span>
                     <span class="trait-upgrade__copy">
-                      <strong>집중</strong>
+                      <strong>정신</strong>
                       <span class="trait-upgrade__delta" data-upgrade-effects="focus"></span>
                     </span>
                     <output id="trait-rank-focus">0/5</output>

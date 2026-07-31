@@ -4,9 +4,14 @@ import {
   CANNON_MAXIMUM_LAUNCH_INTERVAL_TICKS,
   CANNON_MINIMUM_LAUNCH_INTERVAL_TICKS,
   createArtilleryPlan,
+  getPredictedRockTarget,
   getActiveCannonShots,
   getPirateShipStates,
+  getRockIntervalTicks,
+  getRockVolleySize,
+  ROCK_BLAST_RADIUS,
   ROCK_FLIGHT_TICKS,
+  ROCK_MAXIMUM_LEAD_DISTANCE,
 } from "../src/simulation/artillery";
 import { getOuterOceanTileIds } from "../src/simulation/arena";
 import { createCollapsePlan, MINIMUM_REMAINING_LAND_RATIO } from "../src/simulation/collapse";
@@ -20,6 +25,25 @@ import { RandomStreamSet } from "../src/simulation/random";
 import { SimulationWorld } from "../src/simulation/world";
 
 describe("pirate artillery", () => {
+  it("scales readable final-rock volleys with the survivor count", () => {
+    expect(getRockIntervalTicks(12)).toBe(72);
+    expect(getRockIntervalTicks(8)).toBe(60);
+    expect(getRockIntervalTicks(4)).toBe(48);
+    expect(getRockVolleySize(12)).toBe(3);
+    expect(getRockVolleySize(8)).toBe(2);
+    expect(getRockVolleySize(4)).toBe(1);
+    expect(ROCK_BLAST_RADIUS).toBe(0.95);
+  });
+
+  it("leads a moving rock target without predicting farther than the fair cap", () => {
+    const target = getPredictedRockTarget({ x: 4, y: 6 }, { x: 0.2, y: 0.1 });
+    const leadDistance = Math.hypot(target.x - 4, target.y - 6);
+
+    expect(leadDistance).toBeCloseTo(ROCK_MAXIMUM_LEAD_DISTANCE, 6);
+    expect(target.x).toBeGreaterThan(4);
+    expect(target.y).toBeGreaterThan(6);
+  });
+
   it("keeps enclosed lake water out of the outer-ocean targeting frontier", () => {
     const config = normalizeGameConfig({
       participantCount: 4,
@@ -66,7 +90,7 @@ describe("pirate artillery", () => {
     );
   });
 
-  it("starts every ship on an independent seeded two-to-three-second firing clock", () => {
+  it("starts every ship on an independent seeded 1.5-to-2.25-second firing clock", () => {
     const config = normalizeGameConfig({
       participantCount: 4,
       arenaColumns: 12,

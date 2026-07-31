@@ -64,7 +64,10 @@ describe("elimination progression", () => {
     });
     expect(getPowerMultiplier(upgraded?.stats ?? earned.stats)).toBeCloseTo(1.0375, 10);
     expect(getStabilityMultiplier({ ...earned.stats, stability: 5 })).toBeCloseTo(0.75, 10);
-    expect(getMobilityMultiplier({ ...earned.stats, mobility: 5 })).toBeCloseTo(1.175, 10);
+    expect(getMobilityMultiplier({ ...earned.stats, mobility: 5 })).toBeCloseTo(
+      1 + 5 * STARTING_ATTRIBUTE_EFFECTS.agility.movementPerPoint,
+      10,
+    );
 
     let capped = earned;
     for (let level = 0; level < 5; level += 1) {
