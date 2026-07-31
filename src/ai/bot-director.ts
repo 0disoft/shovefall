@@ -1280,17 +1280,22 @@ export class BotDirector {
         getBotEdgeDistance(current, terrain) >= 3.25 &&
         (memory.personality === "Aggressor" || memory.personality === "Disruptor")
       ) {
-        const crowdCenter = closeOpponents.reduce(
-          (sum, { candidate }) => addVectors(sum, candidate.position),
-          ZERO_VECTOR,
-        );
-        const average = scaleVector(crowdCenter, 1 / closeOpponents.length);
-        return createDecision(
-          normalizeVector(subtractVectors(current.position, average)),
-          false,
-          false,
-          bombSlot,
-        );
+        let crowdCenterX = 0;
+        let crowdCenterY = 0;
+        for (const { candidate } of closeOpponents) {
+          crowdCenterX += candidate.position.x;
+          crowdCenterY += candidate.position.y;
+        }
+        const averageX = crowdCenterX / closeOpponents.length;
+        const averageY = crowdCenterY / closeOpponents.length;
+        const awayX = current.position.x - averageX;
+        const awayY = current.position.y - averageY;
+        const awayLength = Math.hypot(awayX, awayY);
+        const awayDirection =
+          awayLength <= 1
+            ? Object.freeze({ x: awayX, y: awayY })
+            : Object.freeze({ x: awayX / awayLength, y: awayY / awayLength });
+        return createDecision(awayDirection, false, false, bombSlot);
       }
 
       const brickBagSlot = getChargedItemSlot(current, "brick-bag");

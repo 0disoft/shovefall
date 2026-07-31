@@ -1,8 +1,11 @@
 # Static Release Procedure
 
-- Status: `0.164.0` complete-island cannon-collapse candidate; hosted proof pending
+- Status: `0.165.0` complete-island cannon-collapse candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.164.0`
+- Current product version: `0.165.0`
+
+Product `0.165.0`, simulation `78.0.0`, and content `48.0.0` keep simulation `78.0.0`,
+content `48.0.0`, replay v8, and reports v11. Bot crowd escape now computes crowd center and away direction from raw components instead of allocating addVectors, scaleVector, subtractVectors, and normalizeVector intermediate objects per escape decision. Visible bot movement, combat results, replay hash, and balance are unchanged. Hosted proof, complete-collapse pacing, and human readability remain pending.
 
 Product `0.164.0`, simulation `78.0.0`, and content `48.0.0` keep simulation `78.0.0`,
 content `48.0.0`, replay v8, and reports v11. Bot soap retreat now computes away-from-target, retreat direction, and soap target position from raw components instead of allocating subtractVectors, normalizeVector, addVectors, scaleVector, and vectorLength intermediate objects per retreat decision. Visible bot movement, combat results, replay hash, and balance are unchanged. Hosted proof, complete-collapse pacing, and human readability remain pending.
