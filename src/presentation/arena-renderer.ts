@@ -2734,11 +2734,12 @@ export async function createArenaRenderer(
     }
 
     const frameTick = latestFrame.tick;
-    const dangerousCannonTargets = new Set(
-      latestFrame.cannonShots
-        .filter(({ dangerTick }) => frameTick >= dangerTick)
-        .map(({ targetTileId }) => targetTileId),
-    );
+    const dangerousCannonTargets = new Set<string>();
+    for (const shot of latestFrame.cannonShots) {
+      if (frameTick >= shot.dangerTick) {
+        dangerousCannonTargets.add(shot.targetTileId);
+      }
+    }
 
     for (const tile of latestFrame.tiles) {
       if (tile.state !== "Warning" && tile.state !== "Collapsing") {

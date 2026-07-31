@@ -9,6 +9,14 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.121.0",
+    title: "대포 경고를 고를 때 배열을 덜 만든다요 ㅇㅅㅇ",
+    reason:
+      "매 프레임마다 위험한 대포 타격을 찾으려고 포탄 배열을 두 번 거르고 매핑해서 새 배열을 만들었다요.",
+    change:
+      "위험 대포 타격 집합을 한 번에 채우도록 고쳤다요. 보이는 경고와 전투 결과, 수치는 그대로다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.120.0",
     title: "겹치는 그림을 고를 때 글자를 덜 만든다요 ㅇㅅㅇ",
     reason:
