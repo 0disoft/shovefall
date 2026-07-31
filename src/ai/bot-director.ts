@@ -887,10 +887,11 @@ export class BotDirector {
     if (tick - memory.lastProgressTick < this.#decisionIntervalTicks) {
       return;
     }
-    const progress = vectorLength(
-      subtractVectors(participant.position, memory.lastProgressPosition),
+    const progress = Math.hypot(
+      participant.position.x - memory.lastProgressPosition.x,
+      participant.position.y - memory.lastProgressPosition.y,
     );
-    if (vectorLength(memory.intent) > 0.1 && progress < STALL_PROGRESS_DISTANCE) {
+    if (Math.hypot(memory.intent.x, memory.intent.y) > 0.1 && progress < STALL_PROGRESS_DISTANCE) {
       memory.stalledDecisionCount += 1;
     } else {
       memory.stalledDecisionCount = 0;
