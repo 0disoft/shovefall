@@ -196,7 +196,10 @@ function canBotPursueMapItem(
   terrain: BotNavigationTerrain,
   participants: readonly RenderParticipantV1[],
 ): boolean {
-  const distance = vectorLength(subtractVectors(participant.position, item.position));
+  const distance = Math.hypot(
+    participant.position.x - item.position.x,
+    participant.position.y - item.position.y,
+  );
   const profile = BOT_PERSONALITIES[personality];
 
   if (distance > 3.5 * profile.itemInterestWeight) {
@@ -227,7 +230,7 @@ function canBotPursueMapItem(
     (candidate) =>
       candidate.actorId !== participant.actorId &&
       isControllable(candidate) &&
-      vectorLength(subtractVectors(candidate.position, item.position)) <=
+      Math.hypot(candidate.position.x - item.position.x, candidate.position.y - item.position.y) <=
         COLLECTOR_OPPONENT_CLEARANCE_DISTANCE,
   );
 }

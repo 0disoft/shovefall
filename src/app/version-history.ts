@@ -9,6 +9,13 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.154.0",
+    title: "아이템 추적 거리도 숫자로 바로 한다요 ㅇㅅㅇ",
+    reason: "봇이 아이템을 추적할지 검사할 때마다 거리 껍데기를 새로 만들었다요.",
+    change:
+      "아이템 추적 거리를 숫자로 바로 계산해서 껍데기를 만들지 않는다요. 봇 행동과 전투 결과, 수치는 그대로다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.153.0",
     title: "조향 이동도 숫자로 바로 한다요 ㅇㅅㅇ",
     reason: "봇이 이동 방향을 조절할 때마다 정규화와 회전 껍데기를 새로 만들었다요.",
