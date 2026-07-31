@@ -2599,6 +2599,7 @@ export async function createArenaRenderer(
   let latestAimPreview: ArenaAimPreview | null = null;
   let spectatorCamera: Vector2 | undefined;
   let spectatorRoundId: number | undefined;
+  let lastFrameSpectator = false;
   let tileLayerDirty = true;
   let oceanSprite: Sprite | undefined;
   let cachedProjection: ArenaProjection | undefined;
@@ -2632,7 +2633,8 @@ export async function createArenaRenderer(
       latestHumanActorId,
       latestInterpolationAlpha,
     );
-    if (!isSpectatorFrame(latestFrame, latestHumanActorId)) {
+    lastFrameSpectator = isSpectatorFrame(latestFrame, latestHumanActorId);
+    if (!lastFrameSpectator) {
       spectatorCamera = undefined;
       return camera;
     }
@@ -2685,9 +2687,7 @@ export async function createArenaRenderer(
     }
     host.dataset.cameraX = presentationCamera.x.toFixed(2);
     host.dataset.cameraY = presentationCamera.y.toFixed(2);
-    host.dataset.cameraMode = isSpectatorFrame(latestFrame, latestHumanActorId)
-      ? "spectator"
-      : "follow";
+    host.dataset.cameraMode = lastFrameSpectator ? "spectator" : "follow";
     host.dataset.cameraShake = shakeActive ? cameraShakeIntensity.toFixed(2) : "0.00";
     host.dataset.projectionAngle = ARENA_CAMERA_ELEVATION_DEGREES.toString();
     host.dataset.projectionScaleY = ARENA_DEPTH_SCALE.toFixed(4);
