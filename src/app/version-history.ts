@@ -9,6 +9,14 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.116.0",
+    title: "남은 돌탄 자국까지 다 걷었다요 ㅇㅅㅇ",
+    reason:
+      "마지막 돌탄 단계를 없앴다고 했는데 시뮬레이션과 화면, 봇, 소리에 돌탄 계산과 표식이 남아 매 틱마다 빈 배열을 헛돌고 있었다요.",
+    change:
+      "돌탄 발사·회피·표식·소리·해시에서 돌탄 자리를 빼고 시뮬레이션을 78.0.0으로 올린다요. 대포는 마지막 땅까지 그대로 쏘고 결과는 변하지 않는다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.115.0",
     title: "마지막 땅까지 대포가 따라온다요 ㅇㅅㅇ",
     reason:

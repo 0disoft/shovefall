@@ -10,7 +10,6 @@ import type {
   RenderFrameV1,
   RenderItemV1,
   RenderParticipantV1,
-  RockShotState,
   SimulationEventV1,
   SkillDefinitionId,
   SoapPatchState,
@@ -97,7 +96,6 @@ export type VisualEffectKind =
   | "soap-triggered"
   | "bomb-detonated"
   | "grappling-hook-hit"
-  | "rock-impact"
   | "tile-void";
 
 interface VisualEffect {
@@ -494,34 +492,6 @@ function getShotProgress(tick: number, launchTick: number, impactTick: number): 
   return clamp((tick - launchTick) / Math.max(1, impactTick - launchTick), 0, 1);
 }
 
-function drawTargetWarning(
-  graphics: Graphics,
-  target: Vector2,
-  critical: boolean,
-  projection: ArenaProjection,
-): void {
-  const { x, y } = projectArenaPoint(target, projection);
-  const radius = Math.max(8, projection.tileWidth * 0.2);
-  const color = critical ? 0xff5c4d : 0xffc857;
-  graphics.circle(x, y, radius).stroke({ color, width: 3, alpha: 0.94 });
-
-  if (critical) {
-    graphics
-      .circle(x, y - radius * 0.12, radius * 0.42)
-      .moveTo(x - radius * 0.2, y - radius * 0.15)
-      .lineTo(x + radius * 0.2, y + radius * 0.18)
-      .moveTo(x + radius * 0.2, y - radius * 0.15)
-      .lineTo(x - radius * 0.2, y + radius * 0.18)
-      .stroke({ color, width: 2.5, alpha: 0.96 });
-  } else {
-    graphics
-      .moveTo(x, y - radius * 0.55)
-      .lineTo(x, y + radius * 0.14)
-      .circle(x, y + radius * 0.48, Math.max(1.8, radius * 0.1))
-      .stroke({ color, width: 3, alpha: 0.96, cap: "round" });
-  }
-}
-
 function drawCannonShot(
   graphics: Graphics,
   shot: CannonShotState,
@@ -541,37 +511,6 @@ function drawCannonShot(
     .circle(projected.x, projected.y - arc, radius)
     .fill({ color: 0x252b29 })
     .stroke({ color: 0xff8f5c, width: 2 });
-}
-
-function drawRockShot(
-  graphics: Graphics,
-  shot: RockShotState,
-  tick: number,
-  projection: ArenaProjection,
-  reducedMotion: boolean,
-): void {
-  const progress = getShotProgress(tick, shot.launchTick, shot.impactTick);
-  const worldPosition = Object.freeze({
-    x: shot.origin.x + (shot.target.x - shot.origin.x) * progress,
-    y: shot.origin.y + (shot.target.y - shot.origin.y) * progress,
-  });
-  const projected = projectArenaPoint(worldPosition, projection);
-  const target = projectArenaPoint(shot.target, projection);
-  const arc = reducedMotion ? 0 : Math.sin(Math.PI * progress) * projection.tileWidth * 1.8;
-  const radius = Math.max(5, projection.tileWidth * (0.12 + progress * 0.08));
-  graphics
-    .ellipse(
-      target.x,
-      target.y,
-      projection.pitch * shot.blastRadius,
-      projection.depthPitch * shot.blastRadius,
-    )
-    .fill({ color: 0x160f0e, alpha: 0.28 + progress * 0.3 })
-    .stroke({ color: 0xff5c4d, width: 3, alpha: 0.72 + progress * 0.28 })
-    .circle(projected.x, projected.y - arc, radius)
-    .fill({ color: 0x3b3733 })
-    .stroke({ color: 0xb56f3f, width: 2 });
-  drawTargetWarning(graphics, shot.target, true, projection);
 }
 
 function drawPirateShip(
@@ -1198,16 +1137,13 @@ function syncTreasureShipSprites(
 function syncProjectileSprites(
   layer: Container,
   cannonSprites: Map<number, Sprite>,
-  rockSprites: Map<number, Sprite>,
   frame: RenderFrameV1,
   projection: ArenaProjection,
   reducedMotion: boolean,
   assets: ArenaVisualAssets,
 ): void {
   const visibleCannonShotIds = new Set<number>();
-  const visibleRockShotIds = new Set<number>();
   const cannonballTexture = assets.cannonballTexture;
-  const lethalBoulderTexture = assets.lethalBoulderTexture;
 
   if (cannonballTexture !== null) {
     for (const shot of frame.cannonShots) {
@@ -1243,38 +1179,7 @@ function syncProjectileSprites(
     }
   }
 
-  if (lethalBoulderTexture !== null) {
-    for (const shot of frame.rockShots) {
-      visibleRockShotIds.add(shot.shotId);
-      let sprite = rockSprites.get(shot.shotId);
-
-      if (sprite === undefined) {
-        sprite = new Sprite(lethalBoulderTexture);
-        sprite.anchor.set(0.5, 0.5);
-        rockSprites.set(shot.shotId, sprite);
-        layer.addChild(sprite);
-      }
-
-      const progress = getShotProgress(frame.tick, shot.launchTick, shot.impactTick);
-      const projected = projectArenaPoint(
-        {
-          x: shot.origin.x + (shot.target.x - shot.origin.x) * progress,
-          y: shot.origin.y + (shot.target.y - shot.origin.y) * progress,
-        },
-        projection,
-      );
-      const arc = reducedMotion ? 0 : Math.sin(Math.PI * progress) * projection.tileWidth * 1.8;
-      const size = clamp(projection.tileWidth * (1 + progress * 0.62), 42, 108);
-      sprite.position.set(projected.x, projected.y - arc);
-      sprite.width = size;
-      sprite.height = size;
-      sprite.rotation = progress * Math.PI * 1.5 + shot.shotId * 0.37;
-      sprite.visible = true;
-    }
-  }
-
   removeStaleSprites(layer, cannonSprites, visibleCannonShotIds);
-  removeStaleSprites(layer, rockSprites, visibleRockShotIds);
 }
 
 function syncImpactSprites(
@@ -1290,7 +1195,7 @@ function syncImpactSprites(
 
   for (const effect of effects) {
     const isWaterImpact = effect.kind === "tile-void";
-    const isExplosion = effect.kind === "rock-impact" || effect.kind === "bomb-detonated";
+    const isExplosion = effect.kind === "bomb-detonated";
 
     if (!isWaterImpact && !isExplosion) {
       continue;
@@ -2219,7 +2124,6 @@ function isVisualEffectKind(kind: SimulationEventV1["kind"]): kind is VisualEffe
     kind === "soap-triggered" ||
     kind === "bomb-detonated" ||
     kind === "grappling-hook-hit" ||
-    kind === "rock-impact" ||
     kind === "tile-void"
   );
 }
@@ -2343,10 +2247,6 @@ function drawWorldEffect(
       .stroke({ color: 0x8ee7ff, width: 5, alpha });
   } else if (effect.kind === "status-applied") {
     graphics.circle(x, y, baseRadius * 1.6).stroke({ color: 0xd58bea, width: 3, alpha });
-  } else if (effect.kind === "rock-impact") {
-    const burst = baseRadius * (reducedMotion ? 2.4 : 1.4 + progress * 4.8);
-    graphics.circle(x, y, burst).stroke({ color: 0xff5c4d, width: 5, alpha });
-    graphics.circle(x, y, burst * 0.65).fill({ color: 0x4b2f27, alpha: alpha * 0.42 });
   } else if (effect.kind === "grappling-hook-hit") {
     const cableAlpha = alpha;
     const anchorVector = effect.vector ?? { x: 0, y: 0 };
@@ -2594,7 +2494,6 @@ export async function createArenaRenderer(
   const pirateShipSpritesById = new Map<number, Sprite>();
   const treasureShipSpritesById = new Map<number, Sprite>();
   const cannonSpritesByShotId = new Map<number, Sprite>();
-  const rockSpritesByShotId = new Map<number, Sprite>();
   const participantSpritesByActorId = new Map<number, Sprite>();
   const boatSpritesByActorId = new Map<number, Sprite>();
   const aegisSpritesByActorId = new Map<number, Sprite>();
@@ -2829,10 +2728,6 @@ export async function createArenaRenderer(
       drawCannonShot(artillery, shot, latestFrame.tick, projection, reducedMotion);
     }
 
-    for (const shot of latestFrame.rockShots) {
-      drawRockShot(artillery, shot, latestFrame.tick, projection, reducedMotion);
-    }
-
     for (const delivery of latestFrame.giftDeliveries) {
       drawGiftDelivery(artillery, delivery, latestFrame.tick, projection, reducedMotion);
     }
@@ -2841,7 +2736,6 @@ export async function createArenaRenderer(
       syncProjectileSprites(
         projectileSprites,
         cannonSpritesByShotId,
-        rockSpritesByShotId,
         latestFrame,
         projection,
         reducedMotion,
@@ -3125,7 +3019,6 @@ export async function createArenaRenderer(
         loadedAssets.pirateShipTexture,
         loadedAssets.treasureShipTexture,
         loadedAssets.cannonballTexture,
-        loadedAssets.lethalBoulderTexture,
         loadedAssets.impactExplosionTexture,
         loadedAssets.seawaterImpactTexture,
         loadedAssets.terrainTextures,
@@ -3141,7 +3034,7 @@ export async function createArenaRenderer(
       host.dataset.visualAssets =
         loadedAssetCount === 0
           ? "procedural-fallback"
-          : loadedAssetCount === 13
+          : loadedAssetCount === 12
             ? "generated"
             : "partial";
 
@@ -3262,7 +3155,7 @@ export async function createArenaRenderer(
           : 0;
         const travelEndTick = travelsAsProjectile ? event.tick + travelTicks : undefined;
         const impactDuration =
-          event.kind === "tile-void" || event.kind === "rock-impact"
+          event.kind === "tile-void"
             ? reducedMotion
               ? 5
               : 18

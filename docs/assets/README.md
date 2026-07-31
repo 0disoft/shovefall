@@ -26,8 +26,8 @@ opaque RGB pixels rather than represented by alpha transparency.
 | `generated-pirate-galleon` | Eight offshore pirate-ship positions | `src/assets/generated/pirate-ship-galleon.png` | Codex built-in image generation plus local chroma-key removal | OpenAI Terms of Use output-ownership clause; user remains responsible for the output | No service attribution requirement identified; generator and processing are recorded here |
 | `generated-treasure-ship` | Orbiting treasure delivery ship | `src/assets/generated/treasure-ship.png` | Codex built-in image generation plus local chroma-key removal | Same output-ownership evidence | Generator and processing recorded here |
 | `generated-cannonball-projectile` | Cannon trajectories | `src/assets/generated/cannonball-projectile.png` | Codex built-in image generation plus local chroma-key removal | Same output-ownership evidence | Generator and processing recorded here |
-| `generated-lethal-boulder` | Protected-core rock trajectories | `src/assets/generated/lethal-boulder.png` | Codex built-in image generation plus local chroma-key removal | Same output-ownership evidence | Generator and processing recorded here |
-| `generated-impact-explosion` | Bomb and rock impacts | `src/assets/generated/impact-explosion.png` | Codex built-in image generation plus local chroma-key removal | Same output-ownership evidence | Generator and processing recorded here |
+| `generated-lethal-boulder` | Unused since `0.116.0` (terminal rock phase removed); retained as generation evidence | `src/assets/generated/lethal-boulder.png` | Codex built-in image generation plus local chroma-key removal | Same output-ownership evidence | Generator and processing recorded here |
+| `generated-impact-explosion` | Bomb impacts | `src/assets/generated/impact-explosion.png` | Codex built-in image generation plus local chroma-key removal | Same output-ownership evidence | Generator and processing recorded here |
 | `generated-seawater-impact` | Flooded-tile impacts | `src/assets/generated/seawater-impact.png` | Codex built-in image generation plus local chroma-key removal | Same output-ownership evidence | Generator and processing recorded here |
 | `generated-island-terrain` | Stable coast and warning tiles | `src/assets/generated/island-terrain-atlas.png` | Codex built-in image generation plus local chroma-key removal | Same output-ownership evidence | Generator and processing recorded here |
 | `generated-tree-obstacle` | Solid inland tree obstacles | `src/assets/generated/tree-obstacle.png` | Codex built-in image generation plus local chroma-key removal | Same output-ownership evidence | Generator and processing recorded here |
@@ -168,8 +168,8 @@ assets, not dependency license inventory.
 | Asset | Prompt | Processing and technical contract | Decision |
 |---|---|---|---|
 | `src/assets/generated/cannonball-projectile.png` | `docs/assets/prompts/cannonball-projectile-chroma.txt` | Built-in generation; border key `#04f90b`; soft matte, despill, and Lanczos downsample; 512×512 RGBA, 84,195 bytes, SHA-256 `158614de423742297b90fd82e9c970efdcdc02cd10f56e571c572fac2062cdc9`; transparent corners | Accepted 2026-07-24; rotated and scaled over the procedural trajectory and warning fallback |
-| `src/assets/generated/lethal-boulder.png` | `docs/assets/prompts/lethal-boulder-chroma.txt` | Built-in generation; border key `#03f903`; soft matte, despill, and Lanczos downsample; 512×512 RGBA, 206,011 bytes, SHA-256 `878a37f2d3e8ae9a21c83af05b9782ef0e812caaedc0c745fa0c85cf24624199`; transparent corners | Accepted 2026-07-24; rotated and scaled over the procedural lethal-rock fallback |
-| `src/assets/generated/impact-explosion.png` | `docs/assets/prompts/impact-explosion-chroma.txt` | Built-in generation; border key `#03f905`; soft matte, despill, and Lanczos downsample; 512×512 RGBA, 132,099 bytes, SHA-256 `43c108796a0a098107e3c401439954563c8f2f86cb22c86c45a5327a38ebf213`; transparent corners | Accepted 2026-07-24; fades over Bomb and rock-impact geometry |
+| `src/assets/generated/lethal-boulder.png` | `docs/assets/prompts/lethal-boulder-chroma.txt` | Built-in generation; border key `#03f903`; soft matte, despill, and Lanczos downsample; 512×512 RGBA, 206,011 bytes, SHA-256 `878a37f2d3e8ae9a21c83af05b9782ef0e812caaedc0c745fa0c85cf24624199`; transparent corners | Accepted 2026-07-24; unused since `0.116.0` after the terminal rock phase was removed |
+| `src/assets/generated/impact-explosion.png` | `docs/assets/prompts/impact-explosion-chroma.txt` | Built-in generation; border key `#03f905`; soft matte, despill, and Lanczos downsample; 512×512 RGBA, 132,099 bytes, SHA-256 `43c108796a0a098107e3c401439954563c8f2f86cb22c86c45a5327a38ebf213`; transparent corners | Accepted 2026-07-24; fades over Bomb-detonation geometry |
 | `src/assets/generated/seawater-impact.png` | `docs/assets/prompts/seawater-impact-chroma.txt` | Built-in generation; border key `#fc03fa`; soft matte, despill, and Lanczos downsample; 512×512 RGBA, 121,260 bytes, SHA-256 `8bfe7107ecab16ed5ac81b1ff1a58da5b3651cc339b9b68194546f6ddbacd41e`; transparent corners | Accepted 2026-07-24; fades over tile-flood geometry |
 
 ### `generated-island-terrain`
@@ -252,7 +252,7 @@ repository review record, not a legal conclusion.
 
 ## Rejected Generated Outputs
 
-The original multi-ship sheet, cannon-collapse VFX, lethal-rock VFX, island terrain sheet, character
+The original multi-ship sheet, cannon-collapse VFX, island terrain sheet, character
 actions, and world props remain outside this repository. Although their visible canvas imitated transparency, the
 files were opaque RGB PNGs with a baked checkerboard. They are not valid game sprites and were not
 silently promoted. Replacement prompts require a real RGBA alpha channel, alpha-zero corner and

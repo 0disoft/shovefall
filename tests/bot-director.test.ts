@@ -335,41 +335,6 @@ describe("utility bot director", () => {
     expect(bot?.grapplePressed).toBe(true);
   });
 
-  it("treats an imminent lethal rock as an immediate dodge priority", () => {
-    const world = createBotWorld(4, [
-      { actorId: 1, position: { x: 1.5, y: 1.5 } },
-      { actorId: 2, position: { x: 4.5, y: 4.5 } },
-      { actorId: 3, position: { x: 7.5, y: 1.5 } },
-      { actorId: 4, position: { x: 7.5, y: 6.5 } },
-    ]);
-    const frame = world.createRenderFrame();
-    const threatenedFrame = Object.freeze({
-      ...frame,
-      rockShots: Object.freeze([
-        Object.freeze({
-          shotId: 1,
-          shipId: 1,
-          targetActorId: 2,
-          origin: Object.freeze({ x: 4.5, y: -2.6 }),
-          target: Object.freeze({ x: 4.5, y: 4.5 }),
-          launchTick: frame.tick,
-          impactTick: frame.tick + 60,
-          blastRadius: 0.72,
-        }),
-      ]),
-    });
-    const director = new BotDirector("rock-evasion", 1, {
-      reactionDelayTicks: 24,
-      decisionIntervalTicks: 20,
-    });
-    const bot = director
-      .createCommands(threatenedFrame.tick, threatenedFrame)
-      .find(({ actorId }) => actorId === 2);
-
-    expect(bot?.dodgePressed || bot?.useSkillSlot !== null).toBe(true);
-    expect(Math.hypot(bot?.move.x ?? 0, bot?.move.y ?? 0)).toBeCloseTo(1, 10);
-  });
-
   it("prefers an equally close edge opportunity without checking human identity", () => {
     const world = createBotWorld(4, [
       { actorId: 1, position: { x: 3.5, y: 4.5 }, facing: { x: 1, y: 0 } },

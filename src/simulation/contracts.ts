@@ -293,17 +293,6 @@ export interface CannonShotState {
   readonly impactTick: Tick;
 }
 
-export interface RockShotState {
-  readonly shotId: number;
-  readonly shipId: number;
-  readonly targetActorId: ActorId;
-  readonly origin: Vector2;
-  readonly target: Vector2;
-  readonly launchTick: Tick;
-  readonly impactTick: Tick;
-  readonly blastRadius: number;
-}
-
 export interface TreasureShipState {
   readonly shipId: number;
   readonly position: Vector2;
@@ -377,7 +366,6 @@ export interface RenderFrameV1 {
   readonly skillZones: readonly SkillZoneState[];
   readonly pirateShips: readonly PirateShipState[];
   readonly cannonShots: readonly CannonShotState[];
-  readonly rockShots: readonly RockShotState[];
   readonly treasureShips: readonly TreasureShipState[];
   readonly giftDeliveries: readonly GiftDeliveryState[];
   readonly tiles: readonly TileState[];
@@ -416,8 +404,6 @@ export type SimulationEventKind =
   | "tile-warning"
   | "tile-collapsing"
   | "tile-void"
-  | "rock-fired"
-  | "rock-impact"
   | "round-completed";
 
 export interface SimulationEventV1 {

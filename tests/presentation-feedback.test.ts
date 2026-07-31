@@ -166,7 +166,7 @@ describe("optional Web Audio feedback", () => {
 
     audio.consumeEvents([
       { ...createEvent(1, 0, 0, "skill-hit"), skillDefinitionId: "arc-bolt" },
-      createEvent(1, 1, 1, "rock-impact"),
+      createEvent(1, 1, 1, "bomb-detonated"),
     ]);
 
     expect(duckingRequests).toEqual([350, 350]);
@@ -181,18 +181,6 @@ describe("optional Web Audio feedback", () => {
 
     expect(context.oscillators).toHaveLength(1);
     expect(context.oscillators[0]?.type).toBe("triangle");
-  });
-
-  it("plays distinct cues when a lethal rock is fired and lands", async () => {
-    const context = new FakeAudioContext();
-    const audio = createAudioFeedback(() => context);
-    await audio.unlock();
-
-    audio.consumeEvents([createEvent(1, 0, 0, "rock-fired"), createEvent(1, 90, 1, "rock-impact")]);
-
-    expect(context.oscillators).toHaveLength(2);
-    expect(context.oscillators.map(({ type }) => type)).toEqual(["triangle", "sawtooth"]);
-    expect(context.oscillators[1]?.frequency.values).toEqual([72, 28]);
   });
 
   it("uses distinct procedural cues for Bomb placement and detonation", async () => {

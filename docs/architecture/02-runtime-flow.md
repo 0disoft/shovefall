@@ -23,21 +23,20 @@ Each 60 Hz tick uses this versioned order:
 6. Convert ordinary movement commands into current mass-sensitive movement intent.
 7. Apply dodge, Brick mounting, stumble, Grappling Hook, and other active displacement.
 8. Integrate positions and velocities.
-9. Resolve due lethal rock impacts before contact solving.
-10. Resolve blocking tree and Brick contacts.
-11. Build the participant spatial index and candidate pairs.
-12. Resolve overlapping and swept weak circular contacts, then recheck blocking obstacles.
-13. Resolve skill zones and Soap patches.
-14. Collect shove contacts from the shared pre-impulse state.
-15. Sum and apply actor impulses, then arbitrate same-tick offensive credit.
-16. Resolve health-based elimination.
-17. Evaluate tile support, Boat rescue, grace ticks, falling, and support-based elimination.
-18. Resolve map-item pickups and their ordered facts.
-19. Advance cannon-backed collapse, item replacement, treasure-gift launches, and gift landings.
-20. Decide the round result.
-21. Emit ordered events, an immutable render frame, and a quantized state hash.
+9. Resolve blocking tree and Brick contacts.
+10. Build the participant spatial index and candidate pairs.
+11. Resolve overlapping and swept weak circular contacts, then recheck blocking obstacles.
+12. Resolve skill zones and Soap patches.
+13. Collect shove contacts from the shared pre-impulse state.
+14. Sum and apply actor impulses, then arbitrate same-tick offensive credit.
+15. Resolve health-based elimination.
+16. Evaluate tile support, Boat rescue, grace ticks, falling, and support-based elimination.
+17. Resolve map-item pickups and their ordered facts.
+18. Advance cannon-backed collapse, item replacement, treasure-gift launches, and gift landings.
+19. Decide the round result.
+20. Emit ordered events, an immutable render frame, and a quantized state hash.
 
-All twenty-one stages match the exported `SYSTEM_ORDER` and the calls in `SimulationWorld.step()`. Active-item eligibility is decided from one pre-item participant snapshot; actor ID orders activation, charge spending, first-hit ray selection, and impulses. Brick commits before Bomb placement. Due Bombs resolve before new Bombs, Boat, and other active-item requests. Timed effects expire before movement. Item pickup runs after support, so a valid pickup wins over a tile that begins collapsing later in the same tick. Scheduled replacements alternate between two opposite treasure ships, reserve an item ID at launch, target only stable land three to seven tiles from water, and join the item list only after a stable, unblocked landing; each ship owns at most one airborne gift. Collapse proposals advance from the actual outer ocean rather than the rectangular render bounds or enclosed lakes. Every stable land tile remains eligible, and accepted impacts extend that frontier until no land remains. Only proposals backed by one full-flight cannon projectile enter the authoritative plan; an unreachable or unavailable proposal produces no warning and no Void transition. Active cannon shots and cursors enter the deterministic hash. Later work cannot reorder the pipeline or change contact meaning without a simulation-version decision and regenerated replay evidence.
+All twenty stages match the exported `SYSTEM_ORDER` and the calls in `SimulationWorld.step()`. Active-item eligibility is decided from one pre-item participant snapshot; actor ID orders activation, charge spending, first-hit ray selection, and impulses. Brick commits before Bomb placement. Due Bombs resolve before new Bombs, Boat, and other active-item requests. Timed effects expire before movement. Item pickup runs after support, so a valid pickup wins over a tile that begins collapsing later in the same tick. Scheduled replacements alternate between two opposite treasure ships, reserve an item ID at launch, target only stable land three to seven tiles from water, and join the item list only after a stable, unblocked landing; each ship owns at most one airborne gift. Collapse proposals advance from the actual outer ocean rather than the rectangular render bounds or enclosed lakes. Every stable land tile remains eligible, and accepted impacts extend that frontier until no land remains. Only proposals backed by one full-flight cannon projectile enter the authoritative plan; an unreachable or unavailable proposal produces no warning and no Void transition. Active cannon shots and cursors enter the deterministic hash. Later work cannot reorder the pipeline or change contact meaning without a simulation-version decision and regenerated replay evidence.
 
 ## Browser Scheduling
 

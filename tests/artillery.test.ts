@@ -4,13 +4,8 @@ import {
   CANNON_MAXIMUM_LAUNCH_INTERVAL_TICKS,
   CANNON_MINIMUM_LAUNCH_INTERVAL_TICKS,
   createArtilleryPlan,
-  getPredictedRockTarget,
   getActiveCannonShots,
   getPirateShipStates,
-  getRockIntervalTicks,
-  getRockVolleySize,
-  ROCK_BLAST_RADIUS,
-  ROCK_MAXIMUM_LEAD_DISTANCE,
 } from "../src/simulation/artillery";
 import { getOuterOceanTileIds } from "../src/simulation/arena";
 import { createCollapsePlan } from "../src/simulation/collapse";
@@ -19,25 +14,6 @@ import { RandomStreamSet } from "../src/simulation/random";
 import { SimulationWorld } from "../src/simulation/world";
 
 describe("pirate artillery", () => {
-  it("scales readable final-rock volleys with the survivor count", () => {
-    expect(getRockIntervalTicks(12)).toBe(72);
-    expect(getRockIntervalTicks(8)).toBe(60);
-    expect(getRockIntervalTicks(4)).toBe(48);
-    expect(getRockVolleySize(12)).toBe(3);
-    expect(getRockVolleySize(8)).toBe(2);
-    expect(getRockVolleySize(4)).toBe(1);
-    expect(ROCK_BLAST_RADIUS).toBe(0.95);
-  });
-
-  it("leads a moving rock target without predicting farther than the fair cap", () => {
-    const target = getPredictedRockTarget({ x: 4, y: 6 }, { x: 0.2, y: 0.1 });
-    const leadDistance = Math.hypot(target.x - 4, target.y - 6);
-
-    expect(leadDistance).toBeCloseTo(ROCK_MAXIMUM_LEAD_DISTANCE, 6);
-    expect(target.x).toBeGreaterThan(4);
-    expect(target.y).toBeGreaterThan(6);
-  });
-
   it("keeps enclosed lake water out of the outer-ocean targeting frontier", () => {
     const config = normalizeGameConfig({
       participantCount: 4,
@@ -230,7 +206,7 @@ describe("pirate artillery", () => {
     expect(protectedLandCount).toBe(0);
   });
 
-  it("keeps firing cannonballs through the final land tile instead of entering a rock phase", () => {
+  it("keeps firing cannonballs through every land tile until none remains", () => {
     const config = normalizeGameConfig({
       participantCount: 4,
       arenaColumns: 7,
@@ -239,7 +215,7 @@ describe("pirate artillery", () => {
       collapseSpeed: "fast",
       itemsEnabled: false,
     });
-    const seed = "rock-final-showdown";
+    const seed = "final-showdown";
     const probe = new SimulationWorld(config, seed, { arenaLayout: "rectangular-fixture" });
     const initialFrame = probe.createRenderFrame();
     const collapsePlan = createCollapsePlan(
@@ -260,6 +236,5 @@ describe("pirate artillery", () => {
 
     expect(plan.collapseWaves).toHaveLength(initialLandCount);
     expect(plan.cannonShots).toHaveLength(initialLandCount);
-    expect(plan.rockPhaseStartTick).toBe(Number.MAX_SAFE_INTEGER);
   });
 });

@@ -16,7 +16,6 @@ import {
   type PendingSoapDamageState,
   type ParticipantState,
   type RenderFrameV1,
-  type RockShotState,
   type RoundId,
   type RoundStateV1,
   type SimulationEventKind,
@@ -54,12 +53,8 @@ import {
 import { RandomStreamSet, type SeedInput } from "./random";
 import {
   createArtilleryPlan,
-  createRockShot,
   getActiveCannonShots,
-  getPredictedRockTarget,
   getPirateShipStates,
-  getRockIntervalTicks,
-  getRockVolleySize,
   type ArtilleryPlan,
 } from "./artillery";
 import { ParticipantSpatialHash, type ActorPair } from "./spatial-hash";
@@ -806,7 +801,6 @@ export class SimulationWorld {
   readonly #gameplayTuning: GameplayTuningV1;
   readonly #itemRandom;
   readonly #tieBreakRandom;
-  readonly #artilleryRandom;
   readonly #arenaTileIds: ReadonlySet<TileId>;
   #tiles: readonly TileState[];
   #participants: readonly ParticipantState[];
@@ -817,9 +811,6 @@ export class SimulationWorld {
   #pendingSoapDamage: readonly PendingSoapDamageState[] = Object.freeze([]);
   #skillZones: readonly SkillZoneState[] = Object.freeze([]);
   #nextSkillZoneId = 1;
-  #rockShots: readonly RockShotState[] = Object.freeze([]);
-  #nextRockLaunchTick: Tick;
-  #nextRockShotId = 1;
   #itemState: ItemSystemState;
   #round: RoundStateV1 = Object.freeze({
     status: "Active",
@@ -883,7 +874,6 @@ export class SimulationWorld {
         voidTick,
       ]),
     );
-    this.#nextRockLaunchTick = this.#artilleryPlan.rockPhaseStartTick;
     this.#participants = createParticipants(
       config,
       this.#tiles,
@@ -903,7 +893,6 @@ export class SimulationWorld {
           );
     this.#itemRandom = streams.get("items");
     this.#tieBreakRandom = streams.get("tie-break");
-    this.#artilleryRandom = streams.get("artillery");
     this.#itemState = createItemSystem(
       config,
       this.#tiles,
@@ -964,7 +953,6 @@ export class SimulationWorld {
     );
     participants = this.#applyMovementIntent(participants, commandsByActor);
     participants = this.#integratePositions(participants);
-    participants = this.#advanceRockArtillery(participants, events);
     participants = this.#resolveObstacleContacts(participants);
     const collidableParticipants = participants.filter(isCollidable).map((participant) =>
       Object.freeze({
@@ -1040,9 +1028,6 @@ export class SimulationWorld {
       pendingSoapDamage: this.#pendingSoapDamage,
       skillZones: this.#skillZones,
       nextSkillZoneId: this.#nextSkillZoneId,
-      rockShots: this.#rockShots,
-      nextRockLaunchTick: this.#nextRockLaunchTick,
-      nextRockShotId: this.#nextRockShotId,
       nextItemId: this.#itemState.nextItemId,
       nextDeliveryId: this.#itemState.nextDeliveryId,
       nextItemSpawnTick: this.#itemState.nextSpawnTick,
@@ -1090,7 +1075,6 @@ export class SimulationWorld {
       skillZones: this.#skillZones,
       pirateShips: getPirateShipStates(this.#artilleryPlan),
       cannonShots: getActiveCannonShots(this.#artilleryPlan, this.#tick),
-      rockShots: this.#rockShots,
       treasureShips: getTreasureShipStates(this.#itemState, this.#tick),
       giftDeliveries: this.#itemState.giftDeliveries,
       tiles: this.#tiles,
@@ -2906,116 +2890,6 @@ export class SimulationWorld {
         body: Object.freeze({ ...participant.body, position }),
       });
     });
-  }
-
-  #advanceRockArtillery(
-    participants: readonly ParticipantState[],
-    events: SimulationEventV1[],
-  ): readonly ParticipantState[] {
-    const dueShots = this.#rockShots
-      .filter(({ impactTick }) => impactTick <= this.#tick)
-      .toSorted((left, right) => left.impactTick - right.impactTick || left.shotId - right.shotId);
-    this.#rockShots = Object.freeze(
-      this.#rockShots.filter(({ impactTick }) => impactTick > this.#tick),
-    );
-    let resolved = participants;
-
-    if (dueShots.length > 0) {
-      const victims = new Map<ActorId, ActorId | null>();
-
-      for (const shot of dueShots) {
-        events.push(
-          this.#createEvent("rock-impact", {
-            actorId: shot.targetActorId,
-            shipId: shot.shipId,
-            projectileId: shot.shotId,
-            position: shot.target,
-          }),
-        );
-
-        for (const participant of resolved) {
-          if (!isCollidable(participant)) {
-            continue;
-          }
-
-          const edgeDistance = Math.max(
-            0,
-            vectorLength(subtractVectors(participant.body.position, shot.target)) -
-              participant.body.radius,
-          );
-
-          if (edgeDistance > shot.blastRadius) {
-            continue;
-          }
-
-          const { attackerActorId, hitTick } = participant.shoveCredit;
-          const creditedAttacker =
-            attackerActorId !== null &&
-            attackerActorId !== participant.actorId &&
-            hitTick !== null &&
-            this.#tick - hitTick <= SIMULATION_TUNING.shove.eliminationCreditTicks
-              ? attackerActorId
-              : null;
-          victims.set(participant.actorId, creditedAttacker);
-        }
-      }
-
-      resolved = this.#applyDirectEliminations(resolved, victims, events);
-    }
-
-    const standing = resolved
-      .filter(isCollidable)
-      .toSorted((left, right) => left.actorId - right.actorId);
-
-    if (
-      standing.length > 1 &&
-      this.#tick >= this.#nextRockLaunchTick &&
-      this.#tick >= this.#artilleryPlan.rockPhaseStartTick
-    ) {
-      const supportedTileIds = new Set(
-        this.#tiles.filter(({ state }) => state !== "Void").map(({ tileId }) => tileId),
-      );
-      const firstTargetIndex = this.#artilleryRandom.nextUint32() % standing.length;
-      const volleySize = Math.min(getRockVolleySize(standing.length), standing.length);
-      const launchedShots: RockShotState[] = [];
-
-      for (let offset = 0; offset < volleySize; offset += 1) {
-        const target = standing[(firstTargetIndex + offset) % standing.length];
-        const ship =
-          this.#artilleryPlan.ships[(this.#nextRockShotId - 1) % this.#artilleryPlan.ships.length];
-
-        if (target === undefined || ship === undefined) {
-          continue;
-        }
-
-        const predictedTarget = getPredictedRockTarget(target.body.position, target.body.velocity);
-        const targetPosition = hasTileSupport(predictedTarget, supportedTileIds)
-          ? predictedTarget
-          : target.body.position;
-        const shot = createRockShot(
-          this.#nextRockShotId,
-          ship,
-          target.actorId,
-          targetPosition,
-          this.#tick,
-        );
-        launchedShots.push(shot);
-        this.#nextRockShotId += 1;
-        events.push(
-          this.#createEvent("rock-fired", {
-            actorId: target.actorId,
-            shipId: shot.shipId,
-            projectileId: shot.shotId,
-            position: shot.target,
-          }),
-        );
-      }
-
-      this.#rockShots = Object.freeze([...this.#rockShots, ...launchedShots]);
-      this.#nextRockLaunchTick = this.#tick + getRockIntervalTicks(standing.length);
-    }
-
-    return resolved;
   }
 
   #resolveObstacleContacts(

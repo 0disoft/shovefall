@@ -153,22 +153,6 @@ const SOUND_DEFINITIONS: Partial<Record<SimulationEventKind, SoundDefinition>> =
     priority: 3,
     oscillatorType: "triangle",
   }),
-  "rock-fired": Object.freeze({
-    frequency: 180,
-    endFrequency: 92,
-    durationSeconds: 0.2,
-    gain: 0.06,
-    priority: 3,
-    oscillatorType: "triangle",
-  }),
-  "rock-impact": Object.freeze({
-    frequency: 72,
-    endFrequency: 28,
-    durationSeconds: 0.44,
-    gain: 0.11,
-    priority: 5,
-    oscillatorType: "sawtooth",
-  }),
   "brick-wall-placed": Object.freeze({
     frequency: 118,
     endFrequency: 72,
@@ -608,8 +592,7 @@ export function createAudioFeedback(
       for (const event of ledger.consume(events)) {
         const shouldDuck =
           (event.kind === "skill-hit" && (event.actorId === 1 || event.targetActorId === 1)) ||
-          event.kind === "bomb-detonated" ||
-          event.kind === "rock-impact";
+          event.kind === "bomb-detonated";
         if (state === "ready" && !muted && volumeToGain(volume) > 0 && shouldDuck) {
           requestBackgroundDucking(COMBAT_DUCKING_MILLISECONDS);
         }

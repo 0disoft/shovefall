@@ -514,10 +514,6 @@ function getEventMessage(event: SimulationEventV1): string | undefined {
           ? "전투 성장을 올렸어."
           : "스킬을 강화했어."
         : undefined;
-    case "rock-fired":
-      return event.actorId === 1 ? "돌탄 표적이 됐어. 움직여!" : undefined;
-    case "rock-impact":
-      return event.actorId === 1 ? "돌탄이 떨어졌어!" : undefined;
     default:
       return undefined;
   }

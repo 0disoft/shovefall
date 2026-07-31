@@ -3,7 +3,7 @@ export const BALANCE_DASHBOARD_SCHEMA_VERSION = "shovefall.balance-dashboard/v1"
 export type BalancePhase = "controlled" | "production";
 export type BalanceCategory = "attribute" | "skill" | "item" | "personality" | "skill-combination";
 
-export type BalanceDeathCause = "fall" | "health" | "bomb" | "rock" | "other";
+export type BalanceDeathCause = "fall" | "health" | "bomb" | "other";
 export type BalanceSignal = "buff-review" | "watch" | "high-variance" | "nerf-review";
 
 export interface BalanceInterval {

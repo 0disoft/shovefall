@@ -91,15 +91,3 @@ export class RandomStreamSet {
     return stream;
   }
 }
-
-export function getRequiredStreamNames(actorIds: readonly number[]): readonly string[] {
-  return Object.freeze([
-    "arena",
-    "collapse",
-    "items",
-    "tie-break",
-    "artillery-plan",
-    "artillery",
-    ...actorIds.flatMap((actorId) => [`bot-personality:${actorId}`, `bot-jitter:${actorId}`]),
-  ]);
-}

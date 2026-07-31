@@ -23,7 +23,6 @@ import {
   type BalanceRoundRecord,
 } from "../src/balance/contract";
 import { classifyBalanceSignal, type BalancePeerBaseline } from "../src/balance/signal";
-import { ROCK_BLAST_RADIUS } from "../src/simulation/artillery";
 import {
   normalizeGameConfig,
   type ActorId,
@@ -165,7 +164,7 @@ function createPhase(): MutablePhase {
   return {
     actorRounds: 0,
     aggregates: {},
-    deathCauses: { fall: 0, health: 0, bomb: 0, rock: 0, other: 0 },
+    deathCauses: { fall: 0, health: 0, bomb: 0, other: 0 },
     durations: [],
     reasonCounts: { "last-standing": 0, "no-survivors": 0, "time-limit": 0 },
     rounds: [],
@@ -353,20 +352,8 @@ function detectDeathCause(
     readonly ownerActorId: ActorId;
     readonly position: { readonly x: number; readonly y: number };
   }[],
-  rockImpacts: readonly { readonly x: number; readonly y: number }[],
 ): BalanceDeathCause {
   const previous = previousParticipants.get(actorId);
-  if (
-    previous !== undefined &&
-    rockImpacts.some(
-      (impact) =>
-        Math.hypot(previous.position.x - impact.x, previous.position.y - impact.y) -
-          previous.radius <=
-        ROCK_BLAST_RADIUS,
-    )
-  ) {
-    return "rock";
-  }
   if (
     previous !== undefined &&
     bombImpacts.some(
@@ -592,7 +579,6 @@ function runRound(roundIndex: number, result: WorkerResult): void {
       ownerActorId: ActorId;
       position: { readonly x: number; readonly y: number };
     }[] = [];
-    const rockImpacts: { readonly x: number; readonly y: number }[] = [];
 
     for (const event of step.events) {
       if (event.kind === "falling-started" && event.actorId !== undefined) {
@@ -612,9 +598,6 @@ function runRound(roundIndex: number, result: WorkerResult): void {
         event.position !== undefined
       ) {
         bombImpacts.push({ ownerActorId: event.actorId, position: event.position });
-      }
-      if (event.kind === "rock-impact" && event.position !== undefined) {
-        rockImpacts.push(event.position);
       }
       if (event.kind === "eliminated" && event.actorId !== undefined) {
         eliminatedActors.push(event.actorId);
@@ -677,7 +660,6 @@ function runRound(roundIndex: number, result: WorkerResult): void {
         fallingActors,
         healthDeaths,
         bombImpacts,
-        rockImpacts,
       );
     }
 
@@ -763,7 +745,7 @@ function mergePhase(target: MutablePhase, source: MutablePhase): void {
   for (const reason of ["last-standing", "no-survivors", "time-limit"] as const) {
     target.reasonCounts[reason] += source.reasonCounts[reason];
   }
-  for (const cause of ["fall", "health", "bomb", "rock", "other"] as const) {
+  for (const cause of ["fall", "health", "bomb", "other"] as const) {
     target.deathCauses[cause] += source.deathCauses[cause];
   }
   for (const [key, aggregate] of Object.entries(source.aggregates)) {

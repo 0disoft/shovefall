@@ -8,7 +8,6 @@ import type {
   PendingSoapDamageState,
   RoundId,
   RoundStateV1,
-  RockShotState,
   SkillZoneState,
   SoapPatchState,
   Tick,
@@ -29,9 +28,6 @@ export interface HashableWorldState {
   readonly pendingSoapDamage: readonly PendingSoapDamageState[];
   readonly skillZones: readonly SkillZoneState[];
   readonly nextSkillZoneId: number;
-  readonly rockShots: readonly RockShotState[];
-  readonly nextRockLaunchTick: Tick;
-  readonly nextRockShotId: number;
   readonly nextItemId: number;
   readonly nextDeliveryId: number;
   readonly nextItemSpawnTick: Tick | null;
@@ -193,12 +189,6 @@ export function hashWorldState(state: HashableWorldState): string {
       (zone) =>
         `${zone.zoneId}:${zone.ownerActorId}:${zone.skillDefinitionId}:${zone.kind}:${quantize(zone.position.x)}:${quantize(zone.position.y)}:${quantize(zone.radius)}:${zone.placedTick}:${zone.activateTick}:${zone.endsTick}:${zone.rank}`,
     );
-  const rockShotParts = state.rockShots
-    .toSorted((left, right) => left.shotId - right.shotId)
-    .map(
-      (shot) =>
-        `${shot.shotId}:${shot.shipId}:${shot.targetActorId}:${quantize(shot.origin.x)}:${quantize(shot.origin.y)}:${quantize(shot.target.x)}:${quantize(shot.target.y)}:${shot.launchTick}:${shot.impactTick}:${quantize(shot.blastRadius)}`,
-    );
   const tileCanonical = getCanonicalTiles(state.tiles);
   const canonical = [
     `round:${state.roundId}`,
@@ -213,8 +203,6 @@ export function hashWorldState(state: HashableWorldState): string {
     `soap-damage:${pendingSoapDamageParts.join("|")}`,
     `skill-zones:${skillZoneParts.join("|")}`,
     `skill-zone-cursor:${state.nextSkillZoneId}`,
-    `rock-shots:${rockShotParts.join("|")}`,
-    `rock-cursor:${state.nextRockShotId}:${state.nextRockLaunchTick}`,
     `item-cursor:${state.nextItemId}:${state.nextDeliveryId}:${state.nextItemSpawnTick ?? "none"}`,
     `tiles:${tileCanonical}`,
     `result:${state.round.status}:${state.round.winnerActorId ?? "none"}:${state.round.reason ?? "none"}:${state.round.completedTick ?? -1}`,

@@ -2,13 +2,12 @@ import {
   createTileId,
   type CannonShotState,
   type PirateShipState,
-  type RockShotState,
   type Tick,
   type TileId,
   type TileState,
 } from "./contracts";
 import { COLLAPSE_COAST_SECTOR_COUNT, type CollapseWave } from "./collapse";
-import { addVectors, clampVectorLength, scaleVector, type Vector2 } from "./math";
+import { type Vector2 } from "./math";
 import type { XorShift32 } from "./random";
 import { getOuterOceanTileIds } from "./arena";
 
@@ -18,10 +17,6 @@ export const CANNON_MINIMUM_LAUNCH_INTERVAL_TICKS = 90;
 export const CANNON_MAXIMUM_LAUNCH_INTERVAL_TICKS = 135;
 export const PIRATE_SHIP_OFFSHORE_DISTANCE = 5.25;
 export const CANNON_LANDING_APPROACH_TILES = 1.25;
-export const ROCK_FLIGHT_TICKS = 90;
-export const ROCK_BLAST_RADIUS = 0.95;
-export const ROCK_TARGET_LEAD_TICKS = 24;
-export const ROCK_MAXIMUM_LEAD_DISTANCE = 1.4;
 
 export interface ArtilleryPlan {
   readonly ships: readonly Readonly<{
@@ -30,7 +25,6 @@ export interface ArtilleryPlan {
   }>[];
   readonly cannonShots: readonly CannonShotState[];
   readonly collapseWaves: readonly CollapseWave[];
-  readonly rockPhaseStartTick: Tick;
 }
 
 const ORTHOGONAL_OFFSETS = Object.freeze([
@@ -328,7 +322,6 @@ export function createArtilleryPlan(
     ships: Object.freeze(ships),
     cannonShots: Object.freeze(cannonShots),
     collapseWaves: Object.freeze(collapseWaves),
-    rockPhaseStartTick: Number.MAX_SAFE_INTEGER,
   });
 }
 
@@ -340,55 +333,4 @@ export function getActiveCannonShots(plan: ArtilleryPlan, tick: Tick): readonly 
   return Object.freeze(
     plan.cannonShots.filter((shot) => tick >= shot.launchTick && tick <= shot.impactTick),
   );
-}
-
-export function getRockIntervalTicks(standingCount: number): number {
-  if (standingCount <= 4) {
-    return 48;
-  }
-
-  if (standingCount <= 8) {
-    return 60;
-  }
-
-  return 72;
-}
-
-export function getRockVolleySize(standingCount: number): number {
-  if (standingCount <= 4) {
-    return 1;
-  }
-
-  if (standingCount <= 8) {
-    return 2;
-  }
-
-  return 3;
-}
-
-export function getPredictedRockTarget(position: Vector2, velocity: Vector2): Vector2 {
-  const lead = clampVectorLength(
-    scaleVector(velocity, ROCK_TARGET_LEAD_TICKS),
-    ROCK_MAXIMUM_LEAD_DISTANCE,
-  );
-  return Object.freeze(addVectors(position, lead));
-}
-
-export function createRockShot(
-  shotId: number,
-  ship: ArtilleryPlan["ships"][number],
-  targetActorId: number,
-  target: Vector2,
-  launchTick: Tick,
-): RockShotState {
-  return Object.freeze({
-    shotId,
-    shipId: ship.shipId,
-    targetActorId,
-    origin: ship.position,
-    target: Object.freeze({ ...target }),
-    launchTick,
-    impactTick: launchTick + ROCK_FLIGHT_TICKS,
-    blastRadius: ROCK_BLAST_RADIUS,
-  });
 }

@@ -17,7 +17,6 @@ const PIRATE_SHIP_URL = new URL("../assets/generated/pirate-ship-galleon.png", i
 const TREASURE_SHIP_URL = new URL("../assets/generated/treasure-ship.png", import.meta.url).href;
 const CANNONBALL_URL = new URL("../assets/generated/cannonball-projectile.png", import.meta.url)
   .href;
-const LETHAL_BOULDER_URL = new URL("../assets/generated/lethal-boulder.png", import.meta.url).href;
 const IMPACT_EXPLOSION_URL = new URL("../assets/generated/impact-explosion.png", import.meta.url)
   .href;
 const SEAWATER_IMPACT_URL = new URL("../assets/generated/seawater-impact.png", import.meta.url)
@@ -168,7 +167,6 @@ export interface ArenaVisualAssets {
   readonly pirateShipTexture: Texture | null;
   readonly treasureShipTexture: Texture | null;
   readonly cannonballTexture: Texture | null;
-  readonly lethalBoulderTexture: Texture | null;
   readonly impactExplosionTexture: Texture | null;
   readonly seawaterImpactTexture: Texture | null;
   readonly terrainTextures: readonly Texture[] | null;
@@ -714,7 +712,6 @@ export async function loadArenaVisualAssets(): Promise<ArenaVisualAssets> {
     pirateShipTexture,
     treasureShipTexture,
     cannonballTexture,
-    lethalBoulderTexture,
     impactExplosionTexture,
     seawaterImpactTexture,
     terrainAtlas,
@@ -728,7 +725,6 @@ export async function loadArenaVisualAssets(): Promise<ArenaVisualAssets> {
     loadOptionalTexture(PIRATE_SHIP_URL),
     loadOptionalTexture(TREASURE_SHIP_URL),
     loadOptionalTexture(CANNONBALL_URL),
-    loadOptionalTexture(LETHAL_BOULDER_URL),
     loadOptionalTexture(IMPACT_EXPLOSION_URL),
     loadOptionalTexture(SEAWATER_IMPACT_URL),
     loadOptionalTexture(TERRAIN_ATLAS_URL),
@@ -747,7 +743,6 @@ export async function loadArenaVisualAssets(): Promise<ArenaVisualAssets> {
     pirateShipTexture,
     treasureShipTexture,
     cannonballTexture,
-    lethalBoulderTexture,
     impactExplosionTexture,
     seawaterImpactTexture,
     terrainTextures: terrainAtlas === null ? null : createTerrainTextures(terrainAtlas),

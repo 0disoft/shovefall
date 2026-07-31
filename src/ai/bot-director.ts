@@ -12,7 +12,6 @@ import {
   type RenderParticipantV1,
   type SkillSlotIndex,
   type TileId,
-  type TileState,
   type UpgradeStatId,
 } from "../simulation/contracts";
 import {
@@ -125,8 +124,6 @@ const BRICK_BAG_MAXIMUM_TARGET_DISTANCE = 3.2;
 const BRICK_BAG_EDGE_PRESSURE_DISTANCE = 3.25;
 const BRICK_BAG_HEALTH_PRESSURE_RATIO = 0.65;
 const MINIMUM_BOMB_LOBBY_SURVIVORS = 10;
-const ROCK_ESCAPE_LOOKAHEAD_TICKS = 72;
-const ROCK_ESCAPE_SEARCH_RADIUS = 3.5;
 const TARGET_LOCK_TICKS = 45;
 const TARGET_SWITCH_SCORE_MARGIN = 0.65;
 const STALL_PROGRESS_DISTANCE = 0.08;
@@ -261,77 +258,6 @@ function assertPositiveInteger(value: number, name: string, allowZero = false): 
 
 export function getBotDifficultyProfile(difficulty: BotDifficulty): BotDifficultyProfile {
   return BOT_DIFFICULTY_PROFILES[difficulty];
-}
-
-function getImmediateRockEscape(
-  participant: RenderParticipantV1,
-  frame: RenderFrameV1,
-  terrain: BotNavigationTerrain,
-  blockedTileIds: ReadonlySet<TileId>,
-): Vector2 | undefined {
-  const imminentShots = frame.rockShots
-    .filter(({ impactTick }) => impactTick >= frame.tick)
-    .filter(({ blastRadius, impactTick, target }) => {
-      const ticksRemaining = impactTick - frame.tick;
-      const dangerDistance = blastRadius + participant.radius + ROCK_ESCAPE_SEARCH_RADIUS;
-      return (
-        ticksRemaining <= ROCK_ESCAPE_LOOKAHEAD_TICKS &&
-        vectorLength(subtractVectors(participant.position, target)) <= dangerDistance
-      );
-    })
-    .toSorted((left, right) => left.impactTick - right.impactTick || left.shotId - right.shotId);
-
-  if (imminentShots.length === 0) {
-    return undefined;
-  }
-
-  let destination: TileState | undefined;
-  let bestScore = Number.NEGATIVE_INFINITY;
-
-  for (const tile of terrain.stableTiles) {
-    if (blockedTileIds.has(tile.tileId)) {
-      continue;
-    }
-
-    const position = Object.freeze({ x: tile.column + 0.5, y: tile.row + 0.5 });
-    const travelDistance = vectorLength(subtractVectors(position, participant.position));
-
-    if (travelDistance < 0.5 || travelDistance > ROCK_ESCAPE_SEARCH_RADIUS) {
-      continue;
-    }
-
-    const minimumClearance = Math.min(
-      ...imminentShots.map(
-        ({ blastRadius, target }) =>
-          vectorLength(subtractVectors(position, target)) - blastRadius - participant.radius,
-      ),
-    );
-    const depth = terrain.stableTileDepths.get(tile.tileId) ?? 0;
-    const score = minimumClearance * 8 + depth * 0.4 - travelDistance * 0.15;
-
-    if (
-      score > bestScore ||
-      (score === bestScore && tile.tileId.localeCompare(destination?.tileId ?? "") < 0)
-    ) {
-      destination = tile;
-      bestScore = score;
-    }
-  }
-
-  if (destination === undefined) {
-    const primaryShot = imminentShots[0];
-    return primaryShot === undefined
-      ? undefined
-      : normalizeVector(subtractVectors(participant.position, primaryShot.target));
-  }
-
-  return findBotNavigationDirection(
-    terrain,
-    blockedTileIds,
-    participant.position,
-    Object.freeze({ x: destination.column + 0.5, y: destination.row + 0.5 }),
-    participant.radius,
-  );
 }
 
 function rotateVector(vector: Vector2, radians: number): Vector2 {
@@ -772,32 +698,12 @@ export class BotDirector {
       let targetPosition: Vector2 | null = null;
       const upgradeStat = this.#chooseUpgrade(memory.personality, current);
       const edgeDistance = getBotEdgeDistance(current, terrain);
-      const rockEscape = getImmediateRockEscape(current, currentFrame, terrain, blockedTileIds);
       const tileEscape = getImmediateBotTileEscape(current, terrain, blockedTileIds);
       const escapingOwnBomb =
         memory.bombEscapePosition !== null && tick < memory.bombEscapeUntilTick;
       const escapingOwnSoap = tick < memory.soapEscapeUntilTick;
 
-      if (rockEscape !== undefined) {
-        const safeDodgeDirection = getSafeBotDodgeDirection(
-          current,
-          rockEscape,
-          terrain,
-          blockedTileIds,
-          this.#gameplayTuning,
-        );
-        memory.intent = safeDodgeDirection ?? rockEscape;
-        useSkillSlot =
-          current.action === "Ready"
-            ? chooseReadySkillSlot(current, tick, "escape", safeDodgeDirection !== undefined)
-            : null;
-        dodgePressed =
-          useSkillSlot === null &&
-          safeDodgeDirection !== undefined &&
-          current.action === "Ready" &&
-          tick >= current.dodgeReadyTick;
-        memory.nextDecisionTick = Math.min(memory.nextDecisionTick, tick + 1);
-      } else if (tileEscape !== undefined || edgeDistance < EDGE_EMERGENCY_DISTANCE) {
+      if (tileEscape !== undefined || edgeDistance < EDGE_EMERGENCY_DISTANCE) {
         memory.intent =
           tileEscape ??
           findBotNavigationDirection(
