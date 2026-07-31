@@ -11,19 +11,23 @@ describe("character motion presentation", () => {
       action: "Ready",
       actorId: 1,
       castProgress: null,
-      facing: { x: 1, y: 0 },
+      facingX: 1,
+      facingY: 0,
       frameTick: 24,
       reducedMotion: false,
-      velocity: { x: 2.4, y: 0 },
+      velocityX: 2.4,
+      velocityY: 0,
     });
     const second = createCharacterMotionPose({
       action: "Ready",
       actorId: 2,
       castProgress: null,
-      facing: { x: 1, y: 0 },
+      facingX: 1,
+      facingY: 0,
       frameTick: 24,
       reducedMotion: false,
-      velocity: { x: 2.4, y: 0 },
+      velocityX: 2.4,
+      velocityY: 0,
     });
 
     expect(first.moving).toBe(true);
@@ -36,19 +40,23 @@ describe("character motion presentation", () => {
       action: "Ready",
       actorId: 1,
       castProgress: 0.62,
-      facing: { x: 1, y: 0 },
+      facingX: 1,
+      facingY: 0,
       frameTick: 24,
       reducedMotion: false,
-      velocity: { x: 0, y: 0 },
+      velocityX: 0,
+      velocityY: 0,
     });
     const reduced = createCharacterMotionPose({
       action: "Ready",
       actorId: 1,
       castProgress: 0.62,
-      facing: { x: 1, y: 0 },
+      facingX: 1,
+      facingY: 0,
       frameTick: 24,
       reducedMotion: true,
-      velocity: { x: 0, y: 0 },
+      velocityX: 0,
+      velocityY: 0,
     });
 
     expect(cast.scaleX).toBeGreaterThan(1);
@@ -69,10 +77,12 @@ describe("character motion presentation", () => {
       action: "Stumbling",
       actorId: 3,
       castProgress: 0.7,
-      facing: { x: -1, y: 0 },
+      facingX: -1,
+      facingY: 0,
       frameTick: 32,
       reducedMotion: false,
-      velocity: { x: 2.4, y: 0 },
+      velocityX: 2.4,
+      velocityY: 0,
     });
 
     expect(pose.moving).toBe(false);
@@ -84,10 +94,12 @@ describe("character motion presentation", () => {
       action: "Ready",
       actorId: 1,
       castProgress: null,
-      facing: { x: 1, y: 0 },
+      facingX: 1,
+      facingY: 0,
       frameTick: 24,
       reducedMotion: false,
-      velocity: { x: 2.4, y: 0 },
+      velocityX: 2.4,
+      velocityY: 0,
     });
 
     expect(
@@ -124,10 +136,12 @@ describe("character motion presentation", () => {
       action: "Ready",
       actorId: 1,
       castProgress: null,
-      facing: { x: 1, y: 0 },
+      facingX: 1,
+      facingY: 0,
       frameTick: 5,
       reducedMotion: false,
-      velocity: { x: 2.4, y: 0 },
+      velocityX: 2.4,
+      velocityY: 0,
     });
 
     const transform = createCharacterSpriteMotionTransform(motionPose, true);

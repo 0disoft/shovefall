@@ -1596,10 +1596,12 @@ function syncParticipantSprites(
       action: participant.action,
       actorId: participant.actorId,
       castProgress,
-      facing: projectArenaVector(participant.facing),
+      facingX: participant.facing.x,
+      facingY: participant.facing.y * ARENA_DEPTH_SCALE,
       frameTick: frame.tick,
       reducedMotion,
-      velocity: projectArenaVector(participant.velocity),
+      velocityX: participant.velocity.x,
+      velocityY: participant.velocity.y * ARENA_DEPTH_SCALE,
     });
     const hitAnimation = hitAnimations.get(participant.actorId);
     const animationState = selectCharacterAnimationState({
@@ -1921,10 +1923,12 @@ function drawParticipant(
     action: participant.action,
     actorId: participant.actorId,
     castProgress: null,
-    facing: projectArenaVector(participant.facing),
+    facingX: participant.facing.x,
+    facingY: participant.facing.y * ARENA_DEPTH_SCALE,
     frameTick,
     reducedMotion,
-    velocity: projectArenaVector(participant.velocity),
+    velocityX: participant.velocity.x,
+    velocityY: participant.velocity.y * ARENA_DEPTH_SCALE,
   });
 
   if (hasBoat) {

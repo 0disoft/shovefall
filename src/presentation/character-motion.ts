@@ -1,14 +1,16 @@
 import type { ParticipantActionKind } from "../simulation/contracts";
-import { clamp, type Vector2 } from "../simulation/math";
+import { clamp } from "../simulation/math";
 
 export interface CharacterMotionInput {
   readonly action: ParticipantActionKind;
   readonly actorId: number;
   readonly castProgress: number | null;
-  readonly facing: Vector2;
+  readonly facingX: number;
+  readonly facingY: number;
   readonly frameTick: number;
   readonly reducedMotion: boolean;
-  readonly velocity: Vector2;
+  readonly velocityX: number;
+  readonly velocityY: number;
 }
 
 export interface CharacterMotionPose {
@@ -45,11 +47,11 @@ export interface CharacterAnimationStateInput {
 const MOVEMENT_ACTIONS = new Set<ParticipantActionKind>(["Ready", "ShoveRecovery"]);
 
 export function createCharacterMotionPose(input: CharacterMotionInput): CharacterMotionPose {
-  const speed = Math.hypot(input.velocity.x, input.velocity.y);
+  const speed = Math.hypot(input.velocityX, input.velocityY);
   const moving = !input.reducedMotion && speed > 0.05 && MOVEMENT_ACTIONS.has(input.action);
   const stridePhase = moving ? Math.sin(input.frameTick * 0.31 + input.actorId * 1.73) : 0;
   const footfall = moving ? Math.abs(Math.cos(input.frameTick * 0.31 + input.actorId * 1.73)) : 0;
-  const horizontalDirection = speed > Number.EPSILON ? input.velocity.x / speed : input.facing.x;
+  const horizontalDirection = speed > Number.EPSILON ? input.velocityX / speed : input.facingX;
 
   let scaleX = 1 + footfall * 0.025;
   let scaleY = 1 - footfall * 0.02;
@@ -64,8 +66,8 @@ export function createCharacterMotionPose(input: CharacterMotionInput): Characte
     scaleX *= 1 - anticipation * 0.055 + release * 0.14;
     scaleY *= 1 + anticipation * 0.07 - release * 0.1;
     liftRatio += release * 0.1;
-    offsetXRatio += input.facing.x * release * 0.055;
-    rotation += input.facing.x * (-anticipation * 0.065 + release * 0.1);
+    offsetXRatio += input.facingX * release * 0.055;
+    rotation += input.facingX * (-anticipation * 0.065 + release * 0.1);
   }
 
   const actionPhase = ((input.frameTick + input.actorId * 5) % 18) / 18;
@@ -74,12 +76,12 @@ export function createCharacterMotionPose(input: CharacterMotionInput): Characte
     scaleX = 0.92;
     scaleY = 1.06;
     liftRatio = 0;
-    rotation = input.reducedMotion ? 0 : -input.facing.x * 0.055;
+    rotation = input.reducedMotion ? 0 : -input.facingX * 0.055;
   } else if (input.action === "ShoveActive") {
     scaleX = 1.12;
     scaleY = 0.92;
     liftRatio = 0;
-    rotation = input.reducedMotion ? 0 : input.facing.x * 0.075;
+    rotation = input.reducedMotion ? 0 : input.facingX * 0.075;
   } else if (input.action === "DodgeActive") {
     scaleX = 1.18;
     scaleY = 0.88;
