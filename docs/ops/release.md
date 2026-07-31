@@ -1,11 +1,11 @@
 # Static Release Procedure
 
-- Status: `0.135.0` complete-island cannon-collapse candidate; hosted proof pending
+- Status: `0.136.0` complete-island cannon-collapse candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.135.0`
+- Current product version: `0.136.0`
 
-Product `0.135.0`, simulation `78.0.0`, and content `48.0.0` keep simulation `78.0.0`,
-content `48.0.0`, replay v8, and reports v11. The per-step event banner now scans events in reverse without allocating reversed and mapped intermediate arrays before finding the latest message. Visible event banner text, combat results, replay hash, and balance are unchanged. Hosted proof, complete-collapse pacing, and human readability remain pending.
+Product `0.136.0`, simulation `78.0.0`, and content `48.0.0` keep simulation `78.0.0`,
+content `48.0.0`, replay v8, and reports v11. Participant screen positions are now projected from raw x/y coordinates instead of allocating a temporary vector object per participant per draw across the participant, sprite, aegis, and stunned sync paths. Visible participant positions, combat results, replay hash, and balance are unchanged. Hosted proof, complete-collapse pacing, and human readability remain pending.
 
 Product `0.125.0`, simulation `78.0.0`, and content `48.0.0` keep simulation `78.0.0`,
 content `48.0.0`, replay v8, and reports v11. Earning a stat point from a human kill now plays a brief bright cue, adding audible reward feedback to the existing kill flash. The cue fires only for the human player's kills and is presentation-only. Combat results, replay hash, and balance are unchanged. Hosted proof, complete-collapse pacing, and human readability remain pending.

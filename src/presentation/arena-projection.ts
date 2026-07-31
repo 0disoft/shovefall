@@ -49,6 +49,13 @@ export function projectArenaPoint(position: Vector2, projection: ArenaProjection
   };
 }
 
+export function projectArenaXY(x: number, y: number, projection: ArenaProjection): Vector2 {
+  return {
+    x: projection.originX + x * projection.pitch - ARENA_TILE_GAP / 2,
+    y: projection.originY + y * projection.depthPitch - (ARENA_TILE_GAP * ARENA_DEPTH_SCALE) / 2,
+  };
+}
+
 export function projectArenaVector(vector: Vector2): Vector2 {
   return { x: vector.x, y: vector.y * ARENA_DEPTH_SCALE };
 }

@@ -27,6 +27,7 @@ import {
   createArenaProjection,
   getProjectedArenaSize,
   projectArenaPoint,
+  projectArenaXY,
   projectArenaVector,
   type ArenaProjection,
 } from "./arena-projection";
@@ -1462,7 +1463,7 @@ function syncAegisSprites(
     const worldY =
       participant.previousPosition.y +
       (participant.position.y - participant.previousPosition.y) * interpolationAlpha;
-    const point = projectArenaPoint({ x: worldX, y: worldY }, projection);
+    const point = projectArenaXY(worldX, worldY, projection);
     const pulse = reducedMotion ? 1 : 1 + Math.sin(frame.tick * 0.12 + participant.actorId) * 0.045;
     const size = clamp(participant.radius * projection.pitch * 4.8 * pulse, 48, 112);
     sprite.position.set(point.x, point.y - size * 0.05);
@@ -1520,7 +1521,7 @@ function syncStunnedSprites(
     const worldY =
       participant.previousPosition.y +
       (participant.position.y - participant.previousPosition.y) * interpolationAlpha;
-    const point = projectArenaPoint({ x: worldX, y: worldY }, projection);
+    const point = projectArenaXY(worldX, worldY, projection);
     const collisionRadius = participant.radius * projection.pitch;
     const width = clamp(collisionRadius * 4.2, 52, 104);
     const bob = reducedMotion ? 0 : Math.sin(frame.tick * 0.18 + participant.actorId) * 2.5;
@@ -1578,7 +1579,7 @@ function syncParticipantSprites(
     const worldY =
       participant.previousPosition.y +
       (participant.position.y - participant.previousPosition.y) * interpolationAlpha;
-    const point = projectArenaPoint({ x: worldX, y: worldY }, projection);
+    const point = projectArenaXY(worldX, worldY, projection);
     const collisionRadius = participant.radius * projection.pitch;
     const visualScale = 1 + (participant.massFactor - 1) * 0.16;
     const castAnimation = castAnimations.get(participant.actorId);
@@ -1908,7 +1909,7 @@ function drawParticipant(
   const worldY =
     participant.previousPosition.y +
     (participant.position.y - participant.previousPosition.y) * interpolationAlpha;
-  const { x, y } = projectArenaPoint({ x: worldX, y: worldY }, projection);
+  const { x, y } = projectArenaXY(worldX, worldY, projection);
   const collisionRadius = participant.radius * projection.pitch;
   const visualScale = 1 + (participant.massFactor - 1) * 0.16;
   const visualRadius = collisionRadius * visualScale;
@@ -3024,7 +3025,7 @@ export async function createArenaRenderer(
       const worldY =
         participant.previousPosition.y +
         (participant.position.y - participant.previousPosition.y) * latestInterpolationAlpha;
-      const point = projectArenaPoint({ x: worldX, y: worldY }, projection);
+      const point = projectArenaXY(worldX, worldY, projection);
       const collisionRadius = participant.radius * projection.pitch;
       const visualRadius = collisionRadius * (1 + (participant.massFactor - 1) * 0.16);
       const distanceFromHuman =

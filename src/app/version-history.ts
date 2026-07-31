@@ -9,6 +9,13 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.136.0",
+    title: "참가자 자리를 찾을 때 껍데기를 안 만든다요 ㅇㅅㅇ",
+    reason: "매 그림마다 참가자 위치를 화면으로 옮길 때 잠깐 쓸 껍데기 객체를 새로 만들었다요.",
+    change:
+      "참가자 위치를 화면으로 옮길 때 껍데기를 만들지 않고 숫자를 바로 넣는다요. 그림과 전투 결과, 수치는 그대로다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.135.0",
     title: "알림 문구를 찾을 때 줄을 새로 안 만든다요 ㅇㅅㅇ",
     reason: "매 순간마다 사건 줄을 거꾸로 뒤집고 새 줄을 만들어서 알림 문구를 찾았다요.",
