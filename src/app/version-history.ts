@@ -9,6 +9,13 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.122.0",
+    title: "화면 흔들림마다 배열을 덜 만든다요 ㅇㅅㅇ",
+    reason: "매 프레임마다 카메라를 따라 움직일 그림층 16개를 새 배열로 만들어서 돌렸다요.",
+    change:
+      "그림층 배열을 한 번만 만들어 두고 매 프레임 재사용한다요. 흔들림과 그림, 전투 결과와 수치는 그대로다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.121.0",
     title: "대포 경고를 고를 때 배열을 덜 만든다요 ㅇㅅㅇ",
     reason:

@@ -2533,6 +2533,24 @@ export async function createArenaRenderer(
   const impactSprites = new Container();
   const artilleryLabels = new Container();
   const artilleryLabelsByShip = new Map<number, Text>();
+  const cameraParallaxLayers = Object.freeze([
+    tiles,
+    terrainSprites,
+    artillery,
+    pirateShipSprites,
+    projectileSprites,
+    items,
+    itemSprites,
+    skillZoneSprites,
+    participants,
+    participantSprites,
+    actionFeedback,
+    effectLayer,
+    skillEffectSprites,
+    aimingLayer,
+    impactSprites,
+    artilleryLabels,
+  ]);
   participantSprites.sortableChildren = true;
   application.stage.addChild(
     oceanLayer,
@@ -2643,24 +2661,7 @@ export async function createArenaRenderer(
     } else {
       cameraShakeIntensity = 0;
     }
-    for (const layer of [
-      tiles,
-      terrainSprites,
-      artillery,
-      pirateShipSprites,
-      projectileSprites,
-      items,
-      itemSprites,
-      skillZoneSprites,
-      participants,
-      participantSprites,
-      actionFeedback,
-      effectLayer,
-      skillEffectSprites,
-      aimingLayer,
-      impactSprites,
-      artilleryLabels,
-    ]) {
+    for (const layer of cameraParallaxLayers) {
       layer.x = presentationCamera.x + shakeX;
       layer.y = presentationCamera.y + shakeY;
     }
