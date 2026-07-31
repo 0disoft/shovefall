@@ -1377,13 +1377,14 @@ export class BotDirector {
           terrain.center,
           current.radius,
         ) ?? ZERO_VECTOR;
-      return createDecision(
-        normalizeVector(addVectors(scaleVector(move, 0.35), scaleVector(centerDirection, 0.65))),
-        false,
-        false,
-        null,
-        attackSkillSlot,
-      );
+      const blendedX = move.x * 0.35 + centerDirection.x * 0.65;
+      const blendedY = move.y * 0.35 + centerDirection.y * 0.65;
+      const blendedLength = Math.hypot(blendedX, blendedY);
+      const blendedDirection =
+        blendedLength <= 1
+          ? Object.freeze({ x: blendedX, y: blendedY })
+          : Object.freeze({ x: blendedX / blendedLength, y: blendedY / blendedLength });
+      return createDecision(blendedDirection, false, false, null, attackSkillSlot);
     }
 
     return createDecision(move, false, false, null, attackSkillSlot);
