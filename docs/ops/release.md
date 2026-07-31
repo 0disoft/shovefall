@@ -1,11 +1,11 @@
 # Static Release Procedure
 
-- Status: `0.149.0` complete-island cannon-collapse candidate; hosted proof pending
+- Status: `0.150.0` complete-island cannon-collapse candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.149.0`
+- Current product version: `0.150.0`
 
-Product `0.149.0`, simulation `78.0.0`, and content `48.0.0` keep simulation `78.0.0`,
-content `48.0.0`, replay v8, and reports v11. Bot nearby-opponent and item-distance scoring now uses inline Math.hypot instead of allocating subtractVectors and vectorLength intermediate objects per candidate per decision. Visible bot targeting and item pursuit, combat results, replay hash, and balance are unchanged. Hosted proof, complete-collapse pacing, and human readability remain pending.
+Product `0.150.0`, simulation `78.0.0`, and content `48.0.0` keep simulation `78.0.0`,
+content `48.0.0`, replay v8, and reports v11. Bot dodge-landing safety checks now compute sample and landing positions from raw components instead of allocating addVectors and scaleVector intermediate objects per sample, and the unused imports are removed. Visible bot dodge safety, combat results, replay hash, and balance are unchanged. Hosted proof, complete-collapse pacing, and human readability remain pending.
 
 Product `0.125.0`, simulation `78.0.0`, and content `48.0.0` keep simulation `78.0.0`,
 content `48.0.0`, replay v8, and reports v11. Earning a stat point from a human kill now plays a brief bright cue, adding audible reward feedback to the existing kill flash. The cue fires only for the human player's kills and is presentation-only. Combat results, replay hash, and balance are unchanged. Hosted proof, complete-collapse pacing, and human readability remain pending.

@@ -5,10 +5,8 @@ import type {
   TileState,
 } from "../simulation/contracts";
 import {
-  addVectors,
   dotVectors,
   normalizeVector,
-  scaleVector,
   subtractVectors,
   type Vector2,
   vectorLength,
@@ -441,18 +439,16 @@ function getDodgeLandingDepth(
   const distance = getBotDodgeDistance(participant, gameplayTuning);
   const sampleCount = Math.max(1, Math.ceil(distance / DODGE_SAFETY_SAMPLE_DISTANCE));
   for (let sample = 1; sample <= sampleCount; sample += 1) {
-    const position = addVectors(
-      participant.position,
-      scaleVector(normalizedDirection, distance * (sample / sampleCount)),
-    );
-    if (
-      !isPositionTraversable(terrain, blockedTileIds, position.x, position.y, participant.radius)
-    ) {
+    const sampleRatio = distance * (sample / sampleCount);
+    const positionX = participant.position.x + normalizedDirection.x * sampleRatio;
+    const positionY = participant.position.y + normalizedDirection.y * sampleRatio;
+    if (!isPositionTraversable(terrain, blockedTileIds, positionX, positionY, participant.radius)) {
       return undefined;
     }
   }
-  const landing = addVectors(participant.position, scaleVector(normalizedDirection, distance));
-  return terrain.stableTileDepths.get(toTileId(Math.floor(landing.x), Math.floor(landing.y)));
+  const landingX = participant.position.x + normalizedDirection.x * distance;
+  const landingY = participant.position.y + normalizedDirection.y * distance;
+  return terrain.stableTileDepths.get(toTileId(Math.floor(landingX), Math.floor(landingY)));
 }
 
 export function getSafeBotDodgeDirection(
