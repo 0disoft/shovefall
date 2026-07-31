@@ -9,6 +9,13 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.135.0",
+    title: "알림 문구를 찾을 때 줄을 새로 안 만든다요 ㅇㅅㅇ",
+    reason: "매 순간마다 사건 줄을 거꾸로 뒤집고 새 줄을 만들어서 알림 문구를 찾았다요.",
+    change:
+      "사건 줄을 거꾸로 뒤집지 않고 뒤에서부터 바로 찾는다요. 그림과 전투 결과, 수치는 그대로다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.134.0",
     title: "효과 자리를 찾을 때 줄을 뒤지지 않는다요 ㅇㅅㅇ",
     reason: "효과가 생길 때마다 참가자 줄을 처음부터 뒤져서 자리를 찾았다요.",

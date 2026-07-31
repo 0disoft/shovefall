@@ -1588,10 +1588,18 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
           killFlash.classList.add("is-active");
         }
 
-        const message = events
-          .toReversed()
-          .map(getEventMessage)
-          .find((value) => value !== undefined);
+        let message: string | undefined;
+        for (let index = events.length - 1; index >= 0; index -= 1) {
+          const event = events[index];
+          if (event === undefined) {
+            continue;
+          }
+          const candidate = getEventMessage(event);
+          if (candidate !== undefined) {
+            message = candidate;
+            break;
+          }
+        }
 
         if (message !== undefined) {
           readyMessage.textContent = message;
