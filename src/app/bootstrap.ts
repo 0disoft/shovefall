@@ -697,6 +697,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   const arenaHost = requireElement(root, "#arena-host", HTMLElement);
   const damageFlash = requireElement(root, "#damage-flash", HTMLElement);
   const killFlash = requireElement(root, "#kill-flash", HTMLElement);
+  const upgradeFlash = requireElement(root, "#upgrade-flash", HTMLElement);
   const pointerJoystick = requireElement(root, "#pointer-joystick", HTMLElement);
   const pointerJoystickKnob = requireElement(root, "#pointer-joystick-knob", HTMLElement);
   const touchSkillButtons = Object.freeze([
@@ -2164,6 +2165,9 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     rendererStatus.dataset.state = "playing";
     rendererStatus.textContent = "플레이 중";
     readyMessage.textContent = `${UPGRADE_LABELS[choice]} 상승!`;
+    upgradeFlash.classList.remove("is-active");
+    void upgradeFlash.offsetWidth;
+    upgradeFlash.classList.add("is-active");
     arenaHost.focus({ preventScroll: true });
   });
 
