@@ -903,20 +903,29 @@ export class BotDirector {
       current.action === "Ready" &&
       tick - memory.lastItemUseTick >= ACTIVE_ITEM_DECISION_COOLDOWN_TICKS;
     const perceivedParticipants = perceivedSpatialHash.queryNearby(perceived.position, 2);
-    const threats = perceivedParticipants
-      .filter(
-        (candidate) =>
-          candidate.actorId !== perceived.actorId &&
-          isControllable(candidate) &&
-          isThreatening(candidate, perceived),
-      )
-      .toSorted(
-        (left, right) =>
-          vectorLength(subtractVectors(left.position, perceived.position)) -
-            vectorLength(subtractVectors(right.position, perceived.position)) ||
-          left.actorId - right.actorId,
-      );
-    const threat = threats[0];
+    let threat: RenderParticipantV1 | undefined;
+    let threatDistanceSquared = Number.POSITIVE_INFINITY;
+    for (const candidate of perceivedParticipants) {
+      if (
+        candidate.actorId === perceived.actorId ||
+        !isControllable(candidate) ||
+        !isThreatening(candidate, perceived)
+      ) {
+        continue;
+      }
+      const deltaX = candidate.position.x - perceived.position.x;
+      const deltaY = candidate.position.y - perceived.position.y;
+      const distanceSquared = deltaX * deltaX + deltaY * deltaY;
+      if (
+        distanceSquared < threatDistanceSquared ||
+        (distanceSquared === threatDistanceSquared &&
+          threat !== undefined &&
+          candidate.actorId < threat.actorId)
+      ) {
+        threat = candidate;
+        threatDistanceSquared = distanceSquared;
+      }
+    }
 
     if (threat !== undefined && tick >= current.dodgeReadyTick && current.action === "Ready") {
       const preferredDirection = getPerpendicularTowardCenter(
