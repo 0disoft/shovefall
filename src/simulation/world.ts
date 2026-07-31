@@ -1088,7 +1088,7 @@ export class SimulationWorld {
       bombs: this.#bombs,
       soapPatches: this.#soapPatches,
       skillZones: this.#skillZones,
-      pirateShips: getPirateShipStates(this.#artilleryPlan, this.#tick),
+      pirateShips: getPirateShipStates(this.#artilleryPlan),
       cannonShots: getActiveCannonShots(this.#artilleryPlan, this.#tick),
       rockShots: this.#rockShots,
       treasureShips: getTreasureShipStates(this.#itemState, this.#tick),

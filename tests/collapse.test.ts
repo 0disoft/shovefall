@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  advanceCollapse,
-  createCollapsePlan,
-  MINIMUM_REMAINING_LAND_RATIO,
-} from "../src/simulation/collapse";
+import { advanceCollapse, createCollapsePlan } from "../src/simulation/collapse";
 import { normalizeGameConfig, type SimulationEventV1 } from "../src/simulation/contracts";
 import { SimulationContractError } from "../src/simulation/math";
 import { RandomStreamSet } from "../src/simulation/random";
@@ -104,16 +100,12 @@ describe("collapse and round lifecycle", () => {
     ).toBe(true);
 
     const scheduledIds = samePlan.flatMap(({ tileIds }) => tileIds);
-    const expectedRemaining = Math.max(
-      1,
-      Math.floor(stableIds.size * MINIMUM_REMAINING_LAND_RATIO),
-    );
     expect(new Set(scheduledIds)).toHaveLength(scheduledIds.length);
-    expect(scheduledIds).toHaveLength(stableIds.size - expectedRemaining);
+    expect(scheduledIds).toHaveLength(stableIds.size);
 
     const finalTick = samePlan.at(-1)?.voidTick ?? 0;
     const collapsed = advanceCollapse(frame.tiles, samePlan, finalTick).tiles;
-    expect(collapsed.filter(({ state }) => state !== "Void")).toHaveLength(expectedRemaining);
+    expect(collapsed.filter(({ state }) => state !== "Void")).toHaveLength(0);
     expect(
       frame.tiles
         .filter(({ state }) => state === "Void")

@@ -5,11 +5,7 @@ import {
   getLandShoreDepths,
   getOuterOceanTileIds,
 } from "../src/simulation/arena";
-import {
-  advanceCollapse,
-  createCollapsePlan,
-  MINIMUM_REMAINING_LAND_RATIO,
-} from "../src/simulation/collapse";
+import { advanceCollapse, createCollapsePlan } from "../src/simulation/collapse";
 import {
   createTileId,
   normalizeGameConfig,
@@ -253,14 +249,13 @@ describe("procedural island arena", () => {
     { participantCount: 32, arenaColumns: 31, arenaRows: 26 },
     { participantCount: 60, arenaColumns: 52, arenaRows: 44 },
   ])(
-    "keeps the $participantCount-player island connected through its protected 10% core",
+    "floods every stable tile for the $participantCount-player island",
     ({ participantCount, arenaColumns, arenaRows }) => {
       const tierConfig = normalizeGameConfig({ participantCount, arenaColumns, arenaRows });
 
       for (let seed = 0; seed < 8; seed += 1) {
         const streams = new RandomStreamSet(`tier-${participantCount}-${seed}`);
         const tiles = createArenaTiles(tierConfig, streams.get("arena"));
-        const initialLandCount = tiles.filter(({ state }) => state === "Stable").length;
         const spawnPositions = createParticipantSpawnPositions(
           tiles,
           participantCount,
@@ -279,10 +274,8 @@ describe("procedural island arena", () => {
         );
 
         expect(spawnPositions).toHaveLength(participantCount);
-        expect(finalLandIds.size).toBe(
-          Math.max(1, Math.floor(initialLandCount * MINIMUM_REMAINING_LAND_RATIO)),
-        );
-        expect(getComponents(finalLandIds)).toHaveLength(1);
+        expect(finalLandIds.size).toBe(0);
+        expect(getComponents(finalLandIds)).toHaveLength(0);
       }
     },
   );

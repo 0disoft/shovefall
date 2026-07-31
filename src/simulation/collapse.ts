@@ -1,5 +1,4 @@
 import {
-  createTileId,
   type CollapseSpeed,
   type Tick,
   type TileId,
@@ -9,7 +8,6 @@ import {
 import type { XorShift32 } from "./random";
 import { getOuterCoastDepths } from "./arena";
 
-export const MINIMUM_REMAINING_LAND_RATIO = 0.1;
 export const COLLAPSE_COAST_SECTOR_COUNT = 16;
 
 export interface CollapseWave {
@@ -97,20 +95,11 @@ export function createCollapsePlan(
   const timing = COLLAPSE_TIMINGS[speed];
   const landTiles = tiles.filter(({ state }) => state === "Stable");
   const shoreDepths = getOuterCoastDepths(tiles, _columns, _rows);
-  const minimumRemainingTiles = Math.max(
-    1,
-    Math.floor(landTiles.length * MINIMUM_REMAINING_LAND_RATIO),
-  );
-  const protectedIds = selectProtectedCore(landTiles, shoreDepths, minimumRemainingTiles);
   const centerX = landTiles.reduce((sum, tile) => sum + tile.column + 0.5, 0) / landTiles.length;
   const centerY = landTiles.reduce((sum, tile) => sum + tile.row + 0.5, 0) / landTiles.length;
   const layers = new Map<number, TileState[]>();
 
   for (const tile of landTiles) {
-    if (protectedIds.has(tile.tileId)) {
-      continue;
-    }
-
     const layer = shoreDepths.get(tile.tileId) ?? 0;
     const group = layers.get(layer) ?? [];
     group.push(tile);
@@ -138,73 +127,6 @@ export function createCollapsePlan(
       });
     }),
   );
-}
-
-function selectProtectedCore(
-  landTiles: readonly TileState[],
-  shoreDepths: ReadonlyMap<TileId, number>,
-  targetSize: number,
-): ReadonlySet<TileId> {
-  const byId = new Map(landTiles.map((tile) => [tile.tileId, tile] as const));
-  const centerX = landTiles.reduce((sum, tile) => sum + tile.column + 0.5, 0) / landTiles.length;
-  const centerY = landTiles.reduce((sum, tile) => sum + tile.row + 0.5, 0) / landTiles.length;
-  const ranked = (tileIds: readonly TileId[]) =>
-    tileIds.toSorted((leftId, rightId) => {
-      const left = byId.get(leftId);
-      const right = byId.get(rightId);
-
-      if (left === undefined || right === undefined) {
-        return leftId.localeCompare(rightId);
-      }
-
-      const depthDifference = (shoreDepths.get(rightId) ?? 0) - (shoreDepths.get(leftId) ?? 0);
-      const leftDistance = Math.hypot(left.column + 0.5 - centerX, left.row + 0.5 - centerY);
-      const rightDistance = Math.hypot(right.column + 0.5 - centerX, right.row + 0.5 - centerY);
-      return depthDifference || leftDistance - rightDistance || leftId.localeCompare(rightId);
-    });
-  const seed = ranked(landTiles.map(({ tileId }) => tileId))[0];
-
-  if (seed === undefined) {
-    return new Set();
-  }
-
-  const protectedIds = new Set<TileId>([seed]);
-  const frontier = new Set<TileId>();
-  const addNeighbors = (tileId: TileId) => {
-    const tile = byId.get(tileId);
-
-    if (tile === undefined) {
-      return;
-    }
-
-    for (const [column, row] of [
-      [tile.column + 1, tile.row],
-      [tile.column - 1, tile.row],
-      [tile.column, tile.row + 1],
-      [tile.column, tile.row - 1],
-    ] as const) {
-      const neighborId = createTileId(column, row);
-
-      if (byId.has(neighborId) && !protectedIds.has(neighborId)) {
-        frontier.add(neighborId);
-      }
-    }
-  };
-  addNeighbors(seed);
-
-  while (protectedIds.size < targetSize && frontier.size > 0) {
-    const selected = ranked([...frontier])[0];
-
-    if (selected === undefined) {
-      break;
-    }
-
-    frontier.delete(selected);
-    protectedIds.add(selected);
-    addNeighbors(selected);
-  }
-
-  return protectedIds;
 }
 
 function getScheduledState(tick: Tick, wave: CollapseWave): TileStateKind {

@@ -279,8 +279,6 @@ export interface PendingSoapDamageState {
 export interface PirateShipState {
   readonly shipId: number;
   readonly position: Vector2;
-  readonly initialCannonAmmo: number;
-  readonly cannonAmmoRemaining: number;
 }
 
 export interface CannonShotState {

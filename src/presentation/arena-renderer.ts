@@ -1120,7 +1120,7 @@ function syncPirateShipSprites(
     sprite.height = targetHeight;
     sprite.width = targetHeight * (pirateShipTexture.width / pirateShipTexture.height);
     sprite.rotation = 0;
-    sprite.alpha = ship.cannonAmmoRemaining > 0 ? 1 : 0.84;
+    sprite.alpha = 1;
     sprite.visible = true;
   }
 
@@ -2774,29 +2774,6 @@ export async function createArenaRenderer(
       if (visualAssets?.pirateShipTexture === null || visualAssets === null) {
         drawPirateShip(artillery, ship, projection);
       }
-      const point = projectArenaPoint(ship.position, projection);
-      let label = artilleryLabelsByShip.get(ship.shipId);
-
-      if (label === undefined) {
-        label = new Text({
-          text: "",
-          style: {
-            fill: 0xffc857,
-            fontFamily: "system-ui, sans-serif",
-            fontSize: Math.max(12, projection.tileWidth * 0.22),
-            fontWeight: "800",
-            stroke: { color: 0x0f0c0e, width: 4 },
-          },
-        });
-        label.anchor.set(0.5, 1);
-        artilleryLabelsByShip.set(ship.shipId, label);
-        artilleryLabels.addChild(label);
-      }
-
-      label.text = ship.cannonAmmoRemaining > 0 ? `탄 ${ship.cannonAmmoRemaining}` : "돌탄";
-      label.style.fill = ship.cannonAmmoRemaining > 0 ? 0xffc857 : 0xff8f5c;
-      label.style.fontSize = Math.max(12, projection.tileWidth * 0.22);
-      label.position.set(point.x, point.y - projection.tileDepth * 1.25);
     }
 
     for (const treasureShip of latestFrame.treasureShips) {

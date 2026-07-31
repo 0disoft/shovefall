@@ -9,6 +9,14 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.115.0",
+    title: "마지막 땅까지 대포가 따라온다요 ㅇㅅㅇ",
+    reason:
+      "탄약 숫자와 마지막 돌탄 단계가 따로 있으니 규칙은 복잡한데 섬이 끝까지 잠기지는 않았다요.",
+    change:
+      "해적선은 탄약 제한 없이 각자 대포를 쏘고 마지막 육지가 바다가 될 때까지 포격한다요. 배 위 탄약 숫자와 돌탄 단계는 없앴다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.114.0",
     title: "날아오는 기술이 눈에 보인다요 ㅇㅅㅇ",
     reason:

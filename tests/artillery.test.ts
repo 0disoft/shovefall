@@ -10,17 +10,11 @@ import {
   getRockIntervalTicks,
   getRockVolleySize,
   ROCK_BLAST_RADIUS,
-  ROCK_FLIGHT_TICKS,
   ROCK_MAXIMUM_LEAD_DISTANCE,
 } from "../src/simulation/artillery";
 import { getOuterOceanTileIds } from "../src/simulation/arena";
-import { createCollapsePlan, MINIMUM_REMAINING_LAND_RATIO } from "../src/simulation/collapse";
-import {
-  createTileId,
-  createNeutralCommand,
-  normalizeGameConfig,
-  type SimulationEventV1,
-} from "../src/simulation/contracts";
+import { createCollapsePlan } from "../src/simulation/collapse";
+import { createTileId, normalizeGameConfig } from "../src/simulation/contracts";
 import { RandomStreamSet } from "../src/simulation/random";
 import { SimulationWorld } from "../src/simulation/world";
 
@@ -122,7 +116,13 @@ describe("pirate artillery", () => {
     expect(
       artillery.cannonShots.every(({ warningTick, launchTick }) => warningTick === launchTick),
     ).toBe(true);
-    const launchGapsByShip = artillery.cannonLaunchTicksByShip.flatMap((launchTicks) =>
+    const launchTicksByShip = new Map<number, number[]>();
+    for (const shot of artillery.cannonShots) {
+      const launchTicks = launchTicksByShip.get(shot.shipId) ?? [];
+      launchTicks.push(shot.launchTick);
+      launchTicksByShip.set(shot.shipId, launchTicks);
+    }
+    const launchGapsByShip = [...launchTicksByShip.values()].flatMap((launchTicks) =>
       launchTicks.slice(1).map((tick, index) => tick - (launchTicks[index] ?? 0)),
     );
     expect(launchGapsByShip.length).toBeGreaterThan(0);
@@ -130,7 +130,7 @@ describe("pirate artillery", () => {
     expect(launchGapsByShip.some((gap) => gap <= CANNON_MAXIMUM_LAUNCH_INTERVAL_TICKS)).toBe(true);
   });
 
-  it("fires one nearby-coast cannonball per warned tile and exposes bounded live ammo", () => {
+  it("fires one nearby-coast cannonball per warned tile without an ammunition counter", () => {
     const config = normalizeGameConfig({
       participantCount: 4,
       arenaColumns: 9,
@@ -155,11 +155,9 @@ describe("pirate artillery", () => {
       config.arenaRows,
       new RandomStreamSet(seed).get("artillery-plan"),
     );
-    const initialAmmo = plan.ships.map(({ initialCannonAmmo }) => initialCannonAmmo);
     const firstShot = plan.cannonShots[0];
 
     expect(plan.cannonShots).toHaveLength(plan.collapseWaves.length);
-    expect(initialAmmo.reduce((total, ammo) => total + ammo, 0)).toBe(plan.collapseWaves.length);
     for (const [waveIndex, shot] of plan.cannonShots.entries()) {
       const wave = plan.collapseWaves[waveIndex];
       expect(wave?.tileIds).toEqual([shot.targetTileId]);
@@ -170,9 +168,7 @@ describe("pirate artillery", () => {
 
     const finalImpactTick = plan.collapseWaves.at(-1)?.voidTick ?? 0;
     expect(finalImpactTick).toBeGreaterThan(0);
-    expect(
-      getPirateShipStates(plan, 0).map(({ cannonAmmoRemaining }) => cannonAmmoRemaining),
-    ).toEqual(initialAmmo);
+    expect(getPirateShipStates(plan)).toEqual(plan.ships);
     expect(firstShot).toBeDefined();
     expect(getActiveCannonShots(plan, firstShot?.warningTick ?? 0)).toContainEqual(firstShot);
     const nearestLandDistances = plan.ships.map(({ position }) =>
@@ -229,17 +225,12 @@ describe("pirate artillery", () => {
       .slice(1)
       .map((shot, index) => shot.launchTick - (artillery.cannonShots[index]?.launchTick ?? 0));
     expect(globalLaunchGaps.some((gap) => gap < CANNON_MINIMUM_LAUNCH_INTERVAL_TICKS)).toBe(true);
-    expect(
-      artillery.ships.reduce((total, { initialCannonAmmo }) => total + initialCannonAmmo, 0),
-    ).toBe(artillery.collapseWaves.length);
     const initialLandCount = frame.tiles.filter(({ state }) => state === "Stable").length;
     const protectedLandCount = initialLandCount - artillery.collapseWaves.length;
-    expect(protectedLandCount).toBe(
-      Math.max(1, Math.floor(initialLandCount * MINIMUM_REMAINING_LAND_RATIO)),
-    );
+    expect(protectedLandCount).toBe(0);
   });
 
-  it("stops at the connected ten-percent core, then telegraphs lethal rocks", () => {
+  it("keeps firing cannonballs through the final land tile instead of entering a rock phase", () => {
     const config = normalizeGameConfig({
       participantCount: 4,
       arenaColumns: 7,
@@ -265,49 +256,10 @@ describe("pirate artillery", () => {
       config.arenaRows,
       new RandomStreamSet(seed).get("artillery-plan"),
     );
-    const scheduledIds = new Set(plan.collapseWaves.flatMap(({ tileIds }) => tileIds));
-    const coreTiles = initialFrame.tiles.filter(
-      ({ state, tileId }) => state === "Stable" && !scheduledIds.has(tileId),
-    );
-    const positions = coreTiles.slice(0, 4).map(({ column, row }) => ({
-      x: column + 0.5,
-      y: row + 0.5,
-    }));
-    const world = new SimulationWorld(config, seed, {
-      arenaLayout: "rectangular-fixture",
-      participantOverrides: positions.map((position, index) => ({
-        actorId: index + 1,
-        position,
-      })),
-    });
-    const events: SimulationEventV1[] = [];
-    const endTick = plan.rockPhaseStartTick + ROCK_FLIGHT_TICKS + 1;
+    const initialLandCount = initialFrame.tiles.filter(({ state }) => state === "Stable").length;
 
-    while (world.tick < endTick && world.createRenderFrame().round.status === "Active") {
-      events.push(
-        ...world.step(
-          world
-            .createRenderFrame()
-            .participants.filter(({ active }) => active)
-            .map(({ actorId }) => createNeutralCommand(world.tick, actorId)),
-        ).events,
-      );
-    }
-
-    const frame = world.createRenderFrame();
-    const expectedCoreSize = Math.max(
-      1,
-      Math.floor(
-        initialFrame.tiles.filter(({ state }) => state === "Stable").length *
-          MINIMUM_REMAINING_LAND_RATIO,
-      ),
-    );
-
-    expect(events.some(({ kind }) => kind === "rock-fired")).toBe(true);
-    expect(events.some(({ kind }) => kind === "rock-impact")).toBe(true);
-    expect(events.some(({ kind }) => kind === "eliminated")).toBe(true);
-    expect(frame.tiles.filter(({ state }) => state !== "Void").length).toBeGreaterThanOrEqual(
-      expectedCoreSize,
-    );
+    expect(plan.collapseWaves).toHaveLength(initialLandCount);
+    expect(plan.cannonShots).toHaveLength(initialLandCount);
+    expect(plan.rockPhaseStartTick).toBe(Number.MAX_SAFE_INTEGER);
   });
 });

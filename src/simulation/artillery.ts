@@ -27,29 +27,10 @@ export interface ArtilleryPlan {
   readonly ships: readonly Readonly<{
     shipId: number;
     position: Vector2;
-    initialCannonAmmo: number;
   }>[];
   readonly cannonShots: readonly CannonShotState[];
-  readonly cannonLaunchTicksByShip: readonly (readonly Tick[])[];
   readonly collapseWaves: readonly CollapseWave[];
   readonly rockPhaseStartTick: Tick;
-}
-
-function countLaunchedShots(launchTicks: readonly Tick[], tick: Tick): number {
-  let low = 0;
-  let high = launchTicks.length;
-
-  while (low < high) {
-    const middle = low + Math.floor((high - low) / 2);
-
-    if ((launchTicks[middle] ?? Number.POSITIVE_INFINITY) < tick) {
-      low = middle + 1;
-    } else {
-      high = middle;
-    }
-  }
-
-  return low;
 }
 
 const ORTHOGONAL_OFFSETS = Object.freeze([
@@ -188,8 +169,6 @@ export function createArtilleryPlan(
   const supportedTileIds = new Set(
     tiles.filter(({ state }) => state !== "Void").map(({ tileId }) => tileId),
   );
-  const ammoByShip = Array.from({ length: PIRATE_SHIP_COUNT }, () => 0);
-  const cannonLaunchTicksByShip = Array.from({ length: PIRATE_SHIP_COUNT }, (): Tick[] => []);
   const cannonShots: CannonShotState[] = [];
   const collapseWaves: CollapseWave[] = [];
   const scheduledImpacts: { tick: Tick; tileId: TileId }[] = [];
@@ -318,8 +297,6 @@ export function createArtilleryPlan(
       voidTick: impactTick,
     });
     collapseWaves.push(acceptedWave);
-    ammoByShip[shipIndex] = (ammoByShip[shipIndex] ?? 0) + 1;
-    cannonLaunchTicksByShip[shipIndex]?.push(launchTick);
     pendingByTileId.delete(tile.tileId);
     frontierTileIds.delete(tile.tileId);
     reservedTileIds.add(tile.tileId);
@@ -345,34 +322,18 @@ export function createArtilleryPlan(
     Object.freeze({
       shipId: index + 1,
       position,
-      initialCannonAmmo: ammoByShip[index] ?? 0,
     }),
   );
-  const finalImpactTick = collapseWaves.at(-1)?.voidTick ?? 0;
   return Object.freeze({
     ships: Object.freeze(ships),
     cannonShots: Object.freeze(cannonShots),
-    cannonLaunchTicksByShip: Object.freeze(
-      cannonLaunchTicksByShip.map((launchTicks) => Object.freeze(launchTicks)),
-    ),
     collapseWaves: Object.freeze(collapseWaves),
-    rockPhaseStartTick: finalImpactTick + 60,
+    rockPhaseStartTick: Number.MAX_SAFE_INTEGER,
   });
 }
 
-export function getPirateShipStates(plan: ArtilleryPlan, tick: Tick): readonly PirateShipState[] {
-  return Object.freeze(
-    plan.ships.map((ship) => {
-      const fired = countLaunchedShots(
-        plan.cannonLaunchTicksByShip[ship.shipId - 1] ?? Object.freeze([]),
-        tick,
-      );
-      return Object.freeze({
-        ...ship,
-        cannonAmmoRemaining: Math.max(0, ship.initialCannonAmmo - fired),
-      });
-    }),
-  );
+export function getPirateShipStates(plan: ArtilleryPlan): readonly PirateShipState[] {
+  return plan.ships;
 }
 
 export function getActiveCannonShots(plan: ArtilleryPlan, tick: Tick): readonly CannonShotState[] {

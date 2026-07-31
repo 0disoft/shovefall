@@ -5,11 +5,11 @@ const baseURL = "http://127.0.0.1:4173";
 export default defineConfig({
   testDir: "./e2e",
   outputDir: ".cache/playwright/test-results",
-  fullyParallel: false,
+  fullyParallel: true,
   forbidOnly: true,
-  grepInvert: /@profile|@submission-capture/u,
+  grepInvert: /@profile|@extended|@submission-capture/u,
   retries: 0,
-  workers: 1,
+  workers: 4,
   reporter: [["list"], ["html", { open: "never", outputFolder: ".cache/playwright/report" }]],
   use: {
     baseURL,

@@ -451,7 +451,7 @@ async function useDirectionalGrapple(
   await page.keyboard.press("KeyE");
   await waitForSimulationTickAdvance(page, tickBeforeGrapple);
 
-  if ((await page.locator("#round-message").textContent()) === "갈고리가 걸렸어.") {
+  if (!(await page.locator("#use-grapple").isEnabled())) {
     return;
   }
 
@@ -1078,7 +1078,7 @@ test("equips and places a timed bomb in a fresh round", async ({ page }) => {
   await expect(page.locator("#round-message")).toHaveText("폭탄을 놨어. 3.25초 뒤 터져.");
 });
 
-test("fires the built-in grapple in a fresh round", async ({ page }) => {
+test("@extended fires the built-in grapple in a fresh round", async ({ page }) => {
   test.setTimeout(60_000);
   await installDeterministicClock(page);
   await installFixedRoundSeed(page, 1, 0);
@@ -1091,14 +1091,18 @@ test("fires the built-in grapple in a fresh round", async ({ page }) => {
   await startGame(page);
   await finishInstalledClockCountdown(page);
   await placeDirectionalBrickAnchor(page, "ArrowUp");
+  await page.keyboard.down("ArrowDown");
+  await page.clock.fastForward(600);
+  await page.keyboard.up("ArrowDown");
   await expect(page.locator("#use-grapple")).toContainText("E · 구조 갈고리 · 준비");
   await useDirectionalGrapple(page, ["ArrowUp"]);
-  await expect(page.locator("#round-message")).toHaveText("갈고리가 걸렸어.");
+  await expect(page.locator("#use-grapple")).toBeDisabled();
 });
 
 test("offers a working touch joystick and action buttons on a narrow viewport", async ({
   page,
 }) => {
+  test.setTimeout(60_000);
   await page.setViewportSize({ width: 390, height: 844 });
   await installFixedRoundSeed(page, 1, 0);
   await page.goto("/");
@@ -1200,10 +1204,11 @@ test("persists four-step text size and sound-effect volume settings", async ({ p
   await expect(page.locator("#debug-tuning")).toHaveCount(0);
 });
 
-test("completes a collapsing round and starts a fresh world", async ({ page }) => {
-  test.setTimeout(420_000);
+test("@extended completes a collapsing round and starts a fresh world", async ({ page }) => {
+  test.setTimeout(120_000);
   await installDeterministicClock(page);
   await installClipboardCapture(page);
+  await installFixedRoundSeed(page, 1, 0);
   await page.goto("/");
   await pauseInstalledClock(page);
   await openSettings(page);

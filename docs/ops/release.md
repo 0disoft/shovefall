@@ -1,8 +1,15 @@
 # Static Release Procedure
 
-- Status: `0.114.0` projectile-presentation candidate; hosted proof pending
+- Status: `0.115.0` complete-island cannon-collapse candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.114.0`
+- Current product version: `0.115.0`
+
+Product `0.115.0`, simulation `77.0.0`, and content `48.0.0` remove the
+protected land floor, per-ship ammunition counters, and terminal rock phase.
+The sixteen ships retain independent firing clocks and one-warning/one-shot
+target ownership while accepted impacts expose the next coast until every
+stable land tile has flooded. Replay stays v8 and reports remain v11. Hosted
+proof, complete-collapse pacing, and human readability remain pending.
 
 Product `0.114.0`, simulation `76.0.0`, and content `48.0.0` keep the same game rules. Arc Bolt and Chain Bind keep immediate deterministic hit resolution while their generated projectile art travels from caster to impact at three tiles per second. Starting attributes and kill-reward traits use the same six Korean names. The live
 defense readout names damage reduction and shield strength instead of Dodge

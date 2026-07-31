@@ -4,19 +4,19 @@
 
 ## Operational Contract
 
-`.github/workflows/ci.yml` is the source-owned hosted validation and GitHub Pages deployment workflow. It runs on pushes to `main`, pull requests targeting `main`, and manual dispatch. The `Validate` job uses `ubuntu-24.04`, Bun `1.3.14`, the committed lockfile, and a fifteen-minute timeout.
+`.github/workflows/ci.yml` is the source-owned hosted validation and GitHub Pages deployment workflow. It runs on pushes to `main`, pull requests targeting `main`, and manual dispatch. Independent `Validate`, `Production Chrome`, and optional `Submission capture` jobs use `ubuntu-24.04`, Bun `1.3.14`, the committed lockfile, and a two-minute timeout per job.
 
-The job performs these stages in order:
+The workflow performs these stages in parallel where dependencies allow:
 
 1. Check out only the triggering source revision without persisted Git credentials.
 2. Install the exact Bun version and locked dependency graph without dependency lifecycle scripts.
-3. Run `check`, the same aggregate merge-blocking command defined in `package.json` and `VALIDATION.md`.
-4. Build and exercise the generated production artifact through `smoke-dist` in the runner's stable Chrome channel.
-5. On `main` pushes and manual runs only, attempt a clean exact-SHA submission-media bundle with
+3. The `Validate` job runs `check`, the same aggregate merge-blocking command defined in `package.json` and `VALIDATION.md`.
+4. The `Production Chrome` job builds and exercises the generated production artifact through `smoke-dist`, then uploads that tested `dist` artifact on non-PR runs.
+5. On `main` pushes and manual runs only, the optional capture job attempts a clean exact-SHA submission-media bundle with
    two PNGs, one WebM, and its provenance manifest; upload it only when capture succeeds.
-6. Configure Pages and upload the already-tested `dist` directory as a 30-day artifact.
+6. After both blocking jobs pass, the deploy job configures Pages and deploys the already-tested artifact.
 
-The dependent `Deploy GitHub Pages` job runs only after `Validate` succeeds and never runs for a
+The dependent `Deploy GitHub Pages` job runs only after both blocking jobs succeed and never runs for a
 pull request. It deploys the uploaded artifact to the `github-pages` environment and publishes the
 provider-returned URL as the environment URL.
 
