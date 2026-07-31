@@ -9,6 +9,13 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.131.0",
+    title: "남은 땅과 생존자를 셀 때 줄을 새로 안 만든다요 ㅇㅅㅇ",
+    reason: "통계를 갱신할 때마다 타일과 참가자 줄을 통째로 새 배열로 만들고 개수만 세고 버렸다요.",
+    change:
+      "남은 땅과 생존자 수를 셀 때 줄을 새로 만들지 않고 지나가며 센다요. 그림과 전투 결과, 수치는 그대로다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.130.0",
     title: "내 참가자를 두 번 찾지 않는다요 ㅇㅅㅇ",
     reason: "매 그림마다 내 참가자를 카메라 잡을 때 한 번, 거리 잴 때 또 한 번 찾았다요.",

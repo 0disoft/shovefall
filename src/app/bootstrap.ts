@@ -1379,23 +1379,38 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
       button.setAttribute("aria-label", model.ariaLabel ?? model.text);
       button.disabled = model.disabled;
     }
-    const standingParticipants = current.frame.participants.filter(
-      (participant) =>
+    let standingParticipantCount = 0;
+    for (const participant of current.frame.participants) {
+      if (
         participant.active &&
         participant.action !== "Falling" &&
-        participant.action !== "Eliminated",
-    );
-    survivorValue.value = String(standingParticipants.length);
-    latestInitialLandTileCount ??= current.frame.tiles.filter(
-      ({ state }) => state !== "Void",
-    ).length;
-    const currentLandTileCount = current.frame.tiles.filter(({ state }) => state !== "Void").length;
+        participant.action !== "Eliminated"
+      ) {
+        standingParticipantCount += 1;
+      }
+    }
+    survivorValue.value = String(standingParticipantCount);
+    if (latestInitialLandTileCount === undefined) {
+      let initialLandTileCount = 0;
+      for (const tile of current.frame.tiles) {
+        if (tile.state !== "Void") {
+          initialLandTileCount += 1;
+        }
+      }
+      latestInitialLandTileCount = initialLandTileCount;
+    }
+    let currentLandTileCount = 0;
+    for (const tile of current.frame.tiles) {
+      if (tile.state !== "Void") {
+        currentLandTileCount += 1;
+      }
+    }
     const statistics = current.roundStatistics;
     const elapsedSeconds = Math.floor(current.frame.tick / FIXED_TICKS_PER_SECOND);
     roundElapsedTime.value = `${Math.floor(elapsedSeconds / 60)}:${String(elapsedSeconds % 60).padStart(2, "0")}`;
     roundCurrentRank.value =
       latestHumanFinalRank === undefined
-        ? `${standingParticipants.length}명 생존`
+        ? `${standingParticipantCount}명 생존`
         : `${latestHumanFinalRank}위`;
     roundEliminations.value = String(human.progression.creditedEliminations);
     roundLandRemaining.value = `${Math.round(

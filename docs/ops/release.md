@@ -1,11 +1,11 @@
 # Static Release Procedure
 
-- Status: `0.130.0` complete-island cannon-collapse candidate; hosted proof pending
+- Status: `0.131.0` complete-island cannon-collapse candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.130.0`
+- Current product version: `0.131.0`
 
-Product `0.130.0`, simulation `78.0.0`, and content `48.0.0` keep simulation `78.0.0`,
-content `48.0.0`, replay v8, and reports v11. The human participant is now looked up once per draw and reused for both camera spectator detection and proximity feedback instead of scanning the participant list a second time. Visible camera mode and action feedback, combat results, replay hash, and balance are unchanged. Hosted proof, complete-collapse pacing, and human readability remain pending.
+Product `0.131.0`, simulation `78.0.0`, and content `48.0.0` keep simulation `78.0.0`,
+content `48.0.0`, replay v8, and reports v11. The telemetry path now counts standing participants and remaining land tiles in a single pass instead of allocating filtered arrays each update just to read their length. Visible survivor and land-remaining readouts, combat results, replay hash, and balance are unchanged. Hosted proof, complete-collapse pacing, and human readability remain pending.
 
 Product `0.125.0`, simulation `78.0.0`, and content `48.0.0` keep simulation `78.0.0`,
 content `48.0.0`, replay v8, and reports v11. Earning a stat point from a human kill now plays a brief bright cue, adding audible reward feedback to the existing kill flash. The cue fires only for the human player's kills and is presentation-only. Combat results, replay hash, and balance are unchanged. Hosted proof, complete-collapse pacing, and human readability remain pending.
