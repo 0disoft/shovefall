@@ -2601,6 +2601,24 @@ export async function createArenaRenderer(
   let spectatorRoundId: number | undefined;
   let tileLayerDirty = true;
   let oceanSprite: Sprite | undefined;
+  let cachedProjection: ArenaProjection | undefined;
+  let cachedProjectionWidth = 0;
+  let cachedProjectionHeight = 0;
+
+  const getArenaProjection = (): ArenaProjection => {
+    const width = application.screen.width;
+    const height = application.screen.height;
+    if (
+      cachedProjection === undefined ||
+      width !== cachedProjectionWidth ||
+      height !== cachedProjectionHeight
+    ) {
+      cachedProjection = createArenaProjection(width, height);
+      cachedProjectionWidth = width;
+      cachedProjectionHeight = height;
+    }
+    return cachedProjection;
+  };
 
   const getPresentationCamera = (projection: ArenaProjection): Vector2 => {
     if (latestFrame === undefined) {
@@ -2634,7 +2652,7 @@ export async function createArenaRenderer(
       return;
     }
 
-    const projection = createArenaProjection(application.screen.width, application.screen.height);
+    const projection = getArenaProjection();
     const presentationCamera = getPresentationCamera(projection);
 
     if (visualAssets?.oceanTexture !== null && visualAssets?.oceanTexture !== undefined) {
@@ -3296,7 +3314,7 @@ export async function createArenaRenderer(
         return false;
       }
 
-      const projection = createArenaProjection(application.screen.width, application.screen.height);
+      const projection = getArenaProjection();
       const currentCamera = getPresentationCamera(projection);
       const requestedCamera = Object.freeze({
         x: currentCamera.x + deltaX,
@@ -3375,7 +3393,7 @@ export async function createArenaRenderer(
       ) {
         return undefined;
       }
-      const projection = createArenaProjection(application.screen.width, application.screen.height);
+      const projection = getArenaProjection();
       const camera = getPresentationCamera(projection);
       return Object.freeze({
         x: (clientX - bounds.left - camera.x - projection.originX) / projection.pitch,

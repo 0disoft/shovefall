@@ -9,6 +9,14 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.126.0",
+    title: "화면 크기가 안 바뀌면 투영을 다시 안 만든다요 ㅇㅅㅇ",
+    reason:
+      "매 프레임마다 화면 투영을 새로 계산해서 새 객체를 만들었는데, 화면 크기가 안 변해도 같은 계산을 되풀이했다요.",
+    change:
+      "화면 크기가 바뀔 때만 투영을 다시 만들고, 같으면 이전 투영을 그대로 쓴다요. 그림과 전투 결과, 수치는 그대로다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.125.0",
     title: "처치하면 상쾌한 소리가 난다요 ㅇㅅㅇ",
     reason: "적을 처치해도 소리가 없어서 득점한 느낌이 잘 안 들었다요.",
