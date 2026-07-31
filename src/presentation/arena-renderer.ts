@@ -1247,11 +1247,9 @@ function syncProjectileSprites(
       }
 
       const progress = getShotProgress(frame.tick, shot.launchTick, shot.impactTick);
-      const projected = projectArenaPoint(
-        {
-          x: shot.origin.x + (shot.target.x - shot.origin.x) * progress,
-          y: shot.origin.y + (shot.target.y - shot.origin.y) * progress,
-        },
+      const projected = projectArenaXY(
+        shot.origin.x + (shot.target.x - shot.origin.x) * progress,
+        shot.origin.y + (shot.target.y - shot.origin.y) * progress,
         projection,
       );
       const direction = projectArenaVector({
@@ -2339,8 +2337,9 @@ function drawWorldEffect(
   } else if (effect.kind === "grappling-hook-hit") {
     const cableAlpha = alpha;
     const anchorVector = effect.vector ?? { x: 0, y: 0 };
-    const anchor = projectArenaPoint(
-      { x: effect.position.x + anchorVector.x, y: effect.position.y + anchorVector.y },
+    const anchor = projectArenaXY(
+      effect.position.x + anchorVector.x,
+      effect.position.y + anchorVector.y,
       projection,
     );
     const hookSize = Math.max(5, projection.tileWidth * 0.13);

@@ -9,6 +9,14 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.138.0",
+    title: "포탄과 갈고리 자리도 껍데기 없이 옮긴다요 ㅇㅅㅇ",
+    reason:
+      "포탄이 날아가는 자리와 갈고리 닻 자리를 화면으로 옮길 때도 잠깐 쓸 껍데기를 새로 만들었다요.",
+    change:
+      "포탄과 갈고리 자리도 숫자를 바로 넣어 옮긴다요. 그림과 전투 결과, 수치는 그대로다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.137.0",
     title: "카메라·나무·자국 자리도 껍데기 없이 옮긴다요 ㅇㅅㅇ",
     reason:
