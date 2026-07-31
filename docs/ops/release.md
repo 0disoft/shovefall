@@ -1,8 +1,11 @@
 # Static Release Procedure
 
-- Status: `0.118.0` complete-island cannon-collapse candidate; hosted proof pending
+- Status: `0.119.0` complete-island cannon-collapse candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.118.0`
+- Current product version: `0.119.0`
+
+Product `0.119.0`, simulation `78.0.0`, and content `48.0.0` keep simulation `78.0.0`,
+content `48.0.0`, replay v8, and reports v11. Terrain tile lookup now uses a numeric tile key instead of per-frame string interpolation and intermediate arrays, cutting render work each frame on the 60-participant island. Visible water and land, combat results, replay hash, and balance are unchanged. Hosted proof, complete-collapse pacing, and human readability remain pending.
 
 Product `0.118.0`, simulation `78.0.0`, and content `48.0.0` keep simulation `78.0.0`,
 content `48.0.0`, replay v8, and reports v11. Opening the kill-reward trait dialog

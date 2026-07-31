@@ -54,6 +54,13 @@ import {
 } from "./character-motion";
 
 const CAMERA_OCEAN_MARGIN_TILES = 7.25;
+const TILE_KEY_STRIDE = 2048;
+const TILE_KEY_OFFSET = 1024;
+
+// Numeric tile key avoids per-frame string interpolation during terrain lookup.
+export function tileKey(column: number, row: number): number {
+  return (column + TILE_KEY_OFFSET) * TILE_KEY_STRIDE + (row + TILE_KEY_OFFSET);
+}
 
 export interface ArenaRenderer {
   consumeEvents(events: readonly SimulationEventV1[], frame: RenderFrameV1): void;
@@ -859,12 +866,12 @@ function removeStaleSprites<Key extends string | number>(
 
 export function getTerrainTextureIndex(
   tile: TileState,
-  supportedTileIds: ReadonlySet<string>,
+  supportedTileIds: ReadonlySet<number>,
 ): number {
-  const north = !supportedTileIds.has(`${tile.column}:${tile.row - 1}`);
-  const east = !supportedTileIds.has(`${tile.column + 1}:${tile.row}`);
-  const south = !supportedTileIds.has(`${tile.column}:${tile.row + 1}`);
-  const west = !supportedTileIds.has(`${tile.column - 1}:${tile.row}`);
+  const north = !supportedTileIds.has(tileKey(tile.column, tile.row - 1));
+  const east = !supportedTileIds.has(tileKey(tile.column + 1, tile.row));
+  const south = !supportedTileIds.has(tileKey(tile.column, tile.row + 1));
+  const west = !supportedTileIds.has(tileKey(tile.column - 1, tile.row));
 
   const waterMask =
     (north ? TERRAIN_WATER_NORTH : 0) |
@@ -877,10 +884,10 @@ export function getTerrainTextureIndex(
   }
 
   const diagonalWaterMask =
-    (!supportedTileIds.has(`${tile.column + 1}:${tile.row - 1}`) ? TERRAIN_WATER_NORTH_EAST : 0) |
-    (!supportedTileIds.has(`${tile.column + 1}:${tile.row + 1}`) ? TERRAIN_WATER_SOUTH_EAST : 0) |
-    (!supportedTileIds.has(`${tile.column - 1}:${tile.row + 1}`) ? TERRAIN_WATER_SOUTH_WEST : 0) |
-    (!supportedTileIds.has(`${tile.column - 1}:${tile.row - 1}`) ? TERRAIN_WATER_NORTH_WEST : 0);
+    (!supportedTileIds.has(tileKey(tile.column + 1, tile.row - 1)) ? TERRAIN_WATER_NORTH_EAST : 0) |
+    (!supportedTileIds.has(tileKey(tile.column + 1, tile.row + 1)) ? TERRAIN_WATER_SOUTH_EAST : 0) |
+    (!supportedTileIds.has(tileKey(tile.column - 1, tile.row + 1)) ? TERRAIN_WATER_SOUTH_WEST : 0) |
+    (!supportedTileIds.has(tileKey(tile.column - 1, tile.row - 1)) ? TERRAIN_WATER_NORTH_WEST : 0);
 
   if (diagonalWaterMask !== 0) {
     return TERRAIN_DIAGONAL_VARIANT_START + diagonalWaterMask - 1;
@@ -910,9 +917,12 @@ function syncTerrainSprites(
     return 0;
   }
 
-  const supportedTileIds = new Set(
-    frame.tiles.filter(({ state }) => state !== "Void").map(({ tileId }) => tileId),
-  );
+  const supportedTileIds = new Set<number>();
+  for (const tile of frame.tiles) {
+    if (tile.state !== "Void") {
+      supportedTileIds.add(tileKey(tile.column, tile.row));
+    }
+  }
   const visibleTileIds = new Set<string>();
   const cullMarginX = projection.pitch * 2;
   const cullMarginY = (projection.tileDepth + projection.cliffDepth) * 2;
@@ -2667,9 +2677,12 @@ export async function createArenaRenderer(
 
     if (tileLayerDirty) {
       tiles.clear();
-      const supportedTileIds = new Set<string>(
-        latestFrame.tiles.filter(({ state }) => state !== "Void").map(({ tileId }) => tileId),
-      );
+      const supportedTileIds = new Set<number>();
+      for (const tile of latestFrame.tiles) {
+        if (tile.state !== "Void") {
+          supportedTileIds.add(tileKey(tile.column, tile.row));
+        }
+      }
 
       const hasGeneratedTerrain =
         visualAssets?.terrainTextures !== null && visualAssets?.terrainTextures !== undefined;
@@ -2680,7 +2693,7 @@ export async function createArenaRenderer(
             tiles,
             tile,
             projection,
-            supportedTileIds.has(`${tile.column}:${tile.row + 1}`),
+            supportedTileIds.has(tileKey(tile.column, tile.row + 1)),
           );
         }
       }
@@ -2691,10 +2704,10 @@ export async function createArenaRenderer(
         }
 
         const isShore =
-          !supportedTileIds.has(`${tile.column - 1}:${tile.row}`) ||
-          !supportedTileIds.has(`${tile.column + 1}:${tile.row}`) ||
-          !supportedTileIds.has(`${tile.column}:${tile.row - 1}`) ||
-          !supportedTileIds.has(`${tile.column}:${tile.row + 1}`);
+          !supportedTileIds.has(tileKey(tile.column - 1, tile.row)) ||
+          !supportedTileIds.has(tileKey(tile.column + 1, tile.row)) ||
+          !supportedTileIds.has(tileKey(tile.column, tile.row - 1)) ||
+          !supportedTileIds.has(tileKey(tile.column, tile.row + 1));
         drawTile(tiles, tile, projection, isShore);
       }
 

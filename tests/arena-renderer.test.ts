@@ -5,6 +5,7 @@ import {
   getSkillProjectilePosition,
   getSkillProjectileTravelTicks,
   getTerrainTextureIndex,
+  tileKey,
   shouldDrawProceduralWorldEffect,
 } from "../src/presentation/arena-renderer";
 import { normalizeGameConfig, type TileState } from "../src/simulation/contracts";
@@ -279,7 +280,16 @@ describe("arena renderer presentation", () => {
       row: 4,
       state: "Stable",
     });
-    const supportedTileIds = new Set(["4:4", "4:3", "5:4", "4:5", "3:4", "5:5", "3:5", "3:3"]);
+    const supportedTileIds = new Set([
+      tileKey(4, 4),
+      tileKey(4, 3),
+      tileKey(5, 4),
+      tileKey(4, 5),
+      tileKey(3, 4),
+      tileKey(5, 5),
+      tileKey(3, 5),
+      tileKey(3, 3),
+    ]);
 
     expect(getTerrainTextureIndex(tile, supportedTileIds)).toBe(TERRAIN_DIAGONAL_VARIANT_START);
   });

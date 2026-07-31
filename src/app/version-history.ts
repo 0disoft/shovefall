@@ -9,6 +9,14 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.119.0",
+    title: "섬이 그려질 때 문자열을 덜 만든다요 ㅇㅅㅇ",
+    reason:
+      "매 프레임마다 타일 윤곽을 찾으려고 타일 아이디 문자열을 수천 번씩 새로 만들어서, 60명이 한 화면에서 움직일 때 그림이 무거워졌다요.",
+    change:
+      "타일 윤곽 조회에 숫자 키를 쓰고 문자열 보간과 중간 배열을 없앴다요. 그려지는 물과 땅, 전투 결과와 수치는 그대로다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.118.0",
     title: "성장 창이 뜰 때 손가락이 떨어지지 않는다요 ㅇㅅㅇ",
     reason:
