@@ -758,13 +758,20 @@ function findSweptCircleContact(
   right: ParticipantState,
   minimumDistance: number,
 ): SweptCircleContact | undefined {
-  const leftMotion = subtractVectors(left.body.position, left.body.previousPosition);
-  const rightMotion = subtractVectors(right.body.position, right.body.previousPosition);
-  const relativeStart = subtractVectors(right.body.previousPosition, left.body.previousPosition);
-  const relativeMotion = subtractVectors(rightMotion, leftMotion);
-  const quadraticA = vectorLengthSquared(relativeMotion);
-  const quadraticB = 2 * dotVectors(relativeStart, relativeMotion);
-  const quadraticC = vectorLengthSquared(relativeStart) - minimumDistance * minimumDistance;
+  const leftMotionX = left.body.position.x - left.body.previousPosition.x;
+  const leftMotionY = left.body.position.y - left.body.previousPosition.y;
+  const rightMotionX = right.body.position.x - right.body.previousPosition.x;
+  const rightMotionY = right.body.position.y - right.body.previousPosition.y;
+  const relativeStartX = right.body.previousPosition.x - left.body.previousPosition.x;
+  const relativeStartY = right.body.previousPosition.y - left.body.previousPosition.y;
+  const relativeMotionX = rightMotionX - leftMotionX;
+  const relativeMotionY = rightMotionY - leftMotionY;
+  const quadraticA = relativeMotionX * relativeMotionX + relativeMotionY * relativeMotionY;
+  const quadraticB = 2 * (relativeStartX * relativeMotionX + relativeStartY * relativeMotionY);
+  const quadraticC =
+    relativeStartX * relativeStartX +
+    relativeStartY * relativeStartY -
+    minimumDistance * minimumDistance;
 
   if (quadraticA === 0 || quadraticC < 0 || quadraticB >= 0) {
     return undefined;
@@ -782,14 +789,21 @@ function findSweptCircleContact(
     return undefined;
   }
 
-  const leftPosition = addVectors(left.body.previousPosition, scaleVector(leftMotion, time));
-  const rightPosition = addVectors(right.body.previousPosition, scaleVector(rightMotion, time));
-  const delta = subtractVectors(rightPosition, leftPosition);
-  const distance = vectorLength(delta);
+  const leftPosition = Object.freeze({
+    x: left.body.previousPosition.x + leftMotionX * time,
+    y: left.body.previousPosition.y + leftMotionY * time,
+  });
+  const rightPosition = Object.freeze({
+    x: right.body.previousPosition.x + rightMotionX * time,
+    y: right.body.previousPosition.y + rightMotionY * time,
+  });
+  const deltaX = rightPosition.x - leftPosition.x;
+  const deltaY = rightPosition.y - leftPosition.y;
+  const distance = Math.hypot(deltaX, deltaY);
   const normal =
     distance === 0
       ? Object.freeze({ x: left.actorId < right.actorId ? 1 : -1, y: 0 })
-      : scaleVector(delta, 1 / distance);
+      : Object.freeze({ x: deltaX / distance, y: deltaY / distance });
 
   return Object.freeze({ time, normal, leftPosition, rightPosition });
 }
@@ -800,7 +814,8 @@ function hasTileSupport(position: Vector2, tilesById: ReadonlySet<string>): bool
 
 function getMissedStumbleTicks(participant: ParticipantState): number {
   const speedTicks =
-    (vectorLength(participant.body.velocity) * SIMULATION_TUNING.shove.missedStumbleSpeedTicks) /
+    (Math.hypot(participant.body.velocity.x, participant.body.velocity.y) *
+      SIMULATION_TUNING.shove.missedStumbleSpeedTicks) /
     participant.body.massFactor;
   return getStumbleTicks(
     participant,

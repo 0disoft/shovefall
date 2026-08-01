@@ -1,8 +1,11 @@
 # Static Release Procedure
 
-- Status: `0.173.0` complete-island cannon-collapse candidate; hosted proof pending
+- Status: `0.174.0` complete-island cannon-collapse candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.173.0`
+- Current product version: `0.174.0`
+
+Product `0.174.0`, simulation `78.0.0`, and content `48.0.0` keep simulation `78.0.0`,
+content `48.0.0`, replay v8, and reports v11. Simulation swept-circle contact now computes relative motion, quadratic coefficients, contact positions, distance, and collision normal from raw components instead of allocating subtractVectors, vectorLengthSquared, dotVectors, addVectors, scaleVector, and vectorLength intermediate objects per collision check. Visible bot movement, combat results, replay hash, and balance are unchanged. Hosted proof, complete-collapse pacing, and human readability remain pending.
 
 Product `0.173.0`, simulation `78.0.0`, and content `48.0.0` keep simulation `78.0.0`,
 content `48.0.0`, replay v8, and reports v11. Simulation collision and aim assistance now compute ray-circle entry distance, swept-point bounds contact, ray-tile entry distance, and aim-assisted circle hit from raw components instead of allocating subtractVectors, dotVectors, vectorLengthSquared, vectorLength, scaleVector, addVectors, and isZeroVector intermediate objects per collision and aim decision. Visible bot movement, combat results, replay hash, and balance are unchanged. Hosted proof, complete-collapse pacing, and human readability remain pending.
