@@ -1,5 +1,7 @@
 # Performance Budget
 
+Product `0.198.0` raises the public workload to 70 participants on a 57×48 arena. Existing 60-participant measurements remain historical and do not qualify the new workload. The configured headless and production-browser profiles retain their existing gates, and fresh 70-participant evidence is pending.
+
 ## Product 0.67.0 Fixed-60 Result
 
 The scale harness now measures the actual 60-participant public mode without weakening the `10 ms` simulation p95 gate. The first 7,200-tick run measured simulation p95 `14.143 ms`, AI p95 `11.642 ms`, no combined step above 100 ms, `1.42×` real-time throughput, and a `0.2628` spatial candidate/full-pair ratio. This is a failed budget observation, not a pass. Grappling Hook frequency is separately reduced from 10 to 15 seconds; that balance change does not excuse the 60-participant performance miss.

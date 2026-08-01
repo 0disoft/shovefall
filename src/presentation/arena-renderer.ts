@@ -1,5 +1,6 @@
 import { Application, Container, Graphics, Sprite, Text } from "pixi.js";
-import { SKILL_DEFINITION_IDS } from "../content/skills";
+import { isProjectileSkill, SKILL_DEFINITION_IDS } from "../content/skills";
+export { getSkillProjectileTravelTicks } from "../content/skills";
 import type {
   BombState,
   BrickWallState,
@@ -19,7 +20,6 @@ import type {
   PirateShipState,
 } from "../simulation/contracts";
 import { clamp, type Vector2 } from "../simulation/math";
-import { FIXED_TICKS_PER_SECOND } from "../simulation/versions";
 import {
   ARENA_CAMERA_ELEVATION_DEGREES,
   ARENA_DEPTH_SCALE,
@@ -116,6 +116,7 @@ export interface ArenaRendererOptions {
 
 export type VisualEffectKind =
   | "skill-used"
+  | "skill-projectile-fired"
   | "skill-hit"
   | "shield-applied"
   | "status-applied"
@@ -139,6 +140,8 @@ interface VisualEffect {
   readonly endTick: number;
   readonly position: Vector2;
   readonly originPosition: Vector2 | undefined;
+  readonly targetActorId: number | undefined;
+  readonly projectileId: number | undefined;
   readonly travelEndTick: number | undefined;
   readonly vector: Vector2 | undefined;
   readonly itemDefinitionId: ItemDefinitionId | undefined;
@@ -160,13 +163,9 @@ const DEFAULT_RESOLUTION_CAP = 1.5;
 const MAYHEM_RESOLUTION_CAP = 1;
 const NORMAL_EFFECT_CAP = 36;
 const MAYHEM_EFFECT_CAP = 14;
-const SKILL_PROJECTILE_SPEED_TILES_PER_SECOND = 3;
-const PROJECTILE_SKILL_EFFECTS: ReadonlySet<SkillDefinitionId> = new Set([
-  "arc-bolt",
-  "chain-bind",
-]);
 const GENERATED_SKILL_EFFECT_KINDS: ReadonlySet<VisualEffectKind> = new Set([
   "skill-used",
+  "skill-projectile-fired",
   "skill-hit",
   "status-applied",
   "shield-applied",
@@ -223,14 +222,17 @@ export function shouldDrawProceduralWorldEffect(
   );
 }
 
-export function getSkillProjectileTravelTicks(distanceTiles: number): number {
-  if (!Number.isFinite(distanceTiles) || distanceTiles <= 0) {
-    return 0;
-  }
+export function shouldDrawProceduralCannonShot(hasGeneratedCannonballTexture: boolean): boolean {
+  return !hasGeneratedCannonballTexture;
+}
 
-  return Math.max(
-    1,
-    Math.round((distanceTiles / SKILL_PROJECTILE_SPEED_TILES_PER_SECOND) * FIXED_TICKS_PER_SECOND),
+export function shouldDrawProceduralParticipantActionFeedback(
+  action: ParticipantActionKind,
+  hasCharacterArtwork: boolean,
+): boolean {
+  return !(
+    hasCharacterArtwork &&
+    (action === "Stumbling" || action === "Slipping" || action === "Falling")
   );
 }
 
@@ -252,6 +254,7 @@ export function getSkillProjectilePosition(
 function getVisualEffectState(
   effect: VisualEffect,
   frameTick: number,
+  frame: RenderFrameV1,
 ): { position: Vector2; progress: number } {
   if (effect.originPosition === undefined || effect.travelEndTick === undefined) {
     const duration = Math.max(1, effect.endTick - effect.startTick);
@@ -261,11 +264,31 @@ function getVisualEffectState(
     };
   }
 
+  const target =
+    effect.targetActorId === undefined
+      ? undefined
+      : frame.participants.find(({ actorId }) => actorId === effect.targetActorId);
+  const targetPosition =
+    target === undefined
+      ? effect.position
+      : (() => {
+          const deltaX = target.position.x - effect.originPosition.x;
+          const deltaY = target.position.y - effect.originPosition.y;
+          const distance = Math.hypot(deltaX, deltaY);
+          if (distance <= Number.EPSILON) {
+            return target.position;
+          }
+          return Object.freeze({
+            x: target.position.x - (deltaX / distance) * target.radius,
+            y: target.position.y - (deltaY / distance) * target.radius,
+          });
+        })();
+
   if (frameTick < effect.travelEndTick) {
     return {
       position: getSkillProjectilePosition(
         effect.originPosition,
-        effect.position,
+        targetPosition,
         effect.startTick,
         effect.travelEndTick,
         frameTick,
@@ -276,7 +299,7 @@ function getVisualEffectState(
 
   const impactDuration = Math.max(1, effect.endTick - effect.travelEndTick);
   return {
-    position: effect.position,
+    position: targetPosition,
     progress: clamp((frameTick - effect.travelEndTick) / impactDuration, 0, 1),
   };
 }
@@ -304,57 +327,8 @@ function getArenaDimensions(frame: RenderFrameV1): { columns: number; rows: numb
   );
 }
 
-const CAMERA_SHAKE_BOMB_MAGNITUDE = 0.62;
-const CAMERA_SHAKE_ELIMINATION_MAGNITUDE = 0.5;
-const CAMERA_SHAKE_SKILL_HIT_MAGNITUDE = 0.34;
-const CAMERA_SHAKE_TILE_IMPACT_MAGNITUDE = 0.22;
-const CAMERA_SHAKE_FULL_STRENGTH_DISTANCE = 4.5;
-const CAMERA_SHAKE_FALLOFF_DISTANCE = 14;
-const CAMERA_SHAKE_DECAY_PER_FRAME = 0.86;
-const CAMERA_SHAKE_MINIMUM = 0.02;
 const PROJECTION_ANGLE_DATASET = ARENA_CAMERA_ELEVATION_DEGREES.toString();
 const PROJECTION_SCALE_Y_DATASET = ARENA_DEPTH_SCALE.toFixed(4);
-
-function getCameraShakeMagnitude(
-  event: SimulationEventV1,
-  human: RenderParticipantV1 | undefined,
-  frame: RenderFrameV1,
-): number {
-  let base = 0;
-  if (event.kind === "bomb-detonated") {
-    base = CAMERA_SHAKE_BOMB_MAGNITUDE;
-  } else if (event.kind === "eliminated") {
-    base = CAMERA_SHAKE_ELIMINATION_MAGNITUDE;
-  } else if (event.kind === "skill-hit") {
-    base = CAMERA_SHAKE_SKILL_HIT_MAGNITUDE;
-  } else if (event.kind === "tile-void") {
-    base = CAMERA_SHAKE_TILE_IMPACT_MAGNITUDE;
-  } else {
-    return 0;
-  }
-
-  if (human === undefined) {
-    return base;
-  }
-
-  const position = getEffectPosition(event, frame);
-  if (position === undefined) {
-    return base;
-  }
-
-  const distance = Math.hypot(human.position.x - position.x, human.position.y - position.y);
-  if (distance <= CAMERA_SHAKE_FULL_STRENGTH_DISTANCE) {
-    return base;
-  }
-  if (distance >= CAMERA_SHAKE_FALLOFF_DISTANCE) {
-    return 0;
-  }
-  const falloff =
-    1 -
-    (distance - CAMERA_SHAKE_FULL_STRENGTH_DISTANCE) /
-      (CAMERA_SHAKE_FALLOFF_DISTANCE - CAMERA_SHAKE_FULL_STRENGTH_DISTANCE);
-  return base * falloff;
-}
 
 function createCameraOffset(
   frame: RenderFrameV1,
@@ -799,34 +773,6 @@ function drawFacingFeatures(
   graphics
     .circle(faceX + Math.sign(normalizedX) * eyeOffset * 0.35, faceY, eyeRadius)
     .fill({ color: 0x161b19, alpha: 0.96 });
-}
-
-function drawMassMarker(
-  graphics: Graphics,
-  participant: RenderParticipantV1,
-  x: number,
-  y: number,
-  radius: number,
-): void {
-  const markerY = y + radius * 1.55;
-  const markerSize = Math.max(2.5, radius * 0.28);
-
-  if (participant.massFactor < 0.9) {
-    graphics
-      .moveTo(x - markerSize, markerY - markerSize)
-      .lineTo(x, markerY + markerSize)
-      .lineTo(x + markerSize, markerY - markerSize)
-      .stroke({ color: ITEM_COLORS.feather, width: 2, cap: "round" });
-    return;
-  }
-
-  if (participant.massFactor > 1.1) {
-    graphics
-      .rect(x - markerSize, markerY - markerSize * 0.7, markerSize * 2, markerSize * 1.4)
-      .fill({ color: ITEM_COLORS["iron-boots"] })
-      .stroke({ color: 0xe2e8ec, width: 1 });
-    return;
-  }
 }
 
 function drawItem(graphics: Graphics, item: RenderItemV1, projection: ArenaProjection): void {
@@ -1274,7 +1220,7 @@ function syncImpactSprites(
   layer: Container,
   sprites: Map<string, Sprite>,
   effects: readonly VisualEffect[],
-  frameTick: number,
+  frame: RenderFrameV1,
   projection: ArenaProjection,
   reducedMotion: boolean,
   assets: ArenaVisualAssets,
@@ -1306,7 +1252,7 @@ function syncImpactSprites(
       sprite.texture = texture;
     }
 
-    const effectState = getVisualEffectState(effect, frameTick);
+    const effectState = getVisualEffectState(effect, frame.tick, frame);
     const progress = effectState.progress;
     const point = projectArenaPoint(effectState.position, projection);
     const baseSize = projection.tileWidth * (isWaterImpact ? 2.25 : 2.85);
@@ -1326,7 +1272,7 @@ function syncSkillEffectSprites(
   layer: Container,
   sprites: Map<string, Sprite>,
   effects: readonly VisualEffect[],
-  frameTick: number,
+  frame: RenderFrameV1,
   projection: ArenaProjection,
   reducedMotion: boolean,
   assets: ArenaVisualAssets,
@@ -1339,6 +1285,7 @@ function syncSkillEffectSprites(
       definitionId === undefined ? undefined : assets.skillEffectTextures[definitionId];
     const isSkillEffect =
       effect.kind === "skill-used" ||
+      effect.kind === "skill-projectile-fired" ||
       effect.kind === "skill-hit" ||
       effect.kind === "status-applied" ||
       effect.kind === "shield-applied";
@@ -1359,7 +1306,7 @@ function syncSkillEffectSprites(
       sprite.texture = texture;
     }
 
-    const effectState = getVisualEffectState(effect, frameTick);
+    const effectState = getVisualEffectState(effect, frame.tick, frame);
     const progress = effectState.progress;
     const point = projectArenaPoint(effectState.position, projection);
     const baseSize = projection.tileWidth * SKILL_EFFECT_SIZE[definitionId];
@@ -1369,6 +1316,11 @@ function syncSkillEffectSprites(
     const effectVector = effect.vector;
     const directionX = effectVector === undefined ? 1 : effectVector.x;
     const directionY = (effectVector === undefined ? 0 : effectVector.y) * ARENA_DEPTH_SCALE;
+    if (effect.kind === "skill-projectile-fired") {
+      sprite.anchor.set(0.92, 0.5);
+    } else {
+      sprite.anchor.set(0.5);
+    }
     sprite.position.set(point.x, point.y);
     sprite.width = size;
     sprite.height = size;
@@ -1966,20 +1918,6 @@ function drawParticipant(
         color: actionColor,
         width: Math.max(1.5, participant.massFactor * 1.4),
       });
-    if (
-      participant.action === "Stumbling" ||
-      participant.action === "Slipping" ||
-      participant.action === "Falling"
-    ) {
-      const markerSize = visualRadius * 0.48;
-      graphics
-        .moveTo(x - markerSize, y - markerSize)
-        .lineTo(x + markerSize, y + markerSize)
-        .moveTo(x + markerSize, y - markerSize)
-        .lineTo(x - markerSize, y + markerSize)
-        .stroke({ color: actionColor, width: 2, cap: "round" });
-    }
-
     return;
   }
 
@@ -2067,8 +2005,6 @@ function drawParticipant(
       });
   }
 
-  drawMassMarker(graphics, participant, x, y, visualRadius);
-
   if (hasSpringGlove || participant.springBoosted) {
     const markerY = y - visualRadius - Math.max(6, projection.tileWidth * 0.12);
     graphics.circle(x, markerY, Math.max(3, projection.tileWidth * 0.07)).stroke({
@@ -2095,20 +2031,6 @@ function drawParticipant(
         .lineTo(badgeX + badgeSize, badgeY - badgeSize)
         .stroke({ color: ITEM_COLORS.feather, width: 2, cap: "round" });
     }
-  }
-
-  if (
-    participant.action === "Stumbling" ||
-    participant.action === "Slipping" ||
-    participant.action === "Falling"
-  ) {
-    const markerSize = visualRadius * 0.55;
-    graphics
-      .moveTo(x - markerSize, y - markerSize)
-      .lineTo(x + markerSize, y + markerSize)
-      .moveTo(x + markerSize, y - markerSize)
-      .lineTo(x - markerSize, y + markerSize)
-      .stroke({ color: actionColor, width: 3, cap: "round" });
   }
 }
 
@@ -2208,6 +2130,7 @@ function getEffectPosition(event: SimulationEventV1, frame: RenderFrameV1): Vect
 function isVisualEffectKind(kind: SimulationEventV1["kind"]): kind is VisualEffectKind {
   return (
     kind === "skill-used" ||
+    kind === "skill-projectile-fired" ||
     kind === "skill-hit" ||
     kind === "shield-applied" ||
     kind === "status-applied" ||
@@ -2318,11 +2241,11 @@ function drawSkillEffect(
 function drawWorldEffect(
   graphics: Graphics,
   effect: VisualEffect,
-  frameTick: number,
+  frame: RenderFrameV1,
   projection: ArenaProjection,
   reducedMotion: boolean,
 ): void {
-  const effectState = getVisualEffectState(effect, frameTick);
+  const effectState = getVisualEffectState(effect, frame.tick, frame);
   const progress = effectState.progress;
   const { x, y } = projectArenaPoint(effectState.position, projection);
   const baseRadius = Math.max(5, projection.tileWidth * 0.14);
@@ -2337,7 +2260,7 @@ function drawWorldEffect(
     graphics
       .ellipse(x, y, projection.pitch * waveScale * 0.72, projection.depthPitch * waveScale * 0.72)
       .stroke({ color: 0xdaf7ff, width: 2, alpha: alpha * 0.8 });
-  } else if (effect.kind === "skill-used") {
+  } else if (effect.kind === "skill-used" || effect.kind === "skill-projectile-fired") {
     drawSkillEffect(graphics, effect, x, y, baseRadius, reducedMotion ? 0.25 : progress, alpha);
   } else if (effect.kind === "skill-hit") {
     drawSkillEffect(graphics, effect, x, y, baseRadius, reducedMotion ? 0.25 : progress, alpha);
@@ -2630,8 +2553,6 @@ export async function createArenaRenderer(
   const motionPreference = window.matchMedia("(prefers-reduced-motion: reduce)");
   let reducedMotion = motionPreference.matches;
   let visualEffects: readonly VisualEffect[] = Object.freeze([]);
-  let cameraShakeIntensity = 0;
-  let cameraShakeSeed = 0;
   let latestFrame: RenderFrameV1 | undefined;
   let latestInterpolationAlpha = 0;
   let latestHumanActorId = 1;
@@ -2715,27 +2636,13 @@ export async function createArenaRenderer(
       oceanSprite.alpha = 0.92;
     }
 
-    const shakeActive = cameraShakeIntensity > CAMERA_SHAKE_MINIMUM;
-    let shakeX = 0;
-    let shakeY = 0;
-    if (shakeActive) {
-      cameraShakeSeed = (cameraShakeSeed + 1) & 0xffff;
-      const angle = cameraShakeSeed * 40503 * (Math.PI / 180);
-      const amplitude = cameraShakeIntensity * projection.tileWidth * 0.32;
-      shakeX = Math.cos(angle) * amplitude;
-      shakeY = Math.sin(angle) * amplitude * ARENA_DEPTH_SCALE;
-      cameraShakeIntensity *= CAMERA_SHAKE_DECAY_PER_FRAME;
-    } else {
-      cameraShakeIntensity = 0;
-    }
     for (const layer of cameraParallaxLayers) {
-      layer.x = presentationCamera.x + shakeX;
-      layer.y = presentationCamera.y + shakeY;
+      layer.x = presentationCamera.x;
+      layer.y = presentationCamera.y;
     }
     host.dataset.cameraX = presentationCamera.x.toFixed(2);
     host.dataset.cameraY = presentationCamera.y.toFixed(2);
     host.dataset.cameraMode = lastFrameSpectator ? "spectator" : "follow";
-    host.dataset.cameraShake = shakeActive ? cameraShakeIntensity.toFixed(2) : "0.00";
     host.dataset.projectionAngle = PROJECTION_ANGLE_DATASET;
     host.dataset.projectionScaleY = PROJECTION_SCALE_Y_DATASET;
     host.dataset.cliffDepth = projection.cliffDepth.toFixed(2);
@@ -2875,8 +2782,14 @@ export async function createArenaRenderer(
       );
     }
 
-    for (const shot of latestFrame.cannonShots) {
-      drawCannonShot(artillery, shot, latestFrame.tick, projection, reducedMotion);
+    if (
+      shouldDrawProceduralCannonShot(
+        visualAssets !== null && visualAssets.cannonballTexture !== null,
+      )
+    ) {
+      for (const shot of latestFrame.cannonShots) {
+        drawCannonShot(artillery, shot, latestFrame.tick, projection, reducedMotion);
+      }
     }
 
     for (const delivery of latestFrame.giftDeliveries) {
@@ -3051,17 +2964,19 @@ export async function createArenaRenderer(
               participant.position.x - humanParticipant.position.x,
               participant.position.y - humanParticipant.position.y,
             );
-      drawActionFeedback(
-        actionFeedback,
-        participant,
-        point.x,
-        point.y,
-        visualRadius,
-        projection,
-        reducedMotion,
-        !mayhem || participant.actorId === latestHumanActorId || distanceFromHuman <= 8,
-        latestFrame.tick,
-      );
+      if (shouldDrawProceduralParticipantActionFeedback(participant.action, hasCharacterArtwork)) {
+        drawActionFeedback(
+          actionFeedback,
+          participant,
+          point.x,
+          point.y,
+          visualRadius,
+          projection,
+          reducedMotion,
+          !mayhem || participant.actorId === latestHumanActorId || distanceFromHuman <= 8,
+          latestFrame.tick,
+        );
+      }
       if (participant.actorId === latestHumanActorId || distanceFromHuman <= 5) {
         drawCombatBars(
           actionFeedback,
@@ -3100,7 +3015,7 @@ export async function createArenaRenderer(
           hasGeneratedSkillTexture,
         )
       ) {
-        drawWorldEffect(effectLayer, effect, latestFrame.tick, projection, reducedMotion);
+        drawWorldEffect(effectLayer, effect, latestFrame, projection, reducedMotion);
       }
     }
 
@@ -3109,7 +3024,7 @@ export async function createArenaRenderer(
         skillEffectSprites,
         skillEffectSpritesByKey,
         visualEffects,
-        latestFrame.tick,
+        latestFrame,
         projection,
         reducedMotion,
         visualAssets,
@@ -3125,7 +3040,7 @@ export async function createArenaRenderer(
         impactSprites,
         impactSpritesByEffectKey,
         visualEffects,
-        latestFrame.tick,
+        latestFrame,
         projection,
         reducedMotion,
         visualAssets,
@@ -3235,15 +3150,6 @@ export async function createArenaRenderer(
   return Object.freeze({
     consumeEvents(events: readonly SimulationEventV1[], frame: RenderFrameV1): void {
       const accepted = eventLedger.consume(events);
-      if (!reducedMotion) {
-        const human = frame.participants.find(({ actorId }) => actorId === latestHumanActorId);
-        for (const event of accepted) {
-          const magnitude = getCameraShakeMagnitude(event, human, frame);
-          if (magnitude > cameraShakeIntensity) {
-            cameraShakeIntensity = magnitude;
-          }
-        }
-      }
       for (const event of accepted) {
         if (event.kind === "skill-used" && event.actorId !== undefined) {
           castAnimationsByActorId.set(
@@ -3284,9 +3190,6 @@ export async function createArenaRenderer(
       );
       const durationTicks = reducedMotion ? 3 : frame.participants.length >= 25 ? 7 : 12;
       const cap = frame.participants.length >= 25 ? MAYHEM_EFFECT_CAP : NORMAL_EFFECT_CAP;
-      const participantsById = new Map(
-        frame.participants.map((participant) => [participant.actorId, participant] as const),
-      );
       const appended = accepted.flatMap((event): readonly VisualEffect[] => {
         if (!isVisualEffectKind(event.kind)) {
           return [];
@@ -3295,7 +3198,7 @@ export async function createArenaRenderer(
         if (
           event.kind === "status-applied" &&
           event.skillDefinitionId !== undefined &&
-          PROJECTILE_SKILL_EFFECTS.has(event.skillDefinitionId)
+          isProjectileSkill(event.skillDefinitionId)
         ) {
           return [];
         }
@@ -3306,38 +3209,36 @@ export async function createArenaRenderer(
           return [];
         }
 
-        const actorPosition =
-          event.actorId === undefined ? undefined : participantsById.get(event.actorId)?.position;
         const travelsAsProjectile =
-          !reducedMotion &&
-          event.kind === "skill-hit" &&
+          event.kind === "skill-projectile-fired" &&
           event.skillDefinitionId !== undefined &&
-          PROJECTILE_SKILL_EFFECTS.has(event.skillDefinitionId) &&
-          actorPosition !== undefined;
-        const travelTicks = travelsAsProjectile
-          ? getSkillProjectileTravelTicks(
-              Math.hypot(position.x - actorPosition.x, position.y - actorPosition.y),
-            )
-          : 0;
+          isProjectileSkill(event.skillDefinitionId) &&
+          event.originPosition !== undefined;
+        const travelTicks = travelsAsProjectile ? Math.max(1, event.durationTicks ?? 1) : 0;
+        const startTick = event.tick;
         const travelEndTick = travelsAsProjectile ? event.tick + travelTicks : undefined;
         const impactDuration =
-          event.kind === "tile-void"
-            ? reducedMotion
-              ? 5
-              : 18
-            : event.kind === "grappling-hook-hit"
-              ? 10
-              : durationTicks;
+          event.kind === "skill-projectile-fired"
+            ? 0
+            : event.kind === "tile-void"
+              ? reducedMotion
+                ? 5
+                : 18
+              : event.kind === "grappling-hook-hit"
+                ? 10
+                : durationTicks;
 
         return [
           Object.freeze({
             key: `${event.roundId}:${event.tick}:${event.sequence}`,
             kind: event.kind,
             roundId: event.roundId,
-            startTick: event.tick,
+            startTick,
             endTick: (travelEndTick ?? event.tick) + impactDuration,
             position,
-            originPosition: travelsAsProjectile ? actorPosition : undefined,
+            originPosition: travelsAsProjectile ? event.originPosition : undefined,
+            targetActorId: travelsAsProjectile ? event.targetActorId : undefined,
+            projectileId: travelsAsProjectile ? event.projectileId : undefined,
             travelEndTick,
             vector: event.vector,
             itemDefinitionId: event.itemDefinitionId,
@@ -3345,7 +3246,33 @@ export async function createArenaRenderer(
           }),
         ];
       });
-      visualEffects = Object.freeze([...visualEffects, ...appended].slice(-cap));
+      const resolvedProjectileIds = new Set(
+        accepted.flatMap(({ kind, projectileId }) =>
+          (kind === "skill-hit" || kind === "dodge-succeeded") && projectileId !== undefined
+            ? [projectileId]
+            : [],
+        ),
+      );
+      const combinedEffects = [
+        ...visualEffects.filter(
+          ({ kind, projectileId }) =>
+            kind !== "skill-projectile-fired" ||
+            projectileId === undefined ||
+            !resolvedProjectileIds.has(projectileId),
+        ),
+        ...appended,
+      ];
+      const projectileEffects = combinedEffects.filter(
+        ({ kind }) => kind === "skill-projectile-fired",
+      );
+      const transientEffects = combinedEffects.filter(
+        ({ kind }) => kind !== "skill-projectile-fired",
+      );
+      visualEffects = Object.freeze(
+        [...transientEffects.slice(-cap), ...projectileEffects].toSorted(
+          (left, right) => left.startTick - right.startTick || left.key.localeCompare(right.key),
+        ),
+      );
     },
     destroy(): void {
       destroyed = true;

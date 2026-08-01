@@ -5,8 +5,10 @@ import {
   getSkillProjectilePosition,
   getSkillProjectileTravelTicks,
   getTerrainTextureIndex,
-  tileKey,
+  shouldDrawProceduralCannonShot,
+  shouldDrawProceduralParticipantActionFeedback,
   shouldDrawProceduralWorldEffect,
+  tileKey,
 } from "../src/presentation/arena-renderer";
 import { normalizeGameConfig, type TileState } from "../src/simulation/contracts";
 import { SimulationWorld } from "../src/simulation/world";
@@ -21,11 +23,11 @@ const graphicsStroke = vi.hoisted(() =>
 const spriteTint = vi.hoisted(() => vi.fn<(value: number) => void>());
 
 describe("arena renderer effect routing", () => {
-  it("moves projectile skill presentation at three tiles per second", () => {
+  it("moves projectile skill presentation at six tiles per second", () => {
     expect(getSkillProjectileTravelTicks(0)).toBe(0);
-    expect(getSkillProjectileTravelTicks(3)).toBe(60);
-    expect(getSkillProjectileTravelTicks(5.5)).toBe(110);
-    expect(getSkillProjectilePosition({ x: 2, y: 3 }, { x: 5, y: 3 }, 10, 70, 40)).toEqual({
+    expect(getSkillProjectileTravelTicks(3)).toBe(30);
+    expect(getSkillProjectileTravelTicks(5.5)).toBe(55);
+    expect(getSkillProjectilePosition({ x: 2, y: 3 }, { x: 5, y: 3 }, 10, 40, 25)).toEqual({
       x: 3.5,
       y: 3,
     });
@@ -36,6 +38,19 @@ describe("arena renderer effect routing", () => {
     expect(shouldDrawProceduralWorldEffect("skill-hit", "arc-bolt", true)).toBe(false);
     expect(shouldDrawProceduralWorldEffect("tile-void", undefined, true)).toBe(true);
     expect(shouldDrawProceduralWorldEffect("skill-used", "arc-bolt", false)).toBe(true);
+  });
+
+  it("uses procedural cannon geometry only when generated cannonball art is unavailable", () => {
+    expect(shouldDrawProceduralCannonShot(true)).toBe(false);
+    expect(shouldDrawProceduralCannonShot(false)).toBe(true);
+  });
+
+  it("suppresses overlapping control-state geometry only when character art is loaded", () => {
+    expect(shouldDrawProceduralParticipantActionFeedback("Falling", true)).toBe(false);
+    expect(shouldDrawProceduralParticipantActionFeedback("Stumbling", true)).toBe(false);
+    expect(shouldDrawProceduralParticipantActionFeedback("Slipping", true)).toBe(false);
+    expect(shouldDrawProceduralParticipantActionFeedback("ShoveWindup", true)).toBe(true);
+    expect(shouldDrawProceduralParticipantActionFeedback("Falling", false)).toBe(true);
   });
 });
 
@@ -402,13 +417,23 @@ describe("arena renderer presentation", () => {
     );
   });
 
-  it("keeps loaded character art off procedural body discs and uses a small human chevron", async () => {
+  it("keeps only the human chevron over loaded character art", async () => {
     const host = createHost();
     const renderer = await createArenaRenderer(host);
-    const frame = new SimulationWorld(
-      normalizeGameConfig({ participantCount: 50 }),
+    const baseFrame = new SimulationWorld(
+      normalizeGameConfig({ participantCount: 8, itemsEnabled: false }),
       "character-art-without-ground-discs",
     ).createRenderFrame();
+    const frame = Object.freeze({
+      ...baseFrame,
+      participants: Object.freeze(
+        baseFrame.participants.map((participant) =>
+          participant.actorId === 1
+            ? Object.freeze({ ...participant, action: "Falling" as const, massFactor: 1.2 })
+            : participant,
+        ),
+      ),
+    });
 
     await vi.waitFor(() => expect(host.dataset.visualAssets).not.toBe("loading"));
     graphicsFill.mockClear();
@@ -426,6 +451,49 @@ describe("arena renderer presentation", () => {
     expect(graphicsStroke).toHaveBeenCalledWith(
       expect.objectContaining({ color: 0x3b8cff, alpha: 0.92 }),
     );
+    expect(graphicsFill).not.toHaveBeenCalledWith(expect.objectContaining({ color: 0x56626f }));
+    expect(graphicsStroke).not.toHaveBeenCalledWith(expect.objectContaining({ color: 0x727b78 }));
+  });
+
+  it("does not draw a procedural cannon circle under generated cannonball art", async () => {
+    const host = createHost();
+    const renderer = await createArenaRenderer(host);
+    const baseFrame = new SimulationWorld(
+      normalizeGameConfig({ participantCount: 8, itemsEnabled: false }),
+      "generated-cannonball-without-procedural-duplicate",
+    ).createRenderFrame();
+    const targetTile = baseFrame.tiles.find(({ state }) => state === "Stable");
+
+    expect(targetTile).toBeDefined();
+
+    if (targetTile === undefined) {
+      throw new Error("Generated cannonball test requires one stable target tile.");
+    }
+
+    const frame = Object.freeze({
+      ...baseFrame,
+      cannonShots: Object.freeze([
+        Object.freeze({
+          shotId: 1,
+          shipId: 1,
+          targetTileId: targetTile.tileId,
+          origin: Object.freeze({ x: -2, y: 2 }),
+          target: Object.freeze({ x: targetTile.column + 0.5, y: targetTile.row + 0.5 }),
+          launchTick: baseFrame.tick,
+          warningTick: baseFrame.tick,
+          dangerTick: baseFrame.tick + 10,
+          impactTick: baseFrame.tick + 20,
+        }),
+      ]),
+    });
+
+    await vi.waitFor(() => expect(host.dataset.visualAssets).not.toBe("loading"));
+    graphicsFill.mockClear();
+    graphicsStroke.mockClear();
+    renderer.render(frame, 0, 1);
+
+    expect(graphicsFill).not.toHaveBeenCalledWith(expect.objectContaining({ color: 0x252b29 }));
+    expect(graphicsStroke).not.toHaveBeenCalledWith(expect.objectContaining({ color: 0xff8f5c }));
   });
 
   it("draws an installed Soap trap as a flat owner-marked hazard instead of a pickup", async () => {
@@ -551,6 +619,54 @@ describe("arena renderer presentation", () => {
     renderer.render(movedFrame, 1, 1);
 
     expect(Number(host.dataset.cameraY)).toBeLessThan(centerCameraY);
+  });
+
+  it("keeps camera coordinates steady when combat impact events arrive", async () => {
+    const host = createHost();
+    const renderer = await createArenaRenderer(host);
+    const frame = new SimulationWorld(
+      normalizeGameConfig({ participantCount: 8 }),
+      "steady-impact-camera",
+    ).createRenderFrame();
+    const impactPosition = frame.participants[0]?.position;
+    if (impactPosition === undefined) {
+      throw new Error("Steady-camera fixture requires the human participant.");
+    }
+
+    renderer.render(frame, 1, 1);
+    const cameraX = host.dataset.cameraX;
+    const cameraY = host.dataset.cameraY;
+    renderer.consumeEvents(
+      [
+        {
+          eventVersion: 1,
+          roundId: frame.roundId,
+          tick: frame.tick,
+          sequence: 0,
+          kind: "skill-hit",
+          actorId: 2,
+          targetActorId: 1,
+          skillDefinitionId: "arc-bolt",
+          amount: 25,
+        },
+        {
+          eventVersion: 1,
+          roundId: frame.roundId,
+          tick: frame.tick,
+          sequence: 1,
+          kind: "bomb-detonated",
+          actorId: 2,
+          itemDefinitionId: "bomb",
+          position: impactPosition,
+        },
+      ],
+      frame,
+    );
+    renderer.render(frame, 1, 1);
+
+    expect(host.dataset.cameraX).toBe(cameraX);
+    expect(host.dataset.cameraY).toBe(cameraY);
+    expect(host.dataset.cameraShake).toBeUndefined();
   });
 
   it("pans and resets the camera after the human is eliminated", async () => {

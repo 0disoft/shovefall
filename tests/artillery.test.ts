@@ -163,9 +163,9 @@ describe("pirate artillery", () => {
 
   it("assigns every public-island warning to exactly one cannonball", () => {
     const config = normalizeGameConfig({
-      participantCount: 60,
-      arenaColumns: 48,
-      arenaRows: 40,
+      participantCount: 70,
+      arenaColumns: 57,
+      arenaRows: 48,
       collapseSpeed: "slow",
     });
     const seed = "public-one-shot-one-warning";

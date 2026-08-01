@@ -23,7 +23,7 @@ interface BrowserHeapUsage {
 const PROFILE_CASES = Object.freeze([
   {
     workload: "brick-grapple",
-    participantCount: 60,
+    participantCount: 70,
     seed: "0000003200000000",
     seedWords: [50, 0],
     p95Budget: 25,
@@ -31,7 +31,7 @@ const PROFILE_CASES = Object.freeze([
   },
   {
     workload: "grapple-bomb",
-    participantCount: 60,
+    participantCount: 70,
     seed: "0000003200000001",
     seedWords: [50, 1],
     p95Budget: 25,
@@ -258,7 +258,7 @@ async function collectHeapUsage(client: CDPSession): Promise<BrowserHeapUsage> {
   return client.send("Runtime.getHeapUsage");
 }
 
-test("@profile measures the production 60-participant browser budget", async ({
+test("@profile measures the production 70-participant browser budget", async ({
   page,
   context,
 }) => {

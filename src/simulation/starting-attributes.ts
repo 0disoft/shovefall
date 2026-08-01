@@ -16,13 +16,13 @@ export const STARTING_ATTRIBUTE_EFFECTS = Object.freeze({
   agility: Object.freeze({
     movementPerPoint: 0.045,
     cooldownReductionPerPoint: 0.04,
-    manaCostReductionPerPoint: 0.02,
+    manaCostReductionPerPoint: 0.03,
     stumbleReductionPerPoint: 0.025,
   }),
   constitution: Object.freeze({ maximumHealthPerPoint: 1.5, healthRegenPerPoint: 0.0125 }),
   spirit: Object.freeze({
     maximumManaPerPoint: 8,
-    manaRegenPerPoint: 0.1,
+    manaRegenPerPoint: 0.15,
     skillDamagePerPoint: 0.02,
   }),
   balance: Object.freeze({

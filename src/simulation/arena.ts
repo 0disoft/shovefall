@@ -512,42 +512,60 @@ export function createParticipantSpawnPositions(
     stableTiles.filter((tile) => (depths.get(tile.tileId) ?? 0) >= preferredDepth),
     random,
   );
-  const remaining = new Map(
-    candidates.map((tile, index) => [tile.tileId, Object.freeze({ tile, tie: index })] as const),
-  );
+  const remaining = candidates.map((tile, tie) => ({
+    tile,
+    tie,
+    minimumDistanceSquared: 0,
+  }));
   const positions: Vector2[] = [];
 
   for (let index = 0; index < participantCount; index += 1) {
-    const selected = [...remaining.values()].toSorted((left, right) => {
-      const leftDistance =
-        positions.length === 0
-          ? 0
-          : Math.min(
-              ...positions.map((position) =>
-                Math.hypot(left.tile.column + 0.5 - position.x, left.tile.row + 0.5 - position.y),
-              ),
-            );
-      const rightDistance =
-        positions.length === 0
-          ? 0
-          : Math.min(
-              ...positions.map((position) =>
-                Math.hypot(right.tile.column + 0.5 - position.x, right.tile.row + 0.5 - position.y),
-              ),
-            );
-      return (
-        rightDistance - leftDistance ||
-        (depths.get(right.tile.tileId) ?? 0) - (depths.get(left.tile.tileId) ?? 0) ||
-        left.tie - right.tie
-      );
-    })[0];
+    let selectedIndex = -1;
 
+    for (let candidateIndex = 0; candidateIndex < remaining.length; candidateIndex += 1) {
+      const candidate = remaining[candidateIndex];
+      const selected = selectedIndex < 0 ? undefined : remaining[selectedIndex];
+
+      if (candidate === undefined) {
+        continue;
+      }
+      if (selected === undefined) {
+        selectedIndex = candidateIndex;
+        continue;
+      }
+
+      const candidateDepth = depths.get(candidate.tile.tileId) ?? 0;
+      const selectedDepth = depths.get(selected.tile.tileId) ?? 0;
+      if (
+        candidate.minimumDistanceSquared > selected.minimumDistanceSquared ||
+        (candidate.minimumDistanceSquared === selected.minimumDistanceSquared &&
+          (candidateDepth > selectedDepth ||
+            (candidateDepth === selectedDepth && candidate.tie < selected.tie)))
+      ) {
+        selectedIndex = candidateIndex;
+      }
+    }
+
+    const [selected] = selectedIndex < 0 ? [] : remaining.splice(selectedIndex, 1);
     if (selected === undefined) {
       throw new Error("arena does not contain enough safe participant spawn tiles");
     }
 
-    remaining.delete(selected.tile.tileId);
-    positions.push(Object.freeze({ x: selected.tile.column + 0.5, y: selected.tile.row + 0.5 }));
+    const position = Object.freeze({
+      x: selected.tile.column + 0.5,
+      y: selected.tile.row + 0.5,
+    });
+    positions.push(position);
+
+    for (const candidate of remaining) {
+      const deltaX = candidate.tile.column + 0.5 - position.x;
+      const deltaY = candidate.tile.row + 0.5 - position.y;
+      const distanceSquared = deltaX * deltaX + deltaY * deltaY;
+      candidate.minimumDistanceSquared =
+        positions.length === 1
+          ? distanceSquared
+          : Math.min(candidate.minimumDistanceSquared, distanceSquared);
+    }
   }
 
   return Object.freeze(positions);

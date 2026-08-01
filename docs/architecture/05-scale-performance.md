@@ -1,5 +1,7 @@
 # Scale and Performance
 
+Product `0.198.0` moves the public workload to 70 participants on a 57×48 arena. The headless and production-browser profiles now target that workload without weakening the 10 ms simulation p95, 25 ms browser frame p95, or tick-delivery gates. No fresh 70-participant profile has been recorded yet, so the 60-participant measurements below remain historical failure evidence rather than proof for the current build.
+
 ## 0.67.0 Fixed-60 Headless Profile
 
 The first corrected 7,200-tick public 60-participant run completed one Hard-AI round in `84,612.932 ms`, or `1.42×` real time. AI p95 was `11.642 ms`, simulation p95 was `14.143 ms`, no combined step exceeded 100 ms, and the spatial candidate/full-pair ratio was `0.2628`. The run observed seven peak Brick walls, two simultaneous Bomb detonations, seven Soap triggers, and 155 Grappling Hook hits. It fails the unchanged `10 ms` simulation p95 gate, so it replaces the mislabeled fixed-50 workload contract but is not accepted performance evidence. The `31,889,119`-byte heap delta remains observational.

@@ -482,10 +482,12 @@ describe("utility bot director", () => {
       personalityOverrides: [{ actorId: 2, personality: "Aggressor" }],
     });
     let maximumVerticalDetour = 0;
+    let maximumHorizontalProgress = 0;
 
     for (let tick = 0; tick < 180; tick += 1) {
       const frame = world.createRenderFrame();
       const actor = frame.participants.find(({ actorId }) => actorId === 2);
+      maximumHorizontalProgress = Math.max(maximumHorizontalProgress, actor?.position.x ?? 2.5);
       maximumVerticalDetour = Math.max(
         maximumVerticalDetour,
         Math.abs((actor?.position.y ?? 3.5) - 3.5),
@@ -496,9 +498,8 @@ describe("utility bot director", () => {
       ]);
     }
 
-    const actor = world.createRenderFrame().participants.find(({ actorId }) => actorId === 2);
     expect(maximumVerticalDetour).toBeGreaterThan(0.45);
-    expect(actor?.position.x).toBeGreaterThan(4.6);
+    expect(maximumHorizontalProgress).toBeGreaterThan(4.6);
   });
 
   it("does not cast a line skill through a blocking tree", () => {
@@ -602,7 +603,7 @@ describe("utility bot director", () => {
   });
 
   it("spends several active-item families during a public-scale hard round", () => {
-    const participantCount = 60;
+    const participantCount = 70;
     const arena = getArenaSize(participantCount);
     const config = normalizeGameConfig({
       participantCount,

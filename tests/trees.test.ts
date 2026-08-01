@@ -3,6 +3,19 @@ import { createNeutralCommand, normalizeGameConfig } from "../src/simulation/con
 import { SimulationWorld } from "../src/simulation/world";
 
 describe("tree obstacles", () => {
+  it("starts the public seventy-participant island with exactly sixty trees", () => {
+    const frame = new SimulationWorld(
+      normalizeGameConfig({
+        participantCount: 70,
+        arenaColumns: 57,
+        arenaRows: 48,
+      }),
+      "public-seventy-tree-count",
+    ).createRenderFrame();
+
+    expect(frame.trees).toHaveLength(60);
+  });
+
   it("generates deterministic inland trees away from all starting bodies", () => {
     const config = normalizeGameConfig({
       participantCount: 50,

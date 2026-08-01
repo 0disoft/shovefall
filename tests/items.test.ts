@@ -621,6 +621,7 @@ describe("deterministic item effects", () => {
 
     expect(damageEvent).toMatchObject({ actorId: 1, targetActorId: 2 });
     expect(damageEvent?.amount).toBeGreaterThan(0);
+    expect(getItemDefinition("soap").stunTicks).toBe(90);
     expect(getActor(world, 2).combat.stunnedUntilTick).toBeGreaterThan(world.tick);
     expect(stunEvent).toMatchObject({
       actorId: 1,

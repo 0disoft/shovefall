@@ -1,8 +1,22 @@
 # Static Release Procedure
 
-- Status: `0.191.0` complete-island cannon-collapse candidate; hosted proof pending
+- Status: `0.198.0` 70-participant arena-expansion candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.191.0`
+- Current product version: `0.198.0`
+
+Product `0.198.0`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. Public play expands from 60 to 70 participants and from a 52×44 to a 57×48 arena, increasing the rectangular cell count by 19.6%. The twelve separated lakes, 96-tile lake budget, and exactly 60 public trees remain unchanged. Game configuration, actor commands, browser settings, public audits, capture metadata, browser profiles, tests, and checked-in replay fixtures share the new bounds. Controlled 60-actor trait/loadout audits retain their exact experiment layout. Fresh 70-participant profile, audit, hosted, and human-play evidence remains pending.
+
+Product `0.197.0`, simulation `83.0.0`, and content `50.0.0` keep replay v8 and reports v11. Loaded character art now keeps only the blue human foot marker and explicit equipped-item badges, removing the overlapping mass and control-state trails, rings, and glyphs. Generated cannonball art suppresses the procedural cannon circle for the same shot while missing art retains that fallback. Flight timing, impacts, simulation hashes, AI, and balance are unchanged. Checked-in replay fixtures are regenerated only for the product-version envelope; hosted proof and human readability validation remain pending.
+
+Product `0.196.0`, simulation `83.0.0`, and content `50.0.0` keep replay v8 and reports v11. The public 52×44, 60-participant island now starts with exactly 60 inland trees while smaller internal arenas keep the existing density rule and 36-tree cap. Tree spacing and participant clearance stay unchanged. Checked-in replay fixtures are regenerated for the new version envelope. The focused-trait `0.194.0` audit artifact remains stale; hosted proof, public-scale performance evidence, and human pathing validation remain pending.
+
+Product `0.195.0`, simulation `82.0.0`, and content `50.0.0` keep replay v8 and reports v11. Agility now reduces mana costs by 3% per point, Spirit increases mana regeneration by 15% per point, and Soap stuns for 1.5 seconds after damage. Checked-in replay fixtures are regenerated because authoritative mana regeneration, skill costs, item control timing, and hashes change. The focused-trait `0.194.0` audit artifact is stale until rerun; hosted proof and human balance validation remain pending.
+
+Product `0.194.0`, simulation `81.0.0`, and content `49.0.0` keep replay v8 and reports v11. Blink Step now moves at most five tiles and evades attacks for 2.5 seconds. Arc Bolt costs 26 mana and reuses after four seconds. Soap keeps its two-second slide and damage 30 but stuns for only one second after damage. Checked-in replay fixtures require regeneration because authoritative movement, combat timing, cooldown, mana, and hashes change. The `0.192.0` balanced audit artifact remains stale until rerun; hosted proof and human balance validation remain pending.
+
+Product `0.193.0`, simulation `80.0.0`, and content `48.0.0` keep replay v8 and reports v11. Continuous unsupported grace falls from 30 ticks (0.5 seconds) to 18 ticks (0.3 seconds), while the subsequent 24-tick Falling duration, supported-land recovery, and automatic Boat support remain unchanged. Checked-in replay fixtures are regenerated because authoritative support timing and hashes change. The `0.192.0` balanced audit artifact is stale until rerun; hosted proof and human timing validation remain pending.
+
+Product `0.192.0`, simulation `79.0.0`, and content `48.0.0` keep replay v8 and reports v11. Camera shake no longer offsets the rendered world. Arc Bolt and Chain Bind now create hash-owned pending projectiles at six tiles per second and apply their damage, knockback, mana steal, dodge, and control when the visible projectile tip first reaches the target body's outer edge. In-flight skill projectiles remain visible outside the transient-effect cap, including under reduced motion. Checked-in replay fixtures are regenerated because authoritative skill timing and hashes change. Hosted proof, crowded-combat readability, and human timing validation remain pending.
 
 Product `0.191.0`, simulation `78.0.0`, and content `48.0.0` keep simulation `78.0.0`,
 content `48.0.0`, replay v8, and reports v11. Item spawn blocked tile IDs now build a Set directly from wall, tree, and soap patch iterations instead of allocating three intermediate arrays and spreading them, reducing per-tick allocation. Visible bot movement, combat results, replay hash, and balance are unchanged. Hosted proof, complete-collapse pacing, and human readability remain pending.

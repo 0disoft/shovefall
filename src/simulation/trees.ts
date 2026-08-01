@@ -1,10 +1,16 @@
 import { getLandShoreDepths } from "./arena";
-import type { ParticipantState, TileState, TreeObstacleState } from "./contracts";
+import {
+  MAXIMUM_PARTICIPANT_COUNT,
+  type ParticipantState,
+  type TileState,
+  type TreeObstacleState,
+} from "./contracts";
 import type { XorShift32 } from "./random";
 
 const TREE_DENSITY = 0.03;
 const MINIMUM_TREE_COUNT = 14;
 const MAXIMUM_TREE_COUNT = 36;
+const PUBLIC_TREE_COUNT = 60;
 const MINIMUM_SHORE_DEPTH = 2;
 const PARTICIPANT_CLEARANCE_TILES = 1;
 const TREE_SPACING_TILES = 2;
@@ -39,10 +45,13 @@ export function createTreeObstacles(
   random: XorShift32,
 ): readonly TreeObstacleState[] {
   const stableTiles = tiles.filter(({ state }) => state === "Stable");
-  const targetCount = Math.min(
-    MAXIMUM_TREE_COUNT,
-    Math.max(MINIMUM_TREE_COUNT, Math.round(stableTiles.length * TREE_DENSITY)),
-  );
+  const targetCount =
+    participants.length === MAXIMUM_PARTICIPANT_COUNT
+      ? PUBLIC_TREE_COUNT
+      : Math.min(
+          MAXIMUM_TREE_COUNT,
+          Math.max(MINIMUM_TREE_COUNT, Math.round(stableTiles.length * TREE_DENSITY)),
+        );
   const shoreDepths = getLandShoreDepths(tiles);
   const occupiedTiles = participants.map(({ body }) => ({
     column: Math.floor(body.position.x),

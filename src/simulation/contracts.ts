@@ -2,7 +2,7 @@ import { assertFiniteNumber, SimulationContractError, type Vector2, ZERO_VECTOR 
 import { FIXED_TICKS_PER_SECOND } from "./versions";
 
 export const MINIMUM_PARTICIPANT_COUNT = 4;
-export const MAXIMUM_PARTICIPANT_COUNT = 60;
+export const MAXIMUM_PARTICIPANT_COUNT = 70;
 
 export type RoundId = number;
 export type ActorId = number;
@@ -33,7 +33,7 @@ export type SkillDefinitionId =
 export type UpgradeStatId = "power" | "stability" | "mobility" | "reflex" | "vitality" | "focus";
 
 export const MINIMUM_ARENA_COLUMNS = 7;
-export const MAXIMUM_ARENA_COLUMNS = 52;
+export const MAXIMUM_ARENA_COLUMNS = 57;
 export const MINIMUM_ARENA_ROWS = 7;
 export const MAXIMUM_ARENA_ROWS = 48;
 export type StartingAttributeId =
@@ -377,6 +377,7 @@ export type SimulationEventKind =
   | "item-picked-up"
   | "item-used"
   | "skill-used"
+  | "skill-projectile-fired"
   | "skill-hit"
   | "skill-zone-created"
   | "skill-zone-expired"
@@ -427,7 +428,24 @@ export interface SimulationEventV1 {
   readonly winnerActorId?: ActorId;
   readonly vector?: Vector2;
   readonly position?: Vector2;
+  readonly originPosition?: Vector2;
   readonly reason?: "inactive-actor" | "unknown-actor" | RoundEndReason;
+}
+
+export interface PendingSkillProjectileState {
+  readonly projectileId: number;
+  readonly ownerActorId: ActorId;
+  readonly targetActorId: ActorId;
+  readonly skillDefinitionId: SkillDefinitionId;
+  readonly launchTick: Tick;
+  readonly impactTick: Tick;
+  readonly originPosition: Vector2;
+  readonly direction: Vector2;
+  readonly damage: number;
+  readonly impulse: number;
+  readonly stumbleTicks: number;
+  readonly stunTicks: number;
+  readonly rootTicks: number;
 }
 
 export interface ReplayCheckpointV1 {
@@ -557,7 +575,7 @@ export function createNeutralCommand(tick: Tick, actorId: ActorId): ActorCommand
 
 export function normalizeActorCommand(command: ActorCommandV1): ActorCommandV1 {
   assertIntegerInRange(command.tick, "command.tick", 0, Number.MAX_SAFE_INTEGER);
-  assertIntegerInRange(command.actorId, "command.actorId", 1, 60);
+  assertIntegerInRange(command.actorId, "command.actorId", 1, MAXIMUM_PARTICIPANT_COUNT);
   if (command.targetPosition !== null) {
     assertFiniteNumber(command.targetPosition.x, "command.targetPosition.x");
     assertFiniteNumber(command.targetPosition.y, "command.targetPosition.y");

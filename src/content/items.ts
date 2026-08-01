@@ -302,7 +302,7 @@ export const ITEM_DEFINITIONS: Readonly<Record<ItemDefinitionId, ItemDefinition>
     effectRadius: 0.5,
     damage: 30,
     stumbleTicks: 120,
-    stunTicks: 120,
+    stunTicks: 90,
     slideMinimumSpeed: 0.105,
     slideMaximumSpeed: 0.42,
     slideDragPerTick: 0.992,

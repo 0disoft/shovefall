@@ -103,7 +103,7 @@ export const SIMULATION_TUNING = Object.freeze({
     speed: 0.6,
   }),
   support: Object.freeze({
-    graceTicks: 30,
+    graceTicks: 18,
     fallingTicks: 24,
   }),
 });

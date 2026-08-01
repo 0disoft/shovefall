@@ -48,7 +48,7 @@ describe("playtest round reports", () => {
       seed: "0000000800000000",
       settings: {
         preset: "massive",
-        participantCount: 60,
+        participantCount: 70,
         botDifficulty: "hard",
         collapseSpeed: "slow",
         initialItemCount: 8,
@@ -82,9 +82,9 @@ describe("playtest round reports", () => {
       },
     });
     expect(report.versions).toEqual({
-      product: "0.191.0",
-      simulation: "78.0.0",
-      content: "48.0.0",
+      product: "0.198.0",
+      simulation: "84.0.0",
+      content: "50.0.0",
     });
     expect(JSON.parse(serializePlaytestRoundReport(report))).toEqual(report);
   });

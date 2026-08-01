@@ -724,8 +724,8 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
     '[data-skill-definition="blink-step"] .loadout-card__effect-row',
   );
   await expect(blinkStepRows).toHaveCount(2);
-  await expect(blinkStepRows.nth(0)).toHaveText("지정 방향으로 최대 4칸 이동");
-  await expect(blinkStepRows.nth(1)).toHaveText("2초 동안 공격 회피");
+  await expect(blinkStepRows.nth(0)).toHaveText("지정 방향으로 최대 5칸 이동");
+  await expect(blinkStepRows.nth(1)).toHaveText("2.5초 동안 공격 회피");
   await expect(page.getByText("바위 감옥", { exact: true })).toHaveCount(0);
   await expect(page.locator(".skill-art--arc-bolt")).toHaveCSS(
     "background-image",
@@ -1295,7 +1295,7 @@ test("@extended completes a collapsing round and starts a fresh world", async ({
     seed: expect.any(String),
     stateHash: expect.stringMatching(/^fnv1a32:[0-9a-f]{8}$/u),
     settings: {
-      participantCount: 60,
+      participantCount: 70,
       startingAttributes: {
         strength: 4,
         agility: 4,

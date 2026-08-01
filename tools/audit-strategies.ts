@@ -24,11 +24,11 @@ import {
 } from "../src/simulation/versions";
 import { SimulationWorld } from "../src/simulation/world";
 
-const PARTICIPANT_COUNTS = [60] as const;
+const PARTICIPANT_COUNTS = [70] as const;
 const SAMPLE_COUNT = 8;
 const ROUND_LIMIT_SECONDS = AUTOMATION_ROUND_LIMIT_SECONDS;
 const PRESET_BY_COUNT: Readonly<Record<(typeof PARTICIPANT_COUNTS)[number], PresetName>> =
-  Object.freeze({ 60: "massive" });
+  Object.freeze({ 70: "massive" });
 
 type MassBand = "light" | "normal" | "heavy";
 

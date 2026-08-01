@@ -62,7 +62,7 @@ describe("action HUD view models", () => {
     const human = createHuman();
     expect(createSkillButtonViewModel(human, 0, ACTIVE_CONTEXT)).toMatchObject({
       state: "ready",
-      text: "Q · 파동탄 · 28MP",
+      text: "Q · 파동탄 · 23MP",
       disabled: false,
     });
     const noMana = Object.freeze({
@@ -71,9 +71,9 @@ describe("action HUD view models", () => {
     });
     expect(createSkillButtonViewModel(noMana, 0, ACTIVE_CONTEXT)).toMatchObject({
       state: "mana",
-      text: "Q · 파동탄 · 28MP 필요",
+      text: "Q · 파동탄 · 23MP 필요",
       disabled: true,
-      rejectionMessage: "마나가 부족해. 28MP가 필요해.",
+      rejectionMessage: "마나가 부족해. 23MP가 필요해.",
     });
     expect(
       createSkillButtonViewModel(
@@ -107,7 +107,7 @@ describe("action HUD view models", () => {
     });
     expect(createSkillButtonViewModel(agilityFocused, 0, ACTIVE_CONTEXT)).toMatchObject({
       state: "ready",
-      text: "Q · 파동탄 · 18MP",
+      text: "Q · 파동탄 · 11MP",
       disabled: false,
     });
   });

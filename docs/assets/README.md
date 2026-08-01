@@ -57,7 +57,7 @@ assets, not dependency license inventory.
 | Field | Record |
 |---|---|
 | Asset ID and repository path | `generated-character-variants`; `src/assets/generated/character-variants.png` |
-| Type and purpose | Transparent PNG atlas; sixteen participant appearances retained as the fallback for the fixed 60-participant arena |
+| Type and purpose | Transparent PNG atlas; sixteen participant appearances retained as the fallback for the fixed 70-participant arena |
 | Source | Repository owner generated the selected output with ChatGPT image generation |
 | Snapshot | Received and inspected 2026-07-24 |
 | Copy extent | Selected generated output copied verbatim into the repository; runtime crops are repository-owned atlas metadata |
@@ -81,7 +81,7 @@ assets, not dependency license inventory.
 | Prompt/source record | `docs/assets/prompts/character-motion-sheets-magenta.md` |
 | Modifications | Four flat-magenta outputs were processed by the installed image-generation chroma helper with border sampling, soft matte, and despill, then resized with Pillow Lanczos to fixed 768×768 RGBA sheets. Transparent corners and non-empty alpha bounds are enforced by the repository intake script. |
 | Runtime contract | Sixteen variants map to four fixed columns per sheet and four semantic rows. Damage events and action state choose frames without altering simulation. All four motion sheets must load before use; otherwise the original static atlas remains the fallback. |
-| Reviewer decision | Accepted locally after grid, identity, pose, alpha-corner, and edge inspection; live 60-participant browser readability and payload performance remain pending gates |
+| Reviewer decision | Accepted locally after grid, identity, pose, alpha-corner, and edge inspection; live 70-participant browser readability and payload performance remain pending gates |
 
 | Asset | Bytes | SHA-256 |
 |---|---:|---|

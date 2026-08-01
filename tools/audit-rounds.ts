@@ -37,7 +37,7 @@ import {
 import { SimulationWorld, type ParticipantSpawnOverride } from "../src/simulation/world";
 import { getBalanceSignal, wilsonInterval } from "./item-balance-statistics";
 
-const PARTICIPANT_COUNTS = [60] as const;
+const PARTICIPANT_COUNTS = [70] as const;
 const SAMPLE_COUNT = 16;
 const PRODUCTION_SHARD_COUNT = 2;
 const PRODUCTION_SAMPLES_PER_SHARD = SAMPLE_COUNT / PRODUCTION_SHARD_COUNT;
@@ -90,7 +90,7 @@ function parseAuditSection(value: string | undefined): AuditSection {
 const PRESET_BY_PARTICIPANT_COUNT: Readonly<
   Record<(typeof PARTICIPANT_COUNTS)[number], PresetName>
 > = Object.freeze({
-  60: "massive",
+  70: "massive",
 });
 
 const CONTROLLED_MASS_FACTORS: Readonly<Record<MassBand, number>> = Object.freeze({
@@ -139,7 +139,7 @@ interface ProductionShardArtifact {
   readonly auditVersion: 11;
   readonly productVersion: string;
   readonly simulationVersion: string;
-  readonly participantCount: 60;
+  readonly participantCount: 70;
   readonly shardIndex: number;
   readonly shardCount: typeof PRODUCTION_SHARD_COUNT;
   readonly sampleStart: number;
@@ -1015,7 +1015,7 @@ function parseProductionShardArtifact(
 
   for (const [localIndex, result] of results.entries()) {
     const globalIndex = sampleStart + localIndex;
-    const expectedSeed = `round-audit-v2-50-${globalIndex}`;
+    const expectedSeed = `round-audit-v2-70-${globalIndex}`;
 
     if (result.round.seed !== expectedSeed) {
       throw new Error(`${path} expected seed ${expectedSeed} but found ${result.round.seed}`);
@@ -1031,7 +1031,7 @@ function parseProductionShardArtifact(
     auditVersion: 11,
     productVersion: PRODUCT_VERSION,
     simulationVersion: SIMULATION_VERSION,
-    participantCount: 60,
+    participantCount: 70,
     shardIndex,
     shardCount: PRODUCTION_SHARD_COUNT,
     sampleStart,
@@ -1041,7 +1041,7 @@ function parseProductionShardArtifact(
 }
 
 async function runProductionShard(shardIndex: number) {
-  const participantCount = 60;
+  const participantCount = 70;
   const sampleStart = shardIndex * PRODUCTION_SAMPLES_PER_SHARD;
   const config = createAuditConfig(participantCount);
   const results = Array.from({ length: PRODUCTION_SAMPLES_PER_SHARD }, (_, localIndex) => {
@@ -1145,8 +1145,8 @@ async function mergeProductionShards(): Promise<readonly ProductionAuditResult[]
     throw new Error("production merge found duplicate seeds");
   }
 
-  const config = createAuditConfig(60);
-  return Object.freeze([summarizeParticipantAudit(60, config, results)]);
+  const config = createAuditConfig(70);
+  return Object.freeze([summarizeParticipantAudit(70, config, results)]);
 }
 
 function createControlledMassOverrides(sampleIndex: number): readonly ParticipantSpawnOverride[] {

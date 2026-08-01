@@ -177,5 +177,5 @@ export function getArenaSize(playerCount: number): ArenaSize {
     return Object.freeze({ columns: 31, rows: 26 });
   }
 
-  return Object.freeze({ columns: 52, rows: 44 });
+  return Object.freeze({ columns: 57, rows: 48 });
 }

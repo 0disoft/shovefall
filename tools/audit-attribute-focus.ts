@@ -57,6 +57,11 @@ const WORKER_COUNT = Math.min(
 );
 const OUTPUT_PATH = new URL("../balance/latest.json", import.meta.url);
 const RANDOMIZED_ATTRIBUTES = process.argv.includes("--random-attributes");
+const BALANCED_ATTRIBUTES = process.argv.includes("--balanced-attributes");
+
+if (RANDOMIZED_ATTRIBUTES && BALANCED_ATTRIBUTES) {
+  throw new Error("attribute audit accepts only one attribute assignment mode");
+}
 
 const ITEM_LABELS: Readonly<Record<BotActiveItemId, string>> = Object.freeze({
   soap: "비누",
@@ -273,12 +278,34 @@ function createRandomAttributeRoster(streams: RandomStreamSet): readonly Startin
   return Object.freeze(shuffle(roster, streams.get("attribute-roster")));
 }
 
+function createBalancedAttributeRoster(roundIndex: number): readonly StartingAttributes[] {
+  const base = Object.freeze([4, 4, 3, 3, 3, 3] as const);
+  return Object.freeze(
+    Array.from({ length: PARTICIPANT_COUNT }, (_, loadoutIndex) =>
+      Object.freeze(
+        Object.fromEntries(
+          STARTING_ATTRIBUTE_IDS.map((attributeId, attributeIndex) => [
+            attributeId,
+            base[(attributeIndex + loadoutIndex + roundIndex) % base.length],
+          ]),
+        ) as unknown as StartingAttributes,
+      ),
+    ),
+  );
+}
+
 function createAssignments(roundIndex: number): readonly LoadoutAssignment[] {
-  const mode = RANDOMIZED_ATTRIBUTES ? "random-trait" : "focused-trait";
+  const mode = RANDOMIZED_ATTRIBUTES
+    ? "random-trait"
+    : BALANCED_ATTRIBUTES
+      ? "balanced-trait"
+      : "focused-trait";
   const streams = new RandomStreamSet(`${mode}-loadout-roster-v1-${roundIndex}`);
-  const randomAttributeRoster = RANDOMIZED_ATTRIBUTES
+  const attributeRoster = RANDOMIZED_ATTRIBUTES
     ? createRandomAttributeRoster(streams)
-    : undefined;
+    : BALANCED_ATTRIBUTES
+      ? createBalancedAttributeRoster(roundIndex)
+      : undefined;
   const assignments = SKILL_ITEM_LOADOUTS.map((loadout, loadoutIndex) => {
     const skills = loadout.skills;
     const attributeProfile =
@@ -286,8 +313,8 @@ function createAssignments(roundIndex: number): readonly LoadoutAssignment[] {
     const combinationIndex = Math.floor(loadoutIndex / BOT_ACTIVE_ITEM_IDS.length);
     return {
       actorId: 0,
-      attributeProfileId: RANDOMIZED_ATTRIBUTES ? null : attributeProfile.id,
-      attributes: randomAttributeRoster?.[loadoutIndex] ?? attributeProfile.attributes,
+      attributeProfileId: RANDOMIZED_ATTRIBUTES || BALANCED_ATTRIBUTES ? null : attributeProfile.id,
+      attributes: attributeRoster?.[loadoutIndex] ?? attributeProfile.attributes,
       item: loadout.item,
       skills,
       skillCombinationId: [...skills].toSorted().join("+"),
@@ -308,7 +335,11 @@ function getPhase(_roundIndex: number): BalancePhase {
 
 function getRoundSeed(roundIndex: number): string {
   const seedFamily = Math.floor(roundIndex / 2);
-  const mode = RANDOMIZED_ATTRIBUTES ? "random-trait" : "focused-trait";
+  const mode = RANDOMIZED_ATTRIBUTES
+    ? "random-trait"
+    : BALANCED_ATTRIBUTES
+      ? "balanced-trait"
+      : "focused-trait";
   return `${mode}-skill-item-audit-v1-${seedFamily.toString().padStart(3, "0")}`;
 }
 
@@ -465,6 +496,15 @@ function recordActor(
         investedPoints,
       );
     }
+  } else if (BALANCED_ATTRIBUTES) {
+    addObservation(
+      getAggregate(phase, "attribute", "balanced", "균등 배분"),
+      observation,
+      won,
+      observation.damageDealt,
+      totalSkillUses,
+      totalSkillHits,
+    );
   } else {
     const profileId = assignment.attributeProfileId;
     if (profileId === null) {
@@ -951,12 +991,35 @@ function assertAssignmentCoverage(): void {
   const randomBuilds = new Set<string>();
   let multiTraitActors = 0;
   for (let roundIndex = 0; roundIndex < TOTAL_ROUNDS; roundIndex += 1) {
-    for (const assignment of createAssignments(roundIndex)) {
+    const roundAssignments = createAssignments(roundIndex);
+    const roundLoadouts = new Set(
+      roundAssignments.map(({ skillCombinationId, item }) => `${skillCombinationId}:${item}`),
+    );
+    if (
+      roundAssignments.length !== PARTICIPANT_COUNT ||
+      roundLoadouts.size !== SKILL_ITEM_LOADOUTS.length
+    ) {
+      throw new Error(`round ${roundIndex} does not expose every skill-item loadout exactly once`);
+    }
+    if (BALANCED_ATTRIBUTES) {
+      for (const attributeId of STARTING_ATTRIBUTE_IDS) {
+        const roundPoints = roundAssignments.reduce(
+          (sum, assignment) => sum + assignment.attributes[attributeId],
+          0,
+        );
+        if (roundPoints !== 200) {
+          throw new Error(
+            `round ${roundIndex} ${attributeId} exposure is ${roundPoints}, expected 200`,
+          );
+        }
+      }
+    }
+    for (const assignment of roundAssignments) {
       const attributeValues = STARTING_ATTRIBUTE_IDS.map((id) => assignment.attributes[id]);
       if (attributeValues.reduce((sum, value) => sum + value, 0) !== 20) {
         throw new Error(`actor ${assignment.actorId} does not have a 20-point build`);
       }
-      if (RANDOMIZED_ATTRIBUTES) {
+      if (RANDOMIZED_ATTRIBUTES || BALANCED_ATTRIBUTES) {
         randomBuilds.add(attributeValues.join("/"));
         if (attributeValues.filter((value) => value > 0).length >= 2) {
           multiTraitActors += 1;
@@ -966,6 +1029,12 @@ function assertAssignmentCoverage(): void {
             attributeId,
             (attributePointTotals.get(attributeId) ?? 0) + assignment.attributes[attributeId],
           );
+        }
+        if (
+          BALANCED_ATTRIBUTES &&
+          attributeValues.toSorted((left, right) => left - right).join("/") !== "3/3/3/3/4/4"
+        ) {
+          throw new Error(`actor ${assignment.actorId} does not have a balanced 20-point build`);
         }
       } else {
         if (
@@ -1025,7 +1094,7 @@ function assertAssignmentCoverage(): void {
       );
     }
   }
-  if (RANDOMIZED_ATTRIBUTES) {
+  if (RANDOMIZED_ATTRIBUTES || BALANCED_ATTRIBUTES) {
     const expectedPoints = (TOTAL_ROUNDS * PARTICIPANT_COUNT * 20) / STARTING_ATTRIBUTE_IDS.length;
     for (const [attributeId, points] of attributePointTotals) {
       if (points !== expectedPoints) {
@@ -1034,7 +1103,10 @@ function assertAssignmentCoverage(): void {
         );
       }
     }
-    if (randomBuilds.size < 100 || multiTraitActors < TOTAL_ROUNDS * PARTICIPANT_COUNT * 0.95) {
+    if (
+      RANDOMIZED_ATTRIBUTES &&
+      (randomBuilds.size < 100 || multiTraitActors < TOTAL_ROUNDS * PARTICIPANT_COUNT * 0.95)
+    ) {
       throw new Error(
         `random attribute coverage is too narrow: builds=${randomBuilds.size}, multiTrait=${multiTraitActors}`,
       );
@@ -1080,6 +1152,7 @@ async function executeWorkers(): Promise<readonly WorkerResult[]> {
           String(start),
           String(count),
           ...(RANDOMIZED_ATTRIBUTES ? ["--random-attributes"] : []),
+          ...(BALANCED_ATTRIBUTES ? ["--balanced-attributes"] : []),
         ],
         { stdio: ["ignore", "pipe", "pipe"] },
       );
@@ -1153,14 +1226,18 @@ async function main(): Promise<void> {
       workerCount: WORKER_COUNT,
       assignment: RANDOMIZED_ATTRIBUTES
         ? `각 참가자의 20포인트를 여섯 특성에 결정론적으로 무작위 배분한다. 여섯 회전본을 한 묶음으로 사용해 매 판 각 특성의 총투자량은 정확히 200포인트다. ${SKILL_COMBINATIONS.length}개 2스킬 조합과 ${BOT_ACTIVE_ITEM_IDS.length}개 시작 아이템의 모든 조합은 매 판 한 번씩 등장하고, 특성 조합과 좌석을 별도로 섞는다.`
-        : `매 판 여섯 특성 각각에 20포인트를 몰아준 참가자를 정확히 10명씩 배정한다. ${SKILL_COMBINATIONS.length}개 2스킬 조합과 ${BOT_ACTIVE_ITEM_IDS.length}개 시작 아이템의 모든 조합은 매 판 한 번씩 등장하고, 특성·성격·좌석을 순환해 특정 장비 조합에 한 특성이 고정되지 않게 한다.`,
+        : BALANCED_ATTRIBUTES
+          ? `각 참가자는 20포인트를 4·4·3·3·3·3으로 나눠 가진다. 4포인트를 받는 두 특성을 좌석과 라운드마다 회전시켜 매 판 각 특성의 총투자량을 정확히 200포인트로 맞춘다. ${SKILL_COMBINATIONS.length}개 2스킬 조합과 ${BOT_ACTIVE_ITEM_IDS.length}개 시작 아이템의 모든 조합은 매 판 한 번씩 등장한다.`
+          : `매 판 여섯 특성 각각에 20포인트를 몰아준 참가자를 정확히 10명씩 배정한다. ${SKILL_COMBINATIONS.length}개 2스킬 조합과 ${BOT_ACTIVE_ITEM_IDS.length}개 시작 아이템의 모든 조합은 매 판 한 번씩 등장하고, 특성·성격·좌석을 순환해 특정 장비 조합에 한 특성이 고정되지 않게 한다.`,
       rankTiePolicy:
         "같은 틱에 탈락한 참가자는 해당 틱 종료 후 생존자 수에 1을 더한 공동 순위를 받는다.",
       limitations: Object.freeze([
         "고정 시드 어려움 AI 결과는 사람 플레이 밸런스를 증명하지 않는다.",
         RANDOMIZED_ATTRIBUTES
           ? "특성 행은 해당 특성에 투자된 포인트로 가중한 성적이다. 다른 다섯 특성과 함께 투자된 관측치이므로 한 포인트의 독립적인 인과 효과를 증명하지 않는다."
-          : "한 특성에 20포인트를 몰아준 극단 빌드 비교이므로 여러 특성에 나눠 찍는 일반 플레이의 한 포인트 효율을 직접 증명하지 않는다.",
+          : BALANCED_ATTRIBUTES
+            ? "특성은 모든 참가자에게 거의 균등하게 배분했으므로 이 실험의 특성 행은 비교 대상이 아니라 공통 통제 조건이다."
+            : "한 특성에 20포인트를 몰아준 극단 빌드 비교이므로 여러 특성에 나눠 찍는 일반 플레이의 한 포인트 효율을 직접 증명하지 않는다.",
         "시작 아이템의 효과를 분리하려고 보물선과 맵 추가 아이템을 끈 제어 실험이다.",
         "개별 스킬 결과에는 함께 선택된 다른 스킬의 영향이 섞여 있다.",
         "사망 원인은 eliminated 이벤트에 직접 원인이 없어 주변 전투 이벤트로 분류한다.",

@@ -131,9 +131,9 @@ describe("procedural island arena", () => {
 
   it("carves twelve separated lakes into the widened public island", () => {
     const massiveConfig = normalizeGameConfig({
-      participantCount: 60,
-      arenaColumns: 52,
-      arenaRows: 44,
+      participantCount: 70,
+      arenaColumns: 57,
+      arenaRows: 48,
     });
 
     for (let seed = 0; seed < 32; seed += 1) {
@@ -144,27 +144,27 @@ describe("procedural island arena", () => {
       const landIds = new Set(
         tiles.filter(({ state }) => state === "Stable").map(({ tileId }) => tileId),
       );
-      const lakes = getLakeComponents(tiles, 52, 44);
+      const lakes = getLakeComponents(tiles, 57, 48);
       const totalLakeTiles = lakes.reduce((sum, lake) => sum + lake.size, 0);
 
       expect(getComponents(landIds)).toHaveLength(1);
       expect(lakes).toHaveLength(12);
       expect(lakes.every((lake) => lake.size >= 5 && lake.size <= 9)).toBe(true);
       expect(totalLakeTiles).toBeLessThanOrEqual(96);
-      expect(landIds.size).toBeGreaterThanOrEqual(1_250);
-      expect(landIds.size).toBeLessThanOrEqual(1_320);
+      expect(landIds.size).toBeGreaterThanOrEqual(1_546);
+      expect(landIds.size).toBeLessThanOrEqual(1_582);
     }
   });
 
   it("bridges public outer-coast tiles that would otherwise touch only at a corner", () => {
     const tiles = createArenaTiles(
-      normalizeGameConfig({ participantCount: 60 }),
+      normalizeGameConfig({ participantCount: 70, arenaColumns: 57, arenaRows: 48 }),
       new RandomStreamSet("coast-diagonal-bridges").get("arena"),
     );
     const landIds = new Set(
       tiles.filter(({ state }) => state !== "Void").map(({ tileId }) => tileId),
     );
-    const outerOceanIds = getOuterOceanTileIds(tiles, 52, 44);
+    const outerOceanIds = getOuterOceanTileIds(tiles, 57, 48);
 
     for (const tile of tiles.filter(({ state }) => state !== "Void")) {
       for (const diagonal of [
@@ -183,11 +183,11 @@ describe("procedural island arena", () => {
     }
   });
 
-  it("keeps all sixty starting positions supported and away from every shore", () => {
+  it("keeps all seventy starting positions supported and away from every shore", () => {
     const massiveConfig = normalizeGameConfig({
-      participantCount: 60,
-      arenaColumns: 52,
-      arenaRows: 44,
+      participantCount: 70,
+      arenaColumns: 57,
+      arenaRows: 48,
     });
 
     for (let seed = 0; seed < 16; seed += 1) {
@@ -197,7 +197,7 @@ describe("procedural island arena", () => {
         tiles.filter(({ state }) => state === "Stable").map(({ tileId }) => tileId),
       );
       const shoreDepths = getLandShoreDepths(tiles);
-      const positions = createParticipantSpawnPositions(tiles, 60, streams.get("spawn"));
+      const positions = createParticipantSpawnPositions(tiles, 70, streams.get("spawn"));
       const spawnIds = positions.map(({ x, y }) => createTileId(Math.floor(x), Math.floor(y)));
       const minimumSpawnDistance = positions.reduce(
         (minimum, position, index) =>
@@ -210,7 +210,7 @@ describe("procedural island arena", () => {
         Number.POSITIVE_INFINITY,
       );
 
-      expect(new Set(spawnIds)).toHaveLength(60);
+      expect(new Set(spawnIds)).toHaveLength(70);
       expect(spawnIds.every((tileId) => stableIds.has(tileId))).toBe(true);
       expect(spawnIds.every((tileId) => (shoreDepths.get(tileId) ?? 0) >= 1)).toBe(true);
       expect(minimumSpawnDistance).toBeGreaterThanOrEqual(1);
@@ -223,7 +223,7 @@ describe("procedural island arena", () => {
       { participantCount: 16, arenaColumns: 25, arenaRows: 20 },
       { participantCount: 24, arenaColumns: 28, arenaRows: 23 },
       { participantCount: 32, arenaColumns: 31, arenaRows: 26 },
-      { participantCount: 60, arenaColumns: 52, arenaRows: 44 },
+      { participantCount: 70, arenaColumns: 57, arenaRows: 48 },
     ] as const;
 
     for (let seed = 0; seed < 24; seed += 1) {
@@ -247,7 +247,7 @@ describe("procedural island arena", () => {
     { participantCount: 16, arenaColumns: 25, arenaRows: 20 },
     { participantCount: 24, arenaColumns: 28, arenaRows: 23 },
     { participantCount: 32, arenaColumns: 31, arenaRows: 26 },
-    { participantCount: 60, arenaColumns: 52, arenaRows: 44 },
+    { participantCount: 70, arenaColumns: 57, arenaRows: 48 },
   ])(
     "floods every stable tile for the $participantCount-player island",
     ({ participantCount, arenaColumns, arenaRows }) => {

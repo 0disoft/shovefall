@@ -13,6 +13,7 @@ import {
   type ItemId,
   type InventorySlotIndex,
   type ParticipantActionKind,
+  type PendingSkillProjectileState,
   type PendingSoapDamageState,
   type ParticipantState,
   type RenderFrameV1,
@@ -84,7 +85,13 @@ import {
   spendStatPoint,
 } from "./progression";
 import { getItemDefinition } from "../content/items";
-import { DEFAULT_SKILL_LOADOUT, getSkillDefinition, isSkillDefinitionId } from "../content/skills";
+import {
+  DEFAULT_SKILL_LOADOUT,
+  getSkillDefinition,
+  getSkillProjectileTravelTicks,
+  isProjectileSkill,
+  isSkillDefinitionId,
+} from "../content/skills";
 import {
   applyStartingSkills,
   commitSkillCast,
@@ -179,6 +186,7 @@ interface EventDetails {
   readonly winnerActorId?: ActorId;
   readonly vector?: Vector2;
   readonly position?: Vector2;
+  readonly originPosition?: Vector2;
   readonly reason?: SimulationEventV1["reason"];
   readonly upgradeStat?: UpgradeStatId;
   readonly upgradeSkillSlot?: SkillSlotIndex;
@@ -241,6 +249,19 @@ interface SkillCastRequest {
   readonly direction: Vector2;
   readonly targetPosition: Vector2 | null;
   readonly metrics: SkillCastMetrics;
+}
+
+interface SkillImpactRequest {
+  readonly ownerActorId: ActorId;
+  readonly targetActorId: ActorId;
+  readonly definitionId: SkillDefinitionId;
+  readonly direction: Vector2;
+  readonly position?: Vector2;
+  readonly projectileId?: number;
+  readonly metrics: Pick<
+    SkillCastMetrics,
+    "damage" | "impulse" | "stumbleTicks" | "stunTicks" | "rootTicks"
+  >;
 }
 
 interface ForwardTargetHit {
@@ -845,7 +866,9 @@ export class SimulationWorld {
   #bombs: readonly BombState[] = Object.freeze([]);
   #soapPatches: readonly SoapPatchState[] = Object.freeze([]);
   #pendingSoapDamage: readonly PendingSoapDamageState[] = Object.freeze([]);
+  #pendingSkillProjectiles: readonly PendingSkillProjectileState[] = Object.freeze([]);
   #skillZones: readonly SkillZoneState[] = Object.freeze([]);
+  #nextSkillProjectileId = 1;
   #nextSkillZoneId = 1;
   #itemState: ItemSystemState;
   #round: RoundStateV1 = Object.freeze({
@@ -1003,6 +1026,7 @@ export class SimulationWorld {
     const candidatePairs = spatialHash.getCandidatePairs();
     participants = this.#resolveWeakContacts(participants, candidatePairs);
     participants = this.#resolveObstacleContacts(participants, false);
+    participants = this.#resolvePendingSkillProjectiles(participants, events);
     participants = this.#resolveSkillZones(participants, events);
     participants = this.#resolveSoapPatches(participants, events);
     participants = this.#resolveShoves(participants, candidatePairs, events);
@@ -1070,7 +1094,9 @@ export class SimulationWorld {
       bombs: this.#bombs,
       soapPatches: this.#soapPatches,
       pendingSoapDamage: this.#pendingSoapDamage,
+      pendingSkillProjectiles: this.#pendingSkillProjectiles,
       skillZones: this.#skillZones,
+      nextSkillProjectileId: this.#nextSkillProjectileId,
       nextSkillZoneId: this.#nextSkillZoneId,
       nextItemId: this.#itemState.nextItemId,
       nextDeliveryId: this.#itemState.nextDeliveryId,
@@ -1430,7 +1456,12 @@ export class SimulationWorld {
           );
 
           if (skill.definitionId === "blink-step") {
-            const landingWall = this.#getDodgeLandingWall(committed, direction, participants);
+            const landingWall = this.#getDodgeLandingWall(
+              committed,
+              direction,
+              participants,
+              definition.range,
+            );
             events.push(
               this.#createEvent("dodge-started", {
                 actorId: participant.actorId,
@@ -1717,6 +1748,211 @@ export class SimulationWorld {
     return supported ? proposed : attacker.body.position;
   }
 
+  #applySkillImpact(
+    participantsById: Map<ActorId, ParticipantState>,
+    impact: SkillImpactRequest,
+    events: SimulationEventV1[],
+  ): void {
+    const target = participantsById.get(impact.targetActorId);
+    if (target === undefined || !isCollidable(target)) {
+      return;
+    }
+
+    const definition = getSkillDefinition(impact.definitionId);
+    const targetIsEvading =
+      target.action.skillDefinitionId === "blink-step" &&
+      isParticipantEvading(target, this.#tick, this.#gameplayTuning.dodgeEvasionTicks);
+    if (targetIsEvading) {
+      events.push(
+        this.#createEvent("dodge-succeeded", {
+          actorId: target.actorId,
+          targetActorId: impact.ownerActorId,
+          skillDefinitionId: definition.id,
+          ...(impact.projectileId === undefined ? {} : { projectileId: impact.projectileId }),
+          vector: target.action.lockedDirection ?? target.body.facing,
+          ...(impact.position === undefined ? {} : { position: impact.position }),
+        }),
+      );
+      return;
+    }
+
+    let updatedTarget = target;
+    const damageResult = applyCombatDamage(
+      updatedTarget,
+      impact.metrics.damage,
+      impact.ownerActorId,
+      this.#tick,
+    );
+    updatedTarget = damageResult.participant;
+    if (impact.metrics.impulse > 0) {
+      const rawImpulse =
+        impact.metrics.impulse *
+        getIncomingMassImpulseMultiplier(updatedTarget.body.massFactor) *
+        combineLinearAttributeMultipliers(
+          getStartingIncomingImpulseMultiplier(updatedTarget.startingAttributes),
+          getStabilityMultiplier(updatedTarget.progression.stats),
+        );
+      const impulseX = impact.direction.x * rawImpulse;
+      const impulseY = impact.direction.y * rawImpulse;
+      if (updatedTarget.action.kind !== "Anchored") {
+        updatedTarget = Object.freeze({
+          ...updatedTarget,
+          body: Object.freeze({
+            ...updatedTarget.body,
+            velocity: Object.freeze({
+              x: updatedTarget.body.velocity.x + impulseX,
+              y: updatedTarget.body.velocity.y + impulseY,
+            }),
+          }),
+          action: createTimedAction(
+            "Stumbling",
+            this.#tick,
+            getStumbleTicks(updatedTarget, impact.metrics.stumbleTicks),
+            impact.direction,
+          ),
+          shoveCredit: chooseOffensiveCredit(
+            updatedTarget.shoveCredit,
+            Object.freeze({
+              attackerActorId: impact.ownerActorId,
+              strength: Math.hypot(impulseX, impulseY),
+            }),
+            this.#tick,
+          ),
+        });
+      }
+    }
+    if (impact.metrics.stunTicks > 0) {
+      updatedTarget = applyCombatStatus(
+        updatedTarget,
+        "stun",
+        impact.metrics.stunTicks,
+        this.#tick,
+      );
+      events.push(
+        this.#createEvent("status-applied", {
+          actorId: impact.ownerActorId,
+          targetActorId: target.actorId,
+          skillDefinitionId: definition.id,
+          ...(impact.projectileId === undefined ? {} : { projectileId: impact.projectileId }),
+          statusKind: "stun",
+          durationTicks: impact.metrics.stunTicks,
+        }),
+      );
+    }
+    if (impact.metrics.rootTicks > 0) {
+      updatedTarget = applyCombatStatus(
+        updatedTarget,
+        "root",
+        impact.metrics.rootTicks,
+        this.#tick,
+      );
+      events.push(
+        this.#createEvent("status-applied", {
+          actorId: impact.ownerActorId,
+          targetActorId: target.actorId,
+          skillDefinitionId: definition.id,
+          ...(impact.projectileId === undefined ? {} : { projectileId: impact.projectileId }),
+          statusKind: "root",
+          durationTicks: impact.metrics.rootTicks,
+        }),
+      );
+    }
+    if (definition.manaSteal > 0) {
+      const currentAttacker = participantsById.get(impact.ownerActorId);
+      if (currentAttacker?.active === true && currentAttacker.combat.health > 0) {
+        const manaDrain = drainParticipantMana(updatedTarget, definition.manaSteal);
+        updatedTarget = manaDrain.participant;
+        if (manaDrain.drained > 0) {
+          participantsById.set(
+            impact.ownerActorId,
+            restoreParticipantMana(currentAttacker, manaDrain.drained),
+          );
+        }
+      }
+    }
+    participantsById.set(target.actorId, updatedTarget);
+    events.push(
+      this.#createEvent("skill-hit", {
+        actorId: impact.ownerActorId,
+        targetActorId: target.actorId,
+        skillDefinitionId: definition.id,
+        ...(impact.projectileId === undefined ? {} : { projectileId: impact.projectileId }),
+        amount: damageResult.damage,
+        absorbedAmount: damageResult.absorbed,
+        healthAfter: updatedTarget.combat.health,
+        vector: impact.direction,
+        ...(impact.position === undefined ? {} : { position: impact.position }),
+      }),
+      this.#createEvent("damage-applied", {
+        actorId: impact.ownerActorId,
+        targetActorId: target.actorId,
+        skillDefinitionId: definition.id,
+        ...(impact.projectileId === undefined ? {} : { projectileId: impact.projectileId }),
+        amount: damageResult.damage,
+        healthAfter: updatedTarget.combat.health,
+      }),
+    );
+  }
+
+  #resolvePendingSkillProjectiles(
+    participants: readonly ParticipantState[],
+    events: SimulationEventV1[],
+  ): readonly ParticipantState[] {
+    const due = this.#pendingSkillProjectiles.filter(({ impactTick }) => impactTick <= this.#tick);
+    if (due.length === 0) {
+      return participants;
+    }
+
+    this.#pendingSkillProjectiles = Object.freeze(
+      this.#pendingSkillProjectiles.filter(({ impactTick }) => impactTick > this.#tick),
+    );
+    const participantsById = new Map(
+      participants.map((participant) => [participant.actorId, participant] as const),
+    );
+    for (const projectile of due.toSorted(
+      (left, right) => left.impactTick - right.impactTick || left.projectileId - right.projectileId,
+    )) {
+      const target = participantsById.get(projectile.targetActorId);
+      const impactDirection =
+        target === undefined
+          ? projectile.direction
+          : normalizeDirectionOrFallback(
+              {
+                x: target.body.position.x - projectile.originPosition.x,
+                y: target.body.position.y - projectile.originPosition.y,
+              },
+              projectile.direction,
+            );
+      const impactPosition =
+        target === undefined
+          ? Object.freeze({
+              x: projectile.originPosition.x + projectile.direction.x,
+              y: projectile.originPosition.y + projectile.direction.y,
+            })
+          : Object.freeze({
+              x: target.body.position.x - impactDirection.x * target.body.radius,
+              y: target.body.position.y - impactDirection.y * target.body.radius,
+            });
+      this.#applySkillImpact(
+        participantsById,
+        {
+          ownerActorId: projectile.ownerActorId,
+          targetActorId: projectile.targetActorId,
+          definitionId: projectile.skillDefinitionId,
+          direction: impactDirection,
+          position: impactPosition,
+          projectileId: projectile.projectileId,
+          metrics: projectile,
+        },
+        events,
+      );
+    }
+
+    return Object.freeze(
+      participants.map((participant) => participantsById.get(participant.actorId) ?? participant),
+    );
+  }
+
   #resolveSkills(
     participants: readonly ParticipantState[],
     casts: readonly SkillCastRequest[],
@@ -1784,131 +2020,60 @@ export class SimulationWorld {
       }
       const target = targetHit.target;
 
-      const targetIsEvading =
-        target.action.skillDefinitionId === "blink-step" &&
-        isParticipantEvading(target, this.#tick, this.#gameplayTuning.dodgeEvasionTicks);
-      if (targetIsEvading) {
+      if (isProjectileSkill(definition.id)) {
+        const projectileId = this.#nextSkillProjectileId;
+        this.#nextSkillProjectileId += 1;
+        const travelTicks = getSkillProjectileTravelTicks(targetHit.entryDistance);
+        const contactPosition = Object.freeze({
+          x: attacker.body.position.x + targetHit.direction.x * targetHit.entryDistance,
+          y: attacker.body.position.y + targetHit.direction.y * targetHit.entryDistance,
+        });
+        const projectile = Object.freeze({
+          projectileId,
+          ownerActorId: attacker.actorId,
+          targetActorId: target.actorId,
+          skillDefinitionId: definition.id,
+          launchTick: this.#tick,
+          impactTick: this.#tick + travelTicks,
+          originPosition: attacker.body.position,
+          direction: targetHit.direction,
+          damage: cast.metrics.damage,
+          impulse: cast.metrics.impulse,
+          stumbleTicks: cast.metrics.stumbleTicks,
+          stunTicks: cast.metrics.stunTicks,
+          rootTicks: cast.metrics.rootTicks,
+        } satisfies PendingSkillProjectileState);
+        this.#pendingSkillProjectiles = Object.freeze(
+          [...this.#pendingSkillProjectiles, projectile].toSorted(
+            (left, right) =>
+              left.impactTick - right.impactTick || left.projectileId - right.projectileId,
+          ),
+        );
         events.push(
-          this.#createEvent("dodge-succeeded", {
-            actorId: target.actorId,
-            targetActorId: attacker.actorId,
+          this.#createEvent("skill-projectile-fired", {
+            actorId: attacker.actorId,
+            targetActorId: target.actorId,
             skillDefinitionId: definition.id,
-            vector: target.action.lockedDirection ?? target.body.facing,
+            projectileId,
+            originPosition: attacker.body.position,
+            position: contactPosition,
+            vector: targetHit.direction,
+            durationTicks: travelTicks,
           }),
         );
         continue;
       }
 
-      let updatedTarget = target;
-      const damageResult = applyCombatDamage(
-        updatedTarget,
-        cast.metrics.damage,
-        attacker.actorId,
-        this.#tick,
-      );
-      updatedTarget = damageResult.participant;
-      if (cast.metrics.impulse > 0) {
-        const rawImpulse =
-          cast.metrics.impulse *
-          getIncomingMassImpulseMultiplier(updatedTarget.body.massFactor) *
-          combineLinearAttributeMultipliers(
-            getStartingIncomingImpulseMultiplier(updatedTarget.startingAttributes),
-            getStabilityMultiplier(updatedTarget.progression.stats),
-          );
-        const impulseX = targetHit.direction.x * rawImpulse;
-        const impulseY = targetHit.direction.y * rawImpulse;
-        if (updatedTarget.action.kind !== "Anchored") {
-          updatedTarget = Object.freeze({
-            ...updatedTarget,
-            body: Object.freeze({
-              ...updatedTarget.body,
-              velocity: Object.freeze({
-                x: updatedTarget.body.velocity.x + impulseX,
-                y: updatedTarget.body.velocity.y + impulseY,
-              }),
-            }),
-            action: createTimedAction(
-              "Stumbling",
-              this.#tick,
-              getStumbleTicks(updatedTarget, cast.metrics.stumbleTicks),
-              targetHit.direction,
-            ),
-            shoveCredit: chooseOffensiveCredit(
-              updatedTarget.shoveCredit,
-              Object.freeze({
-                attackerActorId: attacker.actorId,
-                strength: Math.hypot(impulseX, impulseY),
-              }),
-              this.#tick,
-            ),
-          });
-        }
-      }
-      if (cast.metrics.stunTicks > 0) {
-        updatedTarget = applyCombatStatus(
-          updatedTarget,
-          "stun",
-          cast.metrics.stunTicks,
-          this.#tick,
-        );
-        events.push(
-          this.#createEvent("status-applied", {
-            actorId: attacker.actorId,
-            targetActorId: target.actorId,
-            skillDefinitionId: definition.id,
-            statusKind: "stun",
-            durationTicks: cast.metrics.stunTicks,
-          }),
-        );
-      }
-      if (cast.metrics.rootTicks > 0) {
-        updatedTarget = applyCombatStatus(
-          updatedTarget,
-          "root",
-          cast.metrics.rootTicks,
-          this.#tick,
-        );
-        events.push(
-          this.#createEvent("status-applied", {
-            actorId: attacker.actorId,
-            targetActorId: target.actorId,
-            skillDefinitionId: definition.id,
-            statusKind: "root",
-            durationTicks: cast.metrics.rootTicks,
-          }),
-        );
-      }
-      if (definition.manaSteal > 0) {
-        const currentAttacker = participantsById.get(attacker.actorId) ?? attacker;
-        if (currentAttacker.active && currentAttacker.combat.health > 0) {
-          const manaDrain = drainParticipantMana(updatedTarget, definition.manaSteal);
-          updatedTarget = manaDrain.participant;
-          if (manaDrain.drained > 0) {
-            participantsById.set(
-              attacker.actorId,
-              restoreParticipantMana(currentAttacker, manaDrain.drained),
-            );
-          }
-        }
-      }
-      participantsById.set(target.actorId, updatedTarget);
-      events.push(
-        this.#createEvent("skill-hit", {
-          actorId: attacker.actorId,
+      this.#applySkillImpact(
+        participantsById,
+        {
+          ownerActorId: attacker.actorId,
           targetActorId: target.actorId,
-          skillDefinitionId: definition.id,
-          amount: damageResult.damage,
-          absorbedAmount: damageResult.absorbed,
-          healthAfter: updatedTarget.combat.health,
-          vector: targetHit.direction,
-        }),
-        this.#createEvent("damage-applied", {
-          actorId: attacker.actorId,
-          targetActorId: target.actorId,
-          skillDefinitionId: definition.id,
-          amount: damageResult.damage,
-          healthAfter: updatedTarget.combat.health,
-        }),
+          definitionId: definition.id,
+          direction: targetHit.direction,
+          metrics: cast.metrics,
+        },
+        events,
       );
     }
 
@@ -1925,11 +2090,13 @@ export class SimulationWorld {
     participant: ParticipantState,
     direction: Vector2,
     participants: readonly ParticipantState[],
+    travelDistance?: number,
   ): BrickWallState | undefined {
     const distance =
+      travelDistance ??
       this.#gameplayTuning.dodgeSpeed *
-      getMassDodgeSpeedMultiplier(participant.body.massFactor) *
-      this.#gameplayTuning.dodgeActiveTicks;
+        getMassDodgeSpeedMultiplier(participant.body.massFactor) *
+        this.#gameplayTuning.dodgeActiveTicks;
     const destination = Object.freeze({
       x: participant.body.position.x + direction.x * distance,
       y: participant.body.position.y + direction.y * distance,
@@ -2917,16 +3084,22 @@ export class SimulationWorld {
         }
         case "DodgeActive": {
           const direction = participant.action.lockedDirection ?? facing;
+          const blinkDefinition =
+            participant.action.skillDefinitionId === "blink-step"
+              ? getSkillDefinition("blink-step")
+              : undefined;
           const blinkMovementComplete =
-            participant.action.skillDefinitionId === "blink-step" &&
+            blinkDefinition !== undefined &&
             this.#tick - participant.action.startedTick >= this.#gameplayTuning.dodgeActiveTicks;
           velocity = blinkMovementComplete
             ? ZERO_VECTOR
             : (() => {
                 const dodgeScale =
-                  this.#gameplayTuning.dodgeSpeed *
-                  getMassDodgeSpeedMultiplier(participant.body.massFactor) *
-                  startingMovementMultiplier;
+                  blinkDefinition === undefined
+                    ? this.#gameplayTuning.dodgeSpeed *
+                      getMassDodgeSpeedMultiplier(participant.body.massFactor) *
+                      startingMovementMultiplier
+                    : blinkDefinition.range / this.#gameplayTuning.dodgeActiveTicks;
                 return Object.freeze({ x: direction.x * dodgeScale, y: direction.y * dodgeScale });
               })();
           facing = direction;
@@ -3977,6 +4150,7 @@ export class SimulationWorld {
       ...(details.winnerActorId === undefined ? {} : { winnerActorId: details.winnerActorId }),
       ...(details.vector === undefined ? {} : { vector: details.vector }),
       ...(details.position === undefined ? {} : { position: details.position }),
+      ...(details.originPosition === undefined ? {} : { originPosition: details.originPosition }),
       ...(details.reason === undefined ? {} : { reason: details.reason }),
       ...(details.upgradeStat === undefined ? {} : { upgradeStat: details.upgradeStat }),
       ...(details.upgradeSkillSlot === undefined

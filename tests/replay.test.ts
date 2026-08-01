@@ -55,13 +55,13 @@ describe("replay fixture contract", () => {
     });
   });
 
-  it("round-trips the supported 52-column arena contract", () => {
+  it("round-trips the supported 57-column arena contract", () => {
     const fixture = createReplayFixture({
       buildId: "wide-arena",
       config: normalizeGameConfig({
         participantCount: 4,
-        arenaColumns: 52,
-        arenaRows: 44,
+        arenaColumns: 57,
+        arenaRows: 48,
         roundLimitSeconds: 1,
       }),
       masterSeed: "wide-arena",
@@ -72,7 +72,7 @@ describe("replay fixture contract", () => {
     });
     const parsed = parseReplayFixtureJson(JSON.stringify(fixture));
 
-    expect(parsed.config.arenaColumns).toBe(52);
+    expect(parsed.config.arenaColumns).toBe(57);
     expect(runReplayFixture(parsed).finalHash).toBe(fixture.finalHash);
   });
 
@@ -101,7 +101,7 @@ describe("replay fixture contract", () => {
           ...fixture,
           config: {
             ...fixture.config,
-            participantCount: 60,
+            participantCount: 70,
             arenaColumns: 7,
             arenaRows: 7,
             maximumItemCount: 30,

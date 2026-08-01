@@ -26,6 +26,7 @@ import {
   getStartingMassFactor,
   getStartingMaximumHealthBonus,
   getStartingMaximumManaBonus,
+  getStartingManaRegenMultiplier,
   getStartingMovementMultiplier,
   getStartingOutgoingMultiplier,
   getStartingShieldMultiplier,
@@ -38,11 +39,11 @@ describe("settings normalization", () => {
   it("keeps internal participant fixtures bounded through the forced browser count", () => {
     expect(normalizePlayerCount(-10)).toBe(4);
     expect(normalizePlayerCount(12.4)).toBe(12);
-    expect(normalizePlayerCount(100)).toBe(60);
-    expect(normalizePlayerCount(Number.NaN)).toBe(60);
+    expect(normalizePlayerCount(100)).toBe(70);
+    expect(normalizePlayerCount(Number.NaN)).toBe(70);
   });
 
-  it("forces every browser setting input to the single 60-player hard-AI mode", () => {
+  it("forces every browser setting input to the single 70-player hard-AI mode", () => {
     expect(
       normalizeSettings({ playerCount: 8, preset: "relaxed", botDifficulty: "easy" }),
     ).toMatchObject({
@@ -54,7 +55,7 @@ describe("settings normalization", () => {
       initialItemCount: 8,
       itemRespawnSeconds: 7,
     });
-    expect(getPresetPlayerCount("massive")).toBe(60);
+    expect(getPresetPlayerCount("massive")).toBe(70);
     expect(getPresetCollapseSpeed("massive")).toBe("slow");
     expect(getPresetItemRespawnSeconds("massive")).toBe(7);
     expect(isBotDifficulty("hard")).toBe(true);
@@ -97,7 +98,8 @@ describe("settings normalization", () => {
       1 + DEFAULT_STARTING_ATTRIBUTES.agility * STARTING_ATTRIBUTE_EFFECTS.agility.movementPerPoint,
     );
     expect(getStartingCooldownMultiplier(DEFAULT_STARTING_ATTRIBUTES)).toBe(0.84);
-    expect(getStartingManaCostMultiplier(DEFAULT_STARTING_ATTRIBUTES)).toBe(0.92);
+    expect(getStartingManaCostMultiplier(DEFAULT_STARTING_ATTRIBUTES)).toBe(0.88);
+    expect(getStartingManaRegenMultiplier(DEFAULT_STARTING_ATTRIBUTES)).toBe(1.6);
     expect(getStartingOutgoingMultiplier(DEFAULT_STARTING_ATTRIBUTES)).toBe(1.15);
     expect(getStartingIncomingImpulseMultiplier(DEFAULT_STARTING_ATTRIBUTES)).toBe(0.8);
     expect(getStartingControlDurationMultiplier(DEFAULT_STARTING_ATTRIBUTES)).toBe(0.84);
@@ -126,6 +128,14 @@ describe("settings normalization", () => {
       balance: 0,
       willpower: 0,
     });
+    const spirit = normalizeStartingAttributes({
+      strength: 0,
+      agility: 0,
+      constitution: 0,
+      spirit: 20,
+      balance: 0,
+      willpower: 0,
+    });
     const willpower = normalizeStartingAttributes({
       strength: 0,
       agility: 0,
@@ -138,8 +148,9 @@ describe("settings normalization", () => {
     expect(getStartingOutgoingMultiplier(strength)).toBe(1.75);
     expect(getStartingMovementMultiplier(agility)).toBe(1.9);
     expect(getStartingCooldownMultiplier(agility)).toBe(0.2);
-    expect(getStartingManaCostMultiplier(agility)).toBe(0.6);
+    expect(getStartingManaCostMultiplier(agility)).toBe(0.4);
     expect(getStartingStumbleDurationMultiplier(agility)).toBe(0.5);
+    expect(getStartingManaRegenMultiplier(spirit)).toBe(4);
     expect(getStartingDamageTakenMultiplier(willpower)).toBe(0.75);
     expect(getStartingShieldMultiplier(willpower)).toBe(1.25);
   });
@@ -159,8 +170,8 @@ describe("settings normalization", () => {
     expect(getArenaSize(16)).toEqual({ columns: 25, rows: 20 });
     expect(getArenaSize(24)).toEqual({ columns: 28, rows: 23 });
     expect(getArenaSize(32)).toEqual({ columns: 31, rows: 26 });
-    expect(getArenaSize(50)).toEqual({ columns: 52, rows: 44 });
-    expect((52 * 44) / (48 * 40)).toBeCloseTo(1.2, 1);
+    expect(getArenaSize(70)).toEqual({ columns: 57, rows: 48 });
+    expect((57 * 48) / (52 * 44)).toBeCloseTo(1.2, 1);
   });
 
   it("keeps one active item and two unique skills", () => {

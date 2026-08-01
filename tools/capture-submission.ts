@@ -62,7 +62,7 @@ export interface CaptureManifest {
     readonly settings: {
       readonly botDifficulty: "hard";
       readonly collapseSpeed: "slow";
-      readonly participantCount: 60;
+      readonly participantCount: 70;
       readonly startingItems: readonly ["bomb"];
       readonly startingAttributes: {
         readonly strength: 4;
@@ -641,7 +641,7 @@ export async function captureMedia(
         settings: {
           botDifficulty: "hard",
           collapseSpeed: "slow",
-          participantCount: 60,
+          participantCount: 70,
           startingItems: ["bomb"],
           startingAttributes: {
             strength: 4,

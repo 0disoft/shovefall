@@ -6,6 +6,7 @@ import type {
   ItemState,
   ParticipantState,
   PendingSoapDamageState,
+  PendingSkillProjectileState,
   RoundId,
   RoundStateV1,
   SkillZoneState,
@@ -26,7 +27,9 @@ export interface HashableWorldState {
   readonly bombs: readonly BombState[];
   readonly soapPatches: readonly SoapPatchState[];
   readonly pendingSoapDamage: readonly PendingSoapDamageState[];
+  readonly pendingSkillProjectiles: readonly PendingSkillProjectileState[];
   readonly skillZones: readonly SkillZoneState[];
+  readonly nextSkillProjectileId: number;
   readonly nextSkillZoneId: number;
   readonly nextItemId: number;
   readonly nextDeliveryId: number;
@@ -183,6 +186,14 @@ export function hashWorldState(state: HashableWorldState): string {
       (pending) =>
         `${pending.ownerActorId}:${pending.targetActorId}:${pending.applyTick}:${quantize(pending.damage)}`,
     );
+  const pendingSkillProjectileParts = state.pendingSkillProjectiles
+    .toSorted(
+      (left, right) => left.impactTick - right.impactTick || left.projectileId - right.projectileId,
+    )
+    .map(
+      (projectile) =>
+        `${projectile.projectileId}:${projectile.ownerActorId}:${projectile.targetActorId}:${projectile.skillDefinitionId}:${projectile.launchTick}:${projectile.impactTick}:${quantize(projectile.originPosition.x)}:${quantize(projectile.originPosition.y)}:${quantize(projectile.direction.x)}:${quantize(projectile.direction.y)}:${quantize(projectile.damage)}:${quantize(projectile.impulse)}:${projectile.stumbleTicks}:${projectile.stunTicks}:${projectile.rootTicks}`,
+    );
   const skillZoneParts = state.skillZones
     .toSorted((left, right) => left.zoneId - right.zoneId)
     .map(
@@ -201,6 +212,8 @@ export function hashWorldState(state: HashableWorldState): string {
     `bombs:${bombParts.join("|")}`,
     `soap-patches:${soapPatchParts.join("|")}`,
     `soap-damage:${pendingSoapDamageParts.join("|")}`,
+    `skill-projectiles:${pendingSkillProjectileParts.join("|")}`,
+    `skill-projectile-cursor:${state.nextSkillProjectileId}`,
     `skill-zones:${skillZoneParts.join("|")}`,
     `skill-zone-cursor:${state.nextSkillZoneId}`,
     `item-cursor:${state.nextItemId}:${state.nextDeliveryId}:${state.nextItemSpawnTick ?? "none"}`,

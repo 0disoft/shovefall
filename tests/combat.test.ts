@@ -422,7 +422,9 @@ describe("weak-contact containment", () => {
 });
 
 describe("support grace and falling", () => {
-  it("allows center support to recover before half a second unsupported", () => {
+  it("allows center support to recover before 0.3 seconds unsupported", () => {
+    expect(SIMULATION_TUNING.support.graceTicks).toBe(18);
+
     const world = createWorld(
       createSeparatedOverrides({ actorId: 1, position: { x: -0.05, y: 4.5 } }),
       "support-recovery",
@@ -436,7 +438,7 @@ describe("support grace and falling", () => {
     expect(getActor(world, 1).unsupportedTicks).toBe(0);
   });
 
-  it("enters irreversible falling after half a second unsupported and then eliminates", () => {
+  it("enters irreversible falling after 0.3 seconds unsupported and then eliminates", () => {
     const world = createWorld(
       createSeparatedOverrides({ actorId: 1, position: { x: -0.5, y: 4.5 } }),
       "falling-boundary",

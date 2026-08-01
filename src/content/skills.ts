@@ -1,5 +1,25 @@
 import type { SkillDefinitionId, SkillZoneKind } from "../simulation/contracts";
 import { getUnobstructedStumbleDistance } from "../simulation/motion-constants";
+import { FIXED_TICKS_PER_SECOND } from "../simulation/versions";
+
+export const SKILL_PROJECTILE_SPEED_TILES_PER_SECOND = 6;
+
+const PROJECTILE_SKILL_IDS: ReadonlySet<SkillDefinitionId> = new Set(["arc-bolt", "chain-bind"]);
+
+export function isProjectileSkill(definitionId: SkillDefinitionId): boolean {
+  return PROJECTILE_SKILL_IDS.has(definitionId);
+}
+
+export function getSkillProjectileTravelTicks(distanceTiles: number): number {
+  if (!Number.isFinite(distanceTiles) || distanceTiles <= 0) {
+    return 0;
+  }
+
+  return Math.max(
+    1,
+    Math.round((distanceTiles / SKILL_PROJECTILE_SPEED_TILES_PER_SECOND) * FIXED_TICKS_PER_SECOND),
+  );
+}
 
 export type SkillCastKind = "melee" | "dash" | "line" | "zone" | "self";
 
@@ -202,7 +222,7 @@ export const SKILL_DEFINITIONS: Readonly<Record<SkillDefinitionId, SkillDefiniti
       zoneKind: null,
       cooldownTicks: 132,
       manaCost: 20,
-      range: 4,
+      range: 5,
       minimumAimDot: 1,
       radius: 0,
       damage: 0,
@@ -211,7 +231,7 @@ export const SKILL_DEFINITIONS: Readonly<Record<SkillDefinitionId, SkillDefiniti
       stunTicks: 0,
       rootTicks: 0,
       slowMultiplier: 1,
-      durationTicks: 120,
+      durationTicks: 150,
       delayTicks: 0,
       shield: 0,
       controlDurationMultiplier: 1,
@@ -221,8 +241,8 @@ export const SKILL_DEFINITIONS: Readonly<Record<SkillDefinitionId, SkillDefiniti
       label: "파동탄",
       castKind: "line",
       zoneKind: null,
-      cooldownTicks: 300,
-      manaCost: 30,
+      cooldownTicks: 240,
+      manaCost: 26,
       range: 3.5,
       minimumAimDot: 0.88,
       radius: 0,

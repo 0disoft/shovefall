@@ -27,7 +27,6 @@ import {
   getStartingOutgoingMultiplier,
   getStartingSkillDamageMultiplier,
 } from "./starting-attributes";
-
 export function applyStartingSkills(
   participant: ParticipantState,
   definitionIds: readonly SkillDefinitionId[] = DEFAULT_SKILL_LOADOUT,

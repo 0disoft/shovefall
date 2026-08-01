@@ -19,6 +19,8 @@ import { MAXIMUM_LAUNCH_SPEED, STUMBLE_DRAG_PER_TICK } from "../src/simulation/m
 import { SIMULATION_TUNING } from "../src/simulation/tuning";
 import { SimulationWorld } from "../src/simulation/world";
 
+type StepResult = ReturnType<SimulationWorld["step"]>;
+
 function getParticipantMana(world: SimulationWorld, actorId: number): number {
   return (
     world.createRenderFrame().participants.find((participant) => participant.actorId === actorId)
@@ -34,6 +36,43 @@ function waitForMana(world: SimulationWorld, actorId: number, minimumMana: numbe
   if (getParticipantMana(world, actorId) < minimumMana) {
     throw new Error(`actor ${actorId} did not regenerate ${minimumMana} mana`);
   }
+}
+
+function resolveProjectileImpact(
+  world: SimulationWorld,
+  cast: StepResult,
+  definitionId: "arc-bolt" | "chain-bind",
+): StepResult {
+  const fired = cast.events.find(
+    ({ kind, skillDefinitionId }) =>
+      kind === "skill-projectile-fired" && skillDefinitionId === definitionId,
+  );
+  expect(fired).toMatchObject({
+    kind: "skill-projectile-fired",
+    skillDefinitionId: definitionId,
+    projectileId: expect.any(Number),
+    durationTicks: expect.any(Number),
+  });
+  expect(cast.events).not.toContainEqual(
+    expect.objectContaining({ kind: "skill-hit", skillDefinitionId: definitionId }),
+  );
+
+  const impactTick = (fired?.tick ?? world.tick) + (fired?.durationTicks ?? 0);
+  while (world.tick <= impactTick) {
+    const result = world.step([]);
+    if (
+      result.events.some(
+        ({ kind, skillDefinitionId, projectileId }) =>
+          (kind === "skill-hit" || kind === "dodge-succeeded") &&
+          skillDefinitionId === definitionId &&
+          projectileId === fired?.projectileId,
+      )
+    ) {
+      return result;
+    }
+  }
+
+  throw new Error(`${definitionId} projectile did not resolve at its scheduled impact tick`);
 }
 
 describe("mana-backed reusable skills", () => {
@@ -62,7 +101,7 @@ describe("mana-backed reusable skills", () => {
 
   it("derives every description from the skill's balance fields", () => {
     const expected = {
-      "blink-step": "지정 방향으로 최대 4칸 이동, 2초 동안 공격 회피",
+      "blink-step": "지정 방향으로 최대 5칸 이동, 2.5초 동안 공격 회피",
       "arc-bolt": "전방 3.5칸 안의 첫 적을 자동 조준해 피해 25, 기준 넉백 약 7.3칸, 1초 휘청",
       "chain-bind":
         "전방 5.5칸의 첫 적, 전방 약 23도까지 자동 조준, 피해 20, 1초 이동 봉쇄, 적중 시 마나 10 강탈",
@@ -106,8 +145,8 @@ describe("mana-backed reusable skills", () => {
       controlDurationMultiplier: 0.7,
     });
     expect(getSkillDefinition("arc-bolt")).toMatchObject({
-      manaCost: 30,
-      cooldownTicks: 300,
+      manaCost: 26,
+      cooldownTicks: 240,
       range: 3.5,
       minimumAimDot: 0.88,
       damage: 25,
@@ -139,8 +178,8 @@ describe("mana-backed reusable skills", () => {
     });
     expect(getSkillDefinition("blink-step")).toMatchObject({
       manaCost: 20,
-      range: 4,
-      durationTicks: 120,
+      range: 5,
+      durationTicks: 150,
     });
   });
 
@@ -172,13 +211,14 @@ describe("mana-backed reusable skills", () => {
     const targetManaBefore = getParticipantMana(world, 2);
     const controlManaBefore = getParticipantMana(world, 3);
 
-    const result = world.step([
+    const cast = world.step([
       { ...createNeutralCommand(world.tick, 1), useSkillSlot: 0, targetPosition: { x: 5, y: 5 } },
     ]);
-    const skillUsed = result.events.find(
+    const skillUsed = cast.events.find(
       ({ kind, actorId, skillDefinitionId }) =>
         kind === "skill-used" && actorId === 1 && skillDefinitionId === "chain-bind",
     );
+    const result = resolveProjectileImpact(world, cast, "chain-bind");
     const passiveManaRegeneration = getParticipantMana(world, 3) - controlManaBefore;
 
     expect(result.events).toContainEqual(
@@ -191,7 +231,10 @@ describe("mana-backed reusable skills", () => {
     );
     expect(skillUsed?.manaAfter).toEqual(expect.any(Number));
     expect(getParticipantMana(world, 1) - (skillUsed?.manaAfter ?? 0)).toBe(10);
-    expect(targetManaBefore + passiveManaRegeneration - getParticipantMana(world, 2)).toBe(10);
+    expect(targetManaBefore + passiveManaRegeneration - getParticipantMana(world, 2)).toBeCloseTo(
+      10,
+      6,
+    );
   });
 
   it("heals the Frost Field caster for ten percent of actual health damage dealt", () => {
@@ -215,7 +258,7 @@ describe("mana-backed reusable skills", () => {
           },
           {
             actorId: 2,
-            position: { x: 5, y: 5 },
+            position: { x: 7, y: 5 },
             facing: { x: -1, y: 0 },
             startingSkills: ["arc-bolt", "aegis"],
           },
@@ -227,11 +270,11 @@ describe("mana-backed reusable skills", () => {
 
     waitForMana(world, 1, getSkillDefinition("frost-field").manaCost);
 
-    const result = world.step([
+    const cast = world.step([
       {
         ...createNeutralCommand(world.tick, 1),
         useSkillSlot: 0,
-        targetPosition: { x: 5, y: 5 },
+        targetPosition: { x: 7, y: 5 },
       },
       {
         ...createNeutralCommand(world.tick, 2),
@@ -239,21 +282,33 @@ describe("mana-backed reusable skills", () => {
         targetPosition: { x: 4, y: 5 },
       },
     ]);
-    const damageTaken = result.events.find(
+    const projectileResult = resolveProjectileImpact(world, cast, "arc-bolt");
+    const damageTaken = projectileResult.events.find(
       ({ kind, actorId, targetActorId, skillDefinitionId }) =>
         kind === "damage-applied" &&
         actorId === 2 &&
         targetActorId === 1 &&
         skillDefinitionId === "arc-bolt",
     );
-    const frostHit = result.events.find(
+    let frostResult = projectileResult;
+    let frostHit = frostResult.events.find(
       ({ kind, actorId, targetActorId, skillDefinitionId }) =>
         kind === "skill-hit" &&
         actorId === 1 &&
         targetActorId === 2 &&
         skillDefinitionId === "frost-field",
     );
-    const caster = result.frame.participants.find(({ actorId }) => actorId === 1);
+    while (frostHit === undefined && world.tick < 300) {
+      frostResult = world.step([]);
+      frostHit = frostResult.events.find(
+        ({ kind, actorId, targetActorId, skillDefinitionId }) =>
+          kind === "skill-hit" &&
+          actorId === 1 &&
+          targetActorId === 2 &&
+          skillDefinitionId === "frost-field",
+      );
+    }
+    const caster = frostResult.frame.participants.find(({ actorId }) => actorId === 1);
 
     expect(damageTaken?.amount).toBeGreaterThan(0);
     expect(frostHit?.amount).toBeGreaterThan(0);
@@ -265,7 +320,7 @@ describe("mana-backed reusable skills", () => {
     );
   });
 
-  it("keeps Blink Step evasion active for two seconds without extending its travel", () => {
+  it("moves Blink Step up to five tiles and keeps evasion active for 2.5 seconds", () => {
     const world = new SimulationWorld(
       normalizeGameConfig({
         participantCount: 4,
@@ -285,10 +340,12 @@ describe("mana-backed reusable skills", () => {
           },
           {
             actorId: 2,
-            position: { x: 7, y: 2 },
+            position: { x: 9.5, y: 2 },
             facing: { x: -1, y: 0 },
             startingSkills: ["arc-bolt", "aegis"],
           },
+          { actorId: 3, position: { x: 2, y: 6 } },
+          { actorId: 4, position: { x: 9.5, y: 6 } },
         ],
       },
     );
@@ -300,8 +357,13 @@ describe("mana-backed reusable skills", () => {
     const positionAfterTravel = world
       .createRenderFrame()
       .participants.find(({ actorId }) => actorId === 1)?.position;
+    expect((positionAfterTravel?.x ?? 2) - 2).toBeCloseTo(
+      getSkillDefinition("blink-step").range,
+      10,
+    );
+    expect(positionAfterTravel?.y).toBeCloseTo(2, 10);
 
-    while (world.tick < 30) {
+    while (world.tick < 120) {
       world.step([]);
     }
     const beforeAttack = world
@@ -310,7 +372,8 @@ describe("mana-backed reusable skills", () => {
     expect(beforeAttack?.position).toEqual(positionAfterTravel);
     expect(beforeAttack?.action).toBe("DodgeActive");
 
-    const attack = world.step([{ ...createNeutralCommand(world.tick, 2), useSkillSlot: 0 }]);
+    const cast = world.step([{ ...createNeutralCommand(world.tick, 2), useSkillSlot: 0 }]);
+    const attack = resolveProjectileImpact(world, cast, "arc-bolt");
     expect(attack.events).toContainEqual(
       expect.objectContaining({
         kind: "dodge-succeeded",
@@ -323,7 +386,7 @@ describe("mana-backed reusable skills", () => {
       expect.objectContaining({ kind: "skill-hit", targetActorId: 1 }),
     );
 
-    while (world.tick < 120) {
+    while (world.tick < getSkillDefinition("blink-step").durationTicks) {
       world.step([]);
     }
     expect(
@@ -384,7 +447,7 @@ describe("mana-backed reusable skills", () => {
         actorId: 1,
         skillDefinitionId: "arc-bolt",
         skillSlotIndex: 0,
-        manaAfter: 2.14,
+        manaAfter: 7.16,
       }),
     );
     expect(humanAfterFirst?.skills[0]?.readyTick).toBe(
@@ -393,7 +456,7 @@ describe("mana-backed reusable skills", () => {
           getStartingCooldownMultiplier(DEFAULT_STARTING_ATTRIBUTES),
       ),
     );
-    expect(humanAfterFirst?.combat.mana).toBe(2.14);
+    expect(humanAfterFirst?.combat.mana).toBe(7.16);
 
     const second = world.step([{ ...createNeutralCommand(world.tick, 1), useSkillSlot: 0 }]);
     expect(second.events).not.toContainEqual(
@@ -429,7 +492,7 @@ describe("mana-backed reusable skills", () => {
         kind: "skill-used",
         actorId: 1,
         skillDefinitionId: "arc-bolt",
-        manaAfter: 11.1,
+        manaAfter: 19.1,
       }),
     );
   });
@@ -455,7 +518,7 @@ describe("mana-backed reusable skills", () => {
 
     expect(human?.combat.shield).toBe(22);
     expect(human?.combat.shieldEndsTick).toBe(castTick + getSkillDefinition("aegis").durationTicks);
-    expect(human?.combat.mana).toBeLessThan(4);
+    expect(human?.combat.mana).toBe(4.24);
     expect(human?.inventory[0]).toMatchObject({ definitionId: "bomb", charges: 2 });
     expect(human?.skills[0]?.readyTick).toBe(castTick + 605);
   });
@@ -494,12 +557,15 @@ describe("mana-backed reusable skills", () => {
       },
     );
     waitForMana(world, 1, getSkillDefinition("aegis").manaCost);
-    const castTick = world.tick;
-    const result = world.step([
+    const cast = world.step([
       { ...createNeutralCommand(world.tick, 1), useSkillSlot: 0 },
       { ...createNeutralCommand(world.tick, 2), useSkillSlot: 0 },
     ]);
+    const result = resolveProjectileImpact(world, cast, "chain-bind");
     const shielded = result.frame.participants.find(({ actorId }) => actorId === 1);
+    const chainBindHit = result.events.find(
+      ({ kind, skillDefinitionId }) => kind === "skill-hit" && skillDefinitionId === "chain-bind",
+    );
     const chainBind = getSkillDefinition("chain-bind");
     const aegis = getSkillDefinition("aegis");
     const expectedDuration = Math.round(
@@ -508,7 +574,9 @@ describe("mana-backed reusable skills", () => {
         aegis.controlDurationMultiplier,
     );
 
-    expect(shielded?.combat.rootedUntilTick).toBe(castTick + expectedDuration);
+    expect(shielded?.combat.rootedUntilTick).toBe(
+      (chainBindHit?.tick ?? world.tick) + expectedDuration,
+    );
   });
 
   it("deals health damage, applies control, and regenerates after combat delay", () => {
@@ -537,9 +605,10 @@ describe("mana-backed reusable skills", () => {
       },
     );
 
-    const hit = world.step([
+    const cast = world.step([
       { ...createNeutralCommand(world.tick, 1), move: { x: 1, y: 0 }, useSkillSlot: 0 },
     ]);
+    const hit = resolveProjectileImpact(world, cast, "arc-bolt");
     const damaged = hit.frame.participants.find(({ actorId }) => actorId === 2);
     const expectedHealth =
       100 +
@@ -584,13 +653,26 @@ describe("mana-backed reusable skills", () => {
     );
 
     waitForMana(world, 1, getSkillDefinition("arc-bolt").manaCost);
-    const result = world.step([{ ...createNeutralCommand(world.tick, 1), useSkillSlot: 0 }]);
+    const cast = world.step([{ ...createNeutralCommand(world.tick, 1), useSkillSlot: 0 }]);
+    const fired = cast.events.find(
+      ({ kind, skillDefinitionId }) =>
+        kind === "skill-projectile-fired" && skillDefinitionId === "arc-bolt",
+    );
+    const result = resolveProjectileImpact(world, cast, "arc-bolt");
     const hit = result.events.find(
       ({ kind, skillDefinitionId }) => kind === "skill-hit" && skillDefinitionId === "arc-bolt",
     );
     const target = result.frame.participants.find(({ actorId }) => actorId === 2);
 
-    expect(hit).toMatchObject({ actorId: 1, targetActorId: 2 });
+    expect(fired).toMatchObject({ actorId: 1, targetActorId: 2, durationTicks: 32 });
+    expect(fired?.position?.x).toBeCloseTo(5.163, 3);
+    expect(fired?.position?.y).toBeCloseTo(4.952, 3);
+    expect(hit).toMatchObject({
+      actorId: 1,
+      targetActorId: 2,
+      projectileId: fired?.projectileId,
+      position: expect.objectContaining({ x: expect.any(Number), y: expect.any(Number) }),
+    });
     expect(hit?.vector?.y).toBeGreaterThan(0);
     expect(target?.combat.health).toBeLessThan(target?.combat.maximumHealth ?? 0);
     expect(target?.action).toBe("Stumbling");

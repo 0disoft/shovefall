@@ -13,7 +13,7 @@ Ship a short browser party-action game whose chaos stays readable. The submissio
 must let a first-time player move, shove, dodge, understand most defeats, and restart without an
 account, tutorial wall, backend, or hidden probability deciding combat.
 
-The implementation already proves deterministic rules, fixed 60-participant browser boot,
+The implementation already proves deterministic rules, fixed 70-participant browser boot,
 bounded local 50-participant workload, and the Coal-Twilight procedural visual direction. The critical
 path is no longer adding systems. It is proving the current systems and final-art readability with
 people, then publishing the exact candidate without burying combat telegraphs.
@@ -23,7 +23,7 @@ people, then publishing the exact candidate without burying combat telegraphs.
 - [x] Provider-neutral Vite and PixiJS static application with a pure 60 Hz simulation.
 - [x] Movement, shove, dodge, missed-shove stumble, simultaneous impulses, support loss, falling,
       results, and fresh-world restart.
-- [x] One public 60-participant mode with a 52×44 procedural island and exactly twelve bounded separated lakes.
+- [x] One public 70-participant mode with a 57×48 procedural island and exactly twelve bounded separated lakes.
 - [x] Hard utility-bot reaction profile fixed for public play without bot-only physics advantages.
 - [x] Slow, Normal, and Fast collapse controls with deterministic warning and collapse schedules.
 - [x] Iron Boots, Feather, and Spring Glove with a bounded 3/2/1 outer-ring placement preference.
@@ -53,7 +53,7 @@ Exit conditions:
 - Edge-item attempts are experienced as a visible voluntary risk. Unreadable spawns, accidental
   pickups, and forced deaths are separated from chosen greed.
 - Human identity, shove windup, dodge window, collapse warning, item type, and result state remain
-  distinguishable in the fixed 60-participant mode.
+  distinguishable in the fixed 70-participant mode.
 
 Current status: `PENDING_EXTERNAL_PLAYTEST`. Automated audits are supporting evidence only; bots do not use charged active items, so they cannot establish Grappling Hook or active-item pair balance.
 

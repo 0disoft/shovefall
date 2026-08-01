@@ -23,12 +23,12 @@ describe("simulation world contracts", () => {
 
   it("rejects invalid participant counts", () => {
     expect(() => normalizeGameConfig({ participantCount: 0 })).toThrow(SimulationContractError);
-    expect(() => normalizeGameConfig({ participantCount: 61 })).toThrow(SimulationContractError);
+    expect(() => normalizeGameConfig({ participantCount: 71 })).toThrow(SimulationContractError);
   });
 
   it("rejects an arena that cannot provide one unique tile per participant", () => {
     expect(() =>
-      normalizeGameConfig({ participantCount: 60, arenaColumns: 7, arenaRows: 7 }),
+      normalizeGameConfig({ participantCount: 70, arenaColumns: 7, arenaRows: 7 }),
     ).toThrow(/one spawn tile per participant/u);
   });
 

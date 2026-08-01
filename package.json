@@ -1,6 +1,6 @@
 {
   "name": "shovefall",
-  "version": "0.191.0",
+  "version": "0.198.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -22,6 +22,7 @@
     "audit:items": "bun tools/audit-items.ts",
     "audit:balance": "bun tools/audit-balance-dashboard.ts",
     "audit:focus": "bun tools/audit-attribute-focus.ts",
+    "audit:balanced": "bun tools/audit-attribute-focus.ts --balanced-attributes",
     "audit:random": "bun tools/audit-attribute-focus.ts --random-attributes",
     "audit:strategy": "bun tools/audit-strategies.ts",
     "profile:browser": "bun tools/run-browser-profile.ts",

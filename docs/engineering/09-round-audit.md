@@ -1,6 +1,16 @@
 # Round and strategy audit
 
-## Current `0.88.0` contract
+## Current `0.198.0` contract
+
+- Product/simulation/content: `0.198.0 / 84.0.0 / 50.0.0`
+- Public mode: 70 participants, Hard AI, fixed Slow collapse
+- Public map: `57×48`, exactly 12 separated 5–9-tile lakes under a 96-tile budget
+- Public round limit: 120 seconds
+- Public item policy: 8 pre-delivered initial items and two opposite ships alternating one 72-tick treasure gift about every 3.5 seconds when capacity permits
+
+Production round and strategy audits now follow the 70-participant public contract. Focused and randomized trait/loadout audits remain 60-participant controlled experiments because their equal trait groups and complete 15-pair-by-four-item rotation use exactly 60 actors. Fresh 70-participant strategy, balance, performance, and production audit evidence remains pending after the 57×48 arena expansion.
+
+## Historical `0.88.0` contract
 
 - Product/simulation/content: `0.88.0 / 56.0.0 / 33.0.0`
 - Public mode: 60 participants, Hard AI, fixed Slow collapse
@@ -8,7 +18,7 @@
 - Public round limit: 120 seconds
 - Public item policy: 8 pre-delivered initial items and two opposite ships alternating one 72-tick treasure gift about every 3.5 seconds when capacity permits
 
-Both `audit:strategy` and production `audit:rounds` consume the exported 120-second public limit instead of preserving their former 75-second copy. Controlled mass, item, and collapse experiments retain their bounded 75-second diagnostic horizon because they are not public-mode duration claims. All prior numeric tables below are historical evidence for their named versions and must not be relabeled as `0.88.0` results. Fresh strategy, balance, performance, and production audit evidence remains pending after the 52×44 arena expansion.
+Both `audit:strategy` and production `audit:rounds` consumed the exported 120-second public limit instead of preserving their former 75-second copy. Controlled mass, item, and collapse experiments retained their bounded 75-second diagnostic horizon because they were not public-mode duration claims. All prior numeric tables below are historical evidence for their named versions and must not be relabeled as current results.
 
 ## Protected-core pressure `0.34.0` status
 
