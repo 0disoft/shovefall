@@ -472,7 +472,12 @@ async function createGameplayScene(page: Page): Promise<void> {
   reportPhase("gameplay-use-bomb");
   await clickInventorySlotWhenReady(page, "#use-item-slot-0");
   await clickInventorySlotWhenReady(page, "#use-item-slot-0");
-  await page.getByText(CAPTURE_BOMB_CONFIRMATION, { exact: true }).waitFor({ state: "visible" });
+  await page.waitForFunction(
+    ({ expectedMessage }) =>
+      document.querySelector("#round-message")?.textContent === expectedMessage,
+    { expectedMessage: CAPTURE_BOMB_CONFIRMATION },
+    { timeout: BROWSER_STEP_TIMEOUT_MS },
+  );
   reportPhase("gameplay-use-grapple");
   await useGrappleForCapture(page);
   reportPhase("gameplay-move-right");
