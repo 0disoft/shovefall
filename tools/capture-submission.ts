@@ -326,7 +326,7 @@ async function waitForTickDelta(page: Page, startingTick: number, delta: number)
     ({ expectedTick }) =>
       Number(document.querySelector("#game-telemetry")?.getAttribute("data-tick")) >= expectedTick,
     { expectedTick: startingTick + delta },
-    { timeout: 10_000 },
+    { timeout: BROWSER_STEP_TIMEOUT_MS },
   );
 }
 
