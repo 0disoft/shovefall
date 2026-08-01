@@ -45,7 +45,6 @@ import {
   subtractVectors,
   type Vector2,
   vectorLength,
-  vectorLengthSquared,
   ZERO_VECTOR,
 } from "./math";
 import { RandomStreamSet, type SeedInput } from "./random";
@@ -3304,9 +3303,10 @@ export class SimulationWorld {
 
         const leftPosition = positions[leftIndex] ?? left.body.position;
         const rightPosition = positions[rightIndex] ?? right.body.position;
-        const delta = subtractVectors(rightPosition, leftPosition);
+        const deltaX = rightPosition.x - leftPosition.x;
+        const deltaY = rightPosition.y - leftPosition.y;
         const minimumDistance = left.body.radius + right.body.radius;
-        const distanceSquared = vectorLengthSquared(delta);
+        const distanceSquared = deltaX * deltaX + deltaY * deltaY;
         const overlapping = distanceSquared < minimumDistance * minimumDistance;
         const sweptContact =
           iteration === 0 ? findSweptCircleContact(left, right, minimumDistance) : undefined;
@@ -3320,7 +3320,7 @@ export class SimulationWorld {
           sweptContact?.normal ??
           (distance === 0
             ? Object.freeze({ x: left.actorId < right.actorId ? 1 : -1, y: 0 })
-            : scaleVector(delta, 1 / distance));
+            : Object.freeze({ x: deltaX / distance, y: deltaY / distance }));
         const leftInverseMass = left.action.kind === "Anchored" ? 0 : 1 / left.body.massFactor;
         const rightInverseMass = right.action.kind === "Anchored" ? 0 : 1 / right.body.massFactor;
         const inverseMassTotal = leftInverseMass + rightInverseMass;
@@ -3330,10 +3330,9 @@ export class SimulationWorld {
         }
         const leftVelocity = velocities[leftIndex] ?? left.body.velocity;
         const rightVelocity = velocities[rightIndex] ?? right.body.velocity;
-        const relativeNormalSpeed = dotVectors(
-          subtractVectors(rightVelocity, leftVelocity),
-          normal,
-        );
+        const relativeVelocityX = rightVelocity.x - leftVelocity.x;
+        const relativeVelocityY = rightVelocity.y - leftVelocity.y;
+        const relativeNormalSpeed = relativeVelocityX * normal.x + relativeVelocityY * normal.y;
 
         if (sweptContact !== undefined) {
           if (relativeNormalSpeed >= 0) {
@@ -3343,23 +3342,25 @@ export class SimulationWorld {
           const contactImpulse =
             (-relativeNormalSpeed * (1 + SIMULATION_TUNING.body.weakContactVelocityDamping)) /
             inverseMassTotal;
-          const nextLeftVelocity = subtractVectors(
-            leftVelocity,
-            scaleVector(normal, contactImpulse * leftInverseMass),
-          );
-          const nextRightVelocity = addVectors(
-            rightVelocity,
-            scaleVector(normal, contactImpulse * rightInverseMass),
-          );
+          const leftImpulseScale = contactImpulse * leftInverseMass;
+          const rightImpulseScale = contactImpulse * rightInverseMass;
+          const nextLeftVelocity = Object.freeze({
+            x: leftVelocity.x - normal.x * leftImpulseScale,
+            y: leftVelocity.y - normal.y * leftImpulseScale,
+          });
+          const nextRightVelocity = Object.freeze({
+            x: rightVelocity.x + normal.x * rightImpulseScale,
+            y: rightVelocity.y + normal.y * rightImpulseScale,
+          });
           const remainingTime = 1 - sweptContact.time;
-          positions[leftIndex] = addVectors(
-            sweptContact.leftPosition,
-            scaleVector(nextLeftVelocity, remainingTime),
-          );
-          positions[rightIndex] = addVectors(
-            sweptContact.rightPosition,
-            scaleVector(nextRightVelocity, remainingTime),
-          );
+          positions[leftIndex] = Object.freeze({
+            x: sweptContact.leftPosition.x + nextLeftVelocity.x * remainingTime,
+            y: sweptContact.leftPosition.y + nextLeftVelocity.y * remainingTime,
+          });
+          positions[rightIndex] = Object.freeze({
+            x: sweptContact.rightPosition.x + nextRightVelocity.x * remainingTime,
+            y: sweptContact.rightPosition.y + nextRightVelocity.y * remainingTime,
+          });
           velocities[leftIndex] = nextLeftVelocity;
           velocities[rightIndex] = nextRightVelocity;
           continue;
@@ -3369,27 +3370,31 @@ export class SimulationWorld {
           0,
           minimumDistance - distance - SIMULATION_TUNING.body.weakContactSlop,
         );
-        positions[leftIndex] = subtractVectors(
-          leftPosition,
-          scaleVector(normal, (overlap * leftInverseMass) / inverseMassTotal),
-        );
-        positions[rightIndex] = addVectors(
-          rightPosition,
-          scaleVector(normal, (overlap * rightInverseMass) / inverseMassTotal),
-        );
+        const leftOverlapScale = (overlap * leftInverseMass) / inverseMassTotal;
+        const rightOverlapScale = (overlap * rightInverseMass) / inverseMassTotal;
+        positions[leftIndex] = Object.freeze({
+          x: leftPosition.x - normal.x * leftOverlapScale,
+          y: leftPosition.y - normal.y * leftOverlapScale,
+        });
+        positions[rightIndex] = Object.freeze({
+          x: rightPosition.x + normal.x * rightOverlapScale,
+          y: rightPosition.y + normal.y * rightOverlapScale,
+        });
 
         if (relativeNormalSpeed < 0) {
           const contactImpulse =
             (-relativeNormalSpeed * SIMULATION_TUNING.body.weakContactVelocityDamping) /
             inverseMassTotal;
-          velocities[leftIndex] = subtractVectors(
-            leftVelocity,
-            scaleVector(normal, contactImpulse * leftInverseMass),
-          );
-          velocities[rightIndex] = addVectors(
-            rightVelocity,
-            scaleVector(normal, contactImpulse * rightInverseMass),
-          );
+          const leftContactScale = contactImpulse * leftInverseMass;
+          const rightContactScale = contactImpulse * rightInverseMass;
+          velocities[leftIndex] = Object.freeze({
+            x: leftVelocity.x - normal.x * leftContactScale,
+            y: leftVelocity.y - normal.y * leftContactScale,
+          });
+          velocities[rightIndex] = Object.freeze({
+            x: rightVelocity.x + normal.x * rightContactScale,
+            y: rightVelocity.y + normal.y * rightContactScale,
+          });
         }
       }
     }

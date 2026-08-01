@@ -1,8 +1,11 @@
 # Static Release Procedure
 
-- Status: `0.180.0` complete-island cannon-collapse candidate; hosted proof pending
+- Status: `0.181.0` complete-island cannon-collapse candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.180.0`
+- Current product version: `0.181.0`
+
+Product `0.181.0`, simulation `78.0.0`, and content `48.0.0` keep simulation `78.0.0`,
+content `48.0.0`, replay v8, and reports v11. Simulation weak contact resolution now computes pair delta, distance, normal, relative normal speed, swept contact velocity, overlap position correction, and contact velocity correction from raw components instead of allocating subtractVectors, vectorLengthSquared, scaleVector, dotVectors, and addVectors intermediate objects per contact pair per iteration. Visible bot movement, combat results, replay hash, and balance are unchanged. Hosted proof, complete-collapse pacing, and human readability remain pending.
 
 Product `0.180.0`, simulation `78.0.0`, and content `48.0.0` keep simulation `78.0.0`,
 content `48.0.0`, replay v8, and reports v11. Simulation position integration and zone impulse now compute position integration, wall reflection, skill zone offset, zone impulse, and impulse strength from raw components instead of allocating addVectors, subtractVectors, scaleVector, dotVectors, and vectorLength intermediate objects per position step and zone pulse. Visible bot movement, combat results, replay hash, and balance are unchanged. Hosted proof, complete-collapse pacing, and human readability remain pending.
