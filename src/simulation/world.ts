@@ -1924,7 +1924,10 @@ export class SimulationWorld {
       this.#gameplayTuning.dodgeSpeed *
       getMassDodgeSpeedMultiplier(participant.body.massFactor) *
       this.#gameplayTuning.dodgeActiveTicks;
-    const destination = addVectors(participant.body.position, scaleVector(direction, distance));
+    const destination = Object.freeze({
+      x: participant.body.position.x + direction.x * distance,
+      y: participant.body.position.y + direction.y * distance,
+    });
     const wall = this.#brickWalls
       .map((candidate) => ({
         candidate,
@@ -2047,8 +2050,10 @@ export class SimulationWorld {
             continue;
           }
 
-          const offset = subtractVectors(target.body.position, bomb.position);
-          const edgeDistance = Math.max(0, vectorLength(offset) - target.body.radius);
+          const offsetX = target.body.position.x - bomb.position.x;
+          const offsetY = target.body.position.y - bomb.position.y;
+          const offset = Object.freeze({ x: offsetX, y: offsetY });
+          const edgeDistance = Math.max(0, Math.hypot(offsetX, offsetY) - target.body.radius);
 
           if (edgeDistance > this.#gameplayTuning.bombBlastRadius) {
             continue;
@@ -2067,13 +2072,15 @@ export class SimulationWorld {
               getStartingIncomingImpulseMultiplier(target.startingAttributes),
               getStabilityMultiplier(target.progression.stats),
             );
-          const impulse = scaleVector(
-            direction,
-            Math.min(rawImpulse, SIMULATION_TUNING.bomb.ownerMaximumImpulse),
-          );
+          const impulseMagnitude = Math.min(rawImpulse, SIMULATION_TUNING.bomb.ownerMaximumImpulse);
+          const impulseX = direction.x * impulseMagnitude;
+          const impulseY = direction.y * impulseMagnitude;
           bombImpulses.set(
             target.actorId,
-            addVectors(bombImpulses.get(target.actorId) ?? ZERO_VECTOR, impulse),
+            Object.freeze({
+              x: (bombImpulses.get(target.actorId)?.x ?? 0) + impulseX,
+              y: (bombImpulses.get(target.actorId)?.y ?? 0) + impulseY,
+            }),
           );
 
           const bombDefinition = getItemDefinition("bomb");
@@ -2113,7 +2120,10 @@ export class SimulationWorld {
           ...participant,
           body: Object.freeze({
             ...participant.body,
-            velocity: addVectors(participant.body.velocity, impulse),
+            velocity: Object.freeze({
+              x: participant.body.velocity.x + impulse.x,
+              y: participant.body.velocity.y + impulse.y,
+            }),
           }),
           action: createTimedAction(
             "Stumbling",

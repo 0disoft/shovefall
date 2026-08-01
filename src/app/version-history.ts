@@ -9,6 +9,13 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.176.0",
+    title: "폭탄과 벽 해체도 숫자로 바로 한다요 ㅇㅅㅇ",
+    reason: "폭탄 임펄스와 벽 해체 이동에서 거리와 방향 껍데기를 새로 만들었다요.",
+    change:
+      "폭탄 임펄스와 벽 해체 이동을 숫자로 바로 계산해서 껍데기를 만들지 않는다요. 봇 행동과 전투 결과, 수치는 그대로다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.175.0",
     title: "스킬 충격과 이동도 숫자로 바로 한다요 ㅇㅅㅇ",
     reason: "스킬 임펄스와 브릭 해체, 이동 명령에서 거리와 방향 껍데기를 새로 만들었다요.",
