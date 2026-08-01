@@ -4,6 +4,7 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { type Browser, type BrowserContext, type Page } from "@playwright/test";
+import { getItemDefinition } from "../src/content/items";
 import { CONTENT_VERSION, PRODUCT_VERSION, SIMULATION_VERSION } from "../src/simulation/versions";
 
 const CAPTURE_SCHEMA_VERSION = "shovefall.submission-capture/v1";
@@ -25,6 +26,7 @@ export const CAPTURE_STARTING_ATTRIBUTES = Object.freeze({
 } as const);
 export const CAPTURE_STARTING_SKILLS = Object.freeze(["arc-bolt", "blink-step"] as const);
 export const CAPTURE_STARTING_ITEMS = Object.freeze(["bomb"] as const);
+const CAPTURE_BOMB_CONFIRMATION = `폭탄을 놨어. ${getItemDefinition("bomb").fuseTicks / 60}초 뒤 터져.`;
 const CAPTURE_ATTRIBUTE_STEPS = Object.freeze([
   Object.freeze({ label: "완력", points: CAPTURE_STARTING_ATTRIBUTES.strength }),
   Object.freeze({ label: "민첩", points: CAPTURE_STARTING_ATTRIBUTES.agility }),
@@ -470,9 +472,7 @@ async function createGameplayScene(page: Page): Promise<void> {
   reportPhase("gameplay-use-bomb");
   await clickInventorySlotWhenReady(page, "#use-item-slot-0");
   await clickInventorySlotWhenReady(page, "#use-item-slot-0");
-  await page
-    .getByText("폭탄을 놨어. 3.5초 뒤 터져.", { exact: true })
-    .waitFor({ state: "visible" });
+  await page.getByText(CAPTURE_BOMB_CONFIRMATION, { exact: true }).waitFor({ state: "visible" });
   reportPhase("gameplay-use-grapple");
   await useGrappleForCapture(page);
   reportPhase("gameplay-move-right");
