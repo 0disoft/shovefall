@@ -3001,7 +3001,10 @@ export class SimulationWorld {
         return participant;
       }
 
-      const position = addVectors(participant.body.position, participant.body.velocity);
+      const position = Object.freeze({
+        x: participant.body.position.x + participant.body.velocity.x,
+        y: participant.body.position.y + participant.body.velocity.y,
+      });
       assertFiniteNumber(position.x, `actor ${participant.actorId} position.x`);
       assertFiniteNumber(position.y, `actor ${participant.actorId} position.y`);
 
@@ -3054,15 +3057,24 @@ export class SimulationWorld {
           break;
         }
 
-        const normalSpeed = dotVectors(velocity, contact.normal);
+        const normalSpeed = velocity.x * contact.normal.x + velocity.y * contact.normal.y;
 
         if (normalSpeed < 0) {
-          velocity = subtractVectors(velocity, scaleVector(contact.normal, normalSpeed));
+          velocity = Object.freeze({
+            x: velocity.x - contact.normal.x * normalSpeed,
+            y: velocity.y - contact.normal.y * normalSpeed,
+          });
         }
 
         remainingTime *= 1 - contact.time;
-        segmentStart = addVectors(contact.position, scaleVector(contact.normal, 0.000_1));
-        segmentEnd = addVectors(segmentStart, scaleVector(velocity, remainingTime));
+        segmentStart = Object.freeze({
+          x: contact.position.x + contact.normal.x * 0.000_1,
+          y: contact.position.y + contact.normal.y * 0.000_1,
+        });
+        segmentEnd = Object.freeze({
+          x: segmentStart.x + velocity.x * remainingTime,
+          y: segmentStart.y + velocity.y * remainingTime,
+        });
       }
 
       return Object.freeze({
@@ -3133,8 +3145,10 @@ export class SimulationWorld {
           continue;
         }
 
-        const offset = subtractVectors(participant.body.position, zone.position);
-        const distance = vectorLength(offset);
+        const offsetX = participant.body.position.x - zone.position.x;
+        const offsetY = participant.body.position.y - zone.position.y;
+        const offset = Object.freeze({ x: offsetX, y: offsetY });
+        const distance = Math.hypot(offsetX, offsetY);
         const contactRadius = zone.radius + participant.body.radius;
         if (distance > contactRadius) {
           continue;
@@ -3165,21 +3179,24 @@ export class SimulationWorld {
             this.#tick,
           );
           const direction = normalizeDirectionOrFallback(offset, { x: 1, y: 0 });
-          const impulse = scaleVector(
-            direction,
+          const impulseMagnitude =
             impulseStrength *
-              getIncomingMassImpulseMultiplier(participant.body.massFactor) *
-              combineLinearAttributeMultipliers(
-                getStartingIncomingImpulseMultiplier(participant.startingAttributes),
-                getStabilityMultiplier(participant.progression.stats),
-              ),
-          );
+            getIncomingMassImpulseMultiplier(participant.body.massFactor) *
+            combineLinearAttributeMultipliers(
+              getStartingIncomingImpulseMultiplier(participant.startingAttributes),
+              getStabilityMultiplier(participant.progression.stats),
+            );
+          const impulseX = direction.x * impulseMagnitude;
+          const impulseY = direction.y * impulseMagnitude;
           if (participant.action.kind !== "Anchored") {
             participant = Object.freeze({
               ...participant,
               body: Object.freeze({
                 ...participant.body,
-                velocity: addVectors(participant.body.velocity, impulse),
+                velocity: Object.freeze({
+                  x: participant.body.velocity.x + impulseX,
+                  y: participant.body.velocity.y + impulseY,
+                }),
               }),
               action: createTimedAction(
                 "Stumbling",
@@ -3194,7 +3211,7 @@ export class SimulationWorld {
                 participant.shoveCredit,
                 Object.freeze({
                   attackerActorId: zone.ownerActorId,
-                  strength: vectorLength(impulse),
+                  strength: Math.hypot(impulseX, impulseY),
                 }),
                 this.#tick,
               ),
