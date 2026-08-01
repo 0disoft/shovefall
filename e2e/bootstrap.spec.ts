@@ -550,7 +550,12 @@ test("@ci-smoke boots the production artifact into a live arena", async ({ page 
       Number(await page.locator("#arena-host").getAttribute("data-terrain-sprites")),
     )
     .toBeGreaterThan(0);
-  await expect(page.locator("#developer-telemetry")).toHaveCount(0);
+  const developerTelemetry = page.locator("#developer-telemetry");
+  const productionArtifact = new URL(page.url()).port === "4175";
+  await expect(developerTelemetry).toHaveCount(productionArtifact ? 0 : 1);
+  if (!productionArtifact) {
+    await expect(developerTelemetry).toBeHidden();
+  }
   await expect(page.locator("#debug-tuning")).toHaveCount(0);
   await expect(page.locator("#game-telemetry")).toHaveAttribute("data-action", "Ready");
   await expect(page.locator("#skill-actions")).toBeVisible();
