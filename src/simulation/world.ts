@@ -34,13 +34,10 @@ import {
 import { advanceCollapse, createCollapsePlan, type CollapseWave } from "./collapse";
 import { hashWorldState } from "./hash";
 import {
-  addVectors,
   assertFiniteNumber,
   clamp,
   clampVectorLength,
-  dotVectors,
   moveVectorToward,
-  scaleVector,
   SimulationContractError,
   subtractVectors,
   type Vector2,
@@ -3459,9 +3456,13 @@ export class SimulationWorld {
           continue;
         }
 
-        const delta = subtractVectors(target.body.position, attacker.body.position);
-        const distance = vectorLength(delta);
-        const normal = distance === 0 ? direction : scaleVector(delta, 1 / distance);
+        const deltaX = target.body.position.x - attacker.body.position.x;
+        const deltaY = target.body.position.y - attacker.body.position.y;
+        const distance = Math.hypot(deltaX, deltaY);
+        const normal =
+          distance === 0
+            ? direction
+            : Object.freeze({ x: deltaX / distance, y: deltaY / distance });
         const maximumContactDistance =
           attacker.body.radius +
           target.body.radius +
@@ -3472,7 +3473,7 @@ export class SimulationWorld {
 
         if (
           distance > maximumContactDistance ||
-          dotVectors(direction, normal) < SIMULATION_TUNING.shove.coneCosine
+          direction.x * normal.x + direction.y * normal.y < SIMULATION_TUNING.shove.coneCosine
         ) {
           continue;
         }
@@ -3512,7 +3513,10 @@ export class SimulationWorld {
           continue;
         }
 
-        const forwardSpeed = Math.max(0, dotVectors(attacker.body.velocity, direction));
+        const forwardSpeed = Math.max(
+          0,
+          attacker.body.velocity.x * direction.x + attacker.body.velocity.y * direction.y,
+        );
         const rawImpulse =
           (SIMULATION_TUNING.shove.baseImpulse +
             forwardSpeed * SIMULATION_TUNING.shove.velocityImpulseScale) *
@@ -3528,19 +3532,21 @@ export class SimulationWorld {
           (attacker.action.springBoosted
             ? getItemDefinition("spring-glove").shoveImpulseMultiplier
             : 1);
-        const impulse = scaleVector(
-          normal,
-          Math.min(rawImpulse, SIMULATION_TUNING.shove.maximumImpulse),
-        );
+        const impulseMagnitude = Math.min(rawImpulse, SIMULATION_TUNING.shove.maximumImpulse);
+        const impulseX = normal.x * impulseMagnitude;
+        const impulseY = normal.y * impulseMagnitude;
         impulses.set(
           target.actorId,
-          addVectors(impulses.get(target.actorId) ?? ZERO_VECTOR, impulse),
+          Object.freeze({
+            x: (impulses.get(target.actorId)?.x ?? 0) + impulseX,
+            y: (impulses.get(target.actorId)?.y ?? 0) + impulseY,
+          }),
         );
         const hitTargets = newlyHit.get(attacker.actorId) ?? new Set<ActorId>();
         hitTargets.add(target.actorId);
         newlyHit.set(attacker.actorId, hitTargets);
         const previousCredit = shoveCredits.get(target.actorId);
-        const strength = vectorLength(impulse);
+        const strength = Math.hypot(impulseX, impulseY);
 
         if (
           previousCredit === undefined ||
@@ -3553,7 +3559,7 @@ export class SimulationWorld {
           this.#createEvent("shove-hit", {
             actorId: attacker.actorId,
             targetActorId: target.actorId,
-            vector: impulse,
+            vector: Object.freeze({ x: impulseX, y: impulseY }),
           }),
         );
       }
@@ -3583,7 +3589,10 @@ export class SimulationWorld {
           : participant.action;
       const impulse = impulses.get(participant.actorId) ?? ZERO_VECTOR;
       const velocity = clampVectorLength(
-        addVectors(participant.body.velocity, impulse),
+        Object.freeze({
+          x: participant.body.velocity.x + impulse.x,
+          y: participant.body.velocity.y + impulse.y,
+        }),
         SIMULATION_TUNING.body.maximumSpeed,
       );
       const strongestShove = shoveCredits.get(participant.actorId);
@@ -3599,7 +3608,7 @@ export class SimulationWorld {
       );
 
       if (
-        vectorLength(impulse) >= SIMULATION_TUNING.shove.stumbleImpulseThreshold &&
+        Math.hypot(impulse.x, impulse.y) >= SIMULATION_TUNING.shove.stumbleImpulseThreshold &&
         isGroundAction(action.kind)
       ) {
         action = createTimedAction(
