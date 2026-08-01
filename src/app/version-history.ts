@@ -9,6 +9,13 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.188.0",
+    title: "충돌 짝도 바로 만든다요 ㅇㅅㅇ",
+    reason: "충돌 짝을 만들 때마다 참가자를 또 정렬했다요.",
+    change:
+      "충돌 짝 만들기에서 겹치는 정렬을 없애서 매 틱마다 정렬 비용을 줄인다요. 봇 행동과 전투 결과, 수치는 그대로다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.187.0",
     title: "주변 탐색도 바로 한다요 ㅇㅅㅇ",
     reason: "봇이 주변을 탐색할 때마다 결과를 정렬했다요.",

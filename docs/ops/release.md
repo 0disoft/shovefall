@@ -1,8 +1,11 @@
 # Static Release Procedure
 
-- Status: `0.187.0` complete-island cannon-collapse candidate; hosted proof pending
+- Status: `0.188.0` complete-island cannon-collapse candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.187.0`
+- Current product version: `0.188.0`
+
+Product `0.188.0`, simulation `78.0.0`, and content `48.0.0` keep simulation `78.0.0`,
+content `48.0.0`, replay v8, and reports v11. Spatial hash getCandidatePairs now iterates participants in Map insertion order instead of re-sorting already-sorted values, removing a per-tick sort cost with no effect on pair generation order. Visible bot movement, combat results, replay hash, and balance are unchanged. Hosted proof, complete-collapse pacing, and human readability remain pending.
 
 Product `0.187.0`, simulation `78.0.0`, and content `48.0.0` keep simulation `78.0.0`,
 content `48.0.0`, replay v8, and reports v11. Spatial hash queryNearby now returns participants without sorting on every call, removing a per-bot-decision sort cost that had no effect on selection results. Visible bot movement, combat results, replay hash, and balance are unchanged. Hosted proof, complete-collapse pacing, and human readability remain pending.

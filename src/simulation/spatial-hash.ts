@@ -68,9 +68,7 @@ export class ParticipantSpatialHash<T extends SpatialParticipant> {
   public getCandidatePairs(): readonly ActorPair[] {
     const pairs: ActorPair[] = [];
 
-    for (const left of [...this.#participantsById.values()].toSorted(
-      (first, second) => first.actorId - second.actorId,
-    )) {
+    for (const left of this.#participantsById.values()) {
       for (const right of this.queryNearby(left.position, 1)) {
         if (right.actorId <= left.actorId) {
           continue;
