@@ -322,20 +322,36 @@ function createTimedAction(
 }
 
 function normalizeDirectionOrFallback(direction: Vector2, fallback: Vector2): Vector2 {
-  const normalized = normalizeVector(direction);
-  return isZeroVector(normalized) ? normalizeVector(fallback) : normalized;
+  const directionLength = Math.hypot(direction.x, direction.y);
+  if (directionLength > 1) {
+    const directionInverse = 1 / directionLength;
+    return Object.freeze({ x: direction.x * directionInverse, y: direction.y * directionInverse });
+  }
+  if (direction.x === 0 && direction.y === 0) {
+    const fallbackLength = Math.hypot(fallback.x, fallback.y);
+    if (fallbackLength <= 1) {
+      return Object.freeze({ x: fallback.x, y: fallback.y });
+    }
+    const fallbackInverse = 1 / fallbackLength;
+    return Object.freeze({ x: fallback.x * fallbackInverse, y: fallback.y * fallbackInverse });
+  }
+  return Object.freeze({ x: direction.x, y: direction.y });
 }
 
 function normalizeUnitDirectionOrFallback(direction: Vector2, fallback: Vector2): Vector2 {
-  const directionLength = vectorLength(direction);
+  const directionLength = Math.hypot(direction.x, direction.y);
 
   if (directionLength > Number.EPSILON) {
-    return scaleVector(direction, 1 / directionLength);
+    const directionInverse = 1 / directionLength;
+    return Object.freeze({ x: direction.x * directionInverse, y: direction.y * directionInverse });
   }
 
-  const fallbackLength = vectorLength(fallback);
+  const fallbackLength = Math.hypot(fallback.x, fallback.y);
   return fallbackLength > Number.EPSILON
-    ? scaleVector(fallback, 1 / fallbackLength)
+    ? Object.freeze({
+        x: fallback.x * (1 / fallbackLength),
+        y: fallback.y * (1 / fallbackLength),
+      })
     : Object.freeze({ x: 1, y: 0 });
 }
 
