@@ -1,6 +1,12 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { VERSION_HISTORY } from "../src/app/version-history";
 import { PRODUCT_VERSION } from "../src/simulation/versions";
+import {
+  CAPTURE_STARTING_ATTRIBUTES,
+  CAPTURE_STARTING_ITEMS,
+  CAPTURE_STARTING_SKILLS,
+  chooseCaptureLoadout,
+} from "../tools/capture-submission";
 
 interface CanvasPixelSummary {
   readonly luminanceRange: number;
@@ -583,6 +589,38 @@ test("centers the fullscreen menu actions on the viewport", async ({ page }) => 
   });
 
   expect(menuContextMenuPrevented).toBe(true);
+});
+
+test("saves the complete submission-capture loadout from fresh settings", async ({ page }) => {
+  await page.goto("/");
+  await chooseCaptureLoadout(page);
+
+  await expect(page.locator("#app")).toHaveAttribute("data-screen", "menu");
+  await page.getByRole("button", { name: "설정", exact: true }).click();
+  await expect(page.locator("#starting-attribute-strength")).toHaveText(
+    String(CAPTURE_STARTING_ATTRIBUTES.strength),
+  );
+  await expect(page.locator("#starting-attribute-agility")).toHaveText(
+    String(CAPTURE_STARTING_ATTRIBUTES.agility),
+  );
+  await expect(page.locator("#starting-attribute-constitution")).toHaveText(
+    String(CAPTURE_STARTING_ATTRIBUTES.constitution),
+  );
+  await expect(page.locator("#starting-attribute-spirit")).toHaveText(
+    String(CAPTURE_STARTING_ATTRIBUTES.spirit),
+  );
+  await expect(page.locator("#starting-attribute-balance")).toHaveText(
+    String(CAPTURE_STARTING_ATTRIBUTES.balance),
+  );
+  await expect(page.locator("#starting-attribute-willpower")).toHaveText(
+    String(CAPTURE_STARTING_ATTRIBUTES.willpower),
+  );
+  await expect(page.locator('input[name="startingSkill"]:checked')).toHaveCount(
+    CAPTURE_STARTING_SKILLS.length,
+  );
+  await expect(
+    page.locator(`input[name="startingItem"][value="${CAPTURE_STARTING_ITEMS[0]}"]`),
+  ).toBeChecked();
 });
 
 test("uses right-click ground destinations instead of desktop mouse-drag movement", async ({

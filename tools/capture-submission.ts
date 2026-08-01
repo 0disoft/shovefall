@@ -15,6 +15,23 @@ const SERVER_READY_TIMEOUT_MS = 30_000;
 const BROWSER_STEP_TIMEOUT_MS = 20_000;
 const GAMEPLAY_SCENE_TIMEOUT_MS = 75_000;
 const POST_ACTION_CAPTURE_TICKS = 45;
+export const CAPTURE_STARTING_ATTRIBUTES = Object.freeze({
+  strength: 4,
+  agility: 4,
+  constitution: 4,
+  spirit: 4,
+  balance: 4,
+  willpower: 0,
+} as const);
+export const CAPTURE_STARTING_SKILLS = Object.freeze(["arc-bolt", "blink-step"] as const);
+export const CAPTURE_STARTING_ITEMS = Object.freeze(["bomb"] as const);
+const CAPTURE_ATTRIBUTE_STEPS = Object.freeze([
+  Object.freeze({ label: "완력", points: CAPTURE_STARTING_ATTRIBUTES.strength }),
+  Object.freeze({ label: "민첩", points: CAPTURE_STARTING_ATTRIBUTES.agility }),
+  Object.freeze({ label: "체질", points: CAPTURE_STARTING_ATTRIBUTES.constitution }),
+  Object.freeze({ label: "정신", points: CAPTURE_STARTING_ATTRIBUTES.spirit }),
+  Object.freeze({ label: "균형", points: CAPTURE_STARTING_ATTRIBUTES.balance }),
+] as const);
 const GRAPPLE_CAPTURE_DIRECTIONS = Object.freeze([
   "ArrowRight",
   "ArrowDown",
@@ -63,15 +80,8 @@ export interface CaptureManifest {
       readonly botDifficulty: "hard";
       readonly collapseSpeed: "slow";
       readonly participantCount: 70;
-      readonly startingItems: readonly ["bomb"];
-      readonly startingAttributes: {
-        readonly strength: 4;
-        readonly agility: 4;
-        readonly constitution: 4;
-        readonly spirit: 4;
-        readonly balance: 4;
-        readonly willpower: 0;
-      };
+      readonly startingItems: typeof CAPTURE_STARTING_ITEMS;
+      readonly startingAttributes: typeof CAPTURE_STARTING_ATTRIBUTES;
     };
     readonly viewport: typeof CAPTURE_VIEWPORT;
   };
@@ -318,11 +328,55 @@ async function waitForTickDelta(page: Page, startingTick: number, delta: number)
   );
 }
 
-async function chooseCaptureLoadout(page: Page): Promise<void> {
+async function clickRepeatedly(page: Page, label: string, remainingClicks: number): Promise<void> {
+  if (remainingClicks <= 0) {
+    return;
+  }
+
+  await page.getByRole("button", { name: label, exact: true }).click();
+  return clickRepeatedly(page, label, remainingClicks - 1);
+}
+
+async function allocateCaptureAttributes(page: Page, selectionIndex = 0): Promise<void> {
+  const selection = CAPTURE_ATTRIBUTE_STEPS[selectionIndex];
+  if (selection === undefined) {
+    return;
+  }
+
+  await clickRepeatedly(page, `${selection.label} 1 올리기`, selection.points);
+  return allocateCaptureAttributes(page, selectionIndex + 1);
+}
+
+export async function chooseCaptureLoadout(page: Page): Promise<void> {
   await page.getByRole("button", { name: "설정", exact: true }).click();
   await waitForAttribute(page, "#app", "data-screen", "settings");
-  await page.locator('input[name="startingItem"][value="bomb"]').check();
-  await page.getByRole("button", { name: "설정 저장" }).click();
+  await page.getByRole("tab", { name: "특성", exact: true }).click();
+  await allocateCaptureAttributes(page);
+  await page.getByRole("tab", { name: "스킬", exact: true }).click();
+  await page.locator(`input[name="startingSkill"][value="${CAPTURE_STARTING_SKILLS[0]}"]`).check();
+  await page.locator(`input[name="startingSkill"][value="${CAPTURE_STARTING_SKILLS[1]}"]`).check();
+  await page.getByRole("tab", { name: "아이템", exact: true }).click();
+  await page.locator(`input[name="startingItem"][value="${CAPTURE_STARTING_ITEMS[0]}"]`).check();
+  const saveButton = page.getByRole("button", { name: "설정 저장", exact: true });
+  await saveButton.waitFor({ state: "visible" });
+  await page.waitForFunction(
+    () => {
+      const remaining = document.querySelector<HTMLOutputElement>("#starting-attribute-remaining");
+      const selectedSkills = document.querySelectorAll(
+        'input[name="startingSkill"]:checked',
+      ).length;
+      const selectedItems = document.querySelectorAll('input[name="startingItem"]:checked').length;
+      const save = document.querySelector<HTMLButtonElement>(
+        '#game-settings button[type="submit"]',
+      );
+      return (
+        remaining?.value === "0" && selectedSkills === 2 && selectedItems === 1 && !save?.disabled
+      );
+    },
+    undefined,
+    { timeout: BROWSER_STEP_TIMEOUT_MS },
+  );
+  await saveButton.click();
   await waitForAttribute(page, "#app", "data-screen", "menu");
 }
 
@@ -642,15 +696,8 @@ export async function captureMedia(
           botDifficulty: "hard",
           collapseSpeed: "slow",
           participantCount: 70,
-          startingItems: ["bomb"],
-          startingAttributes: {
-            strength: 4,
-            agility: 4,
-            constitution: 4,
-            spirit: 4,
-            balance: 4,
-            willpower: 0,
-          },
+          startingItems: CAPTURE_STARTING_ITEMS,
+          startingAttributes: CAPTURE_STARTING_ATTRIBUTES,
         },
         viewport: CAPTURE_VIEWPORT,
       },
