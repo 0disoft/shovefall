@@ -2525,7 +2525,10 @@ export class SimulationWorld {
 
     return Object.freeze({
       tileId: nearestWall.wall.tileId,
-      position: addVectors(origin, scaleVector(normalizedDirection, nearestWall.distance)),
+      position: Object.freeze({
+        x: origin.x + normalizedDirection.x * nearestWall.distance,
+        y: origin.y + normalizedDirection.y * nearestWall.distance,
+      }),
       distance: nearestWall.distance,
     });
   }
@@ -2540,7 +2543,10 @@ export class SimulationWorld {
     const definition = getItemDefinition("brick-bag");
     if (
       targetPosition !== null &&
-      vectorLength(subtractVectors(targetPosition, participant.body.position)) >
+      Math.hypot(
+        targetPosition.x - participant.body.position.x,
+        targetPosition.y - participant.body.position.y,
+      ) >
         definition.castRange + 0.08
     ) {
       return undefined;
@@ -2596,7 +2602,10 @@ export class SimulationWorld {
     const definition = getItemDefinition("soap");
     if (
       targetPosition !== null &&
-      vectorLength(subtractVectors(targetPosition, participant.body.position)) >
+      Math.hypot(
+        targetPosition.x - participant.body.position.x,
+        targetPosition.y - participant.body.position.y,
+      ) >
         definition.castRange + 0.08
     ) {
       return undefined;
@@ -2715,7 +2724,7 @@ export class SimulationWorld {
         participant.body.facing,
       );
       const speed = clamp(
-        vectorLength(participant.body.velocity),
+        Math.hypot(participant.body.velocity.x, participant.body.velocity.y),
         SIMULATION_TUNING.soap.minimumSpeed,
         SIMULATION_TUNING.soap.maximumSpeed,
       );
