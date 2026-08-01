@@ -467,15 +467,14 @@ async function createGameplayScene(page: Page): Promise<void> {
   reportPhase("gameplay-start-recording");
   await startCanvasRecording(page);
 
-  reportPhase("gameplay-use-grapple");
-  await useGrappleForCapture(page);
-
   reportPhase("gameplay-use-bomb");
   await clickInventorySlotWhenReady(page, "#use-item-slot-0");
   await clickInventorySlotWhenReady(page, "#use-item-slot-0");
   await page
     .getByText("폭탄을 놨어. 3.5초 뒤 터져.", { exact: true })
     .waitFor({ state: "visible" });
+  reportPhase("gameplay-use-grapple");
+  await useGrappleForCapture(page);
   reportPhase("gameplay-move-right");
   const movementStart = await readSimulationTick(page);
   await page.keyboard.down("ArrowRight");
