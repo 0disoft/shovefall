@@ -2373,24 +2373,33 @@ export class SimulationWorld {
         current,
         command.targetPosition === null
           ? current.body.facing
-          : subtractVectors(command.targetPosition, current.body.position),
+          : Object.freeze({
+              x: command.targetPosition.x - current.body.position.x,
+              y: command.targetPosition.y - current.body.position.y,
+            }),
         springBoosted ? springDefinition.shoveReachMultiplier : 1,
       );
       if (anchor === undefined) {
         continue;
       }
 
-      const direction = scaleVector(
-        subtractVectors(anchor.position, current.body.position),
-        1 / anchor.distance,
-      );
+      const anchorOffsetX = anchor.position.x - current.body.position.x;
+      const anchorOffsetY = anchor.position.y - current.body.position.y;
+      const anchorInverse = 1 / anchor.distance;
+      const direction = Object.freeze({
+        x: anchorOffsetX * anchorInverse,
+        y: anchorOffsetY * anchorInverse,
+      });
       const grappleSpeed =
         SIMULATION_TUNING.grapplingHook.targetSpeed *
         (springBoosted ? springDefinition.shoveImpulseMultiplier : 1);
       const grappleAcceleration =
         SIMULATION_TUNING.grapplingHook.acceleration *
         (springBoosted ? springDefinition.shoveImpulseMultiplier : 1);
-      const targetVelocity = scaleVector(direction, grappleSpeed);
+      const targetVelocity = Object.freeze({
+        x: direction.x * grappleSpeed,
+        y: direction.y * grappleSpeed,
+      });
       const velocity = clampVectorLength(
         moveVectorToward(
           current.body.velocity,
@@ -2436,7 +2445,10 @@ export class SimulationWorld {
           actorId: current.actorId,
           tileId: anchor.tileId,
           position: current.body.position,
-          vector: subtractVectors(anchor.position, current.body.position),
+          vector: Object.freeze({
+            x: anchor.position.x - current.body.position.x,
+            y: anchor.position.y - current.body.position.y,
+          }),
         }),
       );
     }
