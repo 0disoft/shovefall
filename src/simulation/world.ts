@@ -1350,9 +1350,16 @@ export class SimulationWorld {
       }
 
       if (participant.action.kind === "Anchored") {
-        const direction = normalizeVector(command.move);
+        const moveLength = Math.hypot(command.move.x, command.move.y);
+        const direction =
+          moveLength <= 1
+            ? Object.freeze({ x: command.move.x, y: command.move.y })
+            : Object.freeze({
+                x: command.move.x / moveLength,
+                y: command.move.y / moveLength,
+              });
 
-        if (isZeroVector(direction)) {
+        if (direction.x === 0 && direction.y === 0) {
           return participant;
         }
 
@@ -1382,7 +1389,10 @@ export class SimulationWorld {
       const direction = normalizeDirectionOrFallback(
         command.targetPosition === null
           ? command.move
-          : subtractVectors(command.targetPosition, participant.body.position),
+          : Object.freeze({
+              x: command.targetPosition.x - participant.body.position.x,
+              y: command.targetPosition.y - participant.body.position.y,
+            }),
         participant.body.facing,
       );
       const boatActive = participant.effects.some(({ definitionId }) => definitionId === "boat");
@@ -1688,7 +1698,7 @@ export class SimulationWorld {
   ): Vector2 {
     const offset =
       targetPosition === null
-        ? scaleVector(direction, range)
+        ? Object.freeze({ x: direction.x * range, y: direction.y * range })
         : clampVectorLength(subtractVectors(targetPosition, attacker.body.position), range);
     const proposed = Object.freeze({
       x: clamp(attacker.body.position.x + offset.x, 0.5, this.#config.arenaColumns - 0.5),
@@ -1799,13 +1809,17 @@ export class SimulationWorld {
             getStartingIncomingImpulseMultiplier(updatedTarget.startingAttributes),
             getStabilityMultiplier(updatedTarget.progression.stats),
           );
-        const impulse = scaleVector(targetHit.direction, rawImpulse);
+        const impulseX = targetHit.direction.x * rawImpulse;
+        const impulseY = targetHit.direction.y * rawImpulse;
         if (updatedTarget.action.kind !== "Anchored") {
           updatedTarget = Object.freeze({
             ...updatedTarget,
             body: Object.freeze({
               ...updatedTarget.body,
-              velocity: addVectors(updatedTarget.body.velocity, impulse),
+              velocity: Object.freeze({
+                x: updatedTarget.body.velocity.x + impulseX,
+                y: updatedTarget.body.velocity.y + impulseY,
+              }),
             }),
             action: createTimedAction(
               "Stumbling",
@@ -1815,7 +1829,10 @@ export class SimulationWorld {
             ),
             shoveCredit: chooseOffensiveCredit(
               updatedTarget.shoveCredit,
-              Object.freeze({ attackerActorId: attacker.actorId, strength: vectorLength(impulse) }),
+              Object.freeze({
+                attackerActorId: attacker.actorId,
+                strength: Math.hypot(impulseX, impulseY),
+              }),
               this.#tick,
             ),
           });

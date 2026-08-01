@@ -1,8 +1,11 @@
 # Static Release Procedure
 
-- Status: `0.174.0` complete-island cannon-collapse candidate; hosted proof pending
+- Status: `0.175.0` complete-island cannon-collapse candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.174.0`
+- Current product version: `0.175.0`
+
+Product `0.175.0`, simulation `78.0.0`, and content `48.0.0` keep simulation `78.0.0`,
+content `48.0.0`, replay v8, and reports v11. Simulation skill impulse, anchored dismount direction, skill zone offset, and move target direction now compute impulse vectors, direction normalization, zone offsets, and target offsets from raw components instead of allocating scaleVector, normalizeVector, isZeroVector, subtractVectors, addVectors, and vectorLength intermediate objects per skill and movement decision. Visible bot movement, combat results, replay hash, and balance are unchanged. Hosted proof, complete-collapse pacing, and human readability remain pending.
 
 Product `0.174.0`, simulation `78.0.0`, and content `48.0.0` keep simulation `78.0.0`,
 content `48.0.0`, replay v8, and reports v11. Simulation swept-circle contact now computes relative motion, quadratic coefficients, contact positions, distance, and collision normal from raw components instead of allocating subtractVectors, vectorLengthSquared, dotVectors, addVectors, scaleVector, and vectorLength intermediate objects per collision check. Visible bot movement, combat results, replay hash, and balance are unchanged. Hosted proof, complete-collapse pacing, and human readability remain pending.
