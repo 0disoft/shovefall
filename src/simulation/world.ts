@@ -39,9 +39,7 @@ import {
   clampVectorLength,
   moveVectorToward,
   SimulationContractError,
-  subtractVectors,
   type Vector2,
-  vectorLength,
   ZERO_VECTOR,
 } from "./math";
 import { RandomStreamSet, type SeedInput } from "./random";
@@ -1693,7 +1691,13 @@ export class SimulationWorld {
     const offset =
       targetPosition === null
         ? Object.freeze({ x: direction.x * range, y: direction.y * range })
-        : clampVectorLength(subtractVectors(targetPosition, attacker.body.position), range);
+        : clampVectorLength(
+            Object.freeze({
+              x: targetPosition.x - attacker.body.position.x,
+              y: targetPosition.y - attacker.body.position.y,
+            }),
+            range,
+          );
     const proposed = Object.freeze({
       x: clamp(attacker.body.position.x + offset.x, 0.5, this.#config.arenaColumns - 0.5),
       y: clamp(attacker.body.position.y + offset.y, 0.5, this.#config.arenaRows - 0.5),
@@ -1950,7 +1954,10 @@ export class SimulationWorld {
       (candidate) =>
         candidate.actorId !== participant.actorId &&
         isCollidable(candidate) &&
-        vectorLength(subtractVectors(candidate.body.position, wallCenter)) <
+        Math.hypot(
+          candidate.body.position.x - wallCenter.x,
+          candidate.body.position.y - wallCenter.y,
+        ) <
           candidate.body.radius + participant.body.radius,
     );
     return occupied ? undefined : wall;

@@ -1,8 +1,11 @@
 # Static Release Procedure
 
-- Status: `0.182.0` complete-island cannon-collapse candidate; hosted proof pending
+- Status: `0.183.0` complete-island cannon-collapse candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.182.0`
+- Current product version: `0.183.0`
+
+Product `0.183.0`, simulation `78.0.0`, and content `48.0.0` keep simulation `78.0.0`,
+content `48.0.0`, replay v8, and reports v11. Simulation remaining distances now compute skill zone offset and wall occupancy distance from raw components instead of allocating subtractVectors and vectorLength intermediate objects per zone and wall check. Visible bot movement, combat results, replay hash, and balance are unchanged. Hosted proof, complete-collapse pacing, and human readability remain pending.
 
 Product `0.182.0`, simulation `78.0.0`, and content `48.0.0` keep simulation `78.0.0`,
 content `48.0.0`, replay v8, and reports v11. Simulation shove now computes target delta, distance, normal, cone cosine, forward speed, impulse magnitude, accumulated impulse, velocity merge, and stumble threshold from raw components instead of allocating subtractVectors, vectorLength, scaleVector, dotVectors, and addVectors intermediate objects per shove contact. Visible bot movement, combat results, replay hash, and balance are unchanged. Hosted proof, complete-collapse pacing, and human readability remain pending.
