@@ -106,7 +106,7 @@ export class ParticipantSpatialHash<T extends SpatialParticipant> {
       }
     }
 
-    return Object.freeze(participants.toSorted((left, right) => left.actorId - right.actorId));
+    return Object.freeze(participants);
   }
 
   #getCoordinate(position: Vector2): CellCoordinate {

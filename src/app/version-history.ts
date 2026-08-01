@@ -9,6 +9,13 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.187.0",
+    title: "주변 탐색도 바로 한다요 ㅇㅅㅇ",
+    reason: "봇이 주변을 탐색할 때마다 결과를 정렬했다요.",
+    change:
+      "주변 탐색 정렬을 없애서 매 봇 결정마다 정렬 비용을 줄인다요. 봇 행동과 전투 결과, 수치는 그대로다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.186.0",
     title: "공격 대상도 한번에 고른다요 ㅇㅅㅇ",
     reason: "봇이 공격 대상을 찾을 때마다 전체를 정렬했다요.",
