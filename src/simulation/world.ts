@@ -388,9 +388,10 @@ function getRayCircleEntryDistance(
   radius: number,
   maximumDistance: number,
 ): number | undefined {
-  const delta = subtractVectors(center, origin);
-  const projection = dotVectors(delta, direction);
-  const perpendicularSquared = vectorLengthSquared(delta) - projection * projection;
+  const deltaX = center.x - origin.x;
+  const deltaY = center.y - origin.y;
+  const projection = deltaX * direction.x + deltaY * direction.y;
+  const perpendicularSquared = deltaX * deltaX + deltaY * deltaY - projection * projection;
   const radiusSquared = radius * radius;
 
   if (perpendicularSquared > radiusSquared) {
@@ -423,16 +424,21 @@ function getAimAssistedCircleHit(
     return Object.freeze({ direction, entryDistance: directEntryDistance });
   }
 
-  const offset = subtractVectors(center, origin);
-  const centerDistance = vectorLength(offset);
+  const offsetX = center.x - origin.x;
+  const offsetY = center.y - origin.y;
+  const centerDistance = Math.hypot(offsetX, offsetY);
   if (centerDistance <= 0) {
     return undefined;
   }
 
-  const assistedDirection = scaleVector(offset, 1 / centerDistance);
+  const assistedInverse = 1 / centerDistance;
+  const assistedDirection = Object.freeze({
+    x: offsetX * assistedInverse,
+    y: offsetY * assistedInverse,
+  });
   const entryDistance = Math.max(0, centerDistance - radius);
   return entryDistance <= maximumDistance &&
-    dotVectors(direction, assistedDirection) >= minimumAimDot
+    direction.x * assistedDirection.x + direction.y * assistedDirection.y >= minimumAimDot
     ? Object.freeze({ direction: assistedDirection, entryDistance })
     : undefined;
 }
@@ -472,7 +478,8 @@ function findSweptPointBoundsContact(
   end: Vector2,
   bounds: AxisAlignedBounds,
 ): { readonly time: number; readonly normal: Vector2; readonly position: Vector2 } | undefined {
-  const motion = subtractVectors(end, start);
+  const motionX = end.x - start.x;
+  const motionY = end.y - start.y;
   const inside =
     start.x >= bounds.minimumX &&
     start.x <= bounds.maximumX &&
@@ -515,7 +522,7 @@ function findSweptPointBoundsContact(
 
   for (const axis of ["x", "y"] as const) {
     const startValue = start[axis];
-    const motionValue = motion[axis];
+    const motionValue = axis === "x" ? motionX : motionY;
     const minimum = axis === "x" ? bounds.minimumX : bounds.minimumY;
     const maximum = axis === "x" ? bounds.maximumX : bounds.maximumY;
 
@@ -548,11 +555,14 @@ function findSweptPointBoundsContact(
 
   return entryTime >= -WALL_CONTACT_EPSILON &&
     entryTime <= 1 + WALL_CONTACT_EPSILON &&
-    !isZeroVector(entryNormal)
+    !(entryNormal.x === 0 && entryNormal.y === 0)
     ? Object.freeze({
         time: clamp(entryTime, 0, 1),
         normal: entryNormal,
-        position: addVectors(start, scaleVector(motion, clamp(entryTime, 0, 1))),
+        position: Object.freeze({
+          x: start.x + motionX * clamp(entryTime, 0, 1),
+          y: start.y + motionY * clamp(entryTime, 0, 1),
+        }),
       })
     : undefined;
 }
@@ -565,7 +575,10 @@ function getRayTileEntryDistance(
 ): number | undefined {
   const contact = findSweptPointBoundsContact(
     origin,
-    addVectors(origin, scaleVector(direction, maximumDistance)),
+    Object.freeze({
+      x: origin.x + direction.x * maximumDistance,
+      y: origin.y + direction.y * maximumDistance,
+    }),
     getTileBounds(wall.column, wall.row),
   );
   return contact === undefined ? undefined : contact.time * maximumDistance;

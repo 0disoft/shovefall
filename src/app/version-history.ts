@@ -9,6 +9,13 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.173.0",
+    title: "충돌과 조준 계산도 숫자로 바로 한다요 ㅇㅅㅇ",
+    reason: "광선-원 충돌과 조준 보조에서 거리와 방향 껍데기를 새로 만들었다요.",
+    change:
+      "충돌 진입 거리와 조준 보조 방향을 숫자로 바로 계산해서 껍데기를 만들지 않는다요. 봇 행동과 전투 결과, 수치는 그대로다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.172.0",
     title: "시뮬레이션 방향 헬퍼도 숫자로 바로 한다요 ㅇㅅㅇ",
     reason: "시뮬레이션에서 방향을 정규화할 때마다 거리와 방향 껍데기를 새로 만들었다요.",

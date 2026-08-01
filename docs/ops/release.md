@@ -1,8 +1,11 @@
 # Static Release Procedure
 
-- Status: `0.172.0` complete-island cannon-collapse candidate; hosted proof pending
+- Status: `0.173.0` complete-island cannon-collapse candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.172.0`
+- Current product version: `0.173.0`
+
+Product `0.173.0`, simulation `78.0.0`, and content `48.0.0` keep simulation `78.0.0`,
+content `48.0.0`, replay v8, and reports v11. Simulation collision and aim assistance now compute ray-circle entry distance, swept-point bounds contact, ray-tile entry distance, and aim-assisted circle hit from raw components instead of allocating subtractVectors, dotVectors, vectorLengthSquared, vectorLength, scaleVector, addVectors, and isZeroVector intermediate objects per collision and aim decision. Visible bot movement, combat results, replay hash, and balance are unchanged. Hosted proof, complete-collapse pacing, and human readability remain pending.
 
 Product `0.172.0`, simulation `78.0.0`, and content `48.0.0` keep simulation `78.0.0`,
 content `48.0.0`, replay v8, and reports v11. Simulation direction helpers now compute direction and fallback normalization from raw components instead of allocating normalizeVector, isZeroVector, vectorLength, and scaleVector intermediate objects per direction decision. Visible bot movement, combat results, replay hash, and balance are unchanged. Hosted proof, complete-collapse pacing, and human readability remain pending.
