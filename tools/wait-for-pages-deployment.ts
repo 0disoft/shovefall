@@ -2,6 +2,7 @@ interface GitHubRun {
   readonly conclusion: string | null;
   readonly databaseId: number;
   readonly headSha: string;
+  readonly name: string;
   readonly status: string;
   readonly url: string;
 }
@@ -24,8 +25,13 @@ interface GitHubRunView {
 const REPOSITORY = "0disoft/shovefall";
 const WORKFLOW = "CI";
 const REQUIRED_JOBS = Object.freeze(["Validate", "Production Chrome", "Deploy GitHub Pages"]);
-const POLL_INTERVAL_MILLISECONDS = 10_000;
+const POLL_INTERVAL_MILLISECONDS = 15_000;
 const TIMEOUT_MILLISECONDS = 12 * 60 * 1_000;
+const GITHUB_API_HEADERS = Object.freeze({
+  accept: "application/vnd.github+json",
+  "user-agent": "shovefall-deployment-waiter",
+  "x-github-api-version": "2022-11-28",
+});
 
 function run(command: string, args: readonly string[]): string {
   const result = spawnSync(command, args, {
@@ -81,7 +87,7 @@ function parseJob(value: unknown, path: string): GitHubJob {
     conclusion: requireNullableString(record.conclusion, `${path}.conclusion`),
     name: requireString(record.name, `${path}.name`),
     status: requireString(record.status, `${path}.status`),
-    url: requireString(record.url, `${path}.url`),
+    url: requireString(record.html_url, `${path}.html_url`),
   });
 }
 
@@ -89,10 +95,11 @@ function parseRun(value: unknown, path: string): GitHubRun {
   const record = requireRecord(value, path);
   return Object.freeze({
     conclusion: requireNullableString(record.conclusion, `${path}.conclusion`),
-    databaseId: requireNumber(record.databaseId, `${path}.databaseId`),
-    headSha: requireString(record.headSha, `${path}.headSha`),
+    databaseId: requireNumber(record.id, `${path}.id`),
+    headSha: requireString(record.head_sha, `${path}.head_sha`),
+    name: requireString(record.name, `${path}.name`),
     status: requireString(record.status, `${path}.status`),
-    url: requireString(record.url, `${path}.url`),
+    url: requireString(record.html_url, `${path}.html_url`),
   });
 }
 
@@ -100,54 +107,49 @@ function getHeadSha(): string {
   return run("git", ["rev-parse", "HEAD"]);
 }
 
-function listRuns(): readonly GitHubRun[] {
-  const parsed: unknown = JSON.parse(
-    run("gh", [
-      "run",
-      "list",
-      "--repo",
-      REPOSITORY,
-      "--workflow",
-      WORKFLOW,
-      "--branch",
-      "main",
-      "--limit",
-      "20",
-      "--json",
-      "conclusion,databaseId,headSha,status,url",
-    ]),
-  );
-
-  if (!Array.isArray(parsed)) {
-    throw new Error("GitHub run list must be an array");
+async function fetchGitHubJson(url: URL): Promise<unknown> {
+  const response = await fetch(url, { headers: GITHUB_API_HEADERS });
+  if (!response.ok) {
+    throw new Error(`GitHub API ${response.status} ${response.statusText}: ${url}`);
   }
 
-  return Object.freeze(parsed.map((value, index) => parseRun(value, `runs[${index}]`)));
+  return response.json();
 }
 
-function viewRun(databaseId: number): GitHubRunView {
-  const parsed: unknown = JSON.parse(
-    run("gh", [
-      "run",
-      "view",
-      String(databaseId),
-      "--repo",
-      REPOSITORY,
-      "--json",
-      "conclusion,headSha,jobs,status,url",
-    ]),
+async function listRuns(): Promise<readonly GitHubRun[]> {
+  const url = new URL(`https://api.github.com/repos/${REPOSITORY}/actions/runs`);
+  url.searchParams.set("head_sha", headSha);
+  url.searchParams.set("per_page", "20");
+  const record = requireRecord(await fetchGitHubJson(url), "response");
+  if (!Array.isArray(record.workflow_runs)) {
+    throw new Error("response.workflow_runs must be an array");
+  }
+
+  return Object.freeze(
+    record.workflow_runs
+      .map((value, index) => parseRun(value, `response.workflow_runs[${index}]`))
+      .filter((candidate) => candidate.name === WORKFLOW),
   );
-  const record = requireRecord(parsed, "run");
+}
+
+async function viewRun(runState: GitHubRun): Promise<GitHubRunView> {
+  const url = new URL(
+    `https://api.github.com/repos/${REPOSITORY}/actions/runs/${runState.databaseId}/jobs`,
+  );
+  url.searchParams.set("per_page", "100");
+  const record = requireRecord(await fetchGitHubJson(url), "response");
   if (!Array.isArray(record.jobs)) {
-    throw new Error("run.jobs must be an array");
+    throw new Error("response.jobs must be an array");
   }
 
   return Object.freeze({
-    conclusion: requireNullableString(record.conclusion, "run.conclusion"),
-    headSha: requireString(record.headSha, "run.headSha"),
-    jobs: Object.freeze(record.jobs.map((value, index) => parseJob(value, `run.jobs[${index}]`))),
-    status: requireString(record.status, "run.status"),
-    url: requireString(record.url, "run.url"),
+    conclusion: runState.conclusion,
+    headSha: runState.headSha,
+    jobs: Object.freeze(
+      record.jobs.map((value, index) => parseJob(value, `response.jobs[${index}]`)),
+    ),
+    status: runState.status,
+    url: runState.url,
   });
 }
 
@@ -155,10 +157,10 @@ const headSha = getHeadSha();
 const deadline = Date.now() + TIMEOUT_MILLISECONDS;
 
 async function waitForDeployment(): Promise<void> {
-  const observedRun = listRuns().find((candidate) => candidate.headSha === headSha);
+  const observedRun = (await listRuns()).find((candidate) => candidate.headSha === headSha);
 
   if (observedRun?.status === "completed") {
-    const detail = viewRun(observedRun.databaseId);
+    const detail = await viewRun(observedRun);
     const requiredJobs = REQUIRED_JOBS.map((name) => detail.jobs.find((job) => job.name === name));
     const missingJobs = REQUIRED_JOBS.filter((_, index) => requiredJobs[index] === undefined);
     const foundJobs = requiredJobs.filter((job): job is GitHubJob => job !== undefined);
