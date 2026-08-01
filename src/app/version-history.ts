@@ -9,6 +9,12 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.198.1",
+    title: "바닥 한 칸이 탭에도 뜬다요 ㅇㅅㅇ",
+    reason: "브라우저 탭에 게임을 알아볼 그림이 없어서 다른 페이지 사이에서 찾기 어려웠다요.",
+    change: "섬의 첫 번째 잔디 바닥 타일을 256×256 파비콘으로 잘라 브라우저 탭에 표시한다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.198.0",
     title: "섬은 넓어지고 일흔 명이 뛴다요 ㅇㅅㅇ",
     reason: "60명이 뛰던 52×44 섬은 전투 인원과 움직일 공간을 함께 늘릴 필요가 있었다요.",

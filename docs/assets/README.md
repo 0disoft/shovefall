@@ -1,6 +1,6 @@
 # Asset Provenance Ledger
 
-- Status: Active; thirty-one generated PNG assets ship with text or procedural fallbacks
+- Status: Active; thirty-two generated PNG assets ship with text or procedural fallbacks
 - Owner: Repository owner
 - Visual gate: [../product/01-roadmap.md](../product/01-roadmap.md)
 - Frontend boundary: [../frontend/FRONTEND_DESIGN.md](../frontend/FRONTEND_DESIGN.md)
@@ -30,6 +30,7 @@ opaque RGB pixels rather than represented by alpha transparency.
 | `generated-impact-explosion` | Bomb impacts | `src/assets/generated/impact-explosion.png` | Codex built-in image generation plus local chroma-key removal | Same output-ownership evidence | Generator and processing recorded here |
 | `generated-seawater-impact` | Flooded-tile impacts | `src/assets/generated/seawater-impact.png` | Codex built-in image generation plus local chroma-key removal | Same output-ownership evidence | Generator and processing recorded here |
 | `generated-island-terrain` | Stable coast and warning tiles | `src/assets/generated/island-terrain-atlas.png` | Codex built-in image generation plus local chroma-key removal | Same output-ownership evidence | Generator and processing recorded here |
+| `derived-floor-tile-favicon` | Browser tab favicon | `src/assets/generated/favicon.png` | Repository-owned deterministic crop of `generated-island-terrain` | Inherits the source asset rights record | No additional attribution |
 | `generated-tree-obstacle` | Solid inland tree obstacles | `src/assets/generated/tree-obstacle.png` | Codex built-in image generation plus local chroma-key removal | Same output-ownership evidence | Generator and processing recorded here |
 | `generated-skill-vfx` | Seven active skill casts, hits, persistent zones, and shields; two retired source sprites retained outside the runtime map | `src/assets/generated/skill-vfx-*.png` | Codex built-in image generation plus local chroma-key removal | Same output-ownership evidence | Generator and processing recorded here |
 | `generated-status-stunned` | Stunned-state feedback above participant heads | `src/assets/generated/status-stunned.png` | Codex built-in image generation plus local chroma-key removal | Same output-ownership evidence | Generator and processing recorded here |
@@ -187,6 +188,22 @@ assets, not dependency license inventory.
 | Modifications | Built-in output used a flat magenta background; the installed image-generation helper sampled border key `#fb02fa`, applied soft matte and despill, and wrote alpha PNG |
 | Technical contract | 1254×1254 RGBA PNG, 1,977,027 bytes, SHA-256 `6b8832ed16393d654895ff6e3fc45a166192215271ae9eae44629ab66c4a2bc9`; transparent corners; asynchronous same-origin load; procedural tile geometry remains beneath the atlas fallback |
 | Reviewer decision | Accepted 2026-07-24 after alpha and visual-edge inspection; thirteen local production Chrome paths pass with camera-space terrain culling below 500 live sprites, while final coast alignment remains pending human capture review |
+
+### `derived-floor-tile-favicon`
+
+| Field | Record |
+|---|---|
+| Asset ID and repository path | `derived-floor-tile-favicon`; `src/assets/generated/favicon.png` |
+| Type and purpose | Transparent 256×256 RGBA PNG; browser tab and bookmark identity |
+| Source | First stable grass tile from `src/assets/generated/island-terrain-atlas.png` |
+| Snapshot | Derived and inspected 2026-08-01 |
+| Copy extent | Repository-owned crop of the accepted terrain atlas; no new generated content |
+| Rights evidence | Inherits the `generated-island-terrain` output-ownership record |
+| Attribution decision | No additional attribution beyond the source asset record |
+| Source record | `tools/create-favicon.ts` |
+| Modifications | Cropped frame `[55, 65, 300, 280]`, alpha-aware bilinear downsampled with aspect ratio preserved, and centered on a transparent 256×256 canvas |
+| Technical contract | 256×256 RGBA PNG, 91,535 bytes, SHA-256 `2174b55dea6ee18af5cf97080939fcd993ee3cc4b95d8f22d67341cb57c98281`; deterministic TypeScript PNG transform; linked directly from `index.html` |
+| Reviewer decision | Accepted 2026-08-01 after local source-frame, transparency, dimensions, and visual inspection; physical browser-tab legibility remains a manual gate |
 
 ### `generated-tree-obstacle`
 

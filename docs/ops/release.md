@@ -1,8 +1,10 @@
 # Static Release Procedure
 
-- Status: `0.198.0` 70-participant arena-expansion candidate; hosted proof pending
+- Status: `0.198.1` floor-tile favicon candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.198.0`
+- Current product version: `0.198.1`
+
+Product `0.198.1`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. The browser tab now uses a deterministic 256×256 transparent crop of the first stable grass tile from the accepted terrain atlas. Simulation, AI, balance, arena layout, and replay hashes are unchanged. Hosted proof and physical browser-tab readability remain pending.
 
 Product `0.198.0`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. Public play expands from 60 to 70 participants and from a 52×44 to a 57×48 arena, increasing the rectangular cell count by 19.6%. The twelve separated lakes, 96-tile lake budget, and exactly 60 public trees remain unchanged. Game configuration, actor commands, browser settings, public audits, capture metadata, browser profiles, tests, and checked-in replay fixtures share the new bounds. Controlled 60-actor trait/loadout audits retain their exact experiment layout. Fresh 70-participant profile, audit, hosted, and human-play evidence remains pending.
 
