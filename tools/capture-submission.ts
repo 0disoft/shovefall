@@ -14,7 +14,7 @@ const CAPTURE_VIEWPORT = Object.freeze({ width: 1_920, height: 1_080 });
 const SHA_PATTERN = /^[0-9a-f]{40}$/u;
 const SERVER_READY_TIMEOUT_MS = 30_000;
 const BROWSER_STEP_TIMEOUT_MS = 20_000;
-const GAMEPLAY_SCENE_TIMEOUT_MS = 75_000;
+const GAMEPLAY_SCENE_TIMEOUT_MS = 90_000;
 const POST_ACTION_CAPTURE_TICKS = 45;
 export const CAPTURE_STARTING_ATTRIBUTES = Object.freeze({
   strength: 4,
