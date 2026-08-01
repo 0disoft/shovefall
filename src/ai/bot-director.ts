@@ -1052,51 +1052,71 @@ export class BotDirector {
     const hasCloseOpponent = nearby.some(
       ({ distance }) => distance <= ITEM_COMBAT_PRIORITY_DISTANCE,
     );
-    const itemCandidates = perceivedItems
-      .map((item) => ({
-        item,
-        distance: Math.hypot(
-          item.position.x - perceived.position.x,
-          item.position.y - perceived.position.y,
-        ),
-      }))
-      .filter(
-        ({ item, distance }) =>
-          canBotPursueMapItem(
-            current,
-            item,
-            memory.personality,
-            terrain,
-            perceptionFrame.participants,
-          ) &&
-          getNearestEligibleItemPursuerActorId(
-            item,
-            perceptionFrame.participants.filter((participant) => {
-              const candidateDistance = Math.hypot(
-                participant.position.x - item.position.x,
-                participant.position.y - item.position.y,
+    const itemCandidates: { readonly item: RenderItemV1; readonly distance: number }[] = [];
+    for (const item of perceivedItems) {
+      const distance = Math.hypot(
+        item.position.x - perceived.position.x,
+        item.position.y - perceived.position.y,
+      );
+      if (hasCloseOpponent && distance > IMMEDIATE_PICKUP_DISTANCE) {
+        continue;
+      }
+      if (
+        !canBotPursueMapItem(
+          current,
+          item,
+          memory.personality,
+          terrain,
+          perceptionFrame.participants,
+        )
+      ) {
+        continue;
+      }
+      if (
+        getNearestEligibleItemPursuerActorId(
+          item,
+          perceptionFrame.participants.filter((participant) => {
+            const candidateDistance = Math.hypot(
+              participant.position.x - item.position.x,
+              participant.position.y - item.position.y,
+            );
+            if (participant.actorId === this.#humanActorId) {
+              return (
+                candidateDistance <= IMMEDIATE_PICKUP_DISTANCE &&
+                canBotCollectMapItem(participant, item)
               );
-              if (participant.actorId === this.#humanActorId) {
-                return (
-                  candidateDistance <= IMMEDIATE_PICKUP_DISTANCE &&
-                  canBotCollectMapItem(participant, item)
-                );
-              }
-              return canBotPursueMapItem(
-                participant,
-                item,
-                this.#getMemory(participant).personality,
-                terrain,
-                perceptionFrame.participants,
-              );
-            }),
-          ) === current.actorId &&
-          (!hasCloseOpponent || distance <= IMMEDIATE_PICKUP_DISTANCE),
-      )
-      .toSorted(
-        (left, right) => left.distance - right.distance || left.item.itemId - right.item.itemId,
-      )
-      .slice(0, 4);
+            }
+            return canBotPursueMapItem(
+              participant,
+              item,
+              this.#getMemory(participant).personality,
+              terrain,
+              perceptionFrame.participants,
+            );
+          }),
+        ) !== current.actorId
+      ) {
+        continue;
+      }
+      let insertIndex = itemCandidates.length;
+      while (insertIndex > 0) {
+        const prev = itemCandidates[insertIndex - 1];
+        if (
+          prev === undefined ||
+          prev.distance < distance ||
+          (prev.distance === distance && prev.item.itemId <= item.itemId)
+        ) {
+          break;
+        }
+        insertIndex -= 1;
+      }
+      if (insertIndex < 4) {
+        itemCandidates.splice(insertIndex, 0, Object.freeze({ item, distance }));
+        if (itemCandidates.length > 4) {
+          itemCandidates.pop();
+        }
+      }
+    }
     if (current.action === "Ready") {
       for (const { item } of itemCandidates) {
         if (!canBotCollectMapItem(current, item)) {

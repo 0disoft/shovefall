@@ -1,8 +1,11 @@
 # Static Release Procedure
 
-- Status: `0.184.0` complete-island cannon-collapse candidate; hosted proof pending
+- Status: `0.185.0` complete-island cannon-collapse candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.184.0`
+- Current product version: `0.185.0`
+
+Product `0.185.0`, simulation `78.0.0`, and content `48.0.0` keep simulation `78.0.0`,
+content `48.0.0`, replay v8, and reports v11. Bot item candidate selection now selects the nearest valid items with a single-pass top-N insertion scan instead of allocating, mapping, filtering, sorting, and slicing the full perceived item list per bot decision. Visible bot movement, combat results, replay hash, and balance are unchanged. Hosted proof, complete-collapse pacing, and human readability remain pending.
 
 Product `0.184.0`, simulation `78.0.0`, and content `48.0.0` keep simulation `78.0.0`,
 content `48.0.0`, replay v8, and reports v11. Bot nearby candidate selection now selects the nearest opponents with a single-pass insertion-sort top-N scan instead of allocating, mapping, sorting, and slicing the full perceived participant list per bot decision. Visible bot movement, combat results, replay hash, and balance are unchanged. Hosted proof, complete-collapse pacing, and human readability remain pending.
