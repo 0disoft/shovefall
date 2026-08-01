@@ -39,9 +39,7 @@ import {
   clamp,
   clampVectorLength,
   dotVectors,
-  isZeroVector,
   moveVectorToward,
-  normalizeVector,
   scaleVector,
   SimulationContractError,
   subtractVectors,
@@ -2742,7 +2740,7 @@ export class SimulationWorld {
         ...participant,
         body: Object.freeze({
           ...participant.body,
-          velocity: scaleVector(direction, speed),
+          velocity: Object.freeze({ x: direction.x * speed, y: direction.y * speed }),
         }),
         action: createTimedAction("Slipping", this.#tick, stumbleTicks, direction),
       });
@@ -2834,7 +2832,14 @@ export class SimulationWorld {
       );
       const movementDisabled =
         isStunned(participant, this.#tick) || isRooted(participant, this.#tick);
-      const inputDirection = movementDisabled ? ZERO_VECTOR : normalizeVector(command.move);
+      const inputDirection = movementDisabled
+        ? ZERO_VECTOR
+        : (() => {
+            const moveLength = Math.hypot(command.move.x, command.move.y);
+            return moveLength <= 1
+              ? Object.freeze({ x: command.move.x, y: command.move.y })
+              : Object.freeze({ x: command.move.x / moveLength, y: command.move.y / moveLength });
+          })();
       const slowMultiplier =
         participant.combat.slowedUntilTick > this.#tick ? participant.combat.slowMultiplier : 1;
       let velocity = participant.body.velocity;
@@ -2842,45 +2847,61 @@ export class SimulationWorld {
 
       switch (participant.action.kind) {
         case "Ready": {
-          velocity = scaleVector(
-            inputDirection,
-            profile.maximumSpeed * mobilityMultiplier * startingMovementMultiplier * slowMultiplier,
-          );
-          facing = isZeroVector(inputDirection) ? facing : inputDirection;
+          velocity = Object.freeze({
+            x:
+              inputDirection.x *
+              profile.maximumSpeed *
+              mobilityMultiplier *
+              startingMovementMultiplier *
+              slowMultiplier,
+            y:
+              inputDirection.y *
+              profile.maximumSpeed *
+              mobilityMultiplier *
+              startingMovementMultiplier *
+              slowMultiplier,
+          });
+          facing = inputDirection.x === 0 && inputDirection.y === 0 ? facing : inputDirection;
           break;
         }
         case "ShoveWindup": {
-          velocity = scaleVector(
-            inputDirection,
+          const windupScale =
             profile.maximumSpeed *
-              SIMULATION_TUNING.movement.windupControl *
-              startingMovementMultiplier *
-              slowMultiplier,
-          );
+            SIMULATION_TUNING.movement.windupControl *
+            startingMovementMultiplier *
+            slowMultiplier;
+          velocity = Object.freeze({
+            x: inputDirection.x * windupScale,
+            y: inputDirection.y * windupScale,
+          });
           facing = participant.action.lockedDirection ?? facing;
           break;
         }
         case "ShoveActive": {
           const direction = participant.action.lockedDirection ?? facing;
-          velocity = scaleVector(
-            inputDirection,
+          const shoveActiveScale =
             profile.maximumSpeed *
-              mobilityMultiplier *
-              startingMovementMultiplier *
-              slowMultiplier *
-              0.18,
-          );
+            mobilityMultiplier *
+            startingMovementMultiplier *
+            slowMultiplier *
+            0.18;
+          velocity = Object.freeze({
+            x: inputDirection.x * shoveActiveScale,
+            y: inputDirection.y * shoveActiveScale,
+          });
           facing = direction;
           break;
         }
         case "ShoveRecovery": {
-          velocity = scaleVector(
-            inputDirection,
+          const recoveryScale =
             profile.maximumSpeed *
-              SIMULATION_TUNING.movement.recoveryControl *
-              startingMovementMultiplier *
-              slowMultiplier,
-          );
+            SIMULATION_TUNING.movement.recoveryControl *
+            startingMovementMultiplier *
+            slowMultiplier;
+          velocity = Object.freeze({
+            x: inputDirection.x * recoveryScale,
+            y: inputDirection.y * recoveryScale,
+          });
           break;
         }
         case "DodgeActive": {
@@ -2890,12 +2911,13 @@ export class SimulationWorld {
             this.#tick - participant.action.startedTick >= this.#gameplayTuning.dodgeActiveTicks;
           velocity = blinkMovementComplete
             ? ZERO_VECTOR
-            : scaleVector(
-                direction,
-                this.#gameplayTuning.dodgeSpeed *
+            : (() => {
+                const dodgeScale =
+                  this.#gameplayTuning.dodgeSpeed *
                   getMassDodgeSpeedMultiplier(participant.body.massFactor) *
-                  startingMovementMultiplier,
-              );
+                  startingMovementMultiplier;
+                return Object.freeze({ x: direction.x * dodgeScale, y: direction.y * dodgeScale });
+              })();
           facing = direction;
           break;
         }
@@ -2913,22 +2935,27 @@ export class SimulationWorld {
             participant.action.startedTick === this.#tick
               ? clampVectorLength(velocity, targetSpeed)
               : clampVectorLength(
-                  moveVectorToward(velocity, scaleVector(direction, targetSpeed), acceleration),
+                  moveVectorToward(
+                    velocity,
+                    Object.freeze({ x: direction.x * targetSpeed, y: direction.y * targetSpeed }),
+                    acceleration,
+                  ),
                   targetSpeed,
                 );
           facing = direction;
           break;
         }
         case "Stumbling": {
-          velocity = scaleVector(velocity, SIMULATION_TUNING.movement.stumbleDrag);
+          velocity = Object.freeze({
+            x: velocity.x * SIMULATION_TUNING.movement.stumbleDrag,
+            y: velocity.y * SIMULATION_TUNING.movement.stumbleDrag,
+          });
           break;
         }
         case "Slipping": {
           const direction = participant.action.lockedDirection ?? facing;
-          velocity = scaleVector(
-            direction,
-            vectorLength(velocity) * SIMULATION_TUNING.soap.dragPerTick,
-          );
+          const slipSpeed = Math.hypot(velocity.x, velocity.y) * SIMULATION_TUNING.soap.dragPerTick;
+          velocity = Object.freeze({ x: direction.x * slipSpeed, y: direction.y * slipSpeed });
           facing = direction;
           break;
         }
@@ -2937,7 +2964,7 @@ export class SimulationWorld {
           break;
         }
         case "Falling": {
-          velocity = scaleVector(velocity, 0.85);
+          velocity = Object.freeze({ x: velocity.x * 0.85, y: velocity.y * 0.85 });
           break;
         }
         case "Eliminated": {
@@ -2948,10 +2975,11 @@ export class SimulationWorld {
 
       const maximumSpeed =
         participant.action.kind === "DodgeActive"
-          ? Math.max(SIMULATION_TUNING.body.maximumLaunchSpeed, vectorLength(velocity))
+          ? Math.max(SIMULATION_TUNING.body.maximumLaunchSpeed, Math.hypot(velocity.x, velocity.y))
           : participant.action.kind === "GrapplePull" ||
               participant.action.kind === "Slipping" ||
-              vectorLength(participant.body.velocity) > SIMULATION_TUNING.body.maximumSpeed ||
+              Math.hypot(participant.body.velocity.x, participant.body.velocity.y) >
+                SIMULATION_TUNING.body.maximumSpeed ||
               (participant.action.kind === "Stumbling" &&
                 participant.action.startedTick === this.#tick)
             ? SIMULATION_TUNING.body.maximumLaunchSpeed

@@ -9,6 +9,13 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.179.0",
+    title: "이동 속도도 숫자로 바로 한다요 ㅇㅅㅇ",
+    reason: "참가자 이동에서 방향과 속도 껍데기를 새로 만들었다요.",
+    change:
+      "이동 방향 정규화와 속도 계산을 숫자로 바로 해서 껍데기를 만들지 않는다요. 봇 행동과 전투 결과, 수치는 그대로다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.178.0",
     title: "벽 타격과 비누도 숫자로 바로 한다요 ㅇㅅㅇ",
     reason: "벽 타격 위치와 비누 배치에서 거리 껍데기를 새로 만들었다요.",
