@@ -1020,20 +1020,35 @@ export class BotDirector {
       );
     }
 
-    const nearby = perceivedParticipants
-      .filter((candidate) => candidate.actorId !== perceived.actorId && isControllable(candidate))
-      .map((candidate) => ({
-        candidate,
-        distance: Math.hypot(
-          candidate.position.x - perceived.position.x,
-          candidate.position.y - perceived.position.y,
-        ),
-      }))
-      .toSorted(
-        (left, right) =>
-          left.distance - right.distance || left.candidate.actorId - right.candidate.actorId,
-      )
-      .slice(0, this.#nearbyCandidateLimit);
+    const nearbyLimit = this.#nearbyCandidateLimit;
+    const nearby: { readonly candidate: RenderParticipantV1; readonly distance: number }[] = [];
+    for (const candidate of perceivedParticipants) {
+      if (candidate.actorId === perceived.actorId || !isControllable(candidate)) {
+        continue;
+      }
+      const distance = Math.hypot(
+        candidate.position.x - perceived.position.x,
+        candidate.position.y - perceived.position.y,
+      );
+      let insertIndex = nearby.length;
+      while (insertIndex > 0) {
+        const prev = nearby[insertIndex - 1];
+        if (
+          prev === undefined ||
+          prev.distance < distance ||
+          (prev.distance === distance && prev.candidate.actorId <= candidate.actorId)
+        ) {
+          break;
+        }
+        insertIndex -= 1;
+      }
+      if (insertIndex < nearbyLimit) {
+        nearby.splice(insertIndex, 0, Object.freeze({ candidate, distance }));
+        if (nearby.length > nearbyLimit) {
+          nearby.pop();
+        }
+      }
+    }
     const hasCloseOpponent = nearby.some(
       ({ distance }) => distance <= ITEM_COMBAT_PRIORITY_DISTANCE,
     );

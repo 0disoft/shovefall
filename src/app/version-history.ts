@@ -9,6 +9,13 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.184.0",
+    title: "가까운 상대도 한번에 고른다요 ㅇㅅㅇ",
+    reason: "봇이 가까운 상대를 찾을 때마다 전체를 정렬했다요.",
+    change:
+      "가까운 상대를 정렬 대신 한번에 고른다요. 봇 행동과 전투 결과, 수치는 그대로다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.183.0",
     title: "남은 거리도 숫자로 바로 한다요 ㅇㅅㅇ",
     reason: "스킬 존과 벽 점거에서 거리 껍데기를 새로 만들었다요.",
