@@ -1,8 +1,11 @@
 # Static Release Procedure
 
-- Status: `0.188.0` complete-island cannon-collapse candidate; hosted proof pending
+- Status: `0.189.0` complete-island cannon-collapse candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.188.0`
+- Current product version: `0.189.0`
+
+Product `0.189.0`, simulation `78.0.0`, and content `48.0.0` keep simulation `78.0.0`,
+content `48.0.0`, replay v8, and reports v11. Spatial hash cell buckets now skip per-bucket sorting since participants are already inserted in actorId order, removing a per-tick sort cost with no effect on cell content order. Visible bot movement, combat results, replay hash, and balance are unchanged. Hosted proof, complete-collapse pacing, and human readability remain pending.
 
 Product `0.188.0`, simulation `78.0.0`, and content `48.0.0` keep simulation `78.0.0`,
 content `48.0.0`, replay v8, and reports v11. Spatial hash getCandidatePairs now iterates participants in Map insertion order instead of re-sorting already-sorted values, removing a per-tick sort cost with no effect on pair generation order. Visible bot movement, combat results, replay hash, and balance are unchanged. Hosted proof, complete-collapse pacing, and human readability remain pending.

@@ -58,10 +58,7 @@ export class ParticipantSpatialHash<T extends SpatialParticipant> {
     }
 
     for (const [key, bucket] of mutableCells) {
-      this.#cells.set(
-        key,
-        Object.freeze(bucket.toSorted((left, right) => left.actorId - right.actorId)),
-      );
+      this.#cells.set(key, Object.freeze(bucket));
     }
   }
 
