@@ -9,6 +9,13 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.171.0",
+    title: "사람 조작도 숫자로 바로 한다요 ㅇㅅㅇ",
+    reason: "사람이 목표와 이동지점을 향할 때마다 거리와 방향 껍데기를 새로 만들었다요.",
+    change:
+      "사람 조작의 접근 거리와 이동 방향을 숫자로 바로 계산해서 껍데기를 만들지 않는다요. 봇 행동과 전투 결과, 수치는 그대로다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.170.0",
     title: "아이템 배치와 명령 정규화도 숫자로 바로 한다요 ㅇㅅㅇ",
     reason: "아이템 배치 거리와 명령 이동 정규화에서 거리 껍데기를 새로 만들었다요.",

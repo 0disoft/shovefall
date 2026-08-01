@@ -24,7 +24,7 @@ import type {
 import type { InputState } from "./input-state";
 import { canSpendStatPoint } from "../simulation/progression";
 import { clamp } from "../simulation/math";
-import { normalizeVector, subtractVectors, vectorLength, type Vector2 } from "../simulation/math";
+import { type Vector2 } from "../simulation/math";
 import { FIXED_TICKS_PER_SECOND } from "../simulation/versions";
 import { SimulationWorld } from "../simulation/world";
 import {
@@ -48,6 +48,15 @@ const MOVE_DESTINATION_MINIMUM_STOP_DISTANCE = 0.08;
 const MOVE_DESTINATION_RADIUS_RATIO = 0.35;
 
 export type RoundCountdownValue = 3 | 2 | 1 | null;
+
+function normalizeOffset(x: number, y: number): Vector2 {
+  const length = Math.hypot(x, y);
+  if (length <= 1) {
+    return Object.freeze({ x, y });
+  }
+  const inverseLength = 1 / length;
+  return Object.freeze({ x: x * inverseLength, y: y * inverseLength });
+}
 
 export interface SessionTelemetry {
   readonly frame: RenderFrameV1;
@@ -235,7 +244,10 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
     }
     return mustApproachTarget(
       pendingTargetedAction,
-      vectorLength(subtractVectors(pendingTargetedAction.target, human.position)),
+      Math.hypot(
+        pendingTargetedAction.target.x - human.position.x,
+        pendingTargetedAction.target.y - human.position.y,
+      ),
     );
   };
 
@@ -467,12 +479,13 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
       cancelTargeting();
       return command;
     }
-    const offset = subtractVectors(pending.target, human.position);
-    const distance = vectorLength(offset);
+    const offsetX = pending.target.x - human.position.x;
+    const offsetY = pending.target.y - human.position.y;
+    const distance = Math.hypot(offsetX, offsetY);
     if (mustApproachTarget(pending, distance)) {
       return Object.freeze({
         ...command,
-        move: normalizeVector(offset),
+        move: normalizeOffset(offsetX, offsetY),
         targetPosition: pending.target,
         useSkillSlot: null,
         useItemSlot: null,
@@ -504,18 +517,19 @@ export function createGameSession(renderer: ArenaRenderer, hooks: GameSessionHoo
       cancelMoveDestination();
       return command;
     }
-    const offset = subtractVectors(destination, human.position);
+    const offsetX = destination.x - human.position.x;
+    const offsetY = destination.y - human.position.y;
     const stopDistance = Math.max(
       MOVE_DESTINATION_MINIMUM_STOP_DISTANCE,
       human.radius * MOVE_DESTINATION_RADIUS_RATIO,
     );
-    if (vectorLength(offset) <= stopDistance) {
+    if (Math.hypot(offsetX, offsetY) <= stopDistance) {
       cancelMoveDestination();
       return command;
     }
     return Object.freeze({
       ...command,
-      move: normalizeVector(offset),
+      move: normalizeOffset(offsetX, offsetY),
       targetPosition: destination,
     });
   };
