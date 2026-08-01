@@ -1200,7 +1200,19 @@ export class BotDirector {
       }
     }
 
-    const scoredTargets = nearby.map(({ candidate, distance }) => {
+    const scoredTargets: {
+      readonly candidate: RenderParticipantV1;
+      readonly distance: number;
+      readonly score: number;
+    }[] = [];
+    let highestScored:
+      | {
+          readonly candidate: RenderParticipantV1;
+          readonly distance: number;
+          readonly score: number;
+        }
+      | undefined;
+    for (const { candidate, distance } of nearby) {
       const edgeOpportunity = Math.max(0, 2.2 - getBotEdgeDistance(candidate, terrain));
       const stumblingOpportunity =
         candidate.action === "Stumbling" || candidate.action === "Slipping" ? 1 : 0;
@@ -1213,11 +1225,16 @@ export class BotDirector {
         stumblingOpportunity * personality.stumblingTargetWeight -
         massPenalty * personality.heavyTargetPenalty +
         healthOpportunity * 0.8;
-      return Object.freeze({ candidate, distance, score });
-    });
-    const highestScored = scoredTargets.toSorted(
-      (left, right) => right.score - left.score || left.candidate.actorId - right.candidate.actorId,
-    )[0];
+      const entry = Object.freeze({ candidate, distance, score });
+      scoredTargets.push(entry);
+      if (
+        highestScored === undefined ||
+        score > highestScored.score ||
+        (score === highestScored.score && candidate.actorId < highestScored.candidate.actorId)
+      ) {
+        highestScored = entry;
+      }
+    }
     const retainedTarget = scoredTargets.find(
       ({ candidate }) => candidate.actorId === memory.targetActorId,
     );
