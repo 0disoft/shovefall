@@ -6,6 +6,7 @@ import {
   CAPTURE_STARTING_ITEMS,
   CAPTURE_STARTING_SKILLS,
   chooseCaptureLoadout,
+  startCaptureRound,
 } from "../tools/capture-submission";
 
 interface CanvasPixelSummary {
@@ -621,6 +622,10 @@ test("saves the complete submission-capture loadout from fresh settings", async 
   await expect(
     page.locator(`input[name="startingItem"][value="${CAPTURE_STARTING_ITEMS[0]}"]`),
   ).toBeChecked();
+  await page.getByRole("button", { name: "취소", exact: true }).click();
+  await startCaptureRound(page);
+  await expect(page.locator("#app")).toHaveAttribute("data-screen", "arena");
+  await expect(page.locator("#app")).toHaveAttribute("data-round", "active");
 });
 
 test("uses right-click ground destinations instead of desktop mouse-drag movement", async ({

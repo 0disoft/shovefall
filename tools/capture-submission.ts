@@ -452,11 +452,16 @@ async function useGrappleForCapture(page: Page, directionIndex = 0): Promise<voi
   return useGrappleForCapture(page, directionIndex + 1);
 }
 
-async function createGameplayScene(page: Page): Promise<void> {
-  reportPhase("gameplay-start-round");
+export async function startCaptureRound(page: Page): Promise<void> {
   await page.getByRole("button", { name: "게임 시작" }).click();
+  await page.getByRole("button", { name: "알겠다요 ㅇㅅㅇ", exact: true }).click();
   await waitForAttribute(page, "#app", "data-screen", "arena");
   await waitForAttribute(page, "#app", "data-round", "active");
+}
+
+async function createGameplayScene(page: Page): Promise<void> {
+  reportPhase("gameplay-start-round");
+  await startCaptureRound(page);
   const arena = page.locator("#arena-host");
   await arena.focus();
   reportPhase("gameplay-start-recording");
