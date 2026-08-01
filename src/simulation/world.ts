@@ -1028,11 +1028,19 @@ export class SimulationWorld {
       this.#tick,
       this.#itemRandom,
       arenaChanged,
-      new Set([
-        ...this.#brickWalls.map(({ tileId }) => tileId),
-        ...this.#trees.map(({ tileId }) => tileId),
-        ...this.#soapPatches.map(({ tileId }) => tileId),
-      ]),
+      (() => {
+        const blockedTileIds = new Set<string>();
+        for (const wall of this.#brickWalls) {
+          blockedTileIds.add(wall.tileId);
+        }
+        for (const tree of this.#trees) {
+          blockedTileIds.add(tree.tileId);
+        }
+        for (const patch of this.#soapPatches) {
+          blockedTileIds.add(patch.tileId);
+        }
+        return blockedTileIds;
+      })(),
     );
     this.#itemState = spawnResult.state;
     this.#emitItemFacts(spawnResult.facts, events);

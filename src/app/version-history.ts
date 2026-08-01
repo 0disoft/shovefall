@@ -9,6 +9,13 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.191.0",
+    title: "아이템 배치 막힌 칸도 바로 만든다요 ㅇㅅㅇ",
+    reason: "아이템 배치에서 막힌 칸을 찾을 때마다 중간 배열을 새로 만들었다요.",
+    change:
+      "아이템 배치 막힌 칸 집합을 중간 배열 없이 바로 만들어서 매 틱마다 할당을 줄인다요. 봇 행동과 전투 결과, 수치는 그대로다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.190.0",
     title: "막힌 칸도 바로 만든다요 ㅇㅅㅇ",
     reason: "봇이 막힌 칸을 찾을 때마다 중간 배열을 새로 만들었다요.",
