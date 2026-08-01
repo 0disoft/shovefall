@@ -1,10 +1,4 @@
-import {
-  assertFiniteNumber,
-  normalizeVector,
-  SimulationContractError,
-  type Vector2,
-  ZERO_VECTOR,
-} from "./math";
+import { assertFiniteNumber, SimulationContractError, type Vector2, ZERO_VECTOR } from "./math";
 import { FIXED_TICKS_PER_SECOND } from "./versions";
 
 export const MINIMUM_PARTICIPANT_COUNT = 4;
@@ -611,7 +605,7 @@ export function normalizeActorCommand(command: ActorCommandV1): ActorCommandV1 {
     commandVersion: 1,
     tick: command.tick,
     actorId: command.actorId,
-    move: normalizeVector(command.move),
+    move: normalizeMoveVector(command.move),
     targetPosition:
       command.targetPosition === null
         ? null
@@ -629,4 +623,15 @@ export function createTileId(column: number, row: number): TileId {
   assertIntegerInRange(column, "tile.column", -1_000, 1_000);
   assertIntegerInRange(row, "tile.row", -1_000, 1_000);
   return `${column}:${row}`;
+}
+
+function normalizeMoveVector(move: Vector2): Vector2 {
+  assertFiniteNumber(move.x, "move.x");
+  assertFiniteNumber(move.y, "move.y");
+  const length = Math.hypot(move.x, move.y);
+  if (length <= 1) {
+    return Object.freeze({ x: move.x, y: move.y });
+  }
+  const inverseLength = 1 / length;
+  return Object.freeze({ x: move.x * inverseLength, y: move.y * inverseLength });
 }

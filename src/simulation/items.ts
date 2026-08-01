@@ -18,13 +18,7 @@ import type {
   Tick,
   TileState,
 } from "./contracts";
-import {
-  assertFiniteNumber,
-  SimulationContractError,
-  vectorLength,
-  subtractVectors,
-  type Vector2,
-} from "./math";
+import { assertFiniteNumber, SimulationContractError, type Vector2 } from "./math";
 import type { XorShift32 } from "./random";
 import { normalizeMassFactor } from "./tuning";
 
@@ -210,7 +204,7 @@ export function getItemSpawnBand(position: Vector2, tiles: readonly TileState[])
 }
 
 function isFarEnough(position: Vector2, other: Vector2, clearance: number): boolean {
-  return vectorLength(subtractVectors(position, other)) >= clearance;
+  return Math.hypot(position.x - other.x, position.y - other.y) >= clearance;
 }
 
 function getSpawnCandidates(

@@ -1,8 +1,11 @@
 # Static Release Procedure
 
-- Status: `0.169.0` complete-island cannon-collapse candidate; hosted proof pending
+- Status: `0.170.0` complete-island cannon-collapse candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.169.0`
+- Current product version: `0.170.0`
+
+Product `0.170.0`, simulation `78.0.0`, and content `48.0.0` keep simulation `78.0.0`,
+content `48.0.0`, replay v8, and reports v11. Item placement and actor command normalization now compute spawn clearance distance and move-vector normalization from raw components instead of allocating vectorLength, subtractVectors, and normalizeVector intermediate objects per placement and command. Visible bot movement, combat results, replay hash, and balance are unchanged. Hosted proof, complete-collapse pacing, and human readability remain pending.
 
 Product `0.169.0`, simulation `78.0.0`, and content `48.0.0` keep simulation `78.0.0`,
 content `48.0.0`, replay v8, and reports v11. Skill targeting and projectile travel now compute direction normalization and travel distance from raw components instead of allocating normalizeVector, subtractVectors, and vectorLength intermediate objects per targeting and projectile render decision. Visible bot movement, combat results, replay hash, and balance are unchanged. Hosted proof, complete-collapse pacing, and human readability remain pending.
