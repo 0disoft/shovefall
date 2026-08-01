@@ -121,10 +121,14 @@ export function createBotNavigationTerrain(tiles: RenderFrameV1["tiles"]): BotNa
 }
 
 export function createBotBlockedTileIds(frame: RenderFrameV1): ReadonlySet<TileId> {
-  return new Set([
-    ...frame.brickWalls.map(({ tileId }) => tileId),
-    ...frame.trees.map(({ tileId }) => tileId),
-  ]);
+  const blockedTileIds = new Set<TileId>();
+  for (const wall of frame.brickWalls) {
+    blockedTileIds.add(wall.tileId);
+  }
+  for (const tree of frame.trees) {
+    blockedTileIds.add(tree.tileId);
+  }
+  return blockedTileIds;
 }
 
 function isTileTraversable(

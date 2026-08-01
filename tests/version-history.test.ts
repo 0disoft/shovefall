@@ -6,10 +6,10 @@ describe("version history", () => {
   it("keeps the current product version first and records concise reasons and changes", () => {
     expect(VERSION_HISTORY[0]?.version).toBe(PRODUCT_VERSION);
     expect(VERSION_HISTORY[0]).toMatchObject({
-      version: "0.189.0",
-      title: expect.stringContaining("공간 해시 칸"),
+      version: "0.190.0",
+      title: expect.stringContaining("막힌 칸"),
       change: expect.stringContaining(
-        "공간 해시 칸 만들기에서 겹치는 정렬을 없애서 매 틱마다 정렬 비용을 줄인다요",
+        "막힌 칸 집합을 중간 배열 없이 바로 만들어서 매 틱마다 할당을 줄인다요",
       ),
     });
     expect(VERSION_HISTORY.find(({ version }) => version === "0.41.0")).toMatchObject({
