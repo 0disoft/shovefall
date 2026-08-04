@@ -1,8 +1,10 @@
 # Static Release Procedure
 
-- Status: `0.199.28` mobile UX candidate; hosted proof pending
+- Status: `0.199.29` desktop UX candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.199.28`
+- Current product version: `0.199.29`
+
+Product `0.199.29`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. On desktop fine-pointer screens, the paused control guide now starts folded and the pause action buttons lay in three columns with round statistics in four columns and tighter cells, shrinking the panel so the whole paused screen fits without scrolling at standard and extra-large text; a new smoke journey asserts the collapsed guide with three-column pause buttons and four-column statistics fit the panel without internal scroll. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
 Product `0.199.28`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. On desktop fine-pointer screens, the completed-round action buttons now lay in three columns and the round statistics in four columns with tighter cells, shrinking the panel so the whole completed summary fits without scrolling at standard and extra-large text; a new smoke journey asserts the three-column buttons and two button rows fit the panel without internal scroll. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
