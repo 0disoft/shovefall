@@ -6,6 +6,11 @@ describe("version history", () => {
   it("keeps the current product version first and records concise reasons and changes", () => {
     expect(VERSION_HISTORY[0]?.version).toBe(PRODUCT_VERSION);
     expect(VERSION_HISTORY[0]).toMatchObject({
+      version: "0.199.16",
+      title: expect.stringContaining("통계"),
+      change: expect.stringContaining("한눈에"),
+    });
+    expect(VERSION_HISTORY.find(({ version }) => version === "0.199.15")).toMatchObject({
       version: "0.199.15",
       title: expect.stringContaining("일시정지"),
       change: expect.stringContaining("구석"),

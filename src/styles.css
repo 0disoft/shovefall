@@ -3203,15 +3203,15 @@ button:disabled {
   }
 
   .round-statistics__grid div {
-    padding: 8px 10px;
+    padding: 6px 8px;
   }
 
   .round-statistics__grid dt {
-    font-size: 0.72rem;
+    font-size: 0.68rem;
   }
 
   .round-statistics__grid dd {
-    font-size: 0.92rem;
+    font-size: 0.86rem;
   }
 
   .round-statistics__skills ul {
