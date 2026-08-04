@@ -1,8 +1,10 @@
 # Static Release Procedure
 
-- Status: `0.199.19` mobile UX candidate; hosted proof pending
+- Status: `0.199.20` mobile UX candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.199.19`
+- Current product version: `0.199.20`
+
+Product `0.199.20`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. The kill-reward trait picker on phones now lays each card as one icon-and-copy line with a full-width rank meter below, sizes cards to their content, and tightens the picker header, dropping the six-choice list's scroll height on a 320 px-wide phone from about 948 px to 732 px at the standard text size with no text clipping, so the first screen shows nearly two cards; tablets between 481 px and 820 px keep two columns with the list near 396 px. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
 Product `0.199.19`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. The coarse-pointer pause layer on 320 px-wide phones now uses tighter panel padding, telemetry cell padding and gaps, round-statistics cell padding, type, and gaps, and skill-row padding, trimming the paused panel's scroll height from about 1028 px to 953 px at the standard text size and from 1146 px to 1071 px at extra-large, so the first round-statistics row reaches the first screen. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 

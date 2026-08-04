@@ -9,6 +9,14 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.199.20",
+    title: "처치 보상 특성도 한눈에 고른다요 ㅇㅅㅇ",
+    reason:
+      "작은 폰에서 특성 고르는 창이 카드마다 높이를 채워 넣고 효과가 네 줄인 특성은 잘려서, 선택지가 길게 이어지고 매번 스크롤해야 했다요.",
+    change:
+      "특성 카드를 내용 높이에 맞추고 아이콘·효과를 한 줄에 배치해, 320px 폰에서 선택지 전체 높이가 948px에서 732px로 줄고 첫 화면에 카드가 두 장 가까이 한눈에 들어온다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.199.19",
     title: "일시정지 통계도 한 화면에 더 담는다요 ㅇㅅㅇ",
     reason:
