@@ -1,8 +1,10 @@
 # Static Release Procedure
 
-- Status: `0.199.9` mobile UX candidate; hosted proof pending
+- Status: `0.199.10` mobile UX candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.199.9`
+- Current product version: `0.199.10`
+
+Product `0.199.10`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. On 480 px and narrower coarse-pointer screens the touch controls switch from a shrinking flex row to a two-column grid: the joystick keeps a fixed 96 px target and the four action buttons reflow into a 2x2 grid, so narrow phones no longer squash the joystick to 60 px or strand the fourth button on a second row. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
 Product `0.199.9`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. The pre-round briefing compresses its heading, objective, control cells, status, and action spacing at large and extra-large text sizes so the objective, controls, and confirmation fit one 320×568 viewport without scrolling. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 

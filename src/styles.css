@@ -2924,9 +2924,23 @@ button:disabled {
     grid-template-columns: 1fr;
   }
 
+  .touch-controls {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    justify-content: space-between;
+    align-items: end;
+    gap: 10px;
+  }
+
   .pointer-joystick {
-    width: 104px;
-    height: 104px;
+    width: 96px;
+    height: 96px;
+    flex-shrink: 0;
+  }
+
+  .touch-actions {
+    grid-template-columns: repeat(2, 68px);
+    justify-content: end;
   }
 
   .touch-actions button {

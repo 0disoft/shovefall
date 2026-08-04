@@ -9,6 +9,14 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.199.10",
+    title: "조작 버튼도 폰 폭에 맞춘다요 ㅇㅅㅇ",
+    reason:
+      "좁은 폰에서는 조이스틱이 옆으로 찌그러지고 스킬·아이템 버튼이 밀려 두 줄로 어긋나게 배치됐다요.",
+    change:
+      "좁은 폰에서 조이스틱을 고정 크기로 두고 버튼을 두 줄로 가지런히 배치해, 손가락이 닿는 영역이 흔들리지 않게 했다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.199.9",
     title: "큰 글씨여도 브리핑은 한 화면이다요 ㅇㅅㅇ",
     reason: "폰트를 크게 설정하면 게임 시작 전 브리핑이 길어져 확인 버튼이 화면 밖으로 밀려났다요.",
