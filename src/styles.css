@@ -3658,6 +3658,59 @@ button:disabled {
 }
 
 @media (pointer: coarse) and (orientation: landscape) and (max-height: 520px) {
+  .pause-menu__panel {
+    gap: 6px;
+    padding: 8px 10px;
+  }
+
+  .round-statistics__grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 4px;
+  }
+
+  .round-statistics__grid div {
+    gap: 1px;
+    padding: 4px 6px;
+  }
+
+  .round-statistics__grid dt {
+    font-size: 0.6rem;
+    line-height: 1.15;
+  }
+
+  .round-statistics__grid dd {
+    font-size: 0.74rem;
+    line-height: 1.2;
+  }
+
+  .round-statistics h4,
+  .round-statistics h5 {
+    font-size: 0.78rem;
+    line-height: 1.15;
+  }
+
+  .game-telemetry div {
+    padding: 4px 6px;
+  }
+
+  .game-telemetry dt {
+    font-size: 0.62rem;
+  }
+
+  .game-telemetry dd {
+    font-size: 0.74rem;
+  }
+
+  .round-statistics__skills li {
+    padding: 4px 7px;
+    font-size: 0.8rem;
+  }
+
+  .pause-control-guide summary {
+    padding: 7px 10px;
+    font-size: 0.82rem;
+  }
+
   :root[data-font-scale="extra-large"] .pause-menu__panel {
     gap: 6px;
     padding: 8px 10px;

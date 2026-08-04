@@ -1993,7 +1993,7 @@ test.describe("coarse-pointer surfaces", () => {
 
       await expect(page.locator(".round-statistics .round-statistics__grid")).toHaveCSS(
         "grid-template-columns",
-        /^\d+(?:\.\d+)?px \d+(?:\.\d+)?px \d+(?:\.\d+)?px$/u,
+        /^\d+(?:\.\d+)?px \d+(?:\.\d+)?px \d+(?:\.\d+)?px \d+(?:\.\d+)?px$/u,
       );
       await expect(page.locator(".arena-actions__buttons")).toHaveCSS(
         "grid-template-columns",
@@ -2007,7 +2007,7 @@ test.describe("coarse-pointer surfaces", () => {
         panelClientHeight: document.querySelector(".pause-menu__panel")?.clientHeight ?? 0,
       }));
       expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth);
-      expect(layout.panelScrollHeight).toBeLessThan(700);
+      expect(layout.panelScrollHeight).toBeLessThan(560);
     });
 
     test("keeps the pause panel compact and the resume action visible at extra-large text", async ({
@@ -2044,6 +2044,50 @@ test.describe("coarse-pointer surfaces", () => {
       expect(layout.resumeTop).not.toBeNull();
       expect(layout.resumeTop).toBeGreaterThanOrEqual(0);
       expect(layout.resumeBottom).toBeLessThanOrEqual(390);
+      expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth);
+    });
+
+    test("keeps the standard-text pause panel compact on short landscape screens", async ({
+      page,
+    }) => {
+      await installFixedRoundSeed(page, 1, 0);
+      await page.goto("/");
+      await openSettings(page);
+      await saveSettings(page);
+      await startGame(page);
+      await page.keyboard.press("p");
+      await expect(page.locator("#pause-menu")).toBeVisible();
+
+      await expect(page.locator(".round-statistics__grid")).toHaveCSS(
+        "grid-template-columns",
+        /^\d+(?:\.\d+)?px \d+(?:\.\d+)?px \d+(?:\.\d+)?px \d+(?:\.\d+)?px$/u,
+      );
+      const layout = await page.evaluate(() => {
+        const panel = document.querySelector<HTMLElement>(".pause-menu__panel");
+        const resume = document.querySelector<HTMLElement>("#resume-round");
+        const firstStat = document.querySelector<HTMLElement>(".round-statistics__grid div");
+        const resumeRect = resume?.getBoundingClientRect();
+        const firstStatRect = firstStat?.getBoundingClientRect();
+        return {
+          panelScrollHeight: panel?.scrollHeight ?? 0,
+          panelClientHeight: panel?.clientHeight ?? 0,
+          resumeTop: resumeRect === undefined ? null : Math.round(resumeRect.top * 10) / 10,
+          resumeBottom: resumeRect === undefined ? null : Math.round(resumeRect.bottom * 10) / 10,
+          firstStatTop:
+            firstStatRect === undefined ? null : Math.round(firstStatRect.top * 10) / 10,
+          firstStatBottom:
+            firstStatRect === undefined ? null : Math.round(firstStatRect.bottom * 10) / 10,
+          scrollWidth: document.documentElement.scrollWidth,
+          clientWidth: document.documentElement.clientWidth,
+        };
+      });
+      expect(layout.panelScrollHeight).toBeLessThanOrEqual(560);
+      expect(layout.resumeTop).not.toBeNull();
+      expect(layout.resumeTop).toBeGreaterThanOrEqual(0);
+      expect(layout.resumeBottom).toBeLessThanOrEqual(390);
+      expect(layout.firstStatTop).not.toBeNull();
+      expect(layout.firstStatTop).toBeGreaterThanOrEqual(0);
+      expect(layout.firstStatBottom).toBeLessThanOrEqual(390);
       expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth);
     });
   });
