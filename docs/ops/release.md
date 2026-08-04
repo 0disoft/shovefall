@@ -1,8 +1,10 @@
 # Static Release Procedure
 
-- Status: `0.199.36` short-landscape standard pause candidate; hosted proof pending
+- Status: `0.199.37` short-landscape combat-readout anchoring candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.199.36`
+- Current product version: `0.199.37`
+
+Product `0.199.37`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. On coarse-pointer landscape screens, the expanded 체력·마나 stat panel used to grow downward from the top-left toggle and cover the joystick and touch buttons on short viewports; the toggle now anchors just above the joystick and the expanded four-column strip opens upward across the full width, capped to the available height, so it stays clear of the touch controls at every landscape height; a new 568×320 landscape smoke journey boots a real round and asserts the expanded readout and its toggle stay above the joystick while the strip spans the full width. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
 Product `0.199.36`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. On short landscape screens, the standard-text pause panel now lays its round statistics in four compact columns with the same tight spacing as extra-large, shrinking the panel from about 676 px to about 502 px so the resume action and the first statistics row stay on the first screen; a new landscape standard-text pause smoke journey asserts the four-column statistics, the on-screen resume action, and the first statistics row. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
