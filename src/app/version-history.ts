@@ -9,6 +9,14 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.199.40",
+    title: "접히는 폰 커버에서도 전투 수치를 한눈에 ㅇㅅㅇ",
+    reason:
+      "260~280px처럼 아주 좁은 화면에서는 전투 수치가 네 칸이라 값이 세 줄까지 길어져, 이동 수치 칸이 149px까지 자라 읽기 어려웠다요.",
+    change:
+      "아주 좁은 화면에서는 보통 글자에서도 전투 수치를 두 칸으로 재배치해 값이 두 줄 안에 들어오게 하고, 이동 수치 칸 높이를 70px까지 줄였다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.199.39",
     title: "데스크톱 전투 수치가 상태를 안 가린다요 ㅇㅅㅇ",
     reason:

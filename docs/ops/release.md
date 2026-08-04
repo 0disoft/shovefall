@@ -1,8 +1,10 @@
 # Static Release Procedure
 
-- Status: `0.199.39` narrow-desktop stat readout candidate; hosted proof pending
+- Status: `0.199.40` cover-width two-column stat panel candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.199.39`
+- Current product version: `0.199.40`
+
+Product `0.199.40`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. On foldable cover widths up to 280 px, the expanded 체력·마나 stat panel used to stay in four columns, squeezing every label into a 55 px cell so the mobility value wrapped to three lines and the tallest cell reached 149 px; standard text now lays the eight cells in two columns so values fit on two lines and the tallest cell drops to about 70 px; a new 260×653 cover-width smoke journey boots a real round and asserts the two-column panel, the cell-height bound, and the readout staying clear of the joystick. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
 Product `0.199.39`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. On desktop viewports between 821 px and 1240 px wide, the expanded 체력·마나 stat panel used to span 58% of the screen and cover the centered renderer status chip; it now narrows to 42%, lays its eight cells in two columns with label and value on one line, and stays clear of the renderer status, action HUD, and skill buttons; a new 1024×768 desktop smoke journey boots a real round and asserts the readout stays clear of the renderer status and action HUD with the two-column strip. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
