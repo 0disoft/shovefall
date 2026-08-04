@@ -9,6 +9,14 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.199.30",
+    title: "좁은 화면은 조작 버튼부터 챙긴다요 ㅇㅅㅇ",
+    reason:
+      "창이 좁으면 조이스틱과 터치 버튼이 생기는데, 일시정지 버튼이 그 사이에 겹치고 전투 수치창은 접는 버튼 없이 열린 채 조작 화면을 덮었다요.",
+    change:
+      "좁은 화면에서도 일시정지 버튼을 오른쪽 위로 옮기고 전투 수치창을 기본으로 접어, 조이스틱과 스킬·아이템 버튼을 가리지 않게 했다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.199.29",
     title: "데스크톱 일시정지도 한 장에 담는다요 ㅇㅅㅇ",
     reason:

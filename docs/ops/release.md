@@ -1,8 +1,10 @@
 # Static Release Procedure
 
-- Status: `0.199.29` desktop UX candidate; hosted proof pending
+- Status: `0.199.30` narrow-window UX candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.199.29`
+- Current product version: `0.199.30`
+
+Product `0.199.30`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. Whenever the touch controls appear, including narrow fine-pointer windows under 820 px, the pause trigger now moves to the top-right corner and the stat toggle stays visible with the expanded combat stats folded by default, so the joystick and touch action buttons are never covered; a new narrow fine-pointer smoke journey asserts the top-corner pause trigger stays clear of the joystick and touch actions while the stat panel starts folded. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
 Product `0.199.29`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. On desktop fine-pointer screens, the paused control guide now starts folded and the pause action buttons lay in three columns with round statistics in four columns and tighter cells, shrinking the panel so the whole paused screen fits without scrolling at standard and extra-large text; a new smoke journey asserts the collapsed guide with three-column pause buttons and four-column statistics fit the panel without internal scroll. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
