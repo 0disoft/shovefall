@@ -1400,19 +1400,6 @@ test.describe("coarse-pointer surfaces", () => {
     await expect(page.locator("#toggle-stat-status")).toBeVisible();
     await expect(page.locator("#stat-status")).toBeHidden();
     await expect(page.locator("#stat-status-summary")).toHaveText(/^\d+ \/ \d+ · \d+ \/ \d+$/u);
-    await page.locator("#toggle-stat-status").click();
-    await expect(page.locator("#stat-status")).toBeVisible();
-    const readoutBox = await page.locator("#stat-status").boundingBox();
-    const joystickBox = await page.locator("#pointer-joystick").boundingBox();
-    expect(readoutBox).not.toBeNull();
-    expect(joystickBox).not.toBeNull();
-    if (readoutBox !== null && joystickBox !== null) {
-      expect(readoutBox.y + readoutBox.height).toBeLessThanOrEqual(joystickBox.y + 4);
-    }
-    await expect(page.locator("#stat-status")).toHaveCSS(
-      "grid-template-columns",
-      /^\d+(?:\.\d+)?px(?: \d+(?:\.\d+)?px){3}$/u,
-    );
     await page.locator("#touch-skill-0").dispatchEvent("pointerdown", {
       button: 0,
       isPrimary: true,
@@ -1433,6 +1420,19 @@ test.describe("coarse-pointer surfaces", () => {
     if (helpBox !== null && actionsBox !== null) {
       expect(helpBox.y + helpBox.height).toBeLessThanOrEqual(actionsBox.y + 4);
     }
+    await page.locator("#toggle-stat-status").click();
+    await expect(page.locator("#stat-status")).toBeVisible();
+    const readoutBox = await page.locator("#stat-status").boundingBox();
+    const joystickBox = await page.locator("#pointer-joystick").boundingBox();
+    expect(readoutBox).not.toBeNull();
+    expect(joystickBox).not.toBeNull();
+    if (readoutBox !== null && joystickBox !== null) {
+      expect(readoutBox.y + readoutBox.height).toBeLessThanOrEqual(joystickBox.y + 4);
+    }
+    await expect(page.locator("#stat-status")).toHaveCSS(
+      "grid-template-columns",
+      /^\d+(?:\.\d+)?px(?: \d+(?:\.\d+)?px){3}$/u,
+    );
 
     await page.keyboard.press("p");
     await expect(page.locator("#pause-menu")).toBeVisible();
@@ -1453,6 +1453,26 @@ test.describe("coarse-pointer surfaces", () => {
     if (pausePanelBox !== null && resumeBox !== null) {
       expect(resumeBox.y).toBeGreaterThanOrEqual(pausePanelBox.y - 4);
       expect(resumeBox.y + resumeBox.height).toBeLessThanOrEqual(844);
+    }
+  });
+
+  test("keeps the stat toggle clear of the pause trigger on a common phone", async ({ page }) => {
+    test.setTimeout(60_000);
+    await installFixedRoundSeed(page, 1, 0);
+    await page.goto("/");
+    await openSettings(page);
+    await saveSettings(page);
+    await startGame(page);
+    await expect(page.locator("#app")).toHaveAttribute("data-round", "active");
+
+    await expect(page.locator("#toggle-stat-status")).toBeVisible();
+    await expect(page.locator("#pause-round")).toBeVisible();
+    const toggleBox = await page.locator("#toggle-stat-status").boundingBox();
+    const pauseBox = await page.locator("#pause-round").boundingBox();
+    expect(toggleBox).not.toBeNull();
+    expect(pauseBox).not.toBeNull();
+    if (toggleBox !== null && pauseBox !== null) {
+      expect(pauseBox.x).toBeGreaterThanOrEqual(toggleBox.x + toggleBox.width + 4);
     }
   });
 
@@ -1483,7 +1503,7 @@ test.describe("coarse-pointer surfaces", () => {
       expect(joystickBox.x + joystickBox.width).toBeLessThanOrEqual(actionsBox.x + 4);
     }
     if (pauseBox !== null && toggleBox !== null) {
-      expect(pauseBox.x).toBeGreaterThanOrEqual(toggleBox.x + toggleBox.width - 4);
+      expect(pauseBox.x).toBeGreaterThanOrEqual(toggleBox.x + toggleBox.width + 4);
       expect(pauseBox.y).toBeLessThanOrEqual(toggleBox.y + 4);
     }
 

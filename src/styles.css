@@ -3238,7 +3238,7 @@ button:disabled {
 
   @media (max-width: 420px) {
     .stat-status-toggle {
-      max-width: calc(100vw - 156px);
+      max-width: calc(100vw - 168px);
     }
   }
 
