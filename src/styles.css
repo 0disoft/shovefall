@@ -3332,6 +3332,19 @@ button:disabled {
   }
 }
 
+@media (pointer: coarse) and (max-width: 350px) {
+  :root[data-font-scale="large"] .stat-status,
+  :root[data-font-scale="extra-large"] .stat-status {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px;
+  }
+
+  :root[data-font-scale="large"] .stat-status div,
+  :root[data-font-scale="extra-large"] .stat-status div {
+    padding: 3px 6px;
+  }
+}
+
 @media (pointer: coarse) and (orientation: landscape) {
   .stat-status-wrap {
     top: max(44px, calc(env(safe-area-inset-top) + 32px));
