@@ -3155,6 +3155,17 @@ button:disabled {
     font-size: 1.05rem;
   }
 
+  .pause-trigger {
+    top: max(14px, env(safe-area-inset-top));
+    right: max(14px, env(safe-area-inset-right));
+    bottom: auto;
+    left: auto;
+    min-height: 46px;
+    padding: 10px 16px;
+    font-size: 0.84rem;
+    transform: none;
+  }
+
   .targeting-help {
     top: auto;
     bottom: max(186px, calc(env(safe-area-inset-bottom) + 176px));

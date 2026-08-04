@@ -1,8 +1,10 @@
 # Static Release Procedure
 
-- Status: `0.199.14` mobile UX candidate; hosted proof pending
+- Status: `0.199.15` mobile UX candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.199.14`
+- Current product version: `0.199.15`
+
+Product `0.199.15`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. On coarse-pointer screens the in-round pause trigger grows to a 46 px touch target and moves from the bottom-center gap between the joystick and action buttons to the top-right corner, so it no longer crowds movement or skill controls in portrait or landscape. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
 Product `0.199.14`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. Phones from 376 px to 560 px wide now lay the skill and item loadout cards in two columns like tablets, cutting the catalog height by up to 40%; phones 375 px and narrower keep the single column so their cards stay readable. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 

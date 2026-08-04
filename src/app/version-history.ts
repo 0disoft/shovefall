@@ -9,6 +9,14 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.199.15",
+    title: "일시정지도 구석으로 비켜준다요 ㅇㅅㅇ",
+    reason:
+      "폰에서 일시정지 버튼이 조이스틱과 스킬 버튼 사이에 있어서 누르다가 실수할 수 있고, 손가락이 닿는 영역도 좁았다요.",
+    change:
+      "폰에서는 일시정지 버튼을 오른쪽 위 구석으로 옮기고 터치 영역을 키워, 조작 버튼들과 겹치지 않게 했다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.199.14",
     title: "폰 카드도 두 줄로 고른다요 ㅇㅅㅇ",
     reason:
