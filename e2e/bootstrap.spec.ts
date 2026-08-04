@@ -831,7 +831,7 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   );
   await expect(page.locator(".starting-attributes__grid")).toHaveCSS(
     "grid-template-columns",
-    /^\d+(?:\.\d+)?px \d+(?:\.\d+)?px \d+(?:\.\d+)?px$/u,
+    /^\d+(?:\.\d+)?px \d+(?:\.\d+)?px$/u,
   );
   await expect(page.locator(".starting-build-summary")).toHaveCSS(
     "grid-template-columns",
@@ -1344,6 +1344,45 @@ test("repeats attribute allocation while an increment is held", async ({ page })
     20 - strength,
   );
   await page.getByRole("button", { name: "취소" }).click();
+});
+
+test("offers five-point attribute steps on desktop without clipping the cards", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await openSettings(page);
+  await expect(page.getByRole("button", { name: "완력 5 올리기" })).toBeVisible();
+  await page.getByRole("button", { name: "완력 5 올리기" }).click();
+  await expect(page.locator("#starting-attribute-strength")).toHaveText("5");
+  await expect(page.locator("#starting-attribute-remaining")).toHaveText("15");
+
+  const layout = await page.evaluate(() => {
+    const cards = [...document.querySelectorAll<HTMLElement>(".starting-attribute")];
+    const steppers = cards.map((card) => {
+      const cardRect = card.getBoundingClientRect();
+      const stepper = card.querySelector<HTMLElement>(".starting-attribute__stepper");
+      const stepperRect = stepper?.getBoundingClientRect();
+      return {
+        cardLeft: cardRect.left,
+        cardRight: cardRect.right,
+        stepperLeft: stepperRect?.left ?? 0,
+        stepperRight: stepperRect?.right ?? 0,
+      };
+    });
+    return {
+      steppers,
+      columns: getComputedStyle(
+        document.querySelector(".starting-attributes__grid") ?? document.body,
+      ).gridTemplateColumns.split(" ").length,
+      docOverflowX: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+    };
+  });
+  expect(layout.columns).toBe(2);
+  for (const stepper of layout.steppers) {
+    expect(stepper.stepperLeft).toBeGreaterThanOrEqual(stepper.cardLeft - 1);
+    expect(stepper.stepperRight).toBeLessThanOrEqual(stepper.cardRight + 1);
+  }
+  expect(layout.docOverflowX).toBe(false);
 });
 
 test.describe("coarse-pointer surfaces", () => {
