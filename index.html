@@ -2,7 +2,7 @@
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="description" content="바닥이 사라지는 술래잡기" />
     <link rel="icon" type="image/png" sizes="256x256" href="./src/assets/generated/favicon.png" />
     <title>바닥이 사라지는 술래잡기</title>
@@ -186,78 +186,84 @@
               <legend>기초 특성 <span>20포인트</span></legend>
               <p class="starting-attributes__remaining" aria-live="polite">
                 <span>남은 포인트 <output id="starting-attribute-remaining">20</output></span>
-                <small>Ctrl+클릭은 5씩</small>
+                <small class="hint-keyboard">Ctrl+클릭은 5씩</small>
+                <small class="hint-touch">길게 누르면 계속 올라가</small>
               </p>
-              <p class="starting-build-summary__title">적용 후 전투 수치</p>
-              <dl class="starting-build-summary" aria-label="적용 후 전투 수치">
-                <div data-combat-stat="strength">
-                  <dt>무게 보정</dt>
-                  <dd><output id="starting-total-mass">기본</output></dd>
-                  <span class="combat-stat-meter" aria-hidden="true"><span></span></span>
-                </div>
-                <div data-combat-stat="constitution">
-                  <dt>최대 체력</dt>
-                  <dd><output id="starting-total-health">100</output></dd>
-                  <span class="combat-stat-meter" aria-hidden="true"><span></span></span>
-                </div>
-                <div data-combat-stat="spirit">
-                  <dt>최대 마나</dt>
-                  <dd><output id="starting-total-mana">100</output></dd>
-                  <span class="combat-stat-meter" aria-hidden="true"><span></span></span>
-                </div>
-                <div data-combat-stat="agility">
-                  <dt>이동 속도</dt>
-                  <dd><output id="starting-total-movement">0%</output></dd>
-                  <span class="combat-stat-meter" aria-hidden="true"><span></span></span>
-                </div>
-                <div data-combat-stat="agility">
-                  <dt>스킬 효율</dt>
-                  <dd>
-                    <output
-                      id="starting-total-cooldown"
-                      tabindex="0"
-                      title="대기: 스킬을 다시 쓸 때까지 기다리는 시간. 마나: 스킬을 사용할 때 소비하는 양."
-                      >대기 0% · 마나 0%</output
-                    >
-                  </dd>
-                  <span class="combat-stat-meter" aria-hidden="true"><span></span></span>
-                </div>
-                <div data-combat-stat="strength">
-                  <dt>공격 위력</dt>
-                  <dd><output id="starting-total-power">0%</output></dd>
-                  <span class="combat-stat-meter" aria-hidden="true"><span></span></span>
-                </div>
-                <div data-combat-stat="balance">
-                  <dt>밀침 저항</dt>
-                  <dd><output id="starting-total-resistance">0%</output></dd>
-                  <span class="combat-stat-meter" aria-hidden="true"><span></span></span>
-                </div>
-                <div data-combat-stat="balance">
-                  <dt>제어 시간</dt>
-                  <dd><output id="starting-total-control">0%</output></dd>
-                  <span class="combat-stat-meter" aria-hidden="true"><span></span></span>
-                </div>
-                <div data-combat-stat="willpower">
-                  <dt>받는 피해</dt>
-                  <dd><output id="starting-total-damage-taken">0%</output></dd>
-                  <span class="combat-stat-meter" aria-hidden="true"><span></span></span>
-                </div>
-                <div data-combat-stat="willpower">
-                  <dt>보호막</dt>
-                  <dd><output id="starting-total-shield">0%</output></dd>
-                  <span class="combat-stat-meter" aria-hidden="true"><span></span></span>
-                </div>
-                <div data-combat-stat="constitution">
-                  <dt>체력 재생</dt>
-                  <dd><output id="starting-total-health-regen">0%</output></dd>
-                  <span class="combat-stat-meter" aria-hidden="true"><span></span></span>
-                </div>
-                <div data-combat-stat="spirit">
-                  <dt>마나 재생</dt>
-                  <dd><output id="starting-total-mana-regen">0%</output></dd>
-                  <span class="combat-stat-meter" aria-hidden="true"><span></span></span>
-                </div>
-              </dl>
+              <details id="starting-build-summary" class="starting-build-summary__details">
+                <summary class="starting-build-summary__toggle">
+                  <span>적용 후 전투 수치</span>
+                  <output id="starting-build-summary-remaining" aria-label="남은 포인트"></output>
+                </summary>
+                <dl class="starting-build-summary" aria-label="적용 후 전투 수치">
+                  <div data-combat-stat="strength">
+                    <dt>무게 보정</dt>
+                    <dd><output id="starting-total-mass">기본</output></dd>
+                    <span class="combat-stat-meter" aria-hidden="true"><span></span></span>
+                  </div>
+                  <div data-combat-stat="constitution">
+                    <dt>최대 체력</dt>
+                    <dd><output id="starting-total-health">100</output></dd>
+                    <span class="combat-stat-meter" aria-hidden="true"><span></span></span>
+                  </div>
+                  <div data-combat-stat="spirit">
+                    <dt>최대 마나</dt>
+                    <dd><output id="starting-total-mana">100</output></dd>
+                    <span class="combat-stat-meter" aria-hidden="true"><span></span></span>
+                  </div>
+                  <div data-combat-stat="agility">
+                    <dt>이동 속도</dt>
+                    <dd><output id="starting-total-movement">0%</output></dd>
+                    <span class="combat-stat-meter" aria-hidden="true"><span></span></span>
+                  </div>
+                  <div data-combat-stat="agility">
+                    <dt>스킬 효율</dt>
+                    <dd>
+                      <output
+                        id="starting-total-cooldown"
+                        tabindex="0"
+                        title="대기: 스킬을 다시 쓸 때까지 기다리는 시간. 마나: 스킬을 사용할 때 소비하는 양."
+                        >대기 0% · 마나 0%</output
+                      >
+                    </dd>
+                    <span class="combat-stat-meter" aria-hidden="true"><span></span></span>
+                  </div>
+                  <div data-combat-stat="strength">
+                    <dt>공격 위력</dt>
+                    <dd><output id="starting-total-power">0%</output></dd>
+                    <span class="combat-stat-meter" aria-hidden="true"><span></span></span>
+                  </div>
+                  <div data-combat-stat="balance">
+                    <dt>밀침 저항</dt>
+                    <dd><output id="starting-total-resistance">0%</output></dd>
+                    <span class="combat-stat-meter" aria-hidden="true"><span></span></span>
+                  </div>
+                  <div data-combat-stat="balance">
+                    <dt>제어 시간</dt>
+                    <dd><output id="starting-total-control">0%</output></dd>
+                    <span class="combat-stat-meter" aria-hidden="true"><span></span></span>
+                  </div>
+                  <div data-combat-stat="willpower">
+                    <dt>받는 피해</dt>
+                    <dd><output id="starting-total-damage-taken">0%</output></dd>
+                    <span class="combat-stat-meter" aria-hidden="true"><span></span></span>
+                  </div>
+                  <div data-combat-stat="willpower">
+                    <dt>보호막</dt>
+                    <dd><output id="starting-total-shield">0%</output></dd>
+                    <span class="combat-stat-meter" aria-hidden="true"><span></span></span>
+                  </div>
+                  <div data-combat-stat="constitution">
+                    <dt>체력 재생</dt>
+                    <dd><output id="starting-total-health-regen">0%</output></dd>
+                    <span class="combat-stat-meter" aria-hidden="true"><span></span></span>
+                  </div>
+                  <div data-combat-stat="spirit">
+                    <dt>마나 재생</dt>
+                    <dd><output id="starting-total-mana-regen">0%</output></dd>
+                    <span class="combat-stat-meter" aria-hidden="true"><span></span></span>
+                  </div>
+                </dl>
+              </details>
               <div class="starting-attributes__grid">
                 <div class="starting-attribute" data-starting-attribute="strength">
                   <span class="starting-attribute__copy"><strong>완력</strong></span>

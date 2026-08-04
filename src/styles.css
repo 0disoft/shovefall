@@ -553,6 +553,10 @@ button:disabled {
   font-weight: 700;
 }
 
+.starting-attributes__remaining small.hint-touch {
+  display: none;
+}
+
 .starting-attributes__grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -566,11 +570,54 @@ button:disabled {
   margin: 0;
 }
 
-.starting-build-summary__title {
-  margin: 2px 0 0;
+.starting-build-summary__details {
+  margin: 10px 0 0;
+}
+
+.starting-build-summary__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+  padding: 11px 14px;
   color: var(--ink-strong);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-strong);
+  cursor: pointer;
   font-size: 0.95rem;
   font-weight: 850;
+  list-style: none;
+}
+
+.starting-build-summary__toggle::-webkit-details-marker {
+  display: none;
+}
+
+.starting-build-summary__toggle::after {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  content: "";
+  border-right: 2px solid var(--text-muted);
+  border-bottom: 2px solid var(--text-muted);
+  transform: rotate(45deg);
+  transition: transform 140ms ease;
+}
+
+.starting-build-summary__details[open] .starting-build-summary__toggle::after {
+  transform: rotate(-135deg);
+}
+
+.starting-build-summary__toggle output {
+  color: var(--accent);
+  font-size: 0.9rem;
+  font-weight: 900;
+}
+
+.starting-build-summary__details > .starting-build-summary {
+  margin-top: 10px;
 }
 
 .starting-build-summary > div {
@@ -686,7 +733,7 @@ button:disabled {
 .starting-attribute__stepper {
   grid-area: stepper;
   display: grid;
-  grid-template-columns: 40px 34px 40px;
+  grid-template-columns: 44px 36px 44px;
   align-items: center;
   gap: 4px;
   flex: 0 0 auto;
@@ -694,8 +741,8 @@ button:disabled {
 }
 
 .starting-attribute__stepper button {
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border: 1px solid var(--line-strong);
   border-radius: 10px;
   background: var(--surface);
@@ -704,6 +751,7 @@ button:disabled {
   font-size: 1.3rem;
   font-weight: 900;
   cursor: pointer;
+  touch-action: manipulation;
 }
 
 .starting-attribute__stepper button:disabled {
@@ -713,8 +761,8 @@ button:disabled {
 
 .starting-attribute__stepper output {
   display: grid;
-  min-width: 34px;
-  height: 40px;
+  min-width: 36px;
+  height: 44px;
   place-items: center;
   color: var(--accent);
   font-size: 1.1rem;
@@ -2630,6 +2678,14 @@ button:disabled {
     display: flex;
   }
 
+  .starting-attributes__remaining small.hint-keyboard {
+    display: none;
+  }
+
+  .starting-attributes__remaining small.hint-touch {
+    display: inline;
+  }
+
   .arena-host {
     height: max(360px, calc(100dvh - 190px));
     min-height: 300px;
@@ -2643,12 +2699,40 @@ button:disabled {
   }
 }
 
+@media (pointer: coarse) {
+  .action-hud {
+    display: none;
+  }
+
+  .stat-status {
+    top: max(60px, calc(env(safe-area-inset-top) + 48px));
+    right: auto;
+    bottom: auto;
+    left: max(14px, env(safe-area-inset-left));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    max-width: min(420px, calc(100% - 28px));
+  }
+
+  .stat-status div {
+    padding: 6px 9px;
+  }
+
+  .stat-status dd {
+    font-size: 0.8rem;
+  }
+}
+
 @media (max-width: 480px) {
   .round-statistics__grid,
   .round-statistics__skills ul,
   .control-guide,
   .starting-build-summary {
     grid-template-columns: 1fr;
+  }
+
+  .game-telemetry {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .starting-attributes__grid {

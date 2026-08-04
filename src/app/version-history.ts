@@ -9,6 +9,14 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.199.0",
+    title: "손가락이 편해졌다요 ㅇㅅㅇ",
+    reason:
+      "폰에서는 특성 20포인트를 한 번씩 눌러 채우기 힘들고, 전투 수치 창이 특성을 가려서 조작할 화면도 좁았다요.",
+    change:
+      "특성 버튼을 길게 누르면 계속 올라간다요. 폰에서는 전투 수치 창을 접어두고, 게임 중 겹치던 정보 창을 위로 옮겨 조작 화면을 넓혔다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.198.1",
     title: "바닥 한 칸이 탭에도 뜬다요 ㅇㅅㅇ",
     reason: "브라우저 탭에 게임을 알아볼 그림이 없어서 다른 페이지 사이에서 찾기 어려웠다요.",

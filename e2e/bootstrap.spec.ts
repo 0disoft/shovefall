@@ -1251,6 +1251,91 @@ test("offers a working touch joystick and action buttons on a narrow viewport", 
   await expect(joystick).not.toHaveAttribute("data-active", "true");
 });
 
+test("repeats attribute allocation while an increment is held", async ({ page }) => {
+  await page.goto("/");
+  await openSettings(page);
+  const increment = page.getByRole("button", { name: "완력 1 올리기" });
+  await increment.dispatchEvent("pointerdown", {
+    button: 0,
+    isPrimary: true,
+    pointerId: 11,
+    pointerType: "touch",
+  });
+  await page.waitForTimeout(800);
+  await increment.dispatchEvent("pointerup", {
+    button: 0,
+    isPrimary: true,
+    pointerId: 11,
+    pointerType: "touch",
+  });
+  const strength = Number(await page.locator("#starting-attribute-strength").textContent());
+  expect(strength).toBeGreaterThanOrEqual(4);
+  expect(Number(await page.locator("#starting-attribute-remaining").textContent())).toBe(
+    20 - strength,
+  );
+  await page.getByRole("button", { name: "취소" }).click();
+});
+
+test.describe("coarse-pointer surfaces", () => {
+  test.use({
+    viewport: { width: 390, height: 844 },
+    hasTouch: true,
+    isMobile: true,
+  });
+
+  test("collapses the build summary and keeps the arena readout clear of touch controls", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    await page.getByRole("button", { name: "게임 시작" }).click();
+    await page.getByRole("button", { name: "설정하러 가기" }).click();
+    await expect(page.locator("#app")).toHaveAttribute("data-screen", "settings");
+    await expect(page.locator("#starting-build-summary")).not.toHaveAttribute("open", "");
+    await expect(page.getByText("길게 누르면 계속 올라가")).toBeVisible();
+    await expect(page.getByText("Ctrl+클릭은 5씩")).toBeHidden();
+    const stepperBox = await page.getByRole("button", { name: "완력 1 올리기" }).boundingBox();
+    expect(stepperBox).not.toBeNull();
+    if (stepperBox !== null) {
+      expect(stepperBox.y).toBeGreaterThan(0);
+      expect(stepperBox.y).toBeLessThan(844);
+    }
+
+    const increment = page.getByRole("button", { name: "완력 1 올리기" });
+    await increment.dispatchEvent("pointerdown", {
+      button: 0,
+      isPrimary: true,
+      pointerId: 21,
+      pointerType: "touch",
+    });
+    await page.waitForTimeout(800);
+    await increment.dispatchEvent("pointerup", {
+      button: 0,
+      isPrimary: true,
+      pointerId: 21,
+      pointerType: "touch",
+    });
+    const strength = Number(await page.locator("#starting-attribute-strength").textContent());
+    expect(strength).toBeGreaterThanOrEqual(4);
+    await clickRepeatedly(page.getByRole("button", { name: "완력 1 올리기" }), 20 - strength);
+    await expect(page.locator("#starting-attribute-remaining")).toHaveText("0");
+    await saveSettings(page);
+    await startGame(page);
+    await expect(page.locator("#app")).toHaveAttribute("data-round", "active");
+    await page.waitForTimeout(800);
+
+    await expect(page.locator(".action-hud")).toBeHidden();
+    await expect(page.locator("#pointer-joystick")).toBeVisible();
+    await expect(page.locator("#touch-skill-0")).toHaveText("Q");
+    const readoutBox = await page.locator("#stat-status").boundingBox();
+    const joystickBox = await page.locator("#pointer-joystick").boundingBox();
+    expect(readoutBox).not.toBeNull();
+    expect(joystickBox).not.toBeNull();
+    if (readoutBox !== null && joystickBox !== null) {
+      expect(readoutBox.y + readoutBox.height).toBeLessThanOrEqual(joystickBox.y + 4);
+    }
+  });
+});
+
 test("persists four-step text size and sound-effect volume settings", async ({ page }) => {
   await page.goto("/");
   await openSettings(page);

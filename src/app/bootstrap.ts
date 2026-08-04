@@ -10,6 +10,7 @@ import {
   createGrappleButtonViewModel,
   createItemButtonViewModel,
   createSkillButtonViewModel,
+  type ActionButtonViewModel,
 } from "./action-hud";
 import {
   isFontScaleId,
@@ -300,6 +301,16 @@ const SKILL_SLOT_INDICES = Object.freeze([0, 1] as const);
 const ITEM_SLOT_INDICES = Object.freeze([0] as const);
 const SETTINGS_TAB_IDS = Object.freeze(["attributes", "skills", "items", "preferences"] as const);
 type SettingsTabId = (typeof SETTINGS_TAB_IDS)[number];
+const STARTING_ATTRIBUTE_HOLD_DELAY_MS = 360;
+const STARTING_ATTRIBUTE_HOLD_REPEAT_MS = 90;
+
+const formatTouchActionLabel = (model: ActionButtonViewModel, fallbackKey: string): string => {
+  const key = model.text.split(" · ")[0] ?? fallbackKey;
+  return model.state === "cooldown" || model.state === "mana"
+    ? `${key} · ${model.text.split(" · ").at(-1) ?? ""}`
+    : key;
+};
+
 const BASE_STARTING_HEALTH = 100;
 const BASE_STARTING_MANA = 100;
 const EMPTY_STARTING_ATTRIBUTES: StartingAttributes = Object.freeze({
@@ -569,6 +580,12 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   const startingAttributeRemaining = requireElement(
     root,
     "#starting-attribute-remaining",
+    HTMLOutputElement,
+  );
+  const startingBuildSummary = requireElement(root, "#starting-build-summary", HTMLDetailsElement);
+  const startingBuildSummaryRemaining = requireElement(
+    root,
+    "#starting-build-summary-remaining",
     HTMLOutputElement,
   );
   const startingAttributeRows = new Map(
@@ -1192,6 +1209,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     const remaining = STARTING_ATTRIBUTE_POINT_TOTAL - allocated;
     startingAttributeRemaining.value = String(remaining);
     startingAttributeRemaining.dataset.state = remaining === 0 ? "complete" : "incomplete";
+    startingBuildSummaryRemaining.value = String(remaining);
     startingTotalOutputs.mass.value = formatBaselineAdjustment(
       getStartingMassFactor(draftStartingAttributes),
     );
@@ -1350,6 +1368,11 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
       button.textContent = model.text;
       button.disabled = model.state === "blocked";
       button.setAttribute("aria-disabled", model.disabled ? "true" : "false");
+      const touchButton = touchSkillButtons[slotIndex];
+      touchButton.dataset.state = model.state;
+      touchButton.textContent = formatTouchActionLabel(model, "Q");
+      touchButton.disabled = model.state === "blocked";
+      touchButton.setAttribute("aria-label", model.ariaLabel ?? model.text);
     }
     massValue.value =
       human.massFactor < 0.9 ? "가벼움" : human.massFactor > 1.1 ? "무거움" : "보통";
@@ -1378,6 +1401,11 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
       button.textContent = model.text;
       button.setAttribute("aria-label", model.ariaLabel ?? model.text);
       button.disabled = model.disabled;
+      const touchButton = touchItemButtons[slotIndex];
+      touchButton.dataset.state = model.state;
+      touchButton.textContent = formatTouchActionLabel(model, "D");
+      touchButton.disabled = model.disabled;
+      touchButton.setAttribute("aria-label", model.ariaLabel ?? model.text);
     }
     let standingParticipantCount = 0;
     for (const participant of current.frame.participants) {
@@ -1951,12 +1979,59 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     arenaHost.focus({ preventScroll: true });
   };
 
+  const startingAttributeTimers = new Map<
+    HTMLButtonElement,
+    { readonly delay: number; readonly repeat: number }
+  >();
+  const stopStartingAttributeRepeat = (button: HTMLButtonElement): void => {
+    const timers = startingAttributeTimers.get(button);
+    if (timers === undefined) {
+      return;
+    }
+    window.clearTimeout(timers.delay);
+    window.clearInterval(timers.repeat);
+    startingAttributeTimers.delete(button);
+  };
+
   for (const id of STARTING_ATTRIBUTE_IDS) {
     const dec = getStartingAttributeControls(id).decrement;
     const inc = getStartingAttributeControls(id).increment;
-    dec.addEventListener("click", (event) => changeStartingAttribute(id, event.ctrlKey ? -5 : -1));
-    inc.addEventListener("click", (event) => changeStartingAttribute(id, event.ctrlKey ? 5 : 1));
+    const bindStartingAttributeHold = (button: HTMLButtonElement, direction: -1 | 1): void => {
+      button.addEventListener("pointerdown", (event) => {
+        if (event.button !== 0) {
+          return;
+        }
+        stopStartingAttributeRepeat(button);
+        const step = event.ctrlKey || event.metaKey ? 5 * direction : direction;
+        changeStartingAttribute(id, step);
+        const delay = window.setTimeout(() => {
+          const repeat = window.setInterval(() => {
+            changeStartingAttribute(id, step);
+          }, STARTING_ATTRIBUTE_HOLD_REPEAT_MS);
+          startingAttributeTimers.set(button, { delay: 0, repeat });
+        }, STARTING_ATTRIBUTE_HOLD_DELAY_MS);
+        startingAttributeTimers.set(button, { delay, repeat: 0 });
+      });
+      button.addEventListener("pointerup", () => stopStartingAttributeRepeat(button));
+      button.addEventListener("pointercancel", () => stopStartingAttributeRepeat(button));
+      button.addEventListener("pointerleave", () => stopStartingAttributeRepeat(button));
+      button.addEventListener("click", (event) => {
+        if (event.detail > 0) {
+          return;
+        }
+        changeStartingAttribute(id, event.ctrlKey || event.metaKey ? 5 * direction : direction);
+      });
+    };
+    bindStartingAttributeHold(dec, -1);
+    bindStartingAttributeHold(inc, 1);
   }
+
+  const compactBuildSummaryQuery = window.matchMedia("(pointer: coarse), (max-width: 560px)");
+  const syncBuildSummaryCompactness = (): void => {
+    startingBuildSummary.open = !compactBuildSummaryQuery.matches;
+  };
+  compactBuildSummaryQuery.addEventListener("change", syncBuildSummaryCompactness);
+  syncBuildSummaryCompactness();
 
   form.addEventListener("change", (event) => {
     const target = event.target;
