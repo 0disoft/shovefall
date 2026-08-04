@@ -1,8 +1,10 @@
 # Static Release Procedure
 
-- Status: `0.199.6` mobile UX candidate; hosted proof pending
+- Status: `0.199.7` mobile UX candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.199.6`
+- Current product version: `0.199.7`
+
+Product `0.199.7`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. The volume sliders grow to a 30 px touch target on coarse-pointer screens, and the scoreboard and version-history cards tighten their mobile padding and gaps so more records fit one screen. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
 Product `0.199.6`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. The coarse-pointer in-round combat readout compresses to a four-column strip with tighter type so it no longer overlaps the touch joystick or skill buttons on portrait or landscape phones. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 

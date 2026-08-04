@@ -9,6 +9,14 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.199.7",
+    title: "소리 바도 손가락이 잘 닿는다요 ㅇㅅㅇ",
+    reason:
+      "폰 설정에서 소리 슬라이더가 너무 얇아 정확히 잡기 어렵고, 점수표·버전 기록 칸도 커서 기록을 보려면 계속 내려야 했다요.",
+    change:
+      "소리 슬라이더의 터치 영역을 키우고, 폰에서는 점수표와 버전 기록 칸의 여백을 줄여 한 화면에 더 많은 기록이 보이게 했다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.199.6",
     title: "전투 수치가 조작을 안 가린다요 ㅇㅅㅇ",
     reason:

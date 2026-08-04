@@ -1497,6 +1497,28 @@ test.describe("coarse-pointer surfaces", () => {
     });
   });
 
+  test("keeps preference sliders touch-sized on coarse-pointer surfaces", async ({ page }) => {
+    await installFixedRoundSeed(page, 1, 0);
+    await page.goto("/");
+    await openSettings(page);
+    await openSettingsTab(page, "설정");
+    const sliders = page.locator('.player-control input[type="range"]');
+    await expect(sliders).toHaveCount(2);
+    const heights = await sliders.evaluateAll((elements) =>
+      elements.map((element) => element.getBoundingClientRect().height),
+    );
+    expect(Math.min(...heights)).toBeGreaterThanOrEqual(28);
+    await expect(page.locator(".font-scale-options")).toHaveCSS(
+      "grid-template-columns",
+      /^\d+(?:\.\d+)?px(?: \d+(?:\.\d+)?px){3}$/u,
+    );
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
+    );
+    expect(overflow).toBe(false);
+    await page.getByRole("button", { name: "취소" }).click();
+  });
+
   test.describe("landscape play HUD", () => {
     test.use({ viewport: { width: 844, height: 390 } });
 
