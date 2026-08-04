@@ -1379,6 +1379,41 @@ test.describe("coarse-pointer surfaces", () => {
       expect(resumeBox.y + resumeBox.height).toBeLessThanOrEqual(844);
     }
   });
+
+  test.describe("landscape pause", () => {
+    test.use({ viewport: { width: 844, height: 390 } });
+
+    test("fits the pause actions and core statistics without horizontal overflow", async ({
+      page,
+    }) => {
+      await installFixedRoundSeed(page, 1, 0);
+      await page.goto("/");
+      await openSettings(page);
+      await saveSettings(page);
+      await startGame(page);
+      await expect(page.locator("#app")).toHaveAttribute("data-round", "active");
+      await page.keyboard.press("p");
+      await expect(page.locator("#pause-menu")).toBeVisible();
+
+      await expect(page.locator(".round-statistics .round-statistics__grid")).toHaveCSS(
+        "grid-template-columns",
+        /^\d+(?:\.\d+)?px \d+(?:\.\d+)?px \d+(?:\.\d+)?px$/u,
+      );
+      await expect(page.locator(".arena-actions__buttons")).toHaveCSS(
+        "grid-template-columns",
+        /^\d+(?:\.\d+)?px \d+(?:\.\d+)?px \d+(?:\.\d+)?px \d+(?:\.\d+)?px$/u,
+      );
+      await expect(page.locator("#pause-control-guide")).not.toHaveAttribute("open", "");
+      const layout = await page.evaluate(() => ({
+        scrollWidth: document.documentElement.scrollWidth,
+        clientWidth: document.documentElement.clientWidth,
+        panelScrollHeight: document.querySelector(".pause-menu__panel")?.scrollHeight ?? 0,
+        panelClientHeight: document.querySelector(".pause-menu__panel")?.clientHeight ?? 0,
+      }));
+      expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth);
+      expect(layout.panelScrollHeight).toBeLessThan(700);
+    });
+  });
 });
 
 test("persists four-step text size and sound-effect volume settings", async ({ page }) => {

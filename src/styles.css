@@ -2230,7 +2230,7 @@ button:disabled {
 
 .pause-menu__panel {
   display: grid;
-  gap: 18px;
+  gap: 14px;
   width: min(940px, 100%);
   max-height: 100%;
   padding: clamp(18px, 2.4vw, 28px);
@@ -2447,7 +2447,7 @@ button:disabled {
   display: grid;
   gap: 3px;
   min-width: 0;
-  padding: 11px 13px;
+  padding: 9px 12px;
   border: 1px solid var(--line);
   border-radius: 10px;
   background: var(--surface-strong);
@@ -2523,7 +2523,7 @@ button:disabled {
   display: grid;
   gap: 3px;
   min-width: 0;
-  padding: 8px 10px;
+  padding: 7px 9px;
   background: var(--surface-strong);
 }
 
@@ -2897,6 +2897,55 @@ button:disabled {
 
   .round-statistics__skills li {
     padding: 8px 10px;
+  }
+}
+
+@media (pointer: coarse) and (orientation: landscape) {
+  .pause-menu__panel {
+    gap: 8px;
+    padding: 10px 12px;
+  }
+
+  .pause-menu__panel h3 {
+    font-size: 1.05rem;
+  }
+
+  .arena-actions__buttons {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .game-telemetry {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .round-statistics__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px;
+  }
+
+  .round-statistics__grid div {
+    padding: 6px 8px;
+  }
+
+  .round-statistics__grid dt {
+    font-size: 0.72rem;
+  }
+
+  .round-statistics__grid dd {
+    font-size: 0.86rem;
+  }
+
+  .round-statistics h4,
+  .round-statistics h5 {
+    font-size: 0.88rem;
+  }
+
+  .round-statistics__skills ul {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .pause-control-guide summary {
+    padding: 8px 12px;
   }
 }
 

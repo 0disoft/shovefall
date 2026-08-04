@@ -9,6 +9,14 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.199.2",
+    title: "가로로 눕혀도 한눈에 보인다요 ㅇㅅㅇ",
+    reason:
+      "폰을 가로로 눕히면 일시정지 통계가 두 줄로 길게 이어지고 액션 버튼도 아래로 늘어져 화면을 많이 스크롤해야 했다요.",
+    change:
+      "가로 화면의 일시정지는 통계를 세 줄로, 액션 버튼을 한 줄로 배치하고 글자와 여백을 줄여 핵심 정보가 첫 화면에 들어오게 했다요. 데스크톱 일시정지도 여백을 줄여 조작법까지 더 잘 보인다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.199.1",
     title: "일시정지가 한눈에 들어온다요 ㅇㅅㅇ",
     reason:
