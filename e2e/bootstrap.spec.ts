@@ -1344,6 +1344,13 @@ test.describe("coarse-pointer surfaces", () => {
     await expect(page.locator(".action-hud")).toBeHidden();
     await expect(page.locator("#pointer-joystick")).toBeVisible();
     await expect(page.locator("#touch-skill-0")).toHaveText("Q");
+    await expect(page.locator("#toggle-stat-status")).toBeVisible();
+    await expect(page.locator("#stat-status")).toBeHidden();
+    await expect(page.locator("#stat-status-summary")).toHaveText(
+      /체력 \d+ \/ \d+ · 마나 \d+ \/ \d+/u,
+    );
+    await page.locator("#toggle-stat-status").click();
+    await expect(page.locator("#stat-status")).toBeVisible();
     const readoutBox = await page.locator("#stat-status").boundingBox();
     const joystickBox = await page.locator("#pointer-joystick").boundingBox();
     expect(readoutBox).not.toBeNull();
@@ -1605,6 +1612,8 @@ test.describe("coarse-pointer surfaces", () => {
       await startGame(page);
       await expect(page.locator("#app")).toHaveAttribute("data-round", "active");
       await expect(page.locator("#pointer-joystick")).toBeVisible();
+      await expect(page.locator("#toggle-stat-status")).toBeVisible();
+      await page.locator("#toggle-stat-status").click();
       await expect(page.locator("#stat-status")).toBeVisible();
 
       const boxes = await page.evaluate(() => {

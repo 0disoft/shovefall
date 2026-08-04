@@ -581,40 +581,52 @@
               <strong>방향키·마우스 조준</strong>
               <span>같은 키·Enter·좌클릭 확정 · Esc·우클릭 취소</span>
             </p>
-            <dl id="stat-status" class="stat-status" aria-label="전투 수치" hidden>
-              <div>
-                <dt>체력</dt>
-                <dd><output id="health-value">100 / 100</output></dd>
-              </div>
-              <div>
-                <dt>마나</dt>
-                <dd><output id="mana-value">100 / 100</output></dd>
-              </div>
-              <div>
-                <dt>공격 위력</dt>
-                <dd><output id="power-bonus">+0%</output></dd>
-              </div>
-              <div>
-                <dt>밀침 저항</dt>
-                <dd><output id="stability-bonus">+0%</output></dd>
-              </div>
-              <div>
-                <dt>이동</dt>
-                <dd><output id="mobility-bonus">+0%</output></dd>
-              </div>
-              <div>
-                <dt>피해·보호막</dt>
-                <dd><output id="reflex-bonus">0%</output></dd>
-              </div>
-              <div>
-                <dt>최대 체력</dt>
-                <dd><output id="vitality-bonus">+0%</output></dd>
-              </div>
-              <div>
-                <dt>마나 회복</dt>
-                <dd><output id="focus-bonus">+0%</output></dd>
-              </div>
-            </dl>
+            <div id="stat-status-wrap" class="stat-status-wrap" data-expanded="false">
+              <button
+                id="toggle-stat-status"
+                class="stat-status-toggle"
+                type="button"
+                aria-expanded="false"
+                aria-controls="stat-status"
+              >
+                <span>전투 수치</span>
+                <output id="stat-status-summary"></output>
+              </button>
+              <dl id="stat-status" class="stat-status" aria-label="전투 수치" hidden>
+                <div>
+                  <dt>체력</dt>
+                  <dd><output id="health-value">100 / 100</output></dd>
+                </div>
+                <div>
+                  <dt>마나</dt>
+                  <dd><output id="mana-value">100 / 100</output></dd>
+                </div>
+                <div>
+                  <dt>공격 위력</dt>
+                  <dd><output id="power-bonus">+0%</output></dd>
+                </div>
+                <div>
+                  <dt>밀침 저항</dt>
+                  <dd><output id="stability-bonus">+0%</output></dd>
+                </div>
+                <div>
+                  <dt>이동</dt>
+                  <dd><output id="mobility-bonus">+0%</output></dd>
+                </div>
+                <div>
+                  <dt>피해·보호막</dt>
+                  <dd><output id="reflex-bonus">0%</output></dd>
+                </div>
+                <div>
+                  <dt>최대 체력</dt>
+                  <dd><output id="vitality-bonus">+0%</output></dd>
+                </div>
+                <div>
+                  <dt>마나 회복</dt>
+                  <dd><output id="focus-bonus">+0%</output></dd>
+                </div>
+              </dl>
+            </div>
             <button
               id="pause-round"
               class="pause-trigger"

@@ -727,6 +727,9 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   ] as const);
   const skillActions = requireElement(root, "#skill-actions", HTMLElement);
   const inventoryActions = requireElement(root, "#inventory-actions", HTMLElement);
+  const statStatusWrap = requireElement(root, "#stat-status-wrap", HTMLElement);
+  const statStatusToggle = requireElement(root, "#toggle-stat-status", HTMLButtonElement);
+  const statStatusSummary = requireElement(root, "#stat-status-summary", HTMLOutputElement);
   const statStatus = requireElement(root, "#stat-status", HTMLElement);
   const statUpgradeOverlay = requireElement(root, "#stat-upgrade-overlay", HTMLElement);
   const statUpgradeForm = requireElement(root, "#stat-upgrade-form", HTMLFormElement);
@@ -1487,6 +1490,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     const { stats } = human.progression;
     healthValue.value = `${Math.ceil(human.combat.health)} / ${human.combat.maximumHealth}`;
     manaValue.value = `${Math.floor(human.combat.mana)} / ${human.combat.maximumMana}`;
+    statStatusSummary.value = `체력 ${healthValue.value} · 마나 ${manaValue.value}`;
     statBonusOutputs.power.value = `무게 +${Math.round((getPowerMassMultiplier(stats) - 1) * 100)}% · 위력 +${Math.round((getPowerMultiplier(stats) - 1) * 100)}%`;
     statBonusOutputs.stability.value = `밀침 +${Math.round((1 - getStabilityMultiplier(stats)) * 100)}% · 제어 -${Math.round((1 - getStabilityControlDurationMultiplier(stats)) * 100)}%`;
     statBonusOutputs.mobility.value = `이동 +${Math.round((getMobilityMultiplier(stats) - 1) * 100)}% · 재사용 -${Math.round((1 - getMobilityCooldownMultiplier(stats)) * 100)}% · 마나 -${Math.round((1 - getMobilityManaCostMultiplier(stats)) * 100)}% · 휘청 -${Math.round((1 - getMobilityStumbleDurationMultiplier(stats)) * 100)}%`;
@@ -2040,6 +2044,15 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   };
   coarsePointerQuery.addEventListener("change", syncPauseGuideCompactness);
   syncPauseGuideCompactness();
+
+  const syncStatStatusExpanded = (expanded: boolean): void => {
+    statStatusWrap.dataset.expanded = expanded ? "true" : "false";
+    statStatusToggle.setAttribute("aria-expanded", String(expanded));
+  };
+  syncStatStatusExpanded(!coarsePointerQuery.matches);
+  statStatusToggle.addEventListener("click", () => {
+    syncStatStatusExpanded(statStatusWrap.dataset.expanded !== "true");
+  });
 
   form.addEventListener("change", (event) => {
     const target = event.target;

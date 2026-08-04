@@ -9,6 +9,13 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.199.11",
+    title: "전투 수치는 필요할 때만 펼친다요 ㅇㅅㅇ",
+    reason: "폰에서는 게임 중 전투 수치 창이 화면 윗부분을 크게 덮어 조작 화면이 가려졌다요.",
+    change:
+      "폰에서는 전투 수치를 체력·마나 한 줄 요약으로 접어 두고, 버튼을 누르면 전체 수치를 펼치게 했다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.199.10",
     title: "조작 버튼도 폰 폭에 맞춘다요 ㅇㅅㅇ",
     reason:

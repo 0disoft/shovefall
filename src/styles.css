@@ -2021,15 +2021,56 @@ button:disabled {
   opacity: 0.72;
 }
 
-.stat-status {
+.stat-status-wrap {
   position: absolute;
   z-index: 3;
   top: max(14px, env(safe-area-inset-top));
   right: max(14px, env(safe-area-inset-right));
   display: grid;
+  justify-items: end;
+  gap: 6px;
+  max-width: min(58%, 560px);
+  pointer-events: none;
+}
+
+.stat-status-toggle {
+  display: none;
+  align-items: baseline;
+  gap: 10px;
+  max-width: 100%;
+  min-height: 40px;
+  padding: 8px 12px;
+  overflow: hidden;
+  color: var(--ink-strong);
+  border: 1px solid rgba(104, 216, 214, 0.42);
+  border-radius: 10px;
+  background: rgba(20, 24, 22, 0.72);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(7px);
+  pointer-events: auto;
+  touch-action: manipulation;
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+.stat-status-toggle span {
+  white-space: nowrap;
+}
+
+.stat-status-toggle output {
+  overflow: hidden;
+  color: var(--accent);
+  font-size: 0.74rem;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stat-status {
+  display: grid;
   grid-template-columns: repeat(4, minmax(72px, auto));
   gap: 1px;
-  max-width: min(58%, 560px);
+  max-width: 100%;
   margin: 0;
   overflow: hidden;
   color: var(--ink-strong);
@@ -2840,7 +2881,7 @@ button:disabled {
     min-height: 300px;
   }
 
-  .stat-status {
+  .stat-status-wrap {
     top: auto;
     right: max(14px, env(safe-area-inset-right));
     bottom: 118px;
@@ -2986,14 +3027,26 @@ button:disabled {
     display: none;
   }
 
-  .stat-status {
+  .stat-status-wrap {
     top: max(60px, calc(env(safe-area-inset-top) + 48px));
     right: auto;
     bottom: auto;
     left: max(14px, env(safe-area-inset-left));
+    justify-items: start;
+    max-width: min(460px, calc(100% - 28px));
+  }
+
+  .stat-status-toggle {
+    display: flex;
+  }
+
+  .stat-status-wrap[data-expanded="false"] .stat-status {
+    display: none;
+  }
+
+  .stat-status {
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 4px;
-    max-width: min(460px, calc(100% - 28px));
   }
 
   .stat-status div {
@@ -3119,7 +3172,7 @@ button:disabled {
 }
 
 @media (pointer: coarse) and (orientation: landscape) {
-  .stat-status {
+  .stat-status-wrap {
     top: max(44px, calc(env(safe-area-inset-top) + 32px));
     max-width: min(420px, calc(100% - 260px));
   }
