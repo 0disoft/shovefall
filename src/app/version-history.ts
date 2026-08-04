@@ -9,6 +9,13 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.199.21",
+    title: "전투 수치도 한 장으로 줄인다요 ㅇㅅㅇ",
+    reason: "작은 폰에서 전투 수치를 펼치면 칸마다 글이 두 줄로 접혀 넓직하게 화면을 덮었다요.",
+    change:
+      "전투 수치 칸 여백과 글자를 줄여 모든 줄이 한 줄에 들어가게 하고, 320px 폰에서 펼침 높이를 124px에서 82px로 한 장 가까이 줄였다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.199.20",
     title: "처치 보상 특성도 한눈에 고른다요 ㅇㅅㅇ",
     reason:

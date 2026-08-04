@@ -1,8 +1,10 @@
 # Static Release Procedure
 
-- Status: `0.199.20` mobile UX candidate; hosted proof pending
+- Status: `0.199.21` mobile UX candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.199.20`
+- Current product version: `0.199.21`
+
+Product `0.199.21`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. The expanded in-round combat stat panel on phones now uses tighter cell padding, type, and gaps, so every label and value fits on one line even at 320 px wide, trimming the panel from about 124 px to 82 px tall with the toggle button unchanged. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
 Product `0.199.20`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. The kill-reward trait picker on phones now lays each card as one icon-and-copy line with a full-width rank meter below, sizes cards to their content, and tightens the picker header, dropping the six-choice list's scroll height on a 320 px-wide phone from about 948 px to 732 px at the standard text size with no text clipping, so the first screen shows nearly two cards; tablets between 481 px and 820 px keep two columns with the list near 396 px. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
