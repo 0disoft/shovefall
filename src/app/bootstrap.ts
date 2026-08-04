@@ -1494,7 +1494,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     const { stats } = human.progression;
     healthValue.value = `${Math.ceil(human.combat.health)} / ${human.combat.maximumHealth}`;
     manaValue.value = `${Math.floor(human.combat.mana)} / ${human.combat.maximumMana}`;
-    statStatusSummary.value = `체력 ${healthValue.value} · 마나 ${manaValue.value}`;
+    statStatusSummary.value = `${healthValue.value} · ${manaValue.value}`;
     statBonusOutputs.power.value = `무게 +${Math.round((getPowerMassMultiplier(stats) - 1) * 100)}% · 위력 +${Math.round((getPowerMultiplier(stats) - 1) * 100)}%`;
     statBonusOutputs.stability.value = `밀침 +${Math.round((1 - getStabilityMultiplier(stats)) * 100)}% · 제어 -${Math.round((1 - getStabilityControlDurationMultiplier(stats)) * 100)}%`;
     statBonusOutputs.mobility.value = `이동 +${Math.round((getMobilityMultiplier(stats) - 1) * 100)}% · 재사용 -${Math.round((1 - getMobilityCooldownMultiplier(stats)) * 100)}% · 마나 -${Math.round((1 - getMobilityManaCostMultiplier(stats)) * 100)}% · 휘청 -${Math.round((1 - getMobilityStumbleDurationMultiplier(stats)) * 100)}%`;

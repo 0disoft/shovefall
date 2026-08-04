@@ -13,7 +13,7 @@ export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
     title: "일시정지 통계도 한눈에 담는다요 ㅇㅅㅇ",
     reason: "작은 폰에서 일시정지 메뉴의 이번 라운드 통계가 길어서 아래로 계속 내려야 했다요.",
     change:
-      "폰 일시정지의 통계 칸 글자와 여백을 가로 모드와 같은 수준으로 줄여, 스크롤 없이 더 많은 수치가 보이게 했다요 ㅇㅅㅇ",
+      "폰 일시정지의 통계 칸 글자와 여백을 가로 모드와 같은 수준으로 줄여, 수치를 한눈에 더 많이 담게 했다요 ㅇㅅㅇ",
   }),
   Object.freeze({
     version: "0.199.15",

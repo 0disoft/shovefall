@@ -1346,9 +1346,7 @@ test.describe("coarse-pointer surfaces", () => {
     await expect(page.locator("#touch-skill-0")).toHaveText("Q");
     await expect(page.locator("#toggle-stat-status")).toBeVisible();
     await expect(page.locator("#stat-status")).toBeHidden();
-    await expect(page.locator("#stat-status-summary")).toHaveText(
-      /체력 \d+ \/ \d+ · 마나 \d+ \/ \d+/u,
-    );
+    await expect(page.locator("#stat-status-summary")).toHaveText(/^\d+ \/ \d+ · \d+ \/ \d+$/u);
     await page.locator("#toggle-stat-status").click();
     await expect(page.locator("#stat-status")).toBeVisible();
     const readoutBox = await page.locator("#stat-status").boundingBox();
