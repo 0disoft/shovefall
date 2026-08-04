@@ -1380,6 +1380,38 @@ test.describe("coarse-pointer surfaces", () => {
     }
   });
 
+  test("fits the round briefing into the portrait viewport", async ({ page }) => {
+    await installFixedRoundSeed(page, 1, 0);
+    await page.goto("/");
+    await openSettings(page);
+    await saveSettings(page);
+    await page.getByRole("button", { name: "게임 시작" }).click();
+    const briefing = page.getByRole("dialog", {
+      name: "포격으로 무너지는 섬에서 끝까지 살아남아.",
+    });
+    await expect(briefing).toBeVisible();
+    await expect(page.getByRole("button", { name: "알겠다요 ㅇㅅㅇ" })).toBeEnabled();
+
+    const layout = await page.evaluate(() => {
+      const dialog = document.querySelector("#round-briefing-dialog");
+      const rect = dialog?.getBoundingClientRect();
+      return {
+        scrollHeight: dialog?.scrollHeight ?? 0,
+        clientHeight: dialog?.clientHeight ?? 0,
+        top: rect?.top ?? 0,
+        bottom: rect?.bottom ?? 0,
+        innerHeight,
+        scrollWidth: document.documentElement.scrollWidth,
+        clientWidth: document.documentElement.clientWidth,
+      };
+    });
+    expect(layout.scrollHeight).toBeLessThanOrEqual(layout.clientHeight);
+    expect(layout.top).toBeGreaterThanOrEqual(0);
+    expect(layout.bottom).toBeLessThanOrEqual(layout.innerHeight);
+    expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth);
+    await page.getByRole("button", { name: "알겠다요 ㅇㅅㅇ" }).click();
+  });
+
   test.describe("landscape pause", () => {
     test.use({ viewport: { width: 844, height: 390 } });
 
@@ -1412,6 +1444,46 @@ test.describe("coarse-pointer surfaces", () => {
       }));
       expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth);
       expect(layout.panelScrollHeight).toBeLessThan(700);
+    });
+  });
+
+  test.describe("landscape briefing", () => {
+    test.use({ viewport: { width: 844, height: 390 } });
+
+    test("fits the round briefing into the landscape viewport", async ({ page }) => {
+      await installFixedRoundSeed(page, 1, 0);
+      await page.goto("/");
+      await openSettings(page);
+      await saveSettings(page);
+      await page.getByRole("button", { name: "게임 시작" }).click();
+      const briefing = page.getByRole("dialog", {
+        name: "포격으로 무너지는 섬에서 끝까지 살아남아.",
+      });
+      await expect(briefing).toBeVisible();
+      await expect(page.getByRole("button", { name: "알겠다요 ㅇㅅㅇ" })).toBeEnabled();
+
+      const layout = await page.evaluate(() => {
+        const dialog = document.querySelector("#round-briefing-dialog");
+        const rect = dialog?.getBoundingClientRect();
+        const controls = document.querySelector(".round-briefing-dialog__controls");
+        return {
+          scrollHeight: dialog?.scrollHeight ?? 0,
+          clientHeight: dialog?.clientHeight ?? 0,
+          top: rect?.top ?? 0,
+          bottom: rect?.bottom ?? 0,
+          innerHeight,
+          scrollWidth: document.documentElement.scrollWidth,
+          clientWidth: document.documentElement.clientWidth,
+          columns: getComputedStyle(controls ?? document.body).gridTemplateColumns.split(" ")
+            .length,
+        };
+      });
+      expect(layout.scrollHeight).toBeLessThanOrEqual(layout.clientHeight);
+      expect(layout.top).toBeGreaterThanOrEqual(0);
+      expect(layout.bottom).toBeLessThanOrEqual(layout.innerHeight);
+      expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth);
+      expect(layout.columns).toBe(4);
+      await page.getByRole("button", { name: "알겠다요 ㅇㅅㅇ" }).click();
     });
   });
 });

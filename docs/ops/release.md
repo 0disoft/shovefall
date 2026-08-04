@@ -1,8 +1,10 @@
 # Static Release Procedure
 
-- Status: `0.199.2` mobile UX candidate; hosted proof pending
+- Status: `0.199.3` mobile UX candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.199.2`
+- Current product version: `0.199.3`
+
+Product `0.199.3`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. The pre-round briefing dialog caps itself to the viewport, scrolls internally when needed, and on coarse-pointer devices compresses to a two-column control grid in portrait and a single four-column row in landscape, so the objective, controls, and confirmation reach one screen on 390×844 and 844×390 viewports. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
 Product `0.199.2`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. Coarse-pointer landscape pause lays round statistics in three columns, action buttons in one four-column row, and current-state telemetry in five columns with tighter cell and panel spacing, so resume, restart, and core statistics reach the first landscape screen with far less scrolling. Desktop pause trims panel gaps and statistic-cell padding so the full layer, including the controls guide, fits an 800 px viewport. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 

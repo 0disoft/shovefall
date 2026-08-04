@@ -308,7 +308,10 @@ button:disabled {
 
 .round-briefing-dialog {
   width: min(620px, calc(100% - 32px));
-  padding: clamp(24px, 4vw, 38px);
+  max-height: min(760px, calc(100dvh - 24px));
+  padding: clamp(20px, 3vw, 34px);
+  overflow: auto;
+  overscroll-behavior: contain;
   border: 1px solid var(--line-strong);
   border-radius: 22px;
   background: color-mix(in srgb, var(--surface) 96%, transparent);
@@ -331,18 +334,18 @@ button:disabled {
 .round-briefing-dialog__heading h2 {
   margin: 0;
   color: var(--ink-strong);
-  font-size: clamp(1.7rem, 4vw, 2.35rem);
+  font-size: clamp(1.45rem, 3vw, 2.1rem);
   line-height: 1.15;
 }
 
 .round-briefing-dialog__objective {
   display: grid;
   gap: 6px;
-  margin: 18px 0 0;
+  margin: 14px 0 0;
   color: var(--ink);
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 750;
-  line-height: 1.55;
+  line-height: 1.5;
 }
 
 .round-briefing-dialog__objective span {
@@ -353,11 +356,11 @@ button:disabled {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
-  margin: 22px 0 0;
+  margin: 18px 0 0;
 }
 
 .round-briefing-dialog__controls > div {
-  padding: 14px 16px;
+  padding: 12px 14px;
   border: 1px solid var(--line);
   border-radius: 13px;
   background: color-mix(in srgb, var(--surface-strong) 90%, transparent);
@@ -377,7 +380,7 @@ button:disabled {
 
 .round-briefing-dialog__status {
   min-height: 1.5em;
-  margin: 22px 0 12px;
+  margin: 18px 0 10px;
   color: var(--text-muted);
   font-size: 0.95rem;
   font-weight: 750;
@@ -389,7 +392,7 @@ button:disabled {
 
 .round-briefing-dialog > .primary-action {
   width: 100%;
-  min-height: 58px;
+  min-height: 54px;
   justify-content: center;
 }
 
@@ -2898,6 +2901,54 @@ button:disabled {
   .round-statistics__skills li {
     padding: 8px 10px;
   }
+
+  .round-briefing-dialog {
+    padding: 18px 16px;
+  }
+
+  .round-briefing-dialog__heading p {
+    margin-bottom: 4px;
+    font-size: 0.8rem;
+  }
+
+  .round-briefing-dialog__heading h2 {
+    font-size: clamp(1.25rem, 5vw, 1.6rem);
+  }
+
+  .round-briefing-dialog__objective {
+    gap: 4px;
+    margin-top: 10px;
+    font-size: 0.88rem;
+    line-height: 1.42;
+  }
+
+  .round-briefing-dialog__controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+    margin-top: 12px;
+  }
+
+  .round-briefing-dialog__controls > div {
+    padding: 9px 11px;
+  }
+
+  .round-briefing-dialog__controls dt {
+    font-size: 0.74rem;
+  }
+
+  .round-briefing-dialog__controls dd {
+    margin-top: 3px;
+    font-size: 0.9rem;
+  }
+
+  .round-briefing-dialog__status {
+    margin: 13px 0 8px;
+    font-size: 0.88rem;
+  }
+
+  .round-briefing-dialog > .primary-action {
+    min-height: 48px;
+  }
 }
 
 @media (pointer: coarse) and (orientation: landscape) {
@@ -2946,6 +2997,49 @@ button:disabled {
 
   .pause-control-guide summary {
     padding: 8px 12px;
+  }
+
+  .round-briefing-dialog {
+    padding: 12px 16px;
+    max-height: calc(100dvh - 16px);
+  }
+
+  .round-briefing-dialog__heading h2 {
+    font-size: 1.25rem;
+  }
+
+  .round-briefing-dialog__objective {
+    margin-top: 8px;
+    font-size: 0.82rem;
+    line-height: 1.35;
+  }
+
+  .round-briefing-dialog__controls {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+    margin-top: 10px;
+  }
+
+  .round-briefing-dialog__controls > div {
+    padding: 7px 9px;
+  }
+
+  .round-briefing-dialog__controls dt {
+    font-size: 0.68rem;
+  }
+
+  .round-briefing-dialog__controls dd {
+    margin-top: 2px;
+    font-size: 0.84rem;
+  }
+
+  .round-briefing-dialog__status {
+    margin: 10px 0 6px;
+    font-size: 0.82rem;
+  }
+
+  .round-briefing-dialog > .primary-action {
+    min-height: 44px;
   }
 }
 

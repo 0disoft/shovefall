@@ -9,6 +9,14 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.199.3",
+    title: "브리핑도 폰에 맞게 펼쳐진다요 ㅇㅅㅇ",
+    reason:
+      "폰에서는 게임 시작 전 브리핑 창이 화면을 넘어 확인 버튼까지 스크롤을 해야 하는 경우가 있었다요.",
+    change:
+      "브리핑 창을 세로 화면에서는 조작법을 두 줄로, 가로 화면에서는 한 줄로 배치하고 여백과 글자를 줄여 목표·조작법·시작 버튼이 한 화면에 들어오게 했다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.199.2",
     title: "가로로 눕혀도 한눈에 보인다요 ㅇㅅㅇ",
     reason:
