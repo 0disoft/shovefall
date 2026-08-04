@@ -9,6 +9,14 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.199.39",
+    title: "데스크톱 전투 수치가 상태를 안 가린다요 ㅇㅅㅇ",
+    reason:
+      "1024px처럼 좁은 데스크톱 화면에서는 전투 수치 패널이 넓게 펼쳐져 가운데 위의 라운드 상태 표시를 덮어, 게임 준비·오류 같은 상태가 안 보였다요.",
+    change:
+      "폭 821~1240px 데스크톱에서는 전투 수치를 두 칸으로 좁히고 값을 한 줄에 나란히 놓아, 패널이 상태 표시와 조작 HUD를 가리지 않게 했다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.199.38",
     title: "가로 화면 전투 수치도 한눈에 ㅇㅅㅇ",
     reason:
