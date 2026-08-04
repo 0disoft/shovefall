@@ -1675,12 +1675,17 @@ test.describe("coarse-pointer surfaces", () => {
     }
     await expect(page.locator("#stat-status")).toHaveCSS(
       "grid-template-columns",
-      /^\d+(?:\.\d+)?px(?: \d+(?:\.\d+)?px){3}$/u,
+      /^\d+(?:\.\d+)?px \d+(?:\.\d+)?px$/u,
     );
     await expect(page.locator("#stat-status > div").first()).toHaveCSS(
       "grid-template-columns",
       /^\d+(?:\.\d+)?px \d+(?:\.\d+)?px$/u,
     );
+    const panelOverflow = await page.locator("#stat-status").evaluate((panel) => ({
+      scrollHeight: panel.scrollHeight,
+      clientHeight: panel.clientHeight,
+    }));
+    expect(panelOverflow.scrollHeight).toBeLessThanOrEqual(panelOverflow.clientHeight + 1);
   });
 
   test("keeps completed-round actions and statistics reachable on a narrow phone", async ({

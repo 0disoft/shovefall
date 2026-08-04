@@ -3574,9 +3574,9 @@ button:disabled {
     left: 0;
     right: 0;
     width: 100%;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 3px;
-    max-height: calc(100dvh - 192px);
+    max-height: calc(100dvh - 195px);
     overflow-y: auto;
     pointer-events: auto;
   }
@@ -3585,16 +3585,17 @@ button:disabled {
     grid-template-columns: minmax(0, auto) minmax(0, 1fr);
     align-items: baseline;
     gap: 2px 8px;
-    padding: 3px 6px;
+    padding: 3px 5px;
   }
 
   .stat-status dt {
-    font-size: 0.64rem;
+    font-size: 0.62rem;
   }
 
   .stat-status dd {
-    font-size: 0.76rem;
+    font-size: 0.74rem;
     text-align: right;
+    overflow-wrap: anywhere;
   }
 
   .arena-panel:has(.stat-status-wrap[data-expanded="true"]) .arena-panel__header {
@@ -3607,7 +3608,7 @@ button:disabled {
     }
 
     .stat-status {
-      max-height: calc(100dvh - 168px);
+      max-height: calc(100dvh - 171px);
     }
   }
 
