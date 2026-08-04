@@ -3562,8 +3562,53 @@ button:disabled {
 
 @media (pointer: coarse) and (orientation: landscape) {
   .stat-status-wrap {
-    top: max(44px, calc(env(safe-area-inset-top) + 32px));
-    max-width: min(420px, calc(100% - 260px));
+    top: auto;
+    bottom: max(146px, calc(env(safe-area-inset-bottom) + 134px));
+    width: calc(100% - 28px);
+    max-width: none;
+  }
+
+  .stat-status {
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    width: 100%;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 3px;
+    max-height: calc(100dvh - 192px);
+    overflow-y: auto;
+    pointer-events: auto;
+  }
+
+  .stat-status div {
+    grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+    align-items: baseline;
+    gap: 2px 8px;
+    padding: 3px 6px;
+  }
+
+  .stat-status dt {
+    font-size: 0.64rem;
+  }
+
+  .stat-status dd {
+    font-size: 0.76rem;
+    text-align: right;
+  }
+
+  .arena-panel:has(.stat-status-wrap[data-expanded="true"]) .arena-panel__header {
+    display: none;
+  }
+
+  @media (max-width: 480px) {
+    .stat-status-wrap {
+      bottom: max(122px, calc(env(safe-area-inset-bottom) + 110px));
+    }
+
+    .stat-status {
+      max-height: calc(100dvh - 168px);
+    }
   }
 
   .pause-menu__panel {

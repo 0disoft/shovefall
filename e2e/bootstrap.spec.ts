@@ -1648,6 +1648,41 @@ test.describe("coarse-pointer surfaces", () => {
     );
   });
 
+  test("keeps the expanded stat readout clear of touch controls in landscape", async ({ page }) => {
+    test.setTimeout(60_000);
+    await page.setViewportSize({ width: 568, height: 320 });
+    await installFixedRoundSeed(page, 1, 0);
+    await page.goto("/");
+    await openSettings(page);
+    await saveSettings(page);
+    await startGame(page);
+    await expect(page.locator("#app")).toHaveAttribute("data-round", "active");
+
+    const toggleBox = await page.locator("#toggle-stat-status").boundingBox();
+    await page.locator("#toggle-stat-status").click();
+    await expect(page.locator("#stat-status")).toBeVisible();
+    const readoutBox = await page.locator("#stat-status").boundingBox();
+    const joystickBox = await page.locator("#pointer-joystick").boundingBox();
+    expect(toggleBox).not.toBeNull();
+    expect(readoutBox).not.toBeNull();
+    expect(joystickBox).not.toBeNull();
+    if (toggleBox !== null && readoutBox !== null && joystickBox !== null) {
+      expect(readoutBox.y + readoutBox.height).toBeLessThanOrEqual(joystickBox.y + 4);
+      expect(toggleBox.y + toggleBox.height).toBeLessThanOrEqual(joystickBox.y + 4);
+      expect(readoutBox.y).toBeGreaterThanOrEqual(0);
+      expect(readoutBox.y + readoutBox.height).toBeLessThanOrEqual(toggleBox.y + 4);
+      expect(readoutBox.width).toBeGreaterThanOrEqual(500);
+    }
+    await expect(page.locator("#stat-status")).toHaveCSS(
+      "grid-template-columns",
+      /^\d+(?:\.\d+)?px(?: \d+(?:\.\d+)?px){3}$/u,
+    );
+    await expect(page.locator("#stat-status > div").first()).toHaveCSS(
+      "grid-template-columns",
+      /^\d+(?:\.\d+)?px \d+(?:\.\d+)?px$/u,
+    );
+  });
+
   test("keeps completed-round actions and statistics reachable on a narrow phone", async ({
     page,
   }) => {
