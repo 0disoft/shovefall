@@ -3082,6 +3082,16 @@ button:disabled {
   .loadout-card__effect-row {
     padding: 3px 0;
   }
+
+  :root[data-font-scale="large"] .skill-card__effect,
+  :root[data-font-scale="extra-large"] .item-card__effect {
+    line-height: 1.18;
+  }
+
+  :root[data-font-scale="large"] .loadout-card__effect-row,
+  :root[data-font-scale="extra-large"] .loadout-card__effect-row {
+    padding: 1px 0;
+  }
 }
 
 @media (max-width: 480px) {

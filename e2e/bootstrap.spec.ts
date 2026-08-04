@@ -1709,6 +1709,40 @@ test.describe("coarse-pointer surfaces", () => {
   test.describe("extra-large font", () => {
     test.use({ viewport: { width: 320, height: 568 } });
 
+    test("keeps the longest loadout card under half the screen at extra-large text", async ({
+      page,
+    }) => {
+      await page.goto("/");
+      await openSettings(page);
+      await saveSettings(page);
+      await openSettings(page);
+      await openSettingsTab(page, "설정");
+      await page.locator('input[name="fontScale"][value="extra-large"]').check();
+      await page.getByRole("button", { name: "설정 저장" }).click();
+      await openSettings(page);
+      await openSettingsTab(page, "아이템");
+      const itemLayout = await page.evaluate(() => {
+        const cards = [...document.querySelectorAll("#starting-items .preset-card")];
+        return {
+          maxHeight: Math.max(...cards.map((card) => card.getBoundingClientRect().height)),
+          halfViewport: innerHeight / 2,
+          rootFont: getComputedStyle(document.documentElement).fontSize,
+        };
+      });
+      expect(itemLayout.rootFont).toBe("22px");
+      expect(itemLayout.maxHeight).toBeLessThanOrEqual(itemLayout.halfViewport);
+      await openSettingsTab(page, "스킬");
+      const skillLayout = await page.evaluate(() => {
+        const cards = [...document.querySelectorAll("#starting-skills .preset-card")];
+        return {
+          maxHeight: Math.max(...cards.map((card) => card.getBoundingClientRect().height)),
+          halfViewport: innerHeight / 2,
+        };
+      });
+      expect(skillLayout.maxHeight).toBeLessThanOrEqual(skillLayout.halfViewport);
+      await page.getByRole("button", { name: "취소" }).click();
+    });
+
     test("keeps the briefing on one screen at extra-large text", async ({ page }) => {
       await installFixedRoundSeed(page, 1, 0);
       await page.goto("/");
