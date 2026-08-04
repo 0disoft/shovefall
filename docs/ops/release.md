@@ -1,8 +1,10 @@
 # Static Release Procedure
 
-- Status: `0.199.24` mobile UX candidate; hosted proof pending
+- Status: `0.199.25` mobile UX candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.199.24`
+- Current product version: `0.199.25`
+
+Product `0.199.25`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. The version-history screen now keeps only the current entry expanded and collapses every past entry to a one-line version-and-title summary that expands on tap, shrinking the 320 px phone document from about 28,000 px to 20,600 px; a smoke journey asserts the current entry stays open, past entries collapse, and an expand action reveals the hidden copy. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
 Product `0.199.24`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. On coarse-pointer phones 560 px and narrower, the completed-round action area now uses tighter padding and 48 px-tall buttons so the round statistics start about 31 px higher on a 320×568 phone; a new layout smoke keeps the actions above the statistics, every action button at least 44 px tall, and the panel scrollable without body overflow. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 

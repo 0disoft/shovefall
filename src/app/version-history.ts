@@ -9,6 +9,14 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.199.25",
+    title: "버전 기록도 한눈에 훑는다요 ㅇㅅㅇ",
+    reason:
+      "버전 기록에 항목이 쌓여 모바일에서 카드마다 길게 펼쳐진 채로 화면이 28,000픽셀까지 늘어나, 스크롤이 버거웠다요.",
+    change:
+      "지금 버전만 펼쳐두고 지난 버전은 한 줄 요약으로 접어, 모바일에서 버전 기록 화면을 28,000픽셀에서 20,600픽셀로 줄이고 과거 기록을 훑기 쉽게 했다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.199.24",
     title: "라운드 종료 통계가 더 일찍 보인다요 ㅇㅅㅇ",
     reason:
