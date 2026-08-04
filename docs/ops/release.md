@@ -1,8 +1,10 @@
 # Static Release Procedure
 
-- Status: `0.199.37` short-landscape combat-readout anchoring candidate; hosted proof pending
+- Status: `0.199.38` short-landscape two-column stat strip candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.199.37`
+- Current product version: `0.199.38`
+
+Product `0.199.38`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. On coarse-pointer landscape screens, the expanded 체력·마나 stat strip now lays its eight cells in two columns of four instead of four columns of two, so standard text fits on one screen without scrolling and extra-large text wraps to two lines per cell instead of five; the strip's height cap is anchored to the toggle so it never clips at the top of the viewport at any landscape height; the 568×320 landscape smoke journey now asserts the two-column strip, the no-scroll standard layout, and the readout and toggle staying above the joystick. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
 Product `0.199.37`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. On coarse-pointer landscape screens, the expanded 체력·마나 stat panel used to grow downward from the top-left toggle and cover the joystick and touch buttons on short viewports; the toggle now anchors just above the joystick and the expanded four-column strip opens upward across the full width, capped to the available height, so it stays clear of the touch controls at every landscape height; a new 568×320 landscape smoke journey boots a real round and asserts the expanded readout and its toggle stay above the joystick while the strip spans the full width. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 

@@ -9,6 +9,14 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.199.38",
+    title: "가로 화면 전투 수치도 한눈에 ㅇㅅㅇ",
+    reason:
+      "가로로 짧은 화면에서 체력·마나 수치를 펼치면 네 칸이라 값이 여러 줄로 길어져, 보통 글자에서도 스크롤 없이 전부 볼 수 없었고 아주 큰 글자에서는 패널 위쪽이 화면 밖으로 잘렸다요.",
+    change:
+      "가로 화면에서는 전투 수치를 두 칸 네 줄로 재배치하고, 펼쳐진 패널이 토글 위 공간에 딱 맞게 자라도록 해 보통 글자는 스크롤 없이 전부 보이고 아주 큰 글자도 위쪽이 잘리지 않게 했다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.199.37",
     title: "가로 화면 전투 수치는 조이스틱 위에 ㅇㅅㅇ",
     reason:
