@@ -1519,6 +1519,37 @@ test.describe("coarse-pointer surfaces", () => {
     await page.getByRole("button", { name: "취소" }).click();
   });
 
+  test.describe("tablet settings cards", () => {
+    test.use({ viewport: { width: 768, height: 1024 } });
+
+    test("lays loadout cards in two columns without clipping", async ({ page }) => {
+      await installFixedRoundSeed(page, 1, 0);
+      await page.goto("/");
+      await openSettings(page);
+      await openSettingsTab(page, "스킬");
+      await expect(page.locator(".skill-loadout-fieldset")).toHaveCSS(
+        "grid-template-columns",
+        /repeat\(2,\s*minmax\(0px,\s*1fr\)\)|^\d+(?:\.\d+)?px(?: \d+(?:\.\d+)?px)+$/u,
+      );
+      const clipping = await page.evaluate(() => {
+        const cards = [...document.querySelectorAll(".skill-loadout-fieldset .preset-card")];
+        return cards.filter((card) => {
+          const cardRect = card.getBoundingClientRect();
+          return [...card.querySelectorAll("p, dd, strong")].some((text) => {
+            const textRect = text.getBoundingClientRect();
+            return textRect.bottom > cardRect.bottom + 1 || textRect.right > cardRect.right + 1;
+          });
+        }).length;
+      });
+      expect(clipping).toBe(0);
+      await openSettingsTab(page, "아이템");
+      await expect(page.locator(".loadout-fieldset")).toHaveCSS(
+        "grid-template-columns",
+        /repeat\(2,\s*minmax\(0px,\s*1fr\)\)|^\d+(?:\.\d+)?px(?: \d+(?:\.\d+)?px)+$/u,
+      );
+    });
+  });
+
   test.describe("landscape play HUD", () => {
     test.use({ viewport: { width: 844, height: 390 } });
 

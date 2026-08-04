@@ -2738,7 +2738,7 @@ button:disabled {
 
   .loadout-fieldset,
   .skill-loadout-fieldset {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .loadout-fieldset legend,
@@ -2808,6 +2808,13 @@ button:disabled {
     background: color-mix(in srgb, var(--surface-strong) 92%, transparent);
     backdrop-filter: blur(10px);
     box-shadow: 0 -10px 28px rgb(0 0 0 / 28%);
+  }
+}
+
+@media (max-width: 560px) {
+  .loadout-fieldset,
+  .skill-loadout-fieldset {
+    grid-template-columns: 1fr;
   }
 }
 
