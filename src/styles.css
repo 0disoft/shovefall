@@ -3173,6 +3173,12 @@ button:disabled {
     display: flex;
   }
 
+  @media (max-width: 420px) {
+    .stat-status-toggle {
+      max-width: calc(100vw - 156px);
+    }
+  }
+
   .stat-status-wrap[data-expanded="false"] .stat-status {
     display: none;
   }

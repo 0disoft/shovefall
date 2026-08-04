@@ -1444,6 +1444,50 @@ test.describe("coarse-pointer surfaces", () => {
     }
   });
 
+  test("keeps narrow-phone combat controls clear of each other", async ({ page }) => {
+    test.setTimeout(60_000);
+    await page.setViewportSize({ width: 320, height: 568 });
+    await installFixedRoundSeed(page, 1, 0);
+    await page.goto("/");
+    await openSettings(page);
+    await saveSettings(page);
+    await startGame(page);
+    await expect(page.locator("#app")).toHaveAttribute("data-round", "active");
+
+    await expect(page.locator("#pointer-joystick")).toBeVisible();
+    await expect(page.locator(".touch-actions")).toBeVisible();
+    await expect(page.locator("#toggle-stat-status")).toBeVisible();
+    await expect(page.locator("#pause-round")).toBeVisible();
+
+    const joystickBox = await page.locator("#pointer-joystick").boundingBox();
+    const actionsBox = await page.locator(".touch-actions").boundingBox();
+    const pauseBox = await page.locator("#pause-round").boundingBox();
+    const toggleBox = await page.locator("#toggle-stat-status").boundingBox();
+    expect(joystickBox).not.toBeNull();
+    expect(actionsBox).not.toBeNull();
+    expect(pauseBox).not.toBeNull();
+    expect(toggleBox).not.toBeNull();
+    if (joystickBox !== null && actionsBox !== null) {
+      expect(joystickBox.x + joystickBox.width).toBeLessThanOrEqual(actionsBox.x + 4);
+    }
+    if (pauseBox !== null && toggleBox !== null) {
+      expect(pauseBox.x).toBeGreaterThanOrEqual(toggleBox.x + toggleBox.width - 4);
+      expect(pauseBox.y).toBeLessThanOrEqual(toggleBox.y + 4);
+    }
+
+    await page.locator("#toggle-stat-status").click();
+    await expect(page.locator("#stat-status")).toBeVisible();
+    const readoutBox = await page.locator("#stat-status").boundingBox();
+    expect(readoutBox).not.toBeNull();
+    if (readoutBox !== null && joystickBox !== null) {
+      expect(readoutBox.y + readoutBox.height).toBeLessThanOrEqual(joystickBox.y + 4);
+    }
+    await expect(page.locator("#stat-status")).toHaveCSS(
+      "grid-template-columns",
+      /^\d+(?:\.\d+)?px(?: \d+(?:\.\d+)?px){3}$/u,
+    );
+  });
+
   test("fits the round briefing into the portrait viewport", async ({ page }) => {
     await installFixedRoundSeed(page, 1, 0);
     await page.goto("/");
