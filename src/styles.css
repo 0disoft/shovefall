@@ -3179,20 +3179,20 @@ button:disabled {
 
   .stat-status {
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 4px;
+    gap: 3px;
   }
 
   .stat-status div {
-    padding: 4px 7px;
+    padding: 3px 5px;
   }
 
   .stat-status dt {
-    font-size: 0.62rem;
+    font-size: 0.58rem;
   }
 
   .stat-status dd {
-    font-size: 0.72rem;
-    line-height: 1.3;
+    font-size: 0.7rem;
+    line-height: 1.25;
   }
 
   .player-control input[type="range"] {
