@@ -1,8 +1,10 @@
 # Static Release Procedure
 
-- Status: `0.199.25` mobile UX candidate; hosted proof pending
+- Status: `0.199.26` mobile UX candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.199.25`
+- Current product version: `0.199.26`
+
+Product `0.199.26`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. At extra-large text on 320 px-wide phones, loadout effect rows now use tighter line height and padding, shrinking the longest item card from 318 px to 279 px so every skill and item card stays under half the 568 px viewport; a new smoke journey asserts the longest item and skill cards at 320×568 extra-large remain within half the screen. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
 Product `0.199.25`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. The version-history screen now keeps only the current entry expanded and collapses every past entry to a one-line version-and-title summary that expands on tap, shrinking the 320 px phone document from about 28,000 px to 20,600 px; a smoke journey asserts the current entry stays open, past entries collapse, and an expand action reveals the hidden copy. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 

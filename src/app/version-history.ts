@@ -9,6 +9,14 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.199.26",
+    title: "아주 큰 글씨에서도 장비 카드가 절반을 넘지 않는다요 ㅇㅅㅇ",
+    reason:
+      "글자를 아주 크게 하면 320px 폰에서 시작 아이템 카드가 화면 절반을 넘게 늘어나, 고르기 전에 카드를 다 보려면 매번 스크롤해야 했다요.",
+    change:
+      "아주 큰 글씨 폰에서 장비 효과 줄 간격을 좁혀, 가장 긴 아이템 카드가 318픽셀에서 279픽셀로 줄고 화면 절반 안에 들어오게 했다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.199.25",
     title: "버전 기록도 한눈에 훑는다요 ㅇㅅㅇ",
     reason:
