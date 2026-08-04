@@ -1375,6 +1375,45 @@ test("offers a working touch joystick and action buttons on a narrow viewport", 
   await dragJoystickToMoveCamera(page, joystick);
 });
 
+test("keeps filled scoreboard rows compact on a narrow phone", async ({ page }) => {
+  test.setTimeout(60_000);
+  await page.addInitScript(() => {
+    const entries = Array.from({ length: 12 }, (_, index) => ({
+      id: `2026-08-05T00:00:0${index}.000Z:${index + 1}`,
+      playedAt: `2026-08-05T00:00:0${index}.000Z`,
+      rank: 1 + ((index * 7) % 50),
+      participantCount: 70,
+      score: 1000 + index * 137,
+      eliminations: (index * 3) % 12,
+      survivalSeconds: 180 + index * 42,
+      outcome: index % 4 === 0 ? ("victory" as const) : ("defeat" as const),
+    }));
+    localStorage.setItem("shovefall.scoreboard.v1", JSON.stringify(entries));
+  });
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.goto("/");
+  await page.getByRole("button", { name: "점수표", exact: true }).click();
+  await expect(page.locator("#app")).toHaveAttribute("data-screen", "scoreboard");
+  await expect(page.locator("#scoreboard-list > li")).toHaveCount(10);
+
+  const layout = await page.evaluate(() => {
+    const rows = [...document.querySelectorAll("#scoreboard-list > li")];
+    const heights = rows.map((row) => Math.round(row.getBoundingClientRect().height));
+    return {
+      heights,
+      tallest: Math.max(...heights),
+      scrollWidth: document.documentElement.scrollWidth,
+      clientWidth: document.documentElement.clientWidth,
+      cellColumns: getComputedStyle(
+        document.querySelector(".scoreboard__stats") ?? document.body,
+      ).gridTemplateColumns.split(" ").length,
+    };
+  });
+  expect(layout.tallest).toBeLessThanOrEqual(170);
+  expect(layout.cellColumns).toBe(2);
+  expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth);
+});
+
 test("repeats attribute allocation while an increment is held", async ({ page }) => {
   await page.goto("/");
   await openSettings(page);

@@ -3237,6 +3237,20 @@ button:disabled {
 
   .scoreboard__stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .scoreboard__stats div {
+    display: grid;
+    grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+    align-items: baseline;
+    gap: 2px 8px;
+    padding: 6px 9px;
+  }
+
+  .scoreboard__stats dd {
+    margin-top: 0;
+    text-align: right;
   }
 
   .control-guide {
