@@ -114,7 +114,6 @@
 }
 
 body {
-  min-width: 320px;
   min-height: 100vh;
   margin: 0;
   background:
@@ -3044,6 +3043,37 @@ button:disabled {
   }
 }
 
+@media (max-width: 300px) {
+  .settings-tabs {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 4px;
+    padding: 4px;
+  }
+
+  .settings-tab {
+    min-height: 44px;
+    padding: 8px 4px;
+    font-size: 0.9rem;
+  }
+
+  .starting-attribute__stepper {
+    grid-template-columns: 40px 40px 32px 40px 40px;
+    gap: 3px;
+  }
+
+  .starting-attribute__stepper button {
+    width: 40px;
+    height: 40px;
+    font-size: 1rem;
+  }
+
+  .starting-attribute__stepper output {
+    min-width: 32px;
+    height: 40px;
+    font-size: 1rem;
+  }
+}
+
 @media (min-width: 376px) and (max-width: 560px) {
   .loadout-fieldset,
   .skill-loadout-fieldset {
@@ -3265,6 +3295,22 @@ button:disabled {
 
   .developer-telemetry dl {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 300px) {
+  .touch-controls {
+    gap: 6px;
+  }
+
+  .touch-actions {
+    grid-template-columns: repeat(2, 52px);
+    gap: 6px;
+  }
+
+  .touch-actions button {
+    width: 52px;
+    height: 52px;
   }
 }
 

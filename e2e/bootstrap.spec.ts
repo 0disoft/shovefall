@@ -323,6 +323,18 @@ async function assertLastSettingsCardReachable(page: Page, tab: "스킬" | "아�
   expect(layout.saveVisible).toBe(true);
 }
 
+async function assertCoverSettingsTab(
+  page: Page,
+  tab: "특성" | "스킬" | "아이템" | "설정",
+): Promise<void> {
+  await openSettingsTab(page, tab);
+  const layout = await page.evaluate(() => ({
+    scrollWidth: document.documentElement.scrollWidth,
+    clientWidth: document.documentElement.clientWidth,
+  }));
+  expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth);
+}
+
 async function selectStartingItem(page: Page, value: string): Promise<void> {
   await openSettingsTab(page, "아이템");
   await page.locator(`input[name="startingItem"][value="${value}"]`).check();
@@ -2086,6 +2098,98 @@ test.describe("coarse-pointer surfaces", () => {
       await openSettings(page);
       await assertLastSettingsCardReachable(page, "스킬");
       await assertLastSettingsCardReachable(page, "아이템");
+    });
+  });
+
+  test.describe("foldable cover width", () => {
+    test.use({ viewport: { width: 260, height: 653 } });
+
+    test("keeps the cover-width menu, settings tabs, and attribute steppers free of horizontal overflow", async ({
+      page,
+    }) => {
+      await page.goto("/");
+      await expect
+        .poll(() =>
+          page.evaluate(
+            () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+          ),
+        )
+        .toBe(true);
+      await openSettings(page);
+      await assertCoverSettingsTab(page, "특성");
+      await assertCoverSettingsTab(page, "스킬");
+      await assertCoverSettingsTab(page, "아이템");
+      await assertCoverSettingsTab(page, "설정");
+
+      await openSettingsTab(page, "특성");
+      const stepper = await page.evaluate(() => {
+        const card = document.querySelector<HTMLElement>(".starting-attribute");
+        const cardRect = card?.getBoundingClientRect();
+        const button = card?.querySelector<HTMLButtonElement>(
+          '.starting-attribute__stepper button[data-attribute-step="1"]',
+        );
+        const buttonRect = button?.getBoundingClientRect();
+        return {
+          cardLeft: cardRect === undefined ? null : Math.round(cardRect.left),
+          cardRight: cardRect === undefined ? null : Math.round(cardRect.right),
+          buttonWidth: buttonRect === undefined ? null : Math.round(buttonRect.width),
+          buttonHeight: buttonRect === undefined ? null : Math.round(buttonRect.height),
+        };
+      });
+      expect(stepper.cardLeft).not.toBeNull();
+      expect(stepper.cardLeft).toBeGreaterThanOrEqual(0);
+      expect(stepper.cardRight).toBeLessThanOrEqual(260);
+      expect(stepper.buttonWidth).not.toBeNull();
+      expect(stepper.buttonWidth).toBeGreaterThanOrEqual(36);
+      expect(stepper.buttonHeight).toBeGreaterThanOrEqual(36);
+    });
+
+    test("keeps the cover-width arena controls inside the viewport without overflow", async ({
+      page,
+    }) => {
+      await page.goto("/");
+      await page.locator("#app").evaluate((app) => {
+        app.setAttribute("data-screen", "arena");
+        app.setAttribute("data-round", "active");
+        document.body.classList.add("game-screen-active");
+        document.querySelector("#arena-host")?.removeAttribute("hidden");
+        document.querySelector("#pause-round")?.removeAttribute("hidden");
+        document.querySelector(".touch-controls")?.removeAttribute("hidden");
+        document.querySelector("#pointer-joystick")?.removeAttribute("hidden");
+      });
+      const layout = await page.evaluate(() => {
+        const selectors = [
+          "#pointer-joystick",
+          ".touch-actions",
+          "#pause-round",
+          "#toggle-stat-status",
+        ];
+        const boxes: Record<string, { left: number; right: number; top: number; bottom: number }> =
+          {};
+        for (const selector of selectors) {
+          const r = document.querySelector<HTMLElement>(selector)?.getBoundingClientRect();
+          if (r !== undefined) {
+            boxes[selector] = {
+              left: Math.round(r.left * 10) / 10,
+              right: Math.round(r.right * 10) / 10,
+              top: Math.round(r.top * 10) / 10,
+              bottom: Math.round(r.bottom * 10) / 10,
+            };
+          }
+        }
+        return {
+          boxes,
+          scrollWidth: document.documentElement.scrollWidth,
+          clientWidth: document.documentElement.clientWidth,
+        };
+      });
+      expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth);
+      for (const box of Object.values(layout.boxes)) {
+        expect(box.left).toBeGreaterThanOrEqual(0);
+        expect(box.right).toBeLessThanOrEqual(260);
+        expect(box.top).toBeGreaterThanOrEqual(0);
+        expect(box.bottom).toBeLessThanOrEqual(653);
+      }
     });
   });
 });
