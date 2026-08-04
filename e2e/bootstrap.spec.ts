@@ -1550,6 +1550,50 @@ test.describe("coarse-pointer surfaces", () => {
     });
   });
 
+  test.describe("extra-large font", () => {
+    test.use({ viewport: { width: 320, height: 568 } });
+
+    test("keeps the briefing on one screen at extra-large text", async ({ page }) => {
+      await installFixedRoundSeed(page, 1, 0);
+      await page.goto("/");
+      await openSettings(page);
+      await saveSettings(page);
+      await openSettings(page);
+      await openSettingsTab(page, "설정");
+      await page.locator('input[name="fontScale"][value="extra-large"]').check();
+      await page.getByRole("button", { name: "설정 저장" }).click();
+      await expect(page.locator("#app")).toHaveAttribute("data-screen", "menu");
+      await page.getByRole("button", { name: "게임 시작" }).click();
+      const briefing = page.getByRole("dialog", {
+        name: "포격으로 무너지는 섬에서 끝까지 살아남아.",
+      });
+      await expect(briefing).toBeVisible();
+      await expect(page.getByRole("button", { name: "알겠다요 ㅇㅅㅇ" })).toBeEnabled();
+      const layout = await page.evaluate(() => {
+        const dialog = document.querySelector("#round-briefing-dialog");
+        const rect = dialog?.getBoundingClientRect();
+        const confirm = document.querySelector("#confirm-round-briefing")?.getBoundingClientRect();
+        return {
+          scrollHeight: dialog?.scrollHeight ?? 0,
+          clientHeight: dialog?.clientHeight ?? 0,
+          top: rect?.top ?? 0,
+          bottom: rect?.bottom ?? 0,
+          confirmTop: confirm?.top ?? 0,
+          confirmBottom: confirm?.bottom ?? 0,
+          innerHeight,
+          rootFont: getComputedStyle(document.documentElement).fontSize,
+        };
+      });
+      expect(layout.rootFont).toBe("22px");
+      expect(layout.scrollHeight).toBeLessThanOrEqual(layout.clientHeight);
+      expect(layout.top).toBeGreaterThanOrEqual(0);
+      expect(layout.bottom).toBeLessThanOrEqual(layout.innerHeight);
+      expect(layout.confirmTop).toBeGreaterThanOrEqual(0);
+      expect(layout.confirmBottom).toBeLessThanOrEqual(layout.innerHeight);
+      await page.getByRole("button", { name: "알겠다요 ㅇㅅㅇ" }).click();
+    });
+  });
+
   test.describe("landscape play HUD", () => {
     test.use({ viewport: { width: 844, height: 390 } });
 

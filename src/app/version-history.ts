@@ -9,6 +9,13 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.199.9",
+    title: "큰 글씨여도 브리핑은 한 화면이다요 ㅇㅅㅇ",
+    reason: "폰트를 크게 설정하면 게임 시작 전 브리핑이 길어져 확인 버튼이 화면 밖으로 밀려났다요.",
+    change:
+      "큰 글씨 설정에서는 브리핑 안의 글자와 여백을 살짝 줄여, 폰트를 키워도 목표·조작법·시작 버튼이 한 화면에 들어오게 했다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.199.8",
     title: "태블릿 설정도 두 줄로 본다요 ㅇㅅㅇ",
     reason:
