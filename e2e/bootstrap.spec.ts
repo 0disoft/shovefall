@@ -1357,6 +1357,27 @@ test.describe("coarse-pointer surfaces", () => {
     if (helpBox !== null && actionsBox !== null) {
       expect(helpBox.y + helpBox.height).toBeLessThanOrEqual(actionsBox.y + 4);
     }
+
+    await page.keyboard.press("p");
+    await expect(page.locator("#pause-menu")).toBeVisible();
+    await expect(page.locator("#pause-control-guide")).not.toHaveAttribute("open", "");
+    await expect(page.locator("#pause-control-guide .control-guide")).toBeHidden();
+    await expect(page.locator(".round-statistics .round-statistics__grid")).toHaveCSS(
+      "grid-template-columns",
+      /^\d+(?:\.\d+)?px \d+(?:\.\d+)?px$/u,
+    );
+    await expect(page.locator("#game-telemetry")).toHaveCSS(
+      "grid-template-columns",
+      /^\d+(?:\.\d+)?px \d+(?:\.\d+)?px$/u,
+    );
+    const pausePanelBox = await page.locator(".pause-menu__panel").boundingBox();
+    const resumeBox = await page.getByRole("button", { name: "계속", exact: true }).boundingBox();
+    expect(pausePanelBox).not.toBeNull();
+    expect(resumeBox).not.toBeNull();
+    if (pausePanelBox !== null && resumeBox !== null) {
+      expect(resumeBox.y).toBeGreaterThanOrEqual(pausePanelBox.y - 4);
+      expect(resumeBox.y + resumeBox.height).toBeLessThanOrEqual(844);
+    }
   });
 });
 

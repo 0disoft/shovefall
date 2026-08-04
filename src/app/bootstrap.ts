@@ -2033,6 +2033,14 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   compactBuildSummaryQuery.addEventListener("change", syncBuildSummaryCompactness);
   syncBuildSummaryCompactness();
 
+  const pauseControlGuide = requireElement(root, "#pause-control-guide", HTMLDetailsElement);
+  const coarsePointerQuery = window.matchMedia("(pointer: coarse)");
+  const syncPauseGuideCompactness = (): void => {
+    pauseControlGuide.open = !coarsePointerQuery.matches;
+  };
+  coarsePointerQuery.addEventListener("change", syncPauseGuideCompactness);
+  syncPauseGuideCompactness();
+
   form.addEventListener("change", (event) => {
     const target = event.target;
 

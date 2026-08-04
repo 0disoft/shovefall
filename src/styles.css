@@ -620,6 +620,10 @@ button:disabled {
   margin-top: 10px;
 }
 
+.starting-build-summary__details:not([open]) > .starting-build-summary {
+  display: none;
+}
+
 .starting-build-summary > div {
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr);
@@ -2247,7 +2251,8 @@ button:disabled {
 
 .pause-menu[data-mode="completed"] .game-telemetry,
 .pause-menu[data-mode="completed"] .developer-telemetry,
-.pause-menu[data-mode="completed"] .control-guide {
+.pause-menu[data-mode="completed"] .control-guide,
+.pause-menu[data-mode="completed"] .pause-control-guide {
   display: none;
 }
 
@@ -2369,6 +2374,53 @@ button:disabled {
   margin: 0;
   border: 0;
   background: transparent;
+}
+
+.pause-control-guide {
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-strong);
+}
+
+.pause-control-guide summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 14px;
+  color: var(--ink-strong);
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 850;
+  list-style: none;
+}
+
+.pause-control-guide summary::-webkit-details-marker {
+  display: none;
+}
+
+.pause-control-guide summary::after {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  content: "";
+  border-right: 2px solid var(--text-muted);
+  border-bottom: 2px solid var(--text-muted);
+  transform: rotate(45deg);
+  transition: transform 140ms ease;
+}
+
+.pause-control-guide[open] summary::after {
+  transform: rotate(-135deg);
+}
+
+.pause-control-guide > .control-guide {
+  padding: 0 14px 14px;
+}
+
+.pause-control-guide:not([open]) > .control-guide {
+  display: none;
 }
 
 .round-statistics {
@@ -2794,6 +2846,57 @@ button:disabled {
   .targeting-help {
     top: auto;
     bottom: max(186px, calc(env(safe-area-inset-bottom) + 176px));
+  }
+
+  .pause-menu__panel {
+    gap: 12px;
+    padding: 14px;
+  }
+
+  .arena-actions {
+    gap: 8px;
+    padding-top: 0;
+  }
+
+  .arena-actions__buttons {
+    gap: 6px;
+  }
+
+  .game-telemetry {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .game-telemetry div {
+    padding: 7px 9px;
+  }
+
+  .round-statistics {
+    gap: 6px;
+  }
+
+  .round-statistics__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .round-statistics__grid div {
+    padding: 8px 10px;
+  }
+
+  .round-statistics__grid dt {
+    font-size: 0.72rem;
+  }
+
+  .round-statistics__grid dd {
+    font-size: 0.92rem;
+  }
+
+  .round-statistics__skills ul {
+    gap: 6px;
+  }
+
+  .round-statistics__skills li {
+    padding: 8px 10px;
   }
 }
 
