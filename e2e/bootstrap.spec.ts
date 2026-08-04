@@ -1971,6 +1971,51 @@ test("fits the completed-round panel on a desktop viewport without scrolling", a
   expect(layout.bodyOverflow).toBe(false);
 });
 
+test("fits the paused panel on a desktop viewport without scrolling", async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate(() => {
+    const app = document.querySelector("#app");
+    const pause = document.querySelector("#pause-menu");
+    for (const candidate of [
+      pause?.closest("section"),
+      pause?.closest("main"),
+      document.querySelector("#arena-host"),
+    ]) {
+      if (candidate) candidate.removeAttribute("hidden");
+    }
+    pause?.removeAttribute("hidden");
+    pause?.setAttribute("data-mode", "paused");
+    app?.setAttribute("data-screen", "arena");
+    app?.setAttribute("data-pause-menu", "open");
+    app?.setAttribute("data-round", "active");
+    document.querySelector("#arena-actions")?.removeAttribute("hidden");
+    document.querySelector("#game-telemetry")?.removeAttribute("hidden");
+    const message = document.querySelector("#round-message");
+    if (message) message.textContent = "잠시 멈췄어.";
+    document.body.classList.add("game-screen-active");
+  });
+  await expect(page.locator("#pause-menu")).toHaveAttribute("data-mode", "paused");
+  await expect(page.locator("#pause-control-guide")).not.toHaveAttribute("open", "");
+  const layout = await page.evaluate(() => {
+    const panel = document.querySelector(".pause-menu__panel");
+    return {
+      scrollHeight: panel?.scrollHeight ?? 0,
+      clientHeight: panel?.clientHeight ?? 0,
+      buttonColumns: getComputedStyle(
+        document.querySelector(".arena-actions__buttons") ?? document.body,
+      ).gridTemplateColumns.split(" ").length,
+      statsColumns: getComputedStyle(
+        document.querySelector(".round-statistics__grid") ?? document.body,
+      ).gridTemplateColumns.split(" ").length,
+      bodyOverflow: document.body.scrollWidth > document.documentElement.clientWidth,
+    };
+  });
+  expect(layout.scrollHeight).toBeLessThanOrEqual(layout.clientHeight);
+  expect(layout.buttonColumns).toBe(3);
+  expect(layout.statsColumns).toBe(4);
+  expect(layout.bodyOverflow).toBe(false);
+});
+
 test("persists four-step text size and sound-effect volume settings", async ({ page }) => {
   await page.goto("/");
   await openSettings(page);

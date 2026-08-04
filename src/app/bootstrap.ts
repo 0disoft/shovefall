@@ -2049,7 +2049,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   const pauseControlGuide = requireElement(root, "#pause-control-guide", HTMLDetailsElement);
   const coarsePointerQuery = window.matchMedia("(pointer: coarse)");
   const syncPauseGuideCompactness = (): void => {
-    pauseControlGuide.open = !coarsePointerQuery.matches;
+    pauseControlGuide.open = false;
   };
   coarsePointerQuery.addEventListener("change", syncPauseGuideCompactness);
   syncPauseGuideCompactness();

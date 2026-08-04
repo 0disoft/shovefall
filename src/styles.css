@@ -3431,29 +3431,64 @@ button:disabled {
 }
 
 @media (pointer: fine) {
-  .pause-menu[data-mode="completed"] .arena-actions__buttons {
+  .pause-menu__panel {
+    gap: 10px;
+    padding: 18px 28px;
+  }
+
+  .pause-menu[data-mode="completed"] .arena-actions__buttons,
+  .pause-menu[data-mode="paused"] .arena-actions__buttons {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .pause-menu[data-mode="completed"] .round-statistics {
+  .pause-menu[data-mode="completed"] .round-statistics,
+  .pause-menu[data-mode="paused"] .round-statistics {
     gap: 7px;
   }
 
-  .pause-menu[data-mode="completed"] .round-statistics__grid {
-    gap: 6px;
+  .pause-menu[data-mode="completed"] .round-statistics__grid,
+  .pause-menu[data-mode="paused"] .round-statistics__grid {
+    gap: 5px;
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
-  .pause-menu[data-mode="completed"] .round-statistics__grid div {
-    padding: 7px 10px;
+  .pause-menu[data-mode="completed"] .round-statistics__grid div,
+  .pause-menu[data-mode="paused"] .round-statistics__grid div {
+    padding: 3px 9px;
   }
 
-  .pause-menu[data-mode="completed"] .round-statistics__skills ul {
-    gap: 6px;
+  .pause-menu[data-mode="completed"] .round-statistics__skills ul,
+  .pause-menu[data-mode="paused"] .round-statistics__skills ul {
+    gap: 5px;
   }
 
-  .pause-menu[data-mode="completed"] .round-statistics__skills li {
-    padding: 7px 9px;
+  .pause-menu[data-mode="completed"] .round-statistics__skills li,
+  .pause-menu[data-mode="paused"] .round-statistics__skills li {
+    padding: 4px 9px;
+  }
+
+  .pause-menu[data-mode="paused"] .game-telemetry div {
+    padding: 5px 8px;
+  }
+
+  :root[data-font-scale="extra-large"] .pause-menu .round-statistics__grid dt {
+    font-size: 0.68rem;
+  }
+
+  :root[data-font-scale="extra-large"] .pause-menu .round-statistics__grid dd {
+    font-size: 0.9rem;
+  }
+
+  :root[data-font-scale="extra-large"] .pause-menu .round-statistics__skills ul {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  :root[data-font-scale="extra-large"] .pause-menu .round-statistics__grid {
+    gap: 4px;
+  }
+
+  :root[data-font-scale="extra-large"] .pause-menu__panel {
+    padding: 17px 28px;
   }
 }
 
