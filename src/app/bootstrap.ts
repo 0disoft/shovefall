@@ -2054,11 +2054,16 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   coarsePointerQuery.addEventListener("change", syncPauseGuideCompactness);
   syncPauseGuideCompactness();
 
+  const touchSurfaceQuery = window.matchMedia("(pointer: coarse), (max-width: 820px)");
   const syncStatStatusExpanded = (expanded: boolean): void => {
     statStatusWrap.dataset.expanded = expanded ? "true" : "false";
     statStatusToggle.setAttribute("aria-expanded", String(expanded));
   };
-  syncStatStatusExpanded(!coarsePointerQuery.matches);
+  const syncStatStatusCompactness = (): void => {
+    syncStatStatusExpanded(!touchSurfaceQuery.matches);
+  };
+  touchSurfaceQuery.addEventListener("change", syncStatStatusCompactness);
+  syncStatStatusCompactness();
   statStatusToggle.addEventListener("click", () => {
     syncStatStatusExpanded(statStatusWrap.dataset.expanded !== "true");
   });

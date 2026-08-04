@@ -2016,6 +2016,50 @@ test("fits the paused panel on a desktop viewport without scrolling", async ({ p
   expect(layout.bodyOverflow).toBe(false);
 });
 
+test("keeps narrow fine-pointer arena controls clear of the pause trigger", async ({ page }) => {
+  test.setTimeout(60_000);
+  await page.setViewportSize({ width: 320, height: 568 });
+  await installFixedRoundSeed(page, 1, 0);
+  await page.goto("/");
+  await openSettings(page);
+  await saveSettings(page);
+  await startGame(page);
+  await expect(page.locator("#app")).toHaveAttribute("data-round", "active");
+
+  await expect(page.locator("#pointer-joystick")).toBeVisible();
+  await expect(page.locator(".touch-actions")).toBeVisible();
+  await expect(page.locator("#toggle-stat-status")).toBeVisible();
+  await expect(page.locator("#pause-round")).toBeVisible();
+
+  const joystickBox = await page.locator("#pointer-joystick").boundingBox();
+  const actionsBox = await page.locator(".touch-actions").boundingBox();
+  const pauseBox = await page.locator("#pause-round").boundingBox();
+  expect(joystickBox).not.toBeNull();
+  expect(actionsBox).not.toBeNull();
+  expect(pauseBox).not.toBeNull();
+
+  if (pauseBox !== null) {
+    expect(pauseBox.y).toBeLessThanOrEqual(120);
+    expect(pauseBox.x).toBeGreaterThanOrEqual(320 - pauseBox.width - 120);
+  }
+  if (joystickBox !== null && pauseBox !== null) {
+    expect(pauseBox.y + pauseBox.height).toBeLessThanOrEqual(joystickBox.y);
+  }
+  if (actionsBox !== null && pauseBox !== null) {
+    expect(pauseBox.y + pauseBox.height).toBeLessThanOrEqual(actionsBox.y);
+  }
+
+  await expect(page.locator("#stat-status-wrap")).toHaveAttribute("data-expanded", "false");
+  await expect(page.locator("#stat-status")).toBeHidden();
+  await page.locator("#toggle-stat-status").click();
+  await expect(page.locator("#stat-status")).toBeVisible();
+  const readoutBox = await page.locator("#stat-status").boundingBox();
+  expect(readoutBox).not.toBeNull();
+  if (readoutBox !== null && joystickBox !== null) {
+    expect(readoutBox.y + readoutBox.height).toBeLessThanOrEqual(joystickBox.y + 4);
+  }
+});
+
 test("persists four-step text size and sound-effect volume settings", async ({ page }) => {
   await page.goto("/");
   await openSettings(page);
