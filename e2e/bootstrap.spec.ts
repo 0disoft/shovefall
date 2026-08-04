@@ -2414,6 +2414,49 @@ test("keeps narrow fine-pointer arena controls clear of the pause trigger", asyn
   }
 });
 
+test("keeps the desktop stat readout clear of the renderer status and action HUD", async ({
+  page,
+}) => {
+  test.setTimeout(60_000);
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await installFixedRoundSeed(page, 1, 0);
+  await page.goto("/");
+  await openSettings(page);
+  await saveSettings(page);
+  await startGame(page);
+  await expect(page.locator("#app")).toHaveAttribute("data-round", "active");
+
+  await expect(page.locator("#toggle-stat-status")).toBeHidden();
+  await expect(page.locator("#stat-status")).toBeVisible();
+  await expect(page.locator("#renderer-status")).toBeVisible();
+  await expect(page.locator(".action-hud")).toBeVisible();
+
+  const boxes = await page.evaluate(() => {
+    const found: Record<string, DomBox | null> = {};
+    for (const selector of ["#stat-status", "#renderer-status", ".action-hud", "#skill-actions"]) {
+      const r = document.querySelector(selector)?.getBoundingClientRect();
+      found[selector] =
+        r === undefined ? null : { top: r.top, bottom: r.bottom, left: r.left, right: r.right };
+    }
+    return {
+      status: found["#stat-status"] ?? null,
+      renderer: found["#renderer-status"] ?? null,
+      hud: found[".action-hud"] ?? null,
+      skill: found["#skill-actions"] ?? null,
+      scrollWidth: document.documentElement.scrollWidth,
+      clientWidth: document.documentElement.clientWidth,
+    };
+  });
+  expect(boxesOverlap(boxes.status, boxes.renderer)).toBe(false);
+  expect(boxesOverlap(boxes.status, boxes.hud)).toBe(false);
+  expect(boxesOverlap(boxes.status, boxes.skill)).toBe(false);
+  expect(boxes.scrollWidth).toBeLessThanOrEqual(boxes.clientWidth);
+  await expect(page.locator("#stat-status")).toHaveCSS(
+    "grid-template-columns",
+    /^\d+(?:\.\d+)?px \d+(?:\.\d+)?px$/u,
+  );
+});
+
 test("persists four-step text size and sound-effect volume settings", async ({ page }) => {
   await page.goto("/");
   await openSettings(page);
