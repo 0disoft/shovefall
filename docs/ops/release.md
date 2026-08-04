@@ -1,8 +1,10 @@
 # Static Release Procedure
 
-- Status: `0.199.3` mobile UX candidate; hosted proof pending
+- Status: `0.199.4` mobile UX candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.199.3`
+- Current product version: `0.199.4`
+
+Product `0.199.4`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. The settings screen on coarse-pointer and narrow viewports pins the save/cancel actions to the bottom edge as a translucent sticky bar so `설정 저장` stays reachable while the form scrolls, short viewports under 560 px compact the masthead and heading, and single-column attribute cards on 480 px or narrower screens tighten height and padding. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
 Product `0.199.3`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. The pre-round briefing dialog caps itself to the viewport, scrolls internally when needed, and on coarse-pointer devices compresses to a two-column control grid in portrait and a single four-column row in landscape, so the objective, controls, and confirmation reach one screen on 390×844 and 844×390 viewports. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 

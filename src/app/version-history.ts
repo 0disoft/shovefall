@@ -9,6 +9,14 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.199.4",
+    title: "설정 버튼이 손 안에 붙는다요 ㅇㅅㅇ",
+    reason:
+      "폰에서는 설정 화면이 길어 저장 버튼까지 스크롤을 계속 내려야 하고, 가로로 눕히면 위쪽 제목이 커서 내용이 더 좁았다요.",
+    change:
+      "폰 설정 화면에서는 저장·취소 버튼이 아래에 붙어 따라다니고, 가로처럼 짧은 화면에서는 제목과 여백을 줄여 내용 공간을 넓혔다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.199.3",
     title: "브리핑도 폰에 맞게 펼쳐진다요 ㅇㅅㅇ",
     reason:

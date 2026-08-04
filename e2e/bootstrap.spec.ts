@@ -1412,6 +1412,46 @@ test.describe("coarse-pointer surfaces", () => {
     await page.getByRole("button", { name: "알겠다요 ㅇㅅㅇ" }).click();
   });
 
+  test("keeps the settings save action on screen while the form scrolls", async ({ page }) => {
+    await installFixedRoundSeed(page, 1, 0);
+    await page.goto("/");
+    await openSettings(page);
+    const save = page.getByRole("button", { name: "설정 저장" });
+    await expect(page.locator(".settings-actions")).toHaveCSS("position", "sticky");
+
+    const initial = await page.evaluate(() => {
+      const rect = document.querySelector(".settings-actions")?.getBoundingClientRect();
+      return {
+        top: rect?.top ?? 0,
+        bottom: rect?.bottom ?? 0,
+        innerHeight,
+      };
+    });
+    expect(initial.top).toBeGreaterThanOrEqual(0);
+    expect(initial.bottom).toBeLessThanOrEqual(initial.innerHeight);
+
+    await page.evaluate(() => {
+      document.querySelector(".starting-attributes__grid")?.scrollIntoView({
+        block: "start",
+      });
+    });
+    const midForm = await page.evaluate(() => {
+      const rect = document.querySelector(".settings-actions")?.getBoundingClientRect();
+      return {
+        top: rect?.top ?? 0,
+        bottom: rect?.bottom ?? 0,
+        innerHeight,
+      };
+    });
+    expect(midForm.top).toBeGreaterThanOrEqual(0);
+    expect(midForm.bottom).toBeLessThanOrEqual(midForm.innerHeight);
+
+    await page.getByRole("tab", { name: "스킬", exact: true }).click();
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    await expect(save).toBeInViewport();
+    await page.getByRole("button", { name: "취소" }).click();
+  });
+
   test.describe("landscape pause", () => {
     test.use({ viewport: { width: 844, height: 390 } });
 

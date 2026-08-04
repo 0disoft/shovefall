@@ -248,6 +248,24 @@ button:disabled {
   }
 }
 
+@media (max-height: 560px) {
+  .app-shell:not([data-screen="menu"]) {
+    padding-block: 12px;
+  }
+
+  .app-shell:not([data-screen="menu"]) .masthead {
+    margin-bottom: 10px;
+  }
+
+  .app-shell:not([data-screen="menu"]) .masthead h1 {
+    font-size: 1.35rem;
+  }
+
+  .app-shell:not([data-screen="menu"]) .section-heading {
+    margin-bottom: 14px;
+  }
+}
+
 .main-menu__actions .primary-action,
 .main-menu__actions .secondary-action {
   justify-content: center;
@@ -2753,6 +2771,22 @@ button:disabled {
     bottom: 118px;
     max-width: calc(100% - 28px);
   }
+
+  .settings-form {
+    gap: 20px;
+  }
+
+  .settings-actions {
+    position: sticky;
+    bottom: max(10px, env(safe-area-inset-bottom));
+    z-index: 6;
+    padding: 10px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--surface-strong) 92%, transparent);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 -10px 28px rgb(0 0 0 / 28%);
+  }
 }
 
 @media (max-width: 480px) {
@@ -2816,6 +2850,12 @@ button:disabled {
   .touch-actions button {
     width: 68px;
     height: 68px;
+  }
+
+  .starting-attribute {
+    min-height: 74px;
+    padding: 10px 12px;
+    gap: 8px 12px;
   }
 
   .developer-telemetry dl {
