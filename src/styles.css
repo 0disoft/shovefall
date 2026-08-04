@@ -3351,6 +3351,22 @@ button:disabled {
   }
 }
 
+@media (pointer: coarse) and (max-width: 560px) {
+  .pause-menu[data-mode="completed"] .arena-actions {
+    gap: 6px;
+    padding: 10px;
+  }
+
+  .pause-menu[data-mode="completed"] .ready-message {
+    font-size: 1rem;
+  }
+
+  .pause-menu[data-mode="completed"] .arena-actions__buttons .primary-action,
+  .pause-menu[data-mode="completed"] .arena-actions__buttons .secondary-action {
+    min-height: 48px;
+  }
+}
+
 @media (pointer: coarse) and (orientation: landscape) {
   .stat-status-wrap {
     top: max(44px, calc(env(safe-area-inset-top) + 32px));
