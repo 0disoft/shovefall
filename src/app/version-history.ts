@@ -9,6 +9,13 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.199.12",
+    title: "특성도 5씩 빠르게 담는다요 ㅇㅅㅇ",
+    reason: "폰에서 기초 특성 20포인트를 + 버튼 하나씩 눌러 채우려면 손가락이 바빴다요.",
+    change:
+      "폰 특성 카드에 5씩 올리고 내리는 버튼을 추가하고 카드를 세로로 배치해, 20포인트를 빠르게 채울 수 있게 했다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.199.11",
     title: "전투 수치는 필요할 때만 펼친다요 ㅇㅅㅇ",
     reason: "폰에서는 게임 중 전투 수치 창이 화면 윗부분을 크게 덮어 조작 화면이 가려졌다요.",

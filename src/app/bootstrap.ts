@@ -598,6 +598,8 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
           output: requireElement(row, `#starting-attribute-${id}`, HTMLOutputElement),
           decrement: requireElement(row, '[data-attribute-step="-1"]', HTMLButtonElement),
           increment: requireElement(row, '[data-attribute-step="1"]', HTMLButtonElement),
+          decrementFive: requireElement(row, '[data-attribute-step="-5"]', HTMLButtonElement),
+          incrementFive: requireElement(row, '[data-attribute-step="5"]', HTMLButtonElement),
           meter: requireElement(row, ".starting-attribute__meter > span", HTMLElement),
         }),
       ] as const;
@@ -1263,6 +1265,8 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
       controls.output.value = String(value);
       controls.decrement.disabled = value <= STARTING_ATTRIBUTE_LIMITS.minimum;
       controls.increment.disabled = value >= STARTING_ATTRIBUTE_LIMITS.maximum || remaining <= 0;
+      controls.decrementFive.disabled = value < 5;
+      controls.incrementFive.disabled = value >= STARTING_ATTRIBUTE_LIMITS.maximum || remaining < 5;
       controls.meter.style.setProperty(
         "--meter-value",
         String(value / STARTING_ATTRIBUTE_POINT_TOTAL),
@@ -1998,19 +2002,18 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   };
 
   for (const id of STARTING_ATTRIBUTE_IDS) {
-    const dec = getStartingAttributeControls(id).decrement;
-    const inc = getStartingAttributeControls(id).increment;
-    const bindStartingAttributeHold = (button: HTMLButtonElement, direction: -1 | 1): void => {
+    const { row } = getStartingAttributeControls(id);
+    const bindStartingAttributeHold = (button: HTMLButtonElement, step: number): void => {
       button.addEventListener("pointerdown", (event) => {
         if (event.button !== 0) {
           return;
         }
         stopStartingAttributeRepeat(button);
-        const step = event.ctrlKey || event.metaKey ? 5 * direction : direction;
-        changeStartingAttribute(id, step);
+        const effectiveStep = event.ctrlKey || event.metaKey ? 5 * Math.sign(step) : step;
+        changeStartingAttribute(id, effectiveStep);
         const delay = window.setTimeout(() => {
           const repeat = window.setInterval(() => {
-            changeStartingAttribute(id, step);
+            changeStartingAttribute(id, effectiveStep);
           }, STARTING_ATTRIBUTE_HOLD_REPEAT_MS);
           startingAttributeTimers.set(button, { delay: 0, repeat });
         }, STARTING_ATTRIBUTE_HOLD_DELAY_MS);
@@ -2023,11 +2026,15 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
         if (event.detail > 0) {
           return;
         }
-        changeStartingAttribute(id, event.ctrlKey || event.metaKey ? 5 * direction : direction);
+        changeStartingAttribute(id, event.ctrlKey || event.metaKey ? 5 * Math.sign(step) : step);
       });
     };
-    bindStartingAttributeHold(dec, -1);
-    bindStartingAttributeHold(inc, 1);
+    for (const button of row.querySelectorAll<HTMLButtonElement>("[data-attribute-step]")) {
+      const step = Number(button.dataset.attributeStep);
+      if (Number.isFinite(step) && step !== 0) {
+        bindStartingAttributeHold(button, step);
+      }
+    }
   }
 
   const compactBuildSummaryQuery = window.matchMedia("(pointer: coarse), (max-width: 560px)");

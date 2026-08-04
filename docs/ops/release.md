@@ -1,8 +1,10 @@
 # Static Release Procedure
 
-- Status: `0.199.11` mobile UX candidate; hosted proof pending
+- Status: `0.199.12` mobile UX candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.199.11`
+- Current product version: `0.199.12`
+
+Product `0.199.12`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. On coarse-pointer screens each starting-attribute card stacks vertically and gains `−5`/`+5` quick buttons beside the existing single-step steppers, so the 20-point budget fills in a few taps instead of twenty single clicks; the buttons disable at the point limits and keep hold-to-repeat. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
 Product `0.199.11`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. On coarse-pointer screens the in-round combat readout collapses to a one-line `체력 … · 마나 …` summary that expands to the full four-column grid when tapped, so phones no longer lose the upper arena to a 160-210 px stat strip; the expanded grid keeps the same values and still clears the touch controls. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 

@@ -1310,7 +1310,7 @@ test.describe("coarse-pointer surfaces", () => {
     await page.getByRole("button", { name: "설정하러 가기" }).click();
     await expect(page.locator("#app")).toHaveAttribute("data-screen", "settings");
     await expect(page.locator("#starting-build-summary")).not.toHaveAttribute("open", "");
-    await expect(page.getByText("길게 누르면 계속 올라가")).toBeVisible();
+    await expect(page.getByText("길게 누르면 계속 · 5씩 버튼도 있어")).toBeVisible();
     await expect(page.getByText("Ctrl+클릭은 5씩")).toBeHidden();
     const stepperBox = await page.getByRole("button", { name: "완력 1 올리기" }).boundingBox();
     expect(stepperBox).not.toBeNull();

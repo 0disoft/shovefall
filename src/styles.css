@@ -854,6 +854,11 @@ button:disabled {
   touch-action: manipulation;
 }
 
+.starting-attribute__stepper button[data-attribute-step="-5"],
+.starting-attribute__stepper button[data-attribute-step="5"] {
+  display: none;
+}
+
 .starting-attribute__stepper button:disabled {
   cursor: not-allowed;
   opacity: 0.35;
@@ -2992,7 +2997,17 @@ button:disabled {
   .starting-attribute {
     min-height: 74px;
     padding: 10px 12px;
-    gap: 8px 12px;
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "copy"
+      "meter"
+      "stepper";
+    grid-template-rows: auto 7px auto;
+    gap: 8px;
+  }
+
+  .starting-attribute__stepper {
+    justify-content: start;
   }
 
   .scoreboard__list article,
@@ -3064,6 +3079,21 @@ button:disabled {
 
   .player-control input[type="range"] {
     height: 30px;
+  }
+
+  .starting-attribute__stepper {
+    grid-template-columns: 40px 40px 34px 40px 40px;
+  }
+
+  .starting-attribute__stepper button[data-attribute-step="-5"],
+  .starting-attribute__stepper button[data-attribute-step="5"] {
+    display: block;
+  }
+
+  .starting-attribute__stepper button {
+    width: 40px;
+    height: 44px;
+    font-size: 1.05rem;
   }
 
   .targeting-help {
