@@ -1,8 +1,10 @@
 # Static Release Procedure
 
-- Status: `0.199.31` desktop allocation UX candidate; hosted proof pending
+- Status: `0.199.32` version-history UX candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.199.31`
+- Current product version: `0.199.32`
+
+Product `0.199.32`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. The version-history screen now renders only the newest 30 entries with collapsed older entries compressed to compact rows and an `이전 버전 더 보기` button that reveals the remaining history on demand, shortening the initial phone document from about 19,500 px to about 2,300 px; a new smoke journey asserts the 30-entry opening, on-demand reveal, and no viewport overflow. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
 Product `0.199.31`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. On desktop fine-pointer screens, the five-point attribute stepper buttons are now always visible and the six trait cards widen from three columns to a two-column three-row grid, so the full steppers fit inside their cards without clipping; a new smoke journey asserts the 5-step buttons stay visible and the two-column trait cards never clip their steppers. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
