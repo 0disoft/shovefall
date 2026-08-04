@@ -9,6 +9,14 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.199.23",
+    title: "전투 수치 버튼이 일시정지와 안 붙는다요 ㅇㅅㅇ",
+    reason:
+      "작은 폰에서 전투 수치 요약이 길어지면 오른쪽 위 일시정지 버튼과 겹쳐, 눌러야 할 버튼이 서로를 가렸다요.",
+    change:
+      "작은 폰에서 전투 수치 버튼 폭을 일시정지 버튼을 피할 만큼 제한해 요약이 줄임표로 줄어들고, 320px 폰에서 두 버튼이 나란히 붙지 않게 했다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.199.22",
     title: "큰 글씨에서도 전투 수치가 한 줄로 보인다요 ㅇㅅㅇ",
     reason:
