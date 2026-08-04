@@ -1452,6 +1452,33 @@ test.describe("coarse-pointer surfaces", () => {
     await page.getByRole("button", { name: "취소" }).click();
   });
 
+  test.describe("landscape menu", () => {
+    test.use({ viewport: { width: 844, height: 390 } });
+
+    test("fits every menu action without vertical scrolling", async ({ page }) => {
+      await installFixedRoundSeed(page, 1, 0);
+      await page.goto("/");
+      await expect(page.locator("#app")).toHaveAttribute("data-screen", "menu");
+      const layout = await page.evaluate(() => {
+        const masthead = document.querySelector(".masthead")?.getBoundingClientRect();
+        const actions = document.querySelector(".main-menu__actions")?.getBoundingClientRect();
+        return {
+          docScrollHeight: document.documentElement.scrollHeight,
+          docClientHeight: document.documentElement.clientHeight,
+          actionsTop: actions?.top ?? 0,
+          actionsBottom: actions?.bottom ?? 0,
+          mastheadBottom: masthead?.bottom ?? 0,
+          innerHeight,
+        };
+      });
+      expect(layout.docScrollHeight).toBeLessThanOrEqual(layout.docClientHeight);
+      expect(layout.actionsBottom).toBeLessThanOrEqual(layout.innerHeight);
+      expect(layout.mastheadBottom).toBeLessThanOrEqual(layout.actionsTop);
+      await expect(page.getByRole("button", { name: "버전 기록" })).toBeInViewport();
+      await expect(page.getByRole("link", { name: "소스 코드" })).toBeInViewport();
+    });
+  });
+
   test.describe("landscape pause", () => {
     test.use({ viewport: { width: 844, height: 390 } });
 

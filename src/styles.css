@@ -264,6 +264,28 @@ button:disabled {
   .app-shell:not([data-screen="menu"]) .section-heading {
     margin-bottom: 14px;
   }
+
+  .app-shell[data-screen="menu"] {
+    padding-block: 12px;
+  }
+
+  .app-shell[data-screen="menu"] .masthead {
+    margin-bottom: 12px;
+  }
+
+  .app-shell[data-screen="menu"] .masthead h1 {
+    font-size: 1.35rem;
+  }
+
+  .app-shell[data-screen="menu"] .main-menu__actions {
+    gap: 8px;
+  }
+
+  .app-shell[data-screen="menu"] .main-menu__actions .primary-action,
+  .app-shell[data-screen="menu"] .main-menu__actions .secondary-action {
+    min-height: 52px;
+    font-size: 1rem;
+  }
 }
 
 .main-menu__actions .primary-action,

@@ -9,6 +9,14 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.199.5",
+    title: "가로 메뉴도 한 화면에 들어온다요 ㅇㅅㅇ",
+    reason:
+      "폰을 가로로 눕히면 메인 메뉴가 화면 아래로 길어져 아래 버튼을 보려면 스크롤을 해야 했다요.",
+    change:
+      "가로처럼 짧은 화면에서는 메뉴 제목과 버튼 크기·간격을 줄여 게임 시작부터 버전 기록까지 한 화면에 들어오게 했다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.199.4",
     title: "설정 버튼이 손 안에 붙는다요 ㅇㅅㅇ",
     reason:

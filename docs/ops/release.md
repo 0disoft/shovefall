@@ -1,8 +1,10 @@
 # Static Release Procedure
 
-- Status: `0.199.4` mobile UX candidate; hosted proof pending
+- Status: `0.199.5` mobile UX candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.199.4`
+- Current product version: `0.199.5`
+
+Product `0.199.5`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. The main menu compacts on viewports under 560 px tall so landscape phones fit every action from `게임 시작` through `소스 코드` on one screen without scrolling. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
 Product `0.199.4`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. The settings screen on coarse-pointer and narrow viewports pins the save/cancel actions to the bottom edge as a translucent sticky bar so `설정 저장` stays reachable while the form scrolls, short viewports under 560 px compact the masthead and heading, and single-column attribute cards on 480 px or narrower screens tighten height and padding. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
