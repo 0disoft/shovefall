@@ -1,8 +1,10 @@
 # Static Release Procedure
 
-- Status: `0.199.32` version-history UX candidate; hosted proof pending
+- Status: `0.199.33` landscape settings UX candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.199.32`
+- Current product version: `0.199.33`
+
+Product `0.199.33`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. On short landscape screens, skill and item cards now widen to one column with two-column effect rows and the save and cancel buttons sit side by side, so scrolling to the bottom of the settings form leaves the last card fully visible and tappable instead of clipped above the fold; a new landscape settings smoke journey asserts the last cards stay inside the viewport without overlapping the save bar. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
 Product `0.199.32`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. The version-history screen now renders only the newest 30 entries with collapsed older entries compressed to compact rows and an `이전 버전 더 보기` button that reveals the remaining history on demand, shortening the initial phone document from about 19,500 px to about 2,300 px; a new smoke journey asserts the 30-entry opening, on-demand reveal, and no viewport overflow. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 

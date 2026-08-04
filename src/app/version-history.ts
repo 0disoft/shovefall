@@ -9,6 +9,14 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.199.33",
+    title: "가로 화면 설정도 끝까지 본다요 ㅇㅅㅇ",
+    reason:
+      "가로로 짧은 화면에서는 스킬·아이템 카드가 두 칸으로 넓어져 키가 커지고, 저장 버튼 줄까지 화면을 차지해 끝까지 스크롤해도 마지막 카드 윗부분이 화면 밖으로 잘렸다요.",
+    change:
+      "가로로 짧은 화면에서는 카드와 효과를 한 칸·두 칸으로 재배치하고 저장·취소 버튼을 나란히 놓아, 끝까지 스크롤하면 마지막 카드도 온전히 보이고 눌리게 했다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.199.32",
     title: "버전 기록은 가볍게 본다요 ㅇㅅㅇ",
     reason:
