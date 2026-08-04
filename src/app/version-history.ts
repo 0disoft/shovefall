@@ -9,6 +9,14 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.199.22",
+    title: "큰 글씨에서도 전투 수치가 한 줄로 보인다요 ㅇㅅㅇ",
+    reason:
+      "글씨를 크게 하면 작은 폰에서 전투 수치 칸마다 라벨과 값이 두 줄로 접혀, 펼쳤을 때 화면을 크게 덮었다요.",
+    change:
+      "큰 글씨를 쓸 때 350px 이하 폰에서는 전투 수치를 두 줄로 배열해 모든 라벨과 값이 한 줄로 보이고, 기본 글씨는 그대로 유지한다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.199.21",
     title: "전투 수치도 한 장으로 줄인다요 ㅇㅅㅇ",
     reason: "작은 폰에서 전투 수치를 펼치면 칸마다 글이 두 줄로 접혀 넓직하게 화면을 덮었다요.",

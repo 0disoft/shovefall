@@ -1,8 +1,10 @@
 # Static Release Procedure
 
-- Status: `0.199.21` mobile UX candidate; hosted proof pending
+- Status: `0.199.22` mobile UX candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.199.21`
+- Current product version: `0.199.22`
+
+Product `0.199.22`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. With large or extra-large text, the expanded combat stat panel on phones 350 px and narrower now lays its eight cells in two columns instead of four, so labels like 피해·보호막 and values like `100 / 100` fit on one line without shrinking the user's chosen text size; the panel grows only in height and stays clear of the joystick. Standard text keeps the previous compact four-column layout. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
 Product `0.199.21`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. The expanded in-round combat stat panel on phones now uses tighter cell padding, type, and gaps, so every label and value fits on one line even at 320 px wide, trimming the panel from about 124 px to 82 px tall with the toggle button unchanged. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
