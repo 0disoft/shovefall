@@ -1,8 +1,10 @@
 # Static Release Procedure
 
-- Status: `0.199.27` mobile UX candidate; hosted proof pending
+- Status: `0.199.28` mobile UX candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.199.27`
+- Current product version: `0.199.28`
+
+Product `0.199.28`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. On desktop fine-pointer screens, the completed-round action buttons now lay in three columns and the round statistics in four columns with tighter cells, shrinking the panel so the whole completed summary fits without scrolling at standard and extra-large text; a new smoke journey asserts the three-column buttons and two button rows fit the panel without internal scroll. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
 Product `0.199.27`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. The coarse-pointer stat toggle on phones 420 px and narrower now caps its width using the pause button's real footprint and right margin, so the two controls keep at least an 8 px gap instead of touching; a new 390×844 smoke journey boots a real round and asserts the toggle stays clear of the pause trigger, and the existing 320×568 journey tightens its overlap tolerance to require a real gap. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 

@@ -9,6 +9,14 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.199.28",
+    title: "데스크톱 라운드 종료 화면도 한 장으로 본다요 ㅇㅅㅇ",
+    reason:
+      "데스크톱에서 라운드가 끝나면 동작 버튼 두 줄과 통계가 길게 이어져, 스킬 사용 기록까지 보려면 패널을 스크롤해야 했다요.",
+    change:
+      "데스크톱에서 라운드 종료 동작 버튼을 세 칸으로 놓고 통계를 네 칸으로 넓혀, 표준 글씨와 아주 큰 글씨 모두 스크롤 없이 한 장에 담았다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.199.27",
     title: "전투 수치 버튼이 일시정지와 안 붙는다요 ㅇㅅㅇ",
     reason:
