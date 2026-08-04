@@ -506,6 +506,17 @@ async function restartIfEliminated(page: Page): Promise<void> {
 }
 
 async function dragJoystickToMoveCamera(page: Page, joystick: Locator): Promise<void> {
+  if (await dragJoystickOnce(page, joystick)) {
+    return;
+  }
+  if (await dragJoystickOnce(page, joystick)) {
+    return;
+  }
+  throw new Error("touch joystick did not move the camera after restarting the round");
+}
+
+async function dragJoystickOnce(page: Page, joystick: Locator): Promise<boolean> {
+  await restartIfEliminated(page);
   const joystickBounds = await joystick.boundingBox();
   if (joystickBounds === null) {
     throw new Error("touch joystick is missing a bounding box");
@@ -520,8 +531,18 @@ async function dragJoystickToMoveCamera(page: Page, joystick: Locator): Promise<
   await page.waitForTimeout(120);
   await expect(joystick).toHaveAttribute("data-active", "true");
   await page.mouse.up();
-  await expect.poll(() => readCameraPosition(page), { timeout: 5_000 }).not.toBe(positionBefore);
   await expect(joystick).not.toHaveAttribute("data-active", "true");
+  try {
+    await expect.poll(() => readCameraPosition(page), { timeout: 5_000 }).not.toBe(positionBefore);
+    return true;
+  } catch (error) {
+    const eliminated =
+      (await page.locator("#app").getAttribute("data-human-eliminated")) === "true";
+    if (!eliminated) {
+      throw error;
+    }
+    return false;
+  }
 }
 
 async function panSpectatorCameraWithArrows(
@@ -1229,7 +1250,7 @@ test("@extended fires the built-in grapple in a fresh round", async ({ page }) =
 test("offers a working touch joystick and action buttons on a narrow viewport", async ({
   page,
 }) => {
-  test.setTimeout(60_000);
+  test.setTimeout(90_000);
   await page.setViewportSize({ width: 390, height: 844 });
   await installFixedRoundSeed(page, 1, 0);
   await page.goto("/");
@@ -1323,6 +1344,7 @@ test.describe("coarse-pointer surfaces", () => {
   test("collapses the build summary and keeps the arena readout clear of touch controls", async ({
     page,
   }) => {
+    test.setTimeout(60_000);
     await installFixedRoundSeed(page, 1, 0);
     await page.goto("/");
     await page.getByRole("button", { name: "게임 시작" }).click();
