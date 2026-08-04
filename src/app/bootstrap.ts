@@ -562,6 +562,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   );
   const versionHistoryTitle = requireElement(root, "#version-history-title", HTMLElement);
   const versionHistoryList = requireElement(root, "#version-history-list", HTMLOListElement);
+  const versionHistoryOlderButton = requireElement(root, "#show-older-versions", HTMLButtonElement);
   const currentVersion = requireElement(root, "#current-version", HTMLOutputElement);
   const cancelSettingsButton = requireElement(root, "#cancel-settings", HTMLButtonElement);
   const form = requireElement(root, "#game-settings", HTMLFormElement);
@@ -1068,11 +1069,16 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     return entry;
   };
 
-  const renderVersionHistory = (): void => {
-    currentVersion.value = `v${PRODUCT_VERSION}`;
-    const fragment = document.createDocumentFragment();
+  const INITIAL_VERSION_HISTORY_COUNT = 30;
+  let renderedVersionHistoryCount = 0;
 
-    for (const [index, entry] of VERSION_HISTORY.entries()) {
+  const appendVersionHistoryEntries = (startIndex: number, endIndex: number): void => {
+    const fragment = document.createDocumentFragment();
+    for (let index = startIndex; index < endIndex; index += 1) {
+      const entry = VERSION_HISTORY[index];
+      if (entry === undefined) {
+        continue;
+      }
       const item = document.createElement("li");
       const entryElement = document.createElement("details");
       entryElement.className = "version-history__entry";
@@ -1110,8 +1116,27 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
       fragment.append(item);
     }
 
-    versionHistoryList.replaceChildren(fragment);
+    versionHistoryList.append(fragment);
   };
+
+  const syncVersionHistoryOlderButton = (): void => {
+    versionHistoryOlderButton.hidden = renderedVersionHistoryCount >= VERSION_HISTORY.length;
+  };
+
+  const renderVersionHistory = (): void => {
+    currentVersion.value = `v${PRODUCT_VERSION}`;
+    versionHistoryList.replaceChildren();
+    renderedVersionHistoryCount = 0;
+    appendVersionHistoryEntries(0, INITIAL_VERSION_HISTORY_COUNT);
+    renderedVersionHistoryCount = Math.min(INITIAL_VERSION_HISTORY_COUNT, VERSION_HISTORY.length);
+    syncVersionHistoryOlderButton();
+  };
+
+  versionHistoryOlderButton.addEventListener("click", () => {
+    appendVersionHistoryEntries(renderedVersionHistoryCount, VERSION_HISTORY.length);
+    renderedVersionHistoryCount = VERSION_HISTORY.length;
+    syncVersionHistoryOlderButton();
+  });
 
   let audioState: AudioFeedbackState = "locked";
   let backgroundMusicState: BackgroundMusicState = "locked";

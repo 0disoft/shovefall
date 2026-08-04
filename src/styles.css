@@ -955,6 +955,11 @@ button:disabled {
   background: var(--surface-strong);
 }
 
+.version-history__entry:not([open]) {
+  gap: 0;
+  padding: 8px 12px;
+}
+
 .version-history__entry[data-current="true"] {
   border-color: color-mix(in srgb, var(--accent) 72%, var(--line));
   box-shadow: inset 3px 0 0 var(--accent);
@@ -1018,6 +1023,10 @@ button:disabled {
   display: grid;
   gap: 9px;
   margin: 0;
+}
+
+#show-older-versions {
+  justify-self: start;
 }
 
 .version-history__list dl div {

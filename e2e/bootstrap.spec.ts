@@ -31,6 +31,8 @@ interface DomBox {
   readonly right: number;
 }
 
+const INITIAL_VERSION_HISTORY_COUNT = 30;
+
 function boxesOverlap(a: DomBox | null, b: DomBox | null): boolean {
   return (
     a !== null &&
@@ -769,11 +771,17 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await expect(page.locator("#app")).toHaveAttribute("data-screen", "history");
   await expect(page.getByRole("heading", { level: 2, name: "버전 기록" })).toBeFocused();
   await expect(page.locator("#current-version")).toHaveText(`v${PRODUCT_VERSION}`);
-  await expect(page.locator("#version-history-list > li")).toHaveCount(VERSION_HISTORY.length);
-  await expect(page.locator("#version-history-list details")).toHaveCount(VERSION_HISTORY.length);
+  await expect(page.locator("#version-history-list > li")).toHaveCount(
+    Math.min(VERSION_HISTORY.length, INITIAL_VERSION_HISTORY_COUNT),
+  );
+  await expect(page.locator("#version-history-list details")).toHaveCount(
+    Math.min(VERSION_HISTORY.length, INITIAL_VERSION_HISTORY_COUNT),
+  );
   await expect(page.locator("#version-history-list details[open]")).toHaveCount(1);
   const openEntry = page.locator("#version-history-list details[open]");
   await expect(openEntry.getByText("왜 바꿨냐면요")).toHaveCount(1);
+  await page.getByRole("button", { name: "이전 버전 더 보기" }).click();
+  await expect(page.locator("#version-history-list details")).toHaveCount(VERSION_HISTORY.length);
   await page.locator("#version-history-list details").nth(1).locator("summary").click();
   await expect(
     page.locator("#version-history-list details[open]").getByText("왜 바꿨냐면요"),
@@ -1277,7 +1285,9 @@ test("offers a working touch joystick and action buttons on a narrow viewport", 
   expect(mobileHistoryLayout.documentWidth).toBeLessThanOrEqual(mobileHistoryLayout.viewportWidth);
   expect(mobileHistoryLayout.cardWidth).toBeLessThanOrEqual(mobileHistoryLayout.viewportWidth);
   expect(mobileHistoryLayout.currentEntryOpen).toBe(true);
-  expect(mobileHistoryLayout.collapsedEntries).toBe(VERSION_HISTORY.length - 1);
+  expect(mobileHistoryLayout.collapsedEntries).toBe(
+    Math.min(VERSION_HISTORY.length, INITIAL_VERSION_HISTORY_COUNT) - 1,
+  );
   await page.getByRole("button", { name: "메뉴로", exact: true }).click();
   await expect(page.locator("#app")).toHaveAttribute("data-screen", "menu");
   await expect(versionHistoryButton).toBeFocused();
@@ -1383,6 +1393,41 @@ test("offers five-point attribute steps on desktop without clipping the cards", 
     expect(stepper.stepperRight).toBeLessThanOrEqual(stepper.cardRight + 1);
   }
   expect(layout.docOverflowX).toBe(false);
+});
+
+test("keeps the version-history document short and reveals older entries on demand", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "버전 기록", exact: true }).click();
+  await expect(page.locator("#version-history")).toBeVisible();
+
+  const initial = await page.locator("#version-history").evaluate((panel) => {
+    const showMore = panel.querySelector<HTMLButtonElement>("#show-older-versions");
+    return {
+      count: panel.querySelectorAll("#version-history-list details").length,
+      openCount: panel.querySelectorAll("#version-history-list details[open]").length,
+      docHeight: document.documentElement.scrollHeight,
+      showMoreVisible: showMore !== null && !showMore.hidden,
+    };
+  });
+  expect(initial.count).toBe(Math.min(VERSION_HISTORY.length, INITIAL_VERSION_HISTORY_COUNT));
+  expect(initial.openCount).toBe(1);
+  expect(initial.showMoreVisible).toBe(VERSION_HISTORY.length > INITIAL_VERSION_HISTORY_COUNT);
+
+  await page.getByRole("button", { name: "이전 버전 더 보기" }).click();
+  const after = await page.locator("#version-history").evaluate((panel) => {
+    const showMore = panel.querySelector<HTMLButtonElement>("#show-older-versions");
+    return {
+      count: panel.querySelectorAll("#version-history-list details").length,
+      openCount: panel.querySelectorAll("#version-history-list details[open]").length,
+      docHeight: document.documentElement.scrollHeight,
+      showMoreHidden: showMore === null || showMore.hidden,
+    };
+  });
+  expect(after.count).toBe(VERSION_HISTORY.length);
+  expect(after.openCount).toBe(1);
+  expect(after.showMoreHidden).toBe(true);
 });
 
 test.describe("coarse-pointer surfaces", () => {
