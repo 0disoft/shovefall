@@ -942,8 +942,7 @@ button:disabled {
   list-style: none;
 }
 
-.scoreboard__list article,
-.version-history__list article {
+.scoreboard__list article {
   display: grid;
   gap: 13px;
   padding: 18px;
@@ -952,15 +951,65 @@ button:disabled {
   background: var(--surface-strong);
 }
 
-.version-history__list article[data-current="true"] {
+.version-history__entry {
+  display: grid;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: var(--surface-strong);
+}
+
+.version-history__entry[data-current="true"] {
   border-color: color-mix(in srgb, var(--accent) 72%, var(--line));
   box-shadow: inset 3px 0 0 var(--accent);
 }
 
-.version-history__list header {
+.version-history__entry summary {
   display: flex;
   gap: 12px;
   align-items: baseline;
+  cursor: pointer;
+  list-style: none;
+  min-width: 0;
+}
+
+.version-history__entry summary::-webkit-details-marker {
+  display: none;
+}
+
+.version-history__entry summary::before {
+  flex: 0 0 auto;
+  align-self: center;
+  width: 0;
+  height: 0;
+  content: "";
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 6px solid var(--text-muted);
+  transition: transform 140ms ease;
+}
+
+.version-history__entry[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.version-history__entry summary:focus-visible {
+  border-radius: 6px;
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.version-history__entry summary h3 {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.version-history__entry summary .version-history__version {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .version-history__list h3 {
@@ -3128,10 +3177,14 @@ button:disabled {
     justify-content: start;
   }
 
-  .scoreboard__list article,
-  .version-history__list article {
+  .scoreboard__list article {
     gap: 10px;
     padding: 14px;
+  }
+
+  .version-history__entry {
+    gap: 10px;
+    padding: 12px 14px;
   }
 
   .scoreboard__stats {

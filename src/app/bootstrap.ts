@@ -1074,8 +1074,9 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
 
     for (const [index, entry] of VERSION_HISTORY.entries()) {
       const item = document.createElement("li");
-      const article = document.createElement("article");
-      const header = document.createElement("header");
+      const entryElement = document.createElement("details");
+      entryElement.className = "version-history__entry";
+      const summary = document.createElement("summary");
       const version = document.createElement("span");
       const title = document.createElement("h3");
       const details = document.createElement("dl");
@@ -1093,15 +1094,16 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
       reason.textContent = entry.reason;
       changeLabel.textContent = "이렇게 바뀌었다요";
       change.textContent = entry.change;
-      header.append(version, title);
+      summary.append(version, title);
       reasonRow.append(reasonLabel, reason);
       changeRow.append(changeLabel, change);
       details.append(reasonRow, changeRow);
-      article.append(header, details);
-      item.append(article);
+      entryElement.append(summary, details);
+      item.append(entryElement);
 
       if (index === 0) {
-        article.dataset.current = "true";
+        entryElement.dataset.current = "true";
+        entryElement.open = true;
         version.setAttribute("aria-label", `현재 버전 ${entry.version}`);
       }
 

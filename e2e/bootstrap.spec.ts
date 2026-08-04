@@ -770,7 +770,14 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await expect(page.getByRole("heading", { level: 2, name: "버전 기록" })).toBeFocused();
   await expect(page.locator("#current-version")).toHaveText(`v${PRODUCT_VERSION}`);
   await expect(page.locator("#version-history-list > li")).toHaveCount(VERSION_HISTORY.length);
-  await expect(page.getByText("왜 바꿨냐면요")).toHaveCount(VERSION_HISTORY.length);
+  await expect(page.locator("#version-history-list details")).toHaveCount(VERSION_HISTORY.length);
+  await expect(page.locator("#version-history-list details[open]")).toHaveCount(1);
+  const openEntry = page.locator("#version-history-list details[open]");
+  await expect(openEntry.getByText("왜 바꿨냐면요")).toHaveCount(1);
+  await page.locator("#version-history-list details").nth(1).locator("summary").click();
+  await expect(
+    page.locator("#version-history-list details[open]").getByText("왜 바꿨냐면요"),
+  ).toHaveCount(2);
   await expect(page.locator("#arena-host canvas")).toBeHidden();
   await page.keyboard.press("Escape");
   await expect(page.locator("#app")).toHaveAttribute("data-screen", "menu");
@@ -1258,14 +1265,19 @@ test("offers a working touch joystick and action buttons on a narrow viewport", 
   await versionHistoryButton.click();
   const mobileHistoryLayout = await page.locator("#version-history").evaluate((panel) => {
     const firstCard = panel.querySelector("#version-history-list > li");
+    const currentEntry = panel.querySelector("#version-history-list details[data-current='true']");
     return {
       cardWidth: firstCard?.getBoundingClientRect().width ?? 0,
       documentWidth: document.documentElement.scrollWidth,
       viewportWidth: document.documentElement.clientWidth,
+      currentEntryOpen: currentEntry?.hasAttribute("open") ?? false,
+      collapsedEntries: panel.querySelectorAll("#version-history-list details:not([open])").length,
     };
   });
   expect(mobileHistoryLayout.documentWidth).toBeLessThanOrEqual(mobileHistoryLayout.viewportWidth);
   expect(mobileHistoryLayout.cardWidth).toBeLessThanOrEqual(mobileHistoryLayout.viewportWidth);
+  expect(mobileHistoryLayout.currentEntryOpen).toBe(true);
+  expect(mobileHistoryLayout.collapsedEntries).toBe(VERSION_HISTORY.length - 1);
   await page.getByRole("button", { name: "메뉴로", exact: true }).click();
   await expect(page.locator("#app")).toHaveAttribute("data-screen", "menu");
   await expect(versionHistoryButton).toBeFocused();
