@@ -9,6 +9,14 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.199.18",
+    title: "두 줄 카드도 조금씩 다이어트한다요 ㅇㅅㅇ",
+    reason:
+      "폰에서 스킬·아이템 카드를 두 줄로 놓으면 카드가 좁아져 효과 글이 길게 줄바꿈 되고 가장 긴 카드가 화면을 꽉 채웠다요.",
+    change:
+      "두 줄 구간의 카드 여백과 효과 글자 크기·줄 간격을 조금씩 줄여, 카탈로그 전체 높이를 1할 이상 줄이고 가장 긴 카드도 짧게 했다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.199.17",
     title: "큰 글씨에서도 전투 수치가 안 잘린다요 ㅇㅅㅇ",
     reason: "글자를 아주 크게 하면 전투 수치 요약 줄이 버튼 밖으로 잘려 보였다요.",
