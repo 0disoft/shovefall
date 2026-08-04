@@ -317,6 +317,18 @@ async function waitForAttribute(
   );
 }
 
+async function openSettingsWithRetry(page: Page, attempt = 0): Promise<void> {
+  await page.getByRole("button", { name: "설정", exact: true }).click();
+  try {
+    await waitForAttribute(page, "#app", "data-screen", "settings", 4_000);
+  } catch (error) {
+    if (attempt >= 1) {
+      throw error;
+    }
+    await openSettingsWithRetry(page, attempt + 1);
+  }
+}
+
 async function readSimulationTick(page: Page): Promise<number> {
   return Number(await page.locator("#game-telemetry").getAttribute("data-tick"));
 }
@@ -350,8 +362,7 @@ async function allocateCaptureAttributes(page: Page, selectionIndex = 0): Promis
 }
 
 export async function chooseCaptureLoadout(page: Page): Promise<void> {
-  await page.getByRole("button", { name: "설정", exact: true }).click();
-  await waitForAttribute(page, "#app", "data-screen", "settings");
+  await openSettingsWithRetry(page);
   await page.getByRole("tab", { name: "특성", exact: true }).click();
   await allocateCaptureAttributes(page);
   await page.getByRole("tab", { name: "스킬", exact: true }).click();

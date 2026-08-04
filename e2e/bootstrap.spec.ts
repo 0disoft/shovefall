@@ -1286,6 +1286,7 @@ test.describe("coarse-pointer surfaces", () => {
   test("collapses the build summary and keeps the arena readout clear of touch controls", async ({
     page,
   }) => {
+    await installFixedRoundSeed(page, 1, 0);
     await page.goto("/");
     await page.getByRole("button", { name: "게임 시작" }).click();
     await page.getByRole("button", { name: "설정하러 가기" }).click();
@@ -1321,7 +1322,6 @@ test.describe("coarse-pointer surfaces", () => {
     await saveSettings(page);
     await startGame(page);
     await expect(page.locator("#app")).toHaveAttribute("data-round", "active");
-    await page.waitForTimeout(800);
 
     await expect(page.locator(".action-hud")).toBeHidden();
     await expect(page.locator("#pointer-joystick")).toBeVisible();
@@ -1332,6 +1332,30 @@ test.describe("coarse-pointer surfaces", () => {
     expect(joystickBox).not.toBeNull();
     if (readoutBox !== null && joystickBox !== null) {
       expect(readoutBox.y + readoutBox.height).toBeLessThanOrEqual(joystickBox.y + 4);
+    }
+    await expect(page.locator("#stat-status")).toHaveCSS(
+      "grid-template-columns",
+      /^\d+(?:\.\d+)?px \d+(?:\.\d+)?px \d+(?:\.\d+)?px$/u,
+    );
+    await page.locator("#touch-skill-0").dispatchEvent("pointerdown", {
+      button: 0,
+      isPrimary: true,
+      pointerId: 41,
+      pointerType: "touch",
+    });
+    await page.locator("#touch-skill-0").dispatchEvent("pointerup", {
+      button: 0,
+      isPrimary: true,
+      pointerId: 41,
+      pointerType: "touch",
+    });
+    await expect(page.locator("#targeting-help")).toBeVisible();
+    const helpBox = await page.locator("#targeting-help").boundingBox();
+    const actionsBox = await page.locator(".touch-actions").boundingBox();
+    expect(helpBox).not.toBeNull();
+    expect(actionsBox).not.toBeNull();
+    if (helpBox !== null && actionsBox !== null) {
+      expect(helpBox.y + helpBox.height).toBeLessThanOrEqual(actionsBox.y + 4);
     }
   });
 });
