@@ -9,6 +9,14 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.199.41",
+    title: "점수표 한 줄에 다 담는다요 ㅇㅅㅇ",
+    reason:
+      "좁은 화면에서는 점수표 한 판이 세로로 207px까지 자라, 기록이 쌓일수록 스크롤이 끝없이 길어졌다요.",
+    change:
+      "좁은 화면에서는 점수표 수치를 라벨과 값 한 줄로 나란히 배치하고 간격을 좁혀, 한 판 높이를 161px까지 줄였다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.199.40",
     title: "접히는 폰 커버에서도 전투 수치를 한눈에 ㅇㅅㅇ",
     reason:
