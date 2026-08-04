@@ -9,6 +9,13 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.199.17",
+    title: "큰 글씨에서도 전투 수치가 안 잘린다요 ㅇㅅㅇ",
+    reason: "글자를 아주 크게 하면 전투 수치 요약 줄이 버튼 밖으로 잘려 보였다요.",
+    change:
+      "전투 수치 요약을 숫자만 담고 라벨은 버튼 글자로 옮겨, 글자 크기와 무관하게 한 줄이 온전히 보이게 했다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.199.16",
     title: "일시정지 통계도 한눈에 담는다요 ㅇㅅㅇ",
     reason: "작은 폰에서 일시정지 메뉴의 이번 라운드 통계가 길어서 아래로 계속 내려야 했다요.",

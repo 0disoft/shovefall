@@ -1,8 +1,10 @@
 # Static Release Procedure
 
-- Status: `0.199.16` mobile UX candidate; hosted proof pending
+- Status: `0.199.17` mobile UX candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.199.16`
+- Current product version: `0.199.17`
+
+Product `0.199.17`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. The coarse-pointer in-round combat summary now carries only the health and mana numbers while the `체력·마나` label lives on the toggle button itself, so the one-line summary stays uncut at every text size, including extra-large on narrow phones. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
 Product `0.199.16`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. The coarse-pointer pause round-statistics cells now share the landscape compact sizing (6 px padding, smaller dt/dd type) in portrait too, trimming the paused panel's scroll height on a 320×568 viewport from about 1070 px to 1028 px. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
