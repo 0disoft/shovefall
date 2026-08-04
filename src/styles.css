@@ -3498,6 +3498,17 @@ button:disabled {
   }
 }
 
+@media (pointer: coarse) and (max-width: 280px) {
+  :root[data-font-scale="standard"] .stat-status {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px;
+  }
+
+  :root[data-font-scale="standard"] .stat-status div {
+    padding: 3px 6px;
+  }
+}
+
 @media (pointer: coarse) and (max-width: 560px) {
   .pause-menu[data-mode="completed"] .arena-actions {
     gap: 6px;

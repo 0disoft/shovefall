@@ -2275,6 +2275,45 @@ test.describe("coarse-pointer surfaces", () => {
         expect(box.bottom).toBeLessThanOrEqual(653);
       }
     });
+
+    test("keeps the cover-width expanded stat panel readable in two columns", async ({ page }) => {
+      test.setTimeout(60_000);
+      await installFixedRoundSeed(page, 1, 0);
+      await page.goto("/");
+      await openSettings(page);
+      await saveSettings(page);
+      await startGame(page);
+      await expect(page.locator("#app")).toHaveAttribute("data-round", "active");
+
+      await page.locator("#toggle-stat-status").click();
+      await expect(page.locator("#stat-status")).toBeVisible();
+      const layout = await page.evaluate(() => {
+        const panel = document.querySelector<HTMLElement>("#stat-status");
+        const joystick = document.querySelector<HTMLElement>("#pointer-joystick");
+        const panelRect = panel?.getBoundingClientRect();
+        const joystickRect = joystick?.getBoundingClientRect();
+        const cells = [...document.querySelectorAll("#stat-status > div")];
+        return {
+          columns:
+            panel === null ? 0 : getComputedStyle(panel).gridTemplateColumns.split(" ").length,
+          tallestCell: Math.round(
+            Math.max(...cells.map((cell) => cell.getBoundingClientRect().height)),
+          ),
+          panelBottom: panelRect === undefined ? null : Math.round(panelRect.bottom),
+          joystickTop: joystickRect === undefined ? null : Math.round(joystickRect.top),
+          scrollWidth: document.documentElement.scrollWidth,
+          clientWidth: document.documentElement.clientWidth,
+        };
+      });
+      expect(layout.columns).toBe(2);
+      expect(layout.tallestCell).toBeLessThanOrEqual(80);
+      expect(layout.panelBottom).not.toBeNull();
+      expect(layout.joystickTop).not.toBeNull();
+      if (layout.panelBottom !== null && layout.joystickTop !== null) {
+        expect(layout.panelBottom).toBeLessThanOrEqual(layout.joystickTop + 4);
+      }
+      expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth);
+    });
   });
 });
 
