@@ -9,6 +9,14 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.199.27",
+    title: "전투 수치 버튼이 일시정지와 안 붙는다요 ㅇㅅㅇ",
+    reason:
+      "보통 크기 폰에서는 전투 수치 요약이 길어져 일시정지 버튼을 4픽셀 가리거나 맞닿아, 실제 플레이에서 두 버튼이 붙어 보였다요.",
+    change:
+      "전투 수치 버튼 폭을 일시정지 버튼과 오른쪽 여백까지 고려해 더 줄여, 320px과 390px 폰 모두에서 두 버튼 사이에 8픽셀 이상 간격을 만들었다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.199.26",
     title: "아주 큰 글씨에서도 장비 카드가 절반을 넘지 않는다요 ㅇㅅㅇ",
     reason:

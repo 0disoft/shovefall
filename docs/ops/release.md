@@ -1,8 +1,10 @@
 # Static Release Procedure
 
-- Status: `0.199.26` mobile UX candidate; hosted proof pending
+- Status: `0.199.27` mobile UX candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.199.26`
+- Current product version: `0.199.27`
+
+Product `0.199.27`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. The coarse-pointer stat toggle on phones 420 px and narrower now caps its width using the pause button's real footprint and right margin, so the two controls keep at least an 8 px gap instead of touching; a new 390×844 smoke journey boots a real round and asserts the toggle stays clear of the pause trigger, and the existing 320×568 journey tightens its overlap tolerance to require a real gap. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
 Product `0.199.26`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. At extra-large text on 320 px-wide phones, loadout effect rows now use tighter line height and padding, shrinking the longest item card from 318 px to 279 px so every skill and item card stays under half the 568 px viewport; a new smoke journey asserts the longest item and skill cards at 320×568 extra-large remain within half the screen. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
