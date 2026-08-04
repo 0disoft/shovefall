@@ -3430,6 +3430,33 @@ button:disabled {
   }
 }
 
+@media (pointer: fine) {
+  .pause-menu[data-mode="completed"] .arena-actions__buttons {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .pause-menu[data-mode="completed"] .round-statistics {
+    gap: 7px;
+  }
+
+  .pause-menu[data-mode="completed"] .round-statistics__grid {
+    gap: 6px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .pause-menu[data-mode="completed"] .round-statistics__grid div {
+    padding: 7px 10px;
+  }
+
+  .pause-menu[data-mode="completed"] .round-statistics__skills ul {
+    gap: 6px;
+  }
+
+  .pause-menu[data-mode="completed"] .round-statistics__skills li {
+    padding: 7px 9px;
+  }
+}
+
 @media (pointer: coarse) and (orientation: landscape) {
   .stat-status-wrap {
     top: max(44px, calc(env(safe-area-inset-top) + 32px));
