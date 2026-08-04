@@ -1,8 +1,10 @@
 # Static Release Procedure
 
-- Status: `0.199.33` landscape settings UX candidate; hosted proof pending
+- Status: `0.199.34` short-landscape extra-large pause candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.199.33`
+- Current product version: `0.199.34`
+
+Product `0.199.34`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. On short landscape screens with extra-large text, the pause panel used to grow past 700 px and push the resume action and most combat statistics below the fold; it now lays the round statistics in four compact columns with tighter spacing so the panel stays near 500 px and the resume button remains on the first screen; a new landscape extra-large pause smoke journey asserts the four-column statistics and the on-screen resume action. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
 Product `0.199.33`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. On short landscape screens, skill and item cards now widen to one column with two-column effect rows and the save and cancel buttons sit side by side, so scrolling to the bottom of the settings form leaves the last card fully visible and tappable instead of clipped above the fold; a new landscape settings smoke journey asserts the last cards stay inside the viewport without overlapping the save bar. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 

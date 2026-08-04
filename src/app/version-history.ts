@@ -9,6 +9,14 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.199.34",
+    title: "가로 화면 일시정지도 끝까지 본다요 ㅇㅅㅇ",
+    reason:
+      "가로로 짧은 화면에서 글자 크기를 아주 크게 두면 일시정지 창이 길어져, 계속·다시 시작 버튼과 전투 수치가 한 화면에 다 들어오지 않았다요.",
+    change:
+      "가로로 짧은 화면에서는 아주 크게 글자에서도 전투 수치를 네 칸으로 재배치하고 간격을 좁혀, 계속 버튼과 첫 전투 수치가 첫 화면에 보이게 했다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.199.33",
     title: "가로 화면 설정도 끝까지 본다요 ㅇㅅㅇ",
     reason:
