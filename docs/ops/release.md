@@ -1,8 +1,10 @@
 # Static Release Procedure
 
-- Status: `0.199.18` mobile UX candidate; hosted proof pending
+- Status: `0.199.19` mobile UX candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.199.18`
+- Current product version: `0.199.19`
+
+Product `0.199.19`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. The coarse-pointer pause layer on 320 px-wide phones now uses tighter panel padding, telemetry cell padding and gaps, round-statistics cell padding, type, and gaps, and skill-row padding, trimming the paused panel's scroll height from about 1028 px to 953 px at the standard text size and from 1146 px to 1071 px at extra-large, so the first round-statistics row reaches the first screen. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
 Product `0.199.18`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. The two-column phone loadout cards between 376 px and 560 px now use slightly tighter card padding, meta chips, effect type, and line spacing, trimming the item catalog by about 15% and the skill catalog by 11-15% at phone widths with no text clipping. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 

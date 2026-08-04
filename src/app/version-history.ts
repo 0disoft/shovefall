@@ -9,6 +9,14 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.199.19",
+    title: "일시정지 통계도 한 화면에 더 담는다요 ㅇㅅㅇ",
+    reason:
+      "작은 폰에서 일시정지를 열면 이번 라운드 통계가 아래로 길게 이어져, 핵심 수치를 보려고 계속 스크롤해야 했다요.",
+    change:
+      "폰 일시정지의 현재 상태와 통계 칸 여백·글자를 한 단계 더 줄여, 첫 화면에 통계 첫 줄까지 들어오고 전체 스크롤 길이도 줄었다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.199.18",
     title: "두 줄 카드도 조금씩 다이어트한다요 ㅇㅅㅇ",
     reason:
