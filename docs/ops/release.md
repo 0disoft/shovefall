@@ -1,8 +1,10 @@
 # Static Release Procedure
 
-- Status: `0.199.35` foldable cover-width candidate; hosted proof pending
+- Status: `0.199.36` short-landscape standard pause candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.199.35`
+- Current product version: `0.199.36`
+
+Product `0.199.36`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. On short landscape screens, the standard-text pause panel now lays its round statistics in four compact columns with the same tight spacing as extra-large, shrinking the panel from about 676 px to about 502 px so the resume action and the first statistics row stay on the first screen; a new landscape standard-text pause smoke journey asserts the four-column statistics, the on-screen resume action, and the first statistics row. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
 Product `0.199.35`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. The body no longer forces a 320 px minimum, so foldable cover screens down to 260 px wide no longer scroll horizontally, and under 300 px the settings tabs lay in one row of four with compact padding while the five-step attribute steppers shrink to 40 px targets, keeping the whole menu, settings form, and arena controls inside the viewport; a new foldable cover-width smoke journey asserts no horizontal overflow across the menu, all four settings tabs, the attribute steppers, and the arena controls at 260 px. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
