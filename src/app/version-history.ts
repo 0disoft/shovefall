@@ -9,6 +9,14 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.199.14",
+    title: "폰 카드도 두 줄로 고른다요 ㅇㅅㅇ",
+    reason:
+      "376px 이상 폰에서는 스킬·아이템 카드가 한 줄로 길게 이어져 고르려면 계속 내려야 했다요.",
+    change:
+      "376~560px 폭 폰에서도 카드를 두 줄로 배치해, 카드 목록 스크롤을 최대 40% 가까이 줄였다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.199.13",
     title: "카드도 길어지지 않게 눌러 담는다요 ㅇㅅㅇ",
     reason:

@@ -1,8 +1,10 @@
 # Static Release Procedure
 
-- Status: `0.199.13` mobile UX candidate; hosted proof pending
+- Status: `0.199.14` mobile UX candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.199.13`
+- Current product version: `0.199.14`
+
+Product `0.199.14`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. Phones from 376 px to 560 px wide now lay the skill and item loadout cards in two columns like tablets, cutting the catalog height by up to 40%; phones 375 px and narrower keep the single column so their cards stay readable. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
 Product `0.199.13`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. On 560 px and narrower viewports the skill and item cards re-lay their art and name on one row and their effect text across the full card width with tighter type and padding, so the longest phone card drops from roughly 433 px to about 312 px and browsing the catalog needs less scrolling. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
