@@ -3051,6 +3051,33 @@ button:disabled {
   }
 }
 
+@media (max-height: 520px) and (pointer: coarse) {
+  .settings-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding: 8px;
+  }
+
+  .loadout-fieldset,
+  .skill-loadout-fieldset {
+    grid-template-columns: 1fr;
+  }
+
+  .skill-card__effect,
+  .item-card__effect {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 12px;
+  }
+
+  .loadout-card__effect-row {
+    padding: 3px 0;
+  }
+
+  .loadout-card__effect-row + .loadout-card__effect-row {
+    border-top: 0;
+  }
+}
+
 @media (max-width: 560px) {
   .skill-loadout-fieldset .preset-card,
   .loadout-fieldset .preset-card {

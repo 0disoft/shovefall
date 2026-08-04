@@ -291,6 +291,38 @@ async function openSettingsTab(
   await page.getByRole("tab", { name, exact: true }).click();
 }
 
+async function assertLastSettingsCardReachable(page: Page, tab: "스킬" | "아이템"): Promise<void> {
+  await openSettingsTab(page, tab);
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  await page.waitForTimeout(100);
+
+  const layout = await page.evaluate(() => {
+    const cards = [...document.querySelectorAll<HTMLElement>(".preset-card")];
+    const visible = cards.filter((card) => {
+      const rect = card.getBoundingClientRect();
+      return rect.bottom > 0 && rect.top < window.innerHeight;
+    });
+    const last = visible.at(-1)?.getBoundingClientRect();
+    const save = document.querySelector<HTMLElement>(".settings-actions")?.getBoundingClientRect();
+    const overlaps =
+      last !== undefined && save !== undefined && last.top < save.bottom && save.top < last.bottom;
+    return {
+      lastTop: last === undefined ? null : Math.round(last.top * 10) / 10,
+      lastBottom: last === undefined ? null : Math.round(last.bottom * 10) / 10,
+      saveTop: save === undefined ? null : Math.round(save.top * 10) / 10,
+      saveBottom: save === undefined ? null : Math.round(save.bottom * 10) / 10,
+      overlaps,
+      saveVisible: save !== undefined && save.top >= 0 && save.bottom <= window.innerHeight,
+    };
+  });
+
+  expect(layout.lastTop).not.toBeNull();
+  expect(layout.lastTop).toBeGreaterThanOrEqual(0);
+  expect(layout.lastBottom).toBeLessThanOrEqual(390);
+  expect(layout.overlaps).toBe(false);
+  expect(layout.saveVisible).toBe(true);
+}
+
 async function selectStartingItem(page: Page, value: string): Promise<void> {
   await openSettingsTab(page, "아이템");
   await page.locator(`input[name="startingItem"][value="${value}"]`).check();
@@ -2004,6 +2036,19 @@ test.describe("coarse-pointer surfaces", () => {
       expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth);
       expect(layout.columns).toBe(4);
       await page.getByRole("button", { name: "알겠다요 ㅇㅅㅇ" }).click();
+    });
+  });
+
+  test.describe("landscape settings", () => {
+    test.use({ viewport: { width: 844, height: 390 } });
+
+    test("keeps the last settings cards fully reachable at the bottom of the form", async ({
+      page,
+    }) => {
+      await page.goto("/");
+      await openSettings(page);
+      await assertLastSettingsCardReachable(page, "스킬");
+      await assertLastSettingsCardReachable(page, "아이템");
     });
   });
 });
