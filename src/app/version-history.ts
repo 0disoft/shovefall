@@ -9,6 +9,14 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.199.24",
+    title: "라운드 종료 통계가 더 일찍 보인다요 ㅇㅅㅇ",
+    reason:
+      "작은 폰에서 라운드가 끝나면 동작 버튼 영역이 넓어, 이번 라운드 통계가 첫 화면 아래로 밀렸다요.",
+    change:
+      "작은 폰에서 라운드 종료 화면의 동작 버튼 여백과 높이를 터치 크기 안에서 줄여, 320px 폰에서 통계 첫 줄이 첫 화면에 더 일찍 들어오게 했다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.199.23",
     title: "전투 수치 버튼이 일시정지와 안 붙는다요 ㅇㅅㅇ",
     reason:

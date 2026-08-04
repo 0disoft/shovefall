@@ -1,8 +1,10 @@
 # Static Release Procedure
 
-- Status: `0.199.23` mobile UX candidate; hosted proof pending
+- Status: `0.199.24` mobile UX candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.199.23`
+- Current product version: `0.199.24`
+
+Product `0.199.24`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. On coarse-pointer phones 560 px and narrower, the completed-round action area now uses tighter padding and 48 px-tall buttons so the round statistics start about 31 px higher on a 320×568 phone; a new layout smoke keeps the actions above the statistics, every action button at least 44 px tall, and the panel scrollable without body overflow. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
 Product `0.199.23`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. On coarse-pointer phones 420 px and narrower, the 체력·마나 toggle now caps its width so its filled health-and-mana summary truncates with an ellipsis instead of sliding under the top-right pause button; at 320×568 the two controls sit side by side without overlap. A new smoke journey boots a 320×568 round and asserts the joystick, touch actions, stat toggle, pause trigger, and expanded stat panel all stay clear of one another. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
