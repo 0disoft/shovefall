@@ -9,6 +9,14 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.199.35",
+    title: "접히는 폰 커버 화면도 빠짐없이 본다요 ㅇㅅㅇ",
+    reason:
+      "260px처럼 아주 좁은 화면에서는 몸체가 320px로 강제되어 좌우 스크롤이 생기고, 특성 카드의 5칸 스테퍼도 화면을 넘쳤다요.",
+    change:
+      "아주 좁은 화면에서는 설정 탭을 한 줄 네 칸으로, 특성 스테퍼를 더 작게 재배치해 가로 스크롤 없이 메뉴·설정·아레나를 모두 볼 수 있게 했다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.199.34",
     title: "가로 화면 일시정지도 끝까지 본다요 ㅇㅅㅇ",
     reason:
