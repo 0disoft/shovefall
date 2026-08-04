@@ -1997,6 +1997,43 @@ test.describe("coarse-pointer surfaces", () => {
       expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth);
       expect(layout.panelScrollHeight).toBeLessThan(700);
     });
+
+    test("keeps the pause panel compact and the resume action visible at extra-large text", async ({
+      page,
+    }) => {
+      await installFixedRoundSeed(page, 1, 0);
+      await page.goto("/");
+      await openSettings(page);
+      await openSettingsTab(page, "설정");
+      await page.locator('input[name="fontScale"][value="extra-large"]').check();
+      await saveSettings(page);
+      await startGame(page);
+      await page.keyboard.press("p");
+      await expect(page.locator("#pause-menu")).toBeVisible();
+
+      await expect(page.locator(".round-statistics__grid")).toHaveCSS(
+        "grid-template-columns",
+        /^\d+(?:\.\d+)?px \d+(?:\.\d+)?px \d+(?:\.\d+)?px \d+(?:\.\d+)?px$/u,
+      );
+      const layout = await page.evaluate(() => {
+        const panel = document.querySelector<HTMLElement>(".pause-menu__panel");
+        const resume = document.querySelector<HTMLElement>("#resume-round");
+        const resumeRect = resume?.getBoundingClientRect();
+        return {
+          panelScrollHeight: panel?.scrollHeight ?? 0,
+          panelClientHeight: panel?.clientHeight ?? 0,
+          resumeTop: resumeRect === undefined ? null : Math.round(resumeRect.top * 10) / 10,
+          resumeBottom: resumeRect === undefined ? null : Math.round(resumeRect.bottom * 10) / 10,
+          scrollWidth: document.documentElement.scrollWidth,
+          clientWidth: document.documentElement.clientWidth,
+        };
+      });
+      expect(layout.panelScrollHeight).toBeLessThanOrEqual(560);
+      expect(layout.resumeTop).not.toBeNull();
+      expect(layout.resumeTop).toBeGreaterThanOrEqual(0);
+      expect(layout.resumeBottom).toBeLessThanOrEqual(390);
+      expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth);
+    });
   });
 
   test.describe("landscape briefing", () => {

@@ -3611,6 +3611,79 @@ button:disabled {
   }
 }
 
+@media (pointer: coarse) and (orientation: landscape) and (max-height: 520px) {
+  :root[data-font-scale="extra-large"] .pause-menu__panel {
+    gap: 6px;
+    padding: 8px 10px;
+  }
+
+  :root[data-font-scale="extra-large"] .pause-menu__panel h3 {
+    font-size: 0.95rem;
+  }
+
+  :root[data-font-scale="extra-large"] .pause-menu .ready-message {
+    font-size: 1.05rem;
+  }
+
+  :root[data-font-scale="extra-large"] .game-telemetry div {
+    padding: 4px 6px;
+  }
+
+  :root[data-font-scale="extra-large"] .game-telemetry dt {
+    font-size: 0.58rem;
+  }
+
+  :root[data-font-scale="extra-large"] .game-telemetry dd {
+    font-size: 0.7rem;
+  }
+
+  :root[data-font-scale="extra-large"] .round-statistics__grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 4px;
+  }
+
+  :root[data-font-scale="extra-large"] .round-statistics__grid div {
+    gap: 1px;
+    padding: 2px 5px;
+  }
+
+  :root[data-font-scale="extra-large"] .round-statistics__grid dt {
+    font-size: 0.5rem;
+    line-height: 1.15;
+  }
+
+  :root[data-font-scale="extra-large"] .round-statistics__grid dd {
+    font-size: 0.64rem;
+    line-height: 1.2;
+  }
+
+  :root[data-font-scale="extra-large"] .round-statistics h4,
+  :root[data-font-scale="extra-large"] .round-statistics h5 {
+    font-size: 0.72rem;
+    line-height: 1.15;
+  }
+
+  :root[data-font-scale="extra-large"] .round-statistics__skills ul {
+    gap: 3px;
+  }
+
+  :root[data-font-scale="extra-large"] .round-statistics__skills li {
+    padding: 3px 6px;
+    font-size: 0.72rem;
+  }
+
+  :root[data-font-scale="extra-large"] .pause-control-guide summary {
+    padding: 7px 10px;
+    font-size: 0.78rem;
+  }
+
+  :root[data-font-scale="extra-large"] .arena-actions__buttons .primary-action,
+  :root[data-font-scale="extra-large"] .arena-actions__buttons .secondary-action {
+    min-height: 44px;
+    font-size: 0.8rem;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
