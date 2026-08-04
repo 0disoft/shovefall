@@ -2931,7 +2931,7 @@ button:disabled {
     grid-template-rows: auto auto auto;
     column-gap: 12px;
     row-gap: 6px;
-    padding: 10px 12px;
+    padding: 8px 10px;
     row-gap: 5px;
   }
 
@@ -2962,17 +2962,21 @@ button:disabled {
 
   .skill-card__meta span,
   .item-card__meta span {
-    padding: 2px 6px;
-    font-size: 0.68rem;
+    padding: 2px 5px;
+    font-size: 0.66rem;
   }
 
   .skill-loadout-fieldset .skill-card__effect,
   .loadout-fieldset .item-card__effect {
     grid-row: 3;
     grid-column: 1 / -1;
-    padding: 6px 8px;
-    font-size: 0.78rem;
-    line-height: 1.38;
+    padding: 5px 7px;
+    font-size: 0.75rem;
+    line-height: 1.32;
+  }
+
+  .loadout-card__effect-row {
+    padding: 3px 0;
   }
 }
 
