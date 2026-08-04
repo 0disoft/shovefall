@@ -1,8 +1,10 @@
 # Static Release Procedure
 
-- Status: `0.199.5` mobile UX candidate; hosted proof pending
+- Status: `0.199.6` mobile UX candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.199.5`
+- Current product version: `0.199.6`
+
+Product `0.199.6`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. The coarse-pointer in-round combat readout compresses to a four-column strip with tighter type so it no longer overlaps the touch joystick or skill buttons on portrait or landscape phones. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
 Product `0.199.5`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. The main menu compacts on viewports under 560 px tall so landscape phones fit every action from `게임 시작` through `소스 코드` on one screen without scrolling. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 

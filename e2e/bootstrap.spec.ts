@@ -24,6 +24,24 @@ interface LoadoutCardOffsets {
   readonly title: number;
 }
 
+interface DomBox {
+  readonly top: number;
+  readonly bottom: number;
+  readonly left: number;
+  readonly right: number;
+}
+
+function boxesOverlap(a: DomBox | null, b: DomBox | null): boolean {
+  return (
+    a !== null &&
+    b !== null &&
+    a.left < b.right &&
+    b.left < a.right &&
+    a.top < b.bottom &&
+    b.top < a.bottom
+  );
+}
+
 async function expectAlignedLoadoutCards(cards: Locator): Promise<void> {
   const offsets = await cards.evaluateAll((elements): readonly LoadoutCardOffsets[] =>
     elements.map((element) => {
@@ -1335,7 +1353,7 @@ test.describe("coarse-pointer surfaces", () => {
     }
     await expect(page.locator("#stat-status")).toHaveCSS(
       "grid-template-columns",
-      /^\d+(?:\.\d+)?px \d+(?:\.\d+)?px \d+(?:\.\d+)?px$/u,
+      /^\d+(?:\.\d+)?px(?: \d+(?:\.\d+)?px){3}$/u,
     );
     await page.locator("#touch-skill-0").dispatchEvent("pointerdown", {
       button: 0,
@@ -1476,6 +1494,48 @@ test.describe("coarse-pointer surfaces", () => {
       expect(layout.mastheadBottom).toBeLessThanOrEqual(layout.actionsTop);
       await expect(page.getByRole("button", { name: "버전 기록" })).toBeInViewport();
       await expect(page.getByRole("link", { name: "소스 코드" })).toBeInViewport();
+    });
+  });
+
+  test.describe("landscape play HUD", () => {
+    test.use({ viewport: { width: 844, height: 390 } });
+
+    test("keeps the combat readout clear of the touch controls", async ({ page }) => {
+      await installFixedRoundSeed(page, 1, 0);
+      await page.goto("/");
+      await openSettings(page);
+      await saveSettings(page);
+      await startGame(page);
+      await expect(page.locator("#app")).toHaveAttribute("data-round", "active");
+      await expect(page.locator("#pointer-joystick")).toBeVisible();
+      await expect(page.locator("#stat-status")).toBeVisible();
+
+      const boxes = await page.evaluate(() => {
+        const found: Record<string, DomBox | null> = {};
+        for (const selector of ["#stat-status", "#pointer-joystick", ".touch-actions"]) {
+          const r = document.querySelector(selector)?.getBoundingClientRect();
+          found[selector] =
+            r === undefined
+              ? null
+              : {
+                  top: r.top,
+                  bottom: r.bottom,
+                  left: r.left,
+                  right: r.right,
+                };
+        }
+        return {
+          status: found["#stat-status"] ?? null,
+          joystick: found["#pointer-joystick"] ?? null,
+          touch: found[".touch-actions"] ?? null,
+          scrollWidth: document.documentElement.scrollWidth,
+          clientWidth: document.documentElement.clientWidth,
+        };
+      });
+      expect(boxesOverlap(boxes.status, boxes.joystick)).toBe(false);
+      expect(boxesOverlap(boxes.status, boxes.touch)).toBe(false);
+      expect(boxesOverlap(boxes.touch, boxes.joystick)).toBe(false);
+      expect(boxes.scrollWidth).toBeLessThanOrEqual(boxes.clientWidth);
     });
   });
 

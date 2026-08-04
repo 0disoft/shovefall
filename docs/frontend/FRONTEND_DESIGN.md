@@ -2,7 +2,7 @@
 
 - Status: Playable gray-box boundary implemented; Coal-Twilight visual direction adopted
 
-Product `0.199.5` presents one fixed 70-participant Hard-AI round on a 57×48 island. The player-follow projection and 8% camera zoom remain shared by rendering, aiming, and spectator bounds; the larger world does not add menu controls or explanatory UI. Mobile setup, play, and pause surfaces keep allocation and control readable by collapsing the derived-combat summary, moving in-round readouts clear of the touch controls, compressing the pause layer and pre-round briefing in both portrait and landscape, keeping the settings save/cancel actions pinned to the bottom edge while the form scrolls, and compacting the landscape menu so every action fits one screen. Fresh 70-participant browser readability and frame-pacing evidence remains pending.
+Product `0.199.6` presents one fixed 70-participant Hard-AI round on a 57×48 island. The player-follow projection and 8% camera zoom remain shared by rendering, aiming, and spectator bounds; the larger world does not add menu controls or explanatory UI. Mobile setup, play, and pause surfaces keep allocation and control readable by collapsing the derived-combat summary, compressing the in-round combat readout into a compact four-column strip that stays clear of the touch controls, compressing the pause layer and pre-round briefing in both portrait and landscape, keeping the settings save/cancel actions pinned to the bottom edge while the form scrolls, and compacting the landscape menu so every action fits one screen. Fresh 70-participant browser readability and frame-pacing evidence remains pending.
 
 ## 0. Decision Summary
 

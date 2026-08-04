@@ -9,6 +9,14 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.199.6",
+    title: "전투 수치가 조작을 안 가린다요 ㅇㅅㅇ",
+    reason:
+      "폰에서는 게임 중 전투 수치 창의 값이 여러 줄로 늘어져 화면을 크게 덮고, 가로로 눕히면 조이스틱이나 스킬 버튼과 겹치기도 했다요.",
+    change:
+      "전투 수치 창을 네 줄 배치로 압축하고 글자와 여백을 줄여, 폰 세로·가로 모두에서 조작 버튼과 겹치지 않게 했다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.199.5",
     title: "가로 메뉴도 한 화면에 들어온다요 ㅇㅅㅇ",
     reason:

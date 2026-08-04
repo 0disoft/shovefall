@@ -2895,17 +2895,22 @@ button:disabled {
     right: auto;
     bottom: auto;
     left: max(14px, env(safe-area-inset-left));
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 6px;
-    max-width: min(420px, calc(100% - 28px));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 4px;
+    max-width: min(460px, calc(100% - 28px));
   }
 
   .stat-status div {
-    padding: 6px 9px;
+    padding: 4px 7px;
+  }
+
+  .stat-status dt {
+    font-size: 0.62rem;
   }
 
   .stat-status dd {
-    font-size: 0.8rem;
+    font-size: 0.72rem;
+    line-height: 1.3;
   }
 
   .targeting-help {
@@ -3014,6 +3019,11 @@ button:disabled {
 }
 
 @media (pointer: coarse) and (orientation: landscape) {
+  .stat-status {
+    top: max(44px, calc(env(safe-area-inset-top) + 32px));
+    max-width: min(420px, calc(100% - 260px));
+  }
+
   .pause-menu__panel {
     gap: 8px;
     padding: 10px 12px;
