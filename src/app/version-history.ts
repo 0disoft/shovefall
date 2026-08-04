@@ -9,6 +9,14 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.199.31",
+    title: "데스크톱도 다섯씩 올린다요 ㅇㅅㅇ",
+    reason:
+      "데스크톱에서는 특성을 한 칸씩만 올리는 버튼이 보여서 20포인트를 채우려면 20번 눌러야 했다요. 다섯 칸 버튼은 휴대 기기에서만 나타났거든.",
+    change:
+      "데스크톱에서도 다섯 칸 올리고 내리는 버튼을 항상 보여 주고, 특성 카드를 두 칸 세 줄로 넓혀 버튼이 카드를 벗어나지 않게 했다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.199.30",
     title: "좁은 화면은 조작 버튼부터 챙긴다요 ㅇㅅㅇ",
     reason:

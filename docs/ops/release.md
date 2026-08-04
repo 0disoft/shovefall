@@ -1,8 +1,10 @@
 # Static Release Procedure
 
-- Status: `0.199.30` narrow-window UX candidate; hosted proof pending
+- Status: `0.199.31` desktop allocation UX candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.199.30`
+- Current product version: `0.199.31`
+
+Product `0.199.31`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. On desktop fine-pointer screens, the five-point attribute stepper buttons are now always visible and the six trait cards widen from three columns to a two-column three-row grid, so the full steppers fit inside their cards without clipping; a new smoke journey asserts the 5-step buttons stay visible and the two-column trait cards never clip their steppers. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
 Product `0.199.30`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. Whenever the touch controls appear, including narrow fine-pointer windows under 820 px, the pause trigger now moves to the top-right corner and the stat toggle stays visible with the expanded combat stats folded by default, so the joystick and touch action buttons are never covered; a new narrow fine-pointer smoke journey asserts the top-corner pause trigger stays clear of the joystick and touch actions while the stat panel starts folded. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
