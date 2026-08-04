@@ -492,6 +492,38 @@ async function readCameraPosition(page: Page): Promise<string> {
   return `${x ?? "missing"},${y ?? "missing"}`;
 }
 
+async function restartIfEliminated(page: Page): Promise<void> {
+  if ((await page.locator("#app").getAttribute("data-human-eliminated")) !== "true") {
+    return;
+  }
+  await page.keyboard.press("p");
+  await expect(page.locator("#pause-menu")).toBeVisible();
+  await page.getByRole("button", { name: "다시 시작" }).click();
+  await expect(page.locator("#app")).toHaveAttribute("data-round", "active", {
+    timeout: 15_000,
+  });
+  await expect(page.locator("#app")).not.toHaveAttribute("data-human-eliminated", "true");
+}
+
+async function dragJoystickToMoveCamera(page: Page, joystick: Locator): Promise<void> {
+  const joystickBounds = await joystick.boundingBox();
+  if (joystickBounds === null) {
+    throw new Error("touch joystick is missing a bounding box");
+  }
+
+  const centerX = joystickBounds.x + joystickBounds.width / 2;
+  const centerY = joystickBounds.y + joystickBounds.height / 2;
+  const positionBefore = await readCameraPosition(page);
+  await page.mouse.move(centerX, centerY);
+  await page.mouse.down();
+  await page.mouse.move(centerX + joystickBounds.width / 2, centerY, { steps: 4 });
+  await page.waitForTimeout(120);
+  await expect(joystick).toHaveAttribute("data-active", "true");
+  await page.mouse.up();
+  await expect.poll(() => readCameraPosition(page), { timeout: 5_000 }).not.toBe(positionBefore);
+  await expect(joystick).not.toHaveAttribute("data-active", "true");
+}
+
 async function panSpectatorCameraWithArrows(
   page: Page,
   directions: readonly string[] = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"],
@@ -1252,21 +1284,8 @@ test("offers a working touch joystick and action buttons on a narrow viewport", 
 
   const joystick = page.locator("#pointer-joystick");
   await expect(joystick).toBeVisible();
-  const positionBefore = await readCameraPosition(page);
-  const joystickBounds = await joystick.boundingBox();
-  expect(joystickBounds).not.toBeNull();
-  if (joystickBounds !== null) {
-    const centerX = joystickBounds.x + joystickBounds.width / 2;
-    const centerY = joystickBounds.y + joystickBounds.height / 2;
-    await page.mouse.move(centerX, centerY);
-    await page.mouse.down();
-    await page.mouse.move(centerX + joystickBounds.width / 2, centerY, { steps: 4 });
-    await page.waitForTimeout(120);
-    await expect(joystick).toHaveAttribute("data-active", "true");
-    await page.mouse.up();
-  }
-  await expect.poll(() => readCameraPosition(page)).not.toBe(positionBefore);
-  await expect(joystick).not.toHaveAttribute("data-active", "true");
+  await restartIfEliminated(page);
+  await dragJoystickToMoveCamera(page, joystick);
 });
 
 test("repeats attribute allocation while an increment is held", async ({ page }) => {
