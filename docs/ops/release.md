@@ -1,8 +1,10 @@
 # Static Release Procedure
 
-- Status: `0.199.52` narrow fine-pointer clipping candidate; hosted proof pending
+- Status: `0.199.53` landscape pause and settings tab candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.199.52`
+- Current product version: `0.199.53`
+
+Product `0.199.53`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. Fine-pointer short-landscape pause panels now use the same compact two-line statistics cells as touch layouts, fold the control guide, and keep the pause actions in one row so the panel no longer stretches far beyond the viewport, and the settings tab bar stays pinned to the top while the form scrolls with each panel switch returning to the top of the new panel. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
 Product `0.199.52`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. On fine-pointer windows up to 376 px the six attribute stepper buttons now shrink so the trait cards stay inside the settings form instead of spilling, fine-pointer pause statistics below 700 px switch from four cramped columns to two so labels such as `남은 육지` never clip, and long skill-efficiency totals such as `대기 -16% · 마나 -12%` wrap inside their build-summary cells after allocation. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 

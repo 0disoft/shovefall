@@ -9,6 +9,14 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.199.53",
+    title: "가로 마우스 창도 일시정지가 한눈에 들어온다요 ㅇㅅㅇ",
+    reason:
+      "마우스로 가로로 납작한 창을 쓰면 일시정지 통계가 세로로 쌓여 화면을 두 배나 밀고, 설정 폼을 내리면 탭이 화면 밖으로 사라져서 다시 올라가야 다른 탭으로 넘어갈 수 있었다요.",
+    change:
+      "가로 납작한 마우스 창의 일시정지를 터치 화면처럼 통계를 두 줄로 압축하고 조작법을 접어 한 화면에 가깝게 줄이고, 설정 탭을 위에 고정해서 폼 어디서든 전환할 수 있게 하고 탭을 바꾸면 맨 위부터 보여준다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.199.52",
     title: "좁은 마우스 창도 특성과 일시정지가 삐져나오지 않는다요 ㅇㅅㅇ",
     reason:
