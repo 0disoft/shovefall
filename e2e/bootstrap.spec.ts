@@ -3188,3 +3188,21 @@ test("pauses on WebGL context loss and resumes after restoration", async ({ page
     .toBe(true);
   await expect(page.locator("#renderer-status")).not.toHaveAttribute("data-state", "error");
 });
+
+test.describe("narrow fine-pointer settings", () => {
+  test.use({ viewport: { width: 260, height: 653 } });
+
+  test("keeps the narrow fine-pointer settings form free of horizontal overflow", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    await openSettings(page);
+    const layout = await page.evaluate(() => ({
+      scrollWidth: document.documentElement.scrollWidth,
+      clientWidth: document.documentElement.clientWidth,
+      coarse: matchMedia("(pointer: coarse)").matches,
+    }));
+    expect(layout.coarse).toBe(false);
+    expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth);
+  });
+});

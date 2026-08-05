@@ -3145,6 +3145,35 @@ button:disabled {
   }
 }
 
+@media (pointer: fine) and (max-width: 300px) {
+  .starting-attribute__stepper {
+    grid-template-columns: 30px 34px 26px 34px 30px 38px;
+    gap: 2px;
+  }
+
+  .starting-attribute__stepper button {
+    width: 34px;
+    height: 40px;
+    font-size: 0.9rem;
+  }
+
+  .starting-attribute__stepper button[data-attribute-step="-5"],
+  .starting-attribute__stepper button[data-attribute-step="5"] {
+    width: 30px;
+  }
+
+  .starting-attribute__stepper button[data-attribute-step="max"] {
+    width: 38px;
+    font-size: 0.54rem;
+  }
+
+  .starting-attribute__stepper output {
+    min-width: 26px;
+    height: 40px;
+    font-size: 0.9rem;
+  }
+}
+
 @media (min-width: 376px) and (max-width: 560px) {
   .loadout-fieldset,
   .skill-loadout-fieldset {
