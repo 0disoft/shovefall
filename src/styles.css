@@ -52,26 +52,19 @@
 
 :root[data-font-scale="large"] .round-briefing-dialog__heading h2,
 :root[data-font-scale="extra-large"] .round-briefing-dialog__heading h2 {
-  font-size: 1.1rem;
   line-height: 1.1;
 }
 
 :root[data-font-scale="large"] .round-briefing-dialog__heading p,
 :root[data-font-scale="extra-large"] .round-briefing-dialog__heading p {
   margin-bottom: 3px;
-  font-size: 0.7rem;
 }
 
 :root[data-font-scale="large"] .round-briefing-dialog__objective,
 :root[data-font-scale="extra-large"] .round-briefing-dialog__objective {
   gap: 3px;
   margin-top: 10px;
-  font-size: 0.74rem;
   line-height: 1.34;
-}
-
-:root[data-font-scale="extra-large"] .round-briefing-dialog__objective {
-  font-size: 0.62rem;
 }
 
 :root[data-font-scale="large"] .round-briefing-dialog__controls,
@@ -85,15 +78,9 @@
   padding: 6px 8px;
 }
 
-:root[data-font-scale="large"] .round-briefing-dialog__controls dt,
-:root[data-font-scale="extra-large"] .round-briefing-dialog__controls dt {
-  font-size: 0.6rem;
-}
-
 :root[data-font-scale="large"] .round-briefing-dialog__controls dd,
 :root[data-font-scale="extra-large"] .round-briefing-dialog__controls dd {
   margin-top: 2px;
-  font-size: 0.72rem;
 }
 
 :root[data-font-scale="large"] .round-briefing-dialog__loadout,
@@ -101,16 +88,6 @@
   gap: 3px;
   margin-top: 9px;
   padding: 7px 9px;
-}
-
-:root[data-font-scale="large"] .round-briefing-dialog__loadout dt,
-:root[data-font-scale="extra-large"] .round-briefing-dialog__loadout dt {
-  font-size: 0.62rem;
-}
-
-:root[data-font-scale="large"] .round-briefing-dialog__loadout dd,
-:root[data-font-scale="extra-large"] .round-briefing-dialog__loadout dd {
-  font-size: 0.7rem;
 }
 
 :root[data-font-scale="extra-large"] .round-briefing-dialog__loadout {
@@ -124,12 +101,7 @@
   grid-column: 1 / -1;
 }
 
-:root[data-font-scale="extra-large"] .round-briefing-dialog__loadout dt {
-  font-size: 0.58rem;
-}
-
 :root[data-font-scale="extra-large"] .round-briefing-dialog__loadout dd {
-  font-size: 0.62rem;
   text-align: left;
 }
 
@@ -142,14 +114,9 @@
   padding: 3px 4px;
 }
 
-:root[data-font-scale="extra-large"] .round-briefing-dialog__controls dd {
-  font-size: 0.56rem;
-}
-
 :root[data-font-scale="large"] .round-briefing-dialog__status,
 :root[data-font-scale="extra-large"] .round-briefing-dialog__status {
   margin: 10px 0 6px;
-  font-size: 0.72rem;
 }
 
 :root[data-font-scale="large"] .round-briefing-dialog > .primary-action,
@@ -159,8 +126,26 @@
 
 * {
   box-sizing: border-box;
+}
+
+/* Selection is disabled inside the game shell so arena drags and touch
+   controls never select text. Text-bearing surfaces (history, scoreboard,
+   reports, briefing, help, credits) restore selection. */
+.app-shell {
   -webkit-user-select: none;
   user-select: none;
+}
+
+.main-menu,
+.setup-panel,
+.scoreboard-panel,
+.version-history-panel,
+.pause-menu,
+.round-briefing-dialog,
+.targeting-help,
+.music-credit {
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 [hidden] {
@@ -2681,6 +2666,8 @@ button:disabled {
   height: 68px;
   padding: 0;
   touch-action: manipulation;
+  overflow-wrap: anywhere;
+  line-height: 1.1;
   color: var(--ink-strong);
   border: 2px solid rgba(230, 233, 231, 0.48);
   border-radius: 50%;
@@ -5279,4 +5266,38 @@ button:disabled {
     gap: 4px;
     padding: 6px 8px;
   }
+}
+
+/* Short landscape viewports must not force a canvas taller than the visible
+   arena. The renderer sizes to the host, so a 568x320 window previously got a
+   568x360 canvas with 40px clipped and misaligned pointer coordinates. */
+@media (orientation: landscape) and (max-height: 420px) {
+  .arena-host {
+    height: 100%;
+    min-height: 0;
+  }
+}
+
+/* Hybrid devices (touchscreen laptops, large tablets) expose touch even when
+   the primary pointer is fine. Bootstrap marks html[data-touch-capable] from
+   navigator.maxTouchPoints and (any-pointer: coarse); that flag switches the
+   briefing and targeting guidance between keyboard and touch labels. Touch
+   controls themselves stay gated by width + primary pointer so a mouse-driven
+   touchscreen desktop keeps the keyboard-first HUD. */
+
+/* Briefing and targeting guidance show keyboard labels by default and touch
+   labels only when the device exposes touch (hybrid devices included). */
+.round-briefing-dialog__controls .control-touch,
+.targeting-help .control-touch {
+  display: none;
+}
+
+html[data-touch-capable="true"] .round-briefing-dialog__controls .control-keyboard,
+html[data-touch-capable="true"] .targeting-help .control-keyboard {
+  display: none;
+}
+
+html[data-touch-capable="true"] .round-briefing-dialog__controls .control-touch,
+html[data-touch-capable="true"] .targeting-help .control-touch {
+  display: inline;
 }

@@ -756,12 +756,14 @@ test("centers the fullscreen menu actions on the viewport", async ({ page }) => 
   expect(Math.abs(geometry.actionCenter - geometry.viewportCenter)).toBeLessThanOrEqual(1);
   await expect(page.locator(".masthead h1")).toBeVisible();
   await expect(page.locator(".fullscreen-guide")).toBeVisible();
-  const menuContextMenuPrevented = await page.locator("#app").evaluate((app) => {
+  // App-wide context-menu suppression was removed; the arena owns right-click
+  // (movement and targeting cancel) only while a round is active.
+  const menuContextMenuAllowed = await page.locator("#app").evaluate((app) => {
     const event = new MouseEvent("contextmenu", { bubbles: true, cancelable: true });
-    return !app.dispatchEvent(event);
+    return app.dispatchEvent(event);
   });
 
-  expect(menuContextMenuPrevented).toBe(true);
+  expect(menuContextMenuAllowed).toBe(true);
 });
 
 test("saves the complete submission-capture loadout from fresh settings", async ({ page }) => {
@@ -1385,6 +1387,11 @@ test("offers a working touch joystick and action buttons on a narrow viewport", 
   expect(mobileHistoryLayout.collapsedEntries).toBe(
     Math.min(VERSION_HISTORY.length, INITIAL_VERSION_HISTORY_COUNT) - 1,
   );
+  expect(
+    await page
+      .locator("#version-history")
+      .evaluate((element) => getComputedStyle(element).userSelect),
+  ).toBe("text");
   await page.getByRole("button", { name: "메뉴로", exact: true }).click();
   await expect(page.locator("#app")).toHaveAttribute("data-screen", "menu");
   await expect(versionHistoryButton).toBeFocused();
@@ -1682,7 +1689,7 @@ test.describe("coarse-pointer surfaces", () => {
 
     await expect(page.locator(".action-hud")).toBeHidden();
     await expect(page.locator("#pointer-joystick")).toBeVisible();
-    await expect(page.locator("#touch-skill-0")).toHaveText("Q");
+    await expect(page.locator("#touch-skill-0")).toContainText("잔상 회피");
     await expect(page.locator("#toggle-stat-status")).toBeVisible();
     await expect(page.locator("#stat-status")).toBeHidden();
     await expect(page.locator("#stat-status-summary")).toHaveText(/^\d+ \/ \d+ · \d+ \/ \d+$/u);
@@ -1815,6 +1822,13 @@ test.describe("coarse-pointer surfaces", () => {
     await saveSettings(page);
     await startGame(page);
     await expect(page.locator("#app")).toHaveAttribute("data-round", "active");
+
+    const arenaBox = await page.locator("#arena-host").boundingBox();
+    expect(arenaBox).not.toBeNull();
+    if (arenaBox !== null) {
+      expect(arenaBox.height).toBeLessThanOrEqual(320);
+      expect(arenaBox.height).toBeGreaterThan(0);
+    }
 
     const toggleBox = await page.locator("#toggle-stat-status").boundingBox();
     await page.locator("#toggle-stat-status").click();
@@ -1988,22 +2002,25 @@ test.describe("coarse-pointer surfaces", () => {
     await expect(page.getByRole("button", { name: "알겠다요 ㅇㅅㅇ" })).toBeEnabled();
 
     const layout = await page.evaluate(() => {
-      const dialog = document.querySelector("#round-briefing-dialog");
+      const dialog = document.querySelector<HTMLElement>("#round-briefing-dialog");
       const rect = dialog?.getBoundingClientRect();
       return {
-        scrollHeight: dialog?.scrollHeight ?? 0,
-        clientHeight: dialog?.clientHeight ?? 0,
         top: rect?.top ?? 0,
         bottom: rect?.bottom ?? 0,
         innerHeight,
-        scrollWidth: document.documentElement.scrollWidth,
-        clientWidth: document.documentElement.clientWidth,
+        horizontal: document.documentElement.scrollWidth > document.documentElement.clientWidth,
       };
     });
-    expect(layout.scrollHeight).toBeLessThanOrEqual(layout.clientHeight);
     expect(layout.top).toBeGreaterThanOrEqual(0);
     expect(layout.bottom).toBeLessThanOrEqual(layout.innerHeight);
-    expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth);
+    expect(layout.horizontal).toBe(false);
+    await page.evaluate(() => {
+      const dialog = document.querySelector<HTMLElement>("#round-briefing-dialog");
+      if (dialog !== null) {
+        dialog.scrollTop = dialog.scrollHeight;
+      }
+    });
+    await expect(page.locator("#confirm-round-briefing")).toBeInViewport();
     await page.getByRole("button", { name: "알겠다요 ㅇㅅㅇ" }).click();
   });
 
@@ -2230,7 +2247,9 @@ test.describe("coarse-pointer surfaces", () => {
       await page.getByRole("button", { name: "취소" }).click();
     });
 
-    test("keeps the briefing on one screen at extra-large text", async ({ page }) => {
+    test("keeps the extra-large briefing confirm reachable without shrinking text", async ({
+      page,
+    }) => {
       await installFixedRoundSeed(page, 1, 0);
       await page.goto("/");
       await openSettings(page);
@@ -2247,26 +2266,33 @@ test.describe("coarse-pointer surfaces", () => {
       await expect(briefing).toBeVisible();
       await expect(page.getByRole("button", { name: "알겠다요 ㅇㅅㅇ" })).toBeEnabled();
       const layout = await page.evaluate(() => {
-        const dialog = document.querySelector("#round-briefing-dialog");
+        const dialog = document.querySelector<HTMLElement>("#round-briefing-dialog");
         const rect = dialog?.getBoundingClientRect();
-        const confirm = document.querySelector("#confirm-round-briefing")?.getBoundingClientRect();
+        const objective = document.querySelector<HTMLElement>(".round-briefing-dialog__objective");
+        const rootFont = parseFloat(getComputedStyle(document.documentElement).fontSize);
+        const objectiveFont = parseFloat(getComputedStyle(objective ?? document.body).fontSize);
         return {
-          scrollHeight: dialog?.scrollHeight ?? 0,
-          clientHeight: dialog?.clientHeight ?? 0,
           top: rect?.top ?? 0,
           bottom: rect?.bottom ?? 0,
-          confirmTop: confirm?.top ?? 0,
-          confirmBottom: confirm?.bottom ?? 0,
           innerHeight,
-          rootFont: getComputedStyle(document.documentElement).fontSize,
+          rootFont,
+          objectiveFont,
+          horizontal: document.documentElement.scrollWidth > document.documentElement.clientWidth,
         };
       });
-      expect(layout.rootFont).toBe("22px");
-      expect(layout.scrollHeight).toBeLessThanOrEqual(layout.clientHeight);
+      expect(layout.rootFont).toBe(22);
+      // Extra-large must never shrink briefing text below the standard size.
+      expect(layout.objectiveFont).toBeGreaterThanOrEqual(layout.rootFont * 0.75);
       expect(layout.top).toBeGreaterThanOrEqual(0);
       expect(layout.bottom).toBeLessThanOrEqual(layout.innerHeight);
-      expect(layout.confirmTop).toBeGreaterThanOrEqual(0);
-      expect(layout.confirmBottom).toBeLessThanOrEqual(layout.innerHeight);
+      expect(layout.horizontal).toBe(false);
+      await page.evaluate(() => {
+        const dialog = document.querySelector<HTMLElement>("#round-briefing-dialog");
+        if (dialog !== null) {
+          dialog.scrollTop = dialog.scrollHeight;
+        }
+      });
+      await expect(page.locator("#confirm-round-briefing")).toBeInViewport();
       await page.getByRole("button", { name: "알겠다요 ㅇㅅㅇ" }).click();
     });
 
@@ -2536,26 +2562,29 @@ test.describe("coarse-pointer surfaces", () => {
       await expect(page.getByRole("button", { name: "알겠다요 ㅇㅅㅇ" })).toBeEnabled();
 
       const layout = await page.evaluate(() => {
-        const dialog = document.querySelector("#round-briefing-dialog");
+        const dialog = document.querySelector<HTMLElement>("#round-briefing-dialog");
         const rect = dialog?.getBoundingClientRect();
         const controls = document.querySelector(".round-briefing-dialog__controls");
         return {
-          scrollHeight: dialog?.scrollHeight ?? 0,
-          clientHeight: dialog?.clientHeight ?? 0,
           top: rect?.top ?? 0,
           bottom: rect?.bottom ?? 0,
           innerHeight,
-          scrollWidth: document.documentElement.scrollWidth,
-          clientWidth: document.documentElement.clientWidth,
+          horizontal: document.documentElement.scrollWidth > document.documentElement.clientWidth,
           columns: getComputedStyle(controls ?? document.body).gridTemplateColumns.split(" ")
             .length,
         };
       });
-      expect(layout.scrollHeight).toBeLessThanOrEqual(layout.clientHeight);
       expect(layout.top).toBeGreaterThanOrEqual(0);
       expect(layout.bottom).toBeLessThanOrEqual(layout.innerHeight);
-      expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth);
+      expect(layout.horizontal).toBe(false);
       expect(layout.columns).toBe(4);
+      await page.evaluate(() => {
+        const dialog = document.querySelector<HTMLElement>("#round-briefing-dialog");
+        if (dialog !== null) {
+          dialog.scrollTop = dialog.scrollHeight;
+        }
+      });
+      await expect(page.locator("#confirm-round-briefing")).toBeInViewport();
       await page.getByRole("button", { name: "알겠다요 ㅇㅅㅇ" }).click();
     });
 
@@ -2576,33 +2605,37 @@ test.describe("coarse-pointer surfaces", () => {
       await expect(page.getByRole("button", { name: "알겠다요 ㅇㅅㅇ" })).toBeEnabled();
 
       const layout = await page.evaluate(() => {
-        const dialog = document.querySelector("#round-briefing-dialog");
+        const dialog = document.querySelector<HTMLElement>("#round-briefing-dialog");
         const rect = dialog?.getBoundingClientRect();
-        const confirm = document.querySelector("#confirm-round-briefing")?.getBoundingClientRect();
+        const objective = document.querySelector<HTMLElement>(".round-briefing-dialog__objective");
         const loadout = document.querySelector(".round-briefing-dialog__loadout");
+        const rootFont = parseFloat(getComputedStyle(document.documentElement).fontSize);
+        const objectiveFont = parseFloat(getComputedStyle(objective ?? document.body).fontSize);
         return {
-          scrollHeight: dialog?.scrollHeight ?? 0,
-          clientHeight: dialog?.clientHeight ?? 0,
           top: rect?.top ?? 0,
           bottom: rect?.bottom ?? 0,
-          confirmTop: confirm?.top ?? 0,
-          confirmBottom: confirm?.bottom ?? 0,
           innerHeight,
-          scrollWidth: document.documentElement.scrollWidth,
-          clientWidth: document.documentElement.clientWidth,
+          rootFont,
+          objectiveFont,
+          horizontal: document.documentElement.scrollWidth > document.documentElement.clientWidth,
           loadoutColumns: getComputedStyle(loadout ?? document.body).gridTemplateColumns.split(" ")
             .length,
-          rootFont: getComputedStyle(document.documentElement).fontSize,
         };
       });
-      expect(layout.rootFont).toBe("22px");
-      expect(layout.scrollHeight).toBeLessThanOrEqual(layout.clientHeight);
+      expect(layout.rootFont).toBe(22);
+      // Extra-large must never shrink briefing text below the standard size.
+      expect(layout.objectiveFont).toBeGreaterThanOrEqual(layout.rootFont * 0.75);
       expect(layout.top).toBeGreaterThanOrEqual(0);
       expect(layout.bottom).toBeLessThanOrEqual(layout.innerHeight);
-      expect(layout.confirmTop).toBeGreaterThanOrEqual(0);
-      expect(layout.confirmBottom).toBeLessThanOrEqual(layout.innerHeight);
-      expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth);
+      expect(layout.horizontal).toBe(false);
       expect(layout.loadoutColumns).toBe(2);
+      await page.evaluate(() => {
+        const dialog = document.querySelector<HTMLElement>("#round-briefing-dialog");
+        if (dialog !== null) {
+          dialog.scrollTop = dialog.scrollHeight;
+        }
+      });
+      await expect(page.locator("#confirm-round-briefing")).toBeInViewport();
       await page.getByRole("button", { name: "알겠다요 ㅇㅅㅇ" }).click();
     });
   });
@@ -4111,28 +4144,36 @@ test.describe("short-window layout smokes", () => {
         await expect(page.getByRole("button", { name: "알겠다요 ㅇㅅㅇ" })).toBeEnabled();
 
         const layout = await page.evaluate(() => {
-          const dialog = document.querySelector("#round-briefing-dialog");
+          const dialog = document.querySelector<HTMLElement>("#round-briefing-dialog");
           const rect = dialog?.getBoundingClientRect();
-          const confirm = document
-            .querySelector("#confirm-round-briefing")
-            ?.getBoundingClientRect();
+          const objective = document.querySelector<HTMLElement>(
+            ".round-briefing-dialog__objective",
+          );
+          const rootFont = parseFloat(getComputedStyle(document.documentElement).fontSize);
+          const objectiveFont = parseFloat(getComputedStyle(objective ?? document.body).fontSize);
           return {
-            scrollHeight: dialog?.scrollHeight ?? 0,
-            clientHeight: dialog?.clientHeight ?? 0,
             top: rect?.top ?? 0,
             bottom: rect?.bottom ?? 0,
-            confirmTop: confirm?.top ?? 0,
-            confirmBottom: confirm?.bottom ?? 0,
             innerHeight,
+            rootFont,
+            objectiveFont,
             horizontal: document.documentElement.scrollWidth > document.documentElement.clientWidth,
           };
         });
-        expect(layout.scrollHeight).toBeLessThanOrEqual(layout.clientHeight);
         expect(layout.top).toBeGreaterThanOrEqual(0);
         expect(layout.bottom).toBeLessThanOrEqual(layout.innerHeight);
-        expect(layout.confirmTop).toBeGreaterThanOrEqual(0);
-        expect(layout.confirmBottom).toBeLessThanOrEqual(layout.innerHeight);
         expect(layout.horizontal).toBe(false);
+        // Briefing text must never shrink below the standard-size floor. The
+        // media-query floor is 0.78rem; 0.75 keeps a margin while still
+        // catching the old 12.32px extra-large inversion.
+        expect(layout.objectiveFont).toBeGreaterThanOrEqual(layout.rootFont * 0.75);
+        await page.evaluate(() => {
+          const dialog = document.querySelector<HTMLElement>("#round-briefing-dialog");
+          if (dialog !== null) {
+            dialog.scrollTop = dialog.scrollHeight;
+          }
+        });
+        await expect(page.locator("#confirm-round-briefing")).toBeInViewport();
         await page.getByRole("button", { name: "알겠다요 ㅇㅅㅇ" }).click();
       });
     }

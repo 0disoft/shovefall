@@ -85,19 +85,31 @@
         <dl class="round-briefing-dialog__controls" aria-label="조작법">
           <div>
             <dt>이동</dt>
-            <dd>방향키 · 땅 우클릭</dd>
+            <dd>
+              <span class="control-keyboard">방향키 · 땅 우클릭</span>
+              <span class="control-touch">조이스틱 · 땅 누르기</span>
+            </dd>
           </div>
           <div>
             <dt>스킬</dt>
-            <dd>Q · W</dd>
+            <dd>
+              <span class="control-keyboard">Q · W</span>
+              <span class="control-touch">스킬 버튼</span>
+            </dd>
           </div>
           <div>
             <dt>갈고리 · 아이템</dt>
-            <dd>E · D</dd>
+            <dd>
+              <span class="control-keyboard">E · D</span>
+              <span class="control-touch">갈고리 · 아이템 버튼</span>
+            </dd>
           </div>
           <div>
             <dt>일시정지</dt>
-            <dd>P</dd>
+            <dd>
+              <span class="control-keyboard">P</span>
+              <span class="control-touch">일시정지 버튼</span>
+            </dd>
           </div>
         </dl>
         <p id="round-briefing-status" class="round-briefing-dialog__status" aria-live="polite">
@@ -685,8 +697,14 @@
               </div>
             </div>
             <p id="targeting-help" class="targeting-help" role="status" hidden>
-              <strong>방향키·마우스 조준</strong>
-              <span>같은 키·Enter·좌클릭 확정 · Esc·우클릭 취소</span>
+              <strong>
+                <span class="control-keyboard">방향키·마우스 조준</span>
+                <span class="control-touch">조이스틱 조준</span>
+              </strong>
+              <span>
+                <span class="control-keyboard">같은 키·Enter·좌클릭 확정 · Esc·우클릭 취소</span>
+                <span class="control-touch">버튼 놓기 확정 · 취소 버튼</span>
+              </span>
             </p>
             <div id="stat-status-wrap" class="stat-status-wrap" data-expanded="false">
               <button

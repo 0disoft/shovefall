@@ -314,11 +314,18 @@ const STARTING_ATTRIBUTE_EFFECT_LABELS: Readonly<Record<StartingAttributeId, rea
     willpower: Object.freeze(["피해 -1.25%/점", "보호막 +1.25%/점"]),
   });
 
-const formatTouchActionLabel = (model: ActionButtonViewModel, fallbackKey: string): string => {
-  const key = model.text.split(" · ")[0] ?? fallbackKey;
+const formatTouchActionLabel = (
+  model: ActionButtonViewModel,
+  fallbackKey: string,
+  shortLabel?: string,
+): string => {
+  // Touch users do not press keyboard keys, so the visible label is the action
+  // name (parts[1] of "Q · 스킬명 · …"), with cooldown/mana appended.
+  const parts = model.text.split(" · ");
+  const label = shortLabel ?? parts[1] ?? fallbackKey;
   return model.state === "cooldown" || model.state === "mana"
-    ? `${key} · ${model.text.split(" · ").at(-1) ?? ""}`
-    : key;
+    ? `${label} · ${parts.at(-1) ?? ""}`
+    : label;
 };
 
 const BASE_STARTING_HEALTH = 100;
@@ -850,9 +857,12 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   })();
   let userPreferences: UserPreferences = loadUserPreferences(scoreboardStorage);
 
-  root.addEventListener("contextmenu", (event) => {
-    event.preventDefault();
-  });
+  // Hybrid devices (touchscreen laptops, large tablets) expose touch even when
+  // the primary pointer is fine. Mark the root once so CSS and copy can react
+  // to touch capability rather than only the primary pointer media query.
+  document.documentElement.dataset.touchCapable = String(
+    navigator.maxTouchPoints > 0 || window.matchMedia("(any-pointer: coarse)").matches,
+  );
 
   const applyUserPreferences = (preferences: UserPreferences): void => {
     userPreferences = normalizeUserPreferences(preferences);
@@ -1410,10 +1420,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     grappleButton.disabled = grappleModel.disabled;
     grappleButton.setAttribute("aria-label", grappleModel.ariaLabel ?? grappleModel.text);
     touchGrappleButton.dataset.state = grappleModel.state;
-    touchGrappleButton.textContent =
-      grappleModel.state === "cooldown"
-        ? `E · ${grappleModel.text.split(" · ").at(-1) ?? "대기"}`
-        : "E";
+    touchGrappleButton.textContent = formatTouchActionLabel(grappleModel, "갈고리", "갈고리");
     touchGrappleButton.disabled = grappleModel.disabled;
     touchGrappleButton.setAttribute("aria-label", grappleModel.ariaLabel ?? grappleModel.text);
     for (const slotIndex of SKILL_SLOT_INDICES) {
@@ -2491,24 +2498,39 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     startGameButton.focus();
   });
 
-  window.addEventListener(
-    "pagehide",
-    () => {
-      session?.destroy();
-      renderer?.destroy();
-      audio?.destroy();
-      backgroundMusic?.destroy();
-      pointerControls?.destroy();
-      removeAudioGestureListeners();
-      document.removeEventListener("keydown", handleGlobalKeyboard);
-      root.removeEventListener("click", handleUiButtonClick);
+  const handlePageHide = (event: PageTransitionEvent): void => {
+    if (event.persisted) {
+      // Stored in the back/forward cache: do not destroy anything. The
+      // session already pauses through its visibilitychange handler while
+      // hidden, and the DOM, session, and renderer survive the round trip.
+      return;
+    }
 
-      if (import.meta.env.DEV) {
-        window.removeEventListener("shovefall:diagnostic-fatal", handleDiagnosticFatal);
-      }
-    },
-    { once: true },
-  );
+    session?.destroy();
+    renderer?.destroy();
+    audio?.destroy();
+    backgroundMusic?.destroy();
+    pointerControls?.destroy();
+    removeAudioGestureListeners();
+    document.removeEventListener("keydown", handleGlobalKeyboard);
+    root.removeEventListener("click", handleUiButtonClick);
+
+    if (import.meta.env.DEV) {
+      window.removeEventListener("shovefall:diagnostic-fatal", handleDiagnosticFatal);
+    }
+  };
+  window.addEventListener("pagehide", handlePageHide);
+
+  const handlePageShow = (event: PageTransitionEvent): void => {
+    if (!event.persisted) {
+      return;
+    }
+
+    // Restored from the back/forward cache without re-running bootstrap.
+    // Re-prime audio; visibilitychange already resumes the session.
+    void unlockAudio();
+  };
+  window.addEventListener("pageshow", handlePageShow);
 
   renderStartingAttributes();
   renderStartingItemSelection();
