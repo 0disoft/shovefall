@@ -1,8 +1,10 @@
 # Static Release Procedure
 
-- Status: `0.199.48` cover-width extra-large stat toggle candidate; hosted proof pending
+- Status: `0.199.49` cover-width filled scoreboard candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.199.48`
+- Current product version: `0.199.49`
+
+Product `0.199.49`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. On a 260 px screen, the filled scoreboard's two-column cells were 89 px wide, so values such as `점수 2,233` needed 94 px and spilled 5 px outside the cell; below 300 px coarse the cells now stack label above value so every number fits inside the cell without horizontal clipping. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
 Product `0.199.48`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. On a 260 px screen with extra-large text, the 체력·마나 toggle's label grew wide enough to push the health and mana summary out of the button, leaving the summary invisible; below 300 px the label now collapses to an accessibility-only hidden span so the summary keeps the full button width and remains visible at every text size. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 

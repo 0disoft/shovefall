@@ -9,6 +9,14 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.199.49",
+    title: "커버 폭 점수표의 숫자가 안 잘린다요 ㅇㅅㅇ",
+    reason:
+      "260px처럼 아주 좁은 화면에서는 점수표 셀 두 칸이 너무 좁아 '점수 2,233' 같은 값이 셀 밖으로 5px 삐져나왔다요.",
+    change:
+      "300px 이하 터치 화면에서는 점수표 셀 안의 라벨과 값을 세로로 쌓아 어떤 긴 숫자라도 셀 안에 들어오게 했다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.199.48",
     title: "아주 크게 글씨에서도 체력·마나가 안 잘린다요 ㅇㅅㅇ",
     reason:
