@@ -1478,6 +1478,38 @@ test("offers five-point attribute steps on desktop without clipping the cards", 
   expect(layout.docOverflowX).toBe(false);
 });
 
+test("fills every remaining attribute point with one tap and re-enables after a change", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await openSettings(page);
+  const strengthMax = page.getByRole("button", { name: "완력 모두 올리기" });
+  await expect(strengthMax).toBeEnabled();
+  await strengthMax.click();
+  await expect(page.locator("#starting-attribute-strength")).toHaveText("20");
+  await expect(page.locator("#starting-attribute-remaining")).toHaveText("0");
+  await expect(strengthMax).toBeDisabled();
+
+  await page.getByRole("button", { name: "완력 5 내리기" }).click();
+  await expect(page.locator("#starting-attribute-strength")).toHaveText("15");
+  await expect(page.locator("#starting-attribute-remaining")).toHaveText("5");
+  await expect(strengthMax).toBeEnabled();
+  await strengthMax.click();
+  await expect(page.locator("#starting-attribute-strength")).toHaveText("20");
+  await expect(page.locator("#starting-attribute-remaining")).toHaveText("0");
+
+  await page.getByRole("button", { name: "완력 5 내리기" }).click();
+  await expect(page.locator("#starting-attribute-strength")).toHaveText("15");
+  await expect(page.locator("#starting-attribute-remaining")).toHaveText("5");
+  await expect(strengthMax).toBeEnabled();
+  await page.getByRole("button", { name: "의지 5 올리기" }).click();
+  await expect(page.locator("#starting-attribute-willpower")).toHaveText("5");
+  await expect(page.locator("#starting-attribute-remaining")).toHaveText("0");
+  await expect(strengthMax).toBeDisabled();
+  await page.getByRole("button", { name: "의지 5 내리기" }).click();
+  await expect(strengthMax).toBeEnabled();
+});
+
 test("keeps the version-history document short and reveals older entries on demand", async ({
   page,
 }) => {

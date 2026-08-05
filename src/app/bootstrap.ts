@@ -601,6 +601,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
           increment: requireElement(row, '[data-attribute-step="1"]', HTMLButtonElement),
           decrementFive: requireElement(row, '[data-attribute-step="-5"]', HTMLButtonElement),
           incrementFive: requireElement(row, '[data-attribute-step="5"]', HTMLButtonElement),
+          fillRemaining: requireElement(row, '[data-attribute-step="max"]', HTMLButtonElement),
           meter: requireElement(row, ".starting-attribute__meter > span", HTMLElement),
         }),
       ] as const;
@@ -1294,6 +1295,9 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
       controls.increment.disabled = value >= STARTING_ATTRIBUTE_LIMITS.maximum || remaining <= 0;
       controls.decrementFive.disabled = value < 5;
       controls.incrementFive.disabled = value >= STARTING_ATTRIBUTE_LIMITS.maximum || remaining < 5;
+      const fillAmount = Math.min(remaining, STARTING_ATTRIBUTE_LIMITS.maximum - value);
+      controls.fillRemaining.disabled = fillAmount <= 0;
+      controls.fillRemaining.title = `${STARTING_ATTRIBUTE_LABELS[id]} ${fillAmount} 올리기`;
       controls.meter.style.setProperty(
         "--meter-value",
         String(value / STARTING_ATTRIBUTE_POINT_TOTAL),
@@ -2057,6 +2061,20 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
       });
     };
     for (const button of row.querySelectorAll<HTMLButtonElement>("[data-attribute-step]")) {
+      if (button.dataset.attributeStep === "max") {
+        button.addEventListener("click", () => {
+          const value = draftStartingAttributes[id];
+          const allocated = getStartingAttributePointTotal(draftStartingAttributes);
+          const delta = Math.min(
+            STARTING_ATTRIBUTE_POINT_TOTAL - allocated,
+            STARTING_ATTRIBUTE_LIMITS.maximum - value,
+          );
+          if (delta > 0) {
+            changeStartingAttribute(id, delta);
+          }
+        });
+        continue;
+      }
       const step = Number(button.dataset.attributeStep);
       if (Number.isFinite(step) && step !== 0) {
         bindStartingAttributeHold(button, step);

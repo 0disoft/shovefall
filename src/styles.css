@@ -3387,9 +3387,28 @@ button:disabled {
   }
 
   .starting-attribute__stepper button {
-    width: 40px;
+    width: 36px;
     height: 44px;
-    font-size: 1.05rem;
+    font-size: 0.95rem;
+  }
+
+  .starting-attribute__stepper {
+    grid-template-columns: 28px 36px 28px 36px 28px 44px;
+    gap: 2px;
+  }
+
+  .starting-attribute__stepper output {
+    min-width: 28px;
+    height: 44px;
+    font-size: 0.95rem;
+  }
+
+  .starting-attribute__stepper button[data-attribute-step="max"] {
+    width: 44px;
+    color: #83e6aa;
+    border: 1px solid rgba(131, 230, 170, 0.55);
+    font-size: 0.6rem;
+    letter-spacing: 0;
   }
 
   .targeting-help {
