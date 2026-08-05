@@ -3388,6 +3388,75 @@ test("keeps the settings tabs reachable and starts each panel at the top", async
   expect(after.firstSkillCardTop).toBeGreaterThanOrEqual(0);
 });
 
+test("fits the fine-pointer landscape completed panel on one screen", async ({ page }) => {
+  await page.setViewportSize({ width: 844, height: 390 });
+  await page.goto("/");
+  await page.evaluate(() => {
+    const app = document.querySelector("#app");
+    const pause = document.querySelector("#pause-menu");
+    for (const candidate of [
+      pause?.closest("section"),
+      pause?.closest("main"),
+      document.querySelector("#arena-host"),
+    ]) {
+      if (candidate) candidate.removeAttribute("hidden");
+    }
+    pause?.removeAttribute("hidden");
+    pause?.setAttribute("data-mode", "completed");
+    app?.setAttribute("data-screen", "arena");
+    app?.setAttribute("data-pause-menu", "open");
+    app?.setAttribute("data-round", "completed");
+    document.querySelector("#arena-actions")?.removeAttribute("hidden");
+    document.querySelector("#copy-round-report")?.removeAttribute("hidden");
+    document.querySelector("#view-finished-map")?.removeAttribute("hidden");
+    document.querySelector("#resume-round")?.setAttribute("hidden", "");
+    const message = document.querySelector("#round-message");
+    if (message) message.textContent = "라운드 종료 · 7위";
+    document.body.classList.add("game-screen-active");
+  });
+  await expect(page.locator("#pause-menu")).toHaveAttribute("data-mode", "completed");
+
+  const layout = await page.evaluate(() => {
+    const panel = document.querySelector<HTMLElement>(".pause-menu__panel");
+    const actions = document.querySelector<HTMLElement>(".arena-actions__buttons");
+    const buttons =
+      actions === null
+        ? []
+        : [...actions.querySelectorAll<HTMLElement>("button:not([hidden]), a:not([hidden])")];
+    const firstRowTop = buttons[0]?.getBoundingClientRect().top ?? 0;
+    const secondRowTop = buttons[3]?.getBoundingClientRect().top ?? 0;
+    const clipped = [...document.querySelectorAll<HTMLElement>("#pause-menu *")]
+      .filter(
+        (element) =>
+          getComputedStyle(element).display !== "none" &&
+          element.scrollWidth > element.clientWidth + 2,
+      )
+      .map((element) => ({
+        label: (element.querySelector("dt")?.textContent ?? element.textContent ?? "")
+          .trim()
+          .replace(/\s+/gu, " ")
+          .slice(0, 24),
+      }));
+    return {
+      coarse: matchMedia("(pointer: coarse)").matches,
+      scrollHeight: panel?.scrollHeight ?? 0,
+      clientHeight: panel?.clientHeight ?? 0,
+      buttonColumns:
+        actions === null ? 0 : getComputedStyle(actions).gridTemplateColumns.split(" ").length,
+      buttonRows: secondRowTop > firstRowTop ? 2 : 1,
+      clipped,
+      scrollWidth: document.documentElement.scrollWidth,
+      clientWidth: document.documentElement.clientWidth,
+    };
+  });
+  expect(layout.coarse).toBe(false);
+  expect(layout.scrollHeight).toBeLessThanOrEqual(390);
+  expect(layout.buttonColumns).toBe(4);
+  expect(layout.buttonRows).toBe(1);
+  expect(layout.clipped).toEqual([]);
+  expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth);
+});
+
 test("keeps the desktop build-summary skill-efficiency cell unclipped after allocation", async ({
   page,
 }) => {

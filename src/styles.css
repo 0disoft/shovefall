@@ -4142,6 +4142,23 @@ button:disabled {
     line-height: 1.15;
   }
 
+  .pause-menu[data-mode="completed"] .arena-actions {
+    gap: 4px;
+    padding: 8px 10px;
+  }
+
+  :root .pause-menu[data-mode="completed"] .ready-message {
+    font-size: 0.84rem;
+    line-height: 1.2;
+  }
+
+  :root .pause-menu[data-mode="completed"] .arena-actions__buttons .primary-action,
+  :root .pause-menu[data-mode="completed"] .arena-actions__buttons .secondary-action {
+    min-height: 44px;
+    padding: 0 10px;
+    font-size: 0.9rem;
+  }
+
   .pause-menu[data-mode="completed"] .arena-actions__buttons,
   .pause-menu[data-mode="paused"] .arena-actions__buttons {
     grid-template-columns: repeat(4, minmax(0, 1fr));
