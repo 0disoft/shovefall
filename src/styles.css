@@ -3666,6 +3666,24 @@ button:disabled {
     font-size: 0.72rem;
   }
 
+  :root[data-font-scale="extra-large"] .stat-status-toggle {
+    gap: 4px;
+    padding: 8px;
+  }
+
+  :root[data-font-scale="extra-large"] .stat-status-toggle span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  :root[data-font-scale="extra-large"] .stat-status-toggle output {
+    font-size: 0.68rem;
+  }
+
   .pause-menu[data-mode="completed"] .round-statistics__grid div {
     gap: 2px 4px;
     padding: 2px 5px;

@@ -2569,6 +2569,35 @@ test.describe("coarse-pointer surfaces", () => {
       expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth);
     });
 
+    test("keeps the cover-width stat toggle readable at extra-large text during a live round", async ({
+      page,
+    }) => {
+      test.setTimeout(90_000);
+      await installFixedRoundSeed(page, 1, 0);
+      await page.goto("/");
+      await openSettings(page);
+      await saveSettings(page);
+      await openSettings(page);
+      await openSettingsTab(page, "설정");
+      await page.locator('input[name="fontScale"][value="extra-large"]').check();
+      await page.getByRole("button", { name: "설정 저장" }).click();
+      await expect(page.locator("#app")).toHaveAttribute("data-screen", "menu");
+      await startGame(page);
+      await expect(page.locator("#app")).toHaveAttribute("data-round", "active");
+      await expect(page.locator("#toggle-stat-status")).toBeVisible();
+
+      const layout = await page.locator("#toggle-stat-status").evaluate((toggle) => {
+        const output = toggle.querySelector("output");
+        return {
+          scrollWidth: toggle.scrollWidth,
+          clientWidth: toggle.clientWidth,
+          outputVisible: output !== null && output.getBoundingClientRect().width > 0,
+        };
+      });
+      expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth);
+      expect(layout.outputVisible).toBe(true);
+    });
+
     test("keeps the cover-width completed panel readable without clipped values", async ({
       page,
     }) => {
