@@ -3972,6 +3972,85 @@ button:disabled {
   }
 }
 
+@media (pointer: fine) and (orientation: portrait) and (max-width: 380px) {
+  .pause-menu__panel {
+    gap: 5px;
+    padding: 10px;
+  }
+
+  .pause-menu__panel h3 {
+    font-size: 1rem;
+    line-height: 1.15;
+  }
+
+  .pause-menu[data-mode="completed"] .arena-actions {
+    gap: 4px;
+    padding: 8px 10px;
+  }
+
+  :root .pause-menu[data-mode="completed"] .ready-message {
+    font-size: 0.84rem;
+    line-height: 1.2;
+  }
+
+  :root .pause-menu[data-mode="completed"] .arena-actions__buttons .primary-action,
+  :root .pause-menu[data-mode="completed"] .arena-actions__buttons .secondary-action {
+    min-height: 44px;
+    padding: 0 10px;
+    font-size: 0.9rem;
+  }
+
+  .arena-actions__buttons {
+    gap: 5px;
+  }
+
+  .round-statistics {
+    gap: 4px;
+  }
+
+  .pause-menu[data-mode="completed"] .round-statistics__grid,
+  .pause-menu[data-mode="paused"] .round-statistics__grid {
+    gap: 2px;
+  }
+
+  .pause-menu[data-mode="completed"] .round-statistics__grid div,
+  .pause-menu[data-mode="paused"] .round-statistics__grid div {
+    grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+    align-items: baseline;
+    gap: 2px 6px;
+    padding: 2px 7px;
+  }
+
+  .pause-menu[data-mode="completed"] .round-statistics__grid dt,
+  .pause-menu[data-mode="paused"] .round-statistics__grid dt {
+    font-size: 0.62rem;
+  }
+
+  .pause-menu[data-mode="completed"] .round-statistics__grid dd,
+  .pause-menu[data-mode="paused"] .round-statistics__grid dd {
+    font-size: 0.78rem;
+    text-align: right;
+  }
+
+  .pause-menu[data-mode="completed"] .round-statistics h4,
+  .pause-menu[data-mode="paused"] .round-statistics h4,
+  .pause-menu[data-mode="completed"] .round-statistics h5,
+  .pause-menu[data-mode="paused"] .round-statistics h5 {
+    font-size: 0.82rem;
+    line-height: 1.2;
+  }
+
+  .pause-menu[data-mode="completed"] .round-statistics__skills ul,
+  .pause-menu[data-mode="paused"] .round-statistics__skills ul {
+    gap: 3px;
+  }
+
+  .pause-menu[data-mode="completed"] .round-statistics__skills li,
+  .pause-menu[data-mode="paused"] .round-statistics__skills li {
+    padding: 4px 8px;
+  }
+}
+
 @media (pointer: coarse) and (orientation: landscape) {
   .round-briefing-dialog__loadout {
     grid-template-columns: repeat(2, minmax(0, 1fr));
