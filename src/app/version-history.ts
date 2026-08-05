@@ -9,6 +9,14 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.199.50",
+    title: "특성마다 무슨 효과가 있는지 보인다요 ㅇㅅㅇ",
+    reason:
+      "특성 카드에 이름만 있고 포인트당 효과가 없어서, 어떤 특성을 올려야 할지 모르는 채로 골라야 했다요. 또 아주 좁은 창에서는 스테퍼 버튼이 카드 밖으로 삐져나가 가로로 넘쳤다요.",
+    change:
+      "각 특성 카드에 포인트당 효과 칩(예: 이동 +4.5%/점)을 보여주고, 300px 이하 좁은 창에서는 스테퍼 버튼을 조여서 카드 안에 모두 들어오게 했다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.199.49",
     title: "커버 폭 점수표의 숫자가 안 잘린다요 ㅇㅅㅇ",
     reason:
