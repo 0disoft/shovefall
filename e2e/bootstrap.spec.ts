@@ -3388,6 +3388,37 @@ test("keeps the current version-history title fully visible on a narrow phone", 
   }
 });
 
+test("keeps the briefing confirm action visible on a narrow portrait screen", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.goto("/");
+  await openSettings(page);
+  await openSettingsTab(page, "특성");
+  await allocateBalancedAttributes(page);
+  await openSettingsTab(page, "스킬");
+  await selectStartingSkills(page);
+  await openSettingsTab(page, "아이템");
+  await page.locator('input[name="startingItem"][value="bomb"]').check();
+  await page.getByRole("button", { name: "설정 저장" }).click();
+  await expect(page.locator("#app")).toHaveAttribute("data-screen", "menu");
+  await page.getByRole("button", { name: "게임 시작" }).click();
+  const briefing = page.getByRole("dialog", {
+    name: "포격으로 무너지는 섬에서 끝까지 살아남아.",
+  });
+  await expect(briefing).toBeVisible();
+
+  const layout = await page.evaluate(() => {
+    const button = document.querySelector<HTMLElement>("#confirm-round-briefing");
+    const buttonRect = button?.getBoundingClientRect();
+    return {
+      confirmVisible:
+        buttonRect !== undefined && buttonRect.top >= 0 && buttonRect.bottom <= window.innerHeight,
+      bodyOverflow: document.body.scrollWidth > document.documentElement.clientWidth,
+    };
+  });
+  expect(layout.confirmVisible).toBe(true);
+  expect(layout.bodyOverflow).toBe(false);
+});
+
 test.describe("narrow fine-pointer settings", () => {
   test.use({ viewport: { width: 260, height: 653 } });
 
