@@ -3352,7 +3352,8 @@ button:disabled {
   }
 }
 
-@media (pointer: fine) and (orientation: landscape) and (max-width: 640px) {
+@media (pointer: fine) and (orientation: landscape) and (max-width: 640px),
+  (pointer: fine) and (orientation: landscape) and (max-height: 420px) {
   .starting-attribute__stepper {
     grid-template-columns: 28px 36px 28px 36px 28px 44px;
     gap: 2px;
@@ -4218,6 +4219,29 @@ button:disabled {
     gap: 4px;
   }
 
+  .pause-menu[data-mode="paused"] .game-telemetry div {
+    grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+    align-items: baseline;
+    gap: 2px 6px;
+    padding: 2px 7px;
+  }
+
+  .pause-menu[data-mode="paused"] .game-telemetry dt {
+    font-size: 0.62rem;
+  }
+
+  .pause-menu[data-mode="paused"] .game-telemetry dd {
+    font-size: 0.78rem;
+    text-align: right;
+  }
+
+  :root .pause-menu .arena-actions__buttons .primary-action,
+  :root .pause-menu .arena-actions__buttons .secondary-action {
+    min-height: 44px;
+    padding: 0 6px;
+    font-size: 0.74rem;
+  }
+
   .pause-menu[data-mode="completed"] .round-statistics__grid,
   .pause-menu[data-mode="paused"] .round-statistics__grid {
     gap: 2px;
@@ -4510,6 +4534,12 @@ button:disabled {
     line-height: 1.35;
   }
 
+  .round-briefing-dialog__objective {
+    gap: 3px;
+    font-size: 0.78rem;
+    line-height: 1.3;
+  }
+
   .round-briefing-dialog__controls {
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 6px;
@@ -4721,5 +4751,532 @@ button:disabled {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+  }
+}
+
+/* The coarse 5-step attribute buttons shrink at narrow widths; large and
+   extra-large text would otherwise clip the "-5" and "+5" glyphs. */
+@media (pointer: coarse),
+  (pointer: fine) and (max-width: 640px),
+  (pointer: fine) and (orientation: landscape) and (max-height: 420px) {
+  :root[data-font-scale="large"] .starting-attribute__stepper button[data-attribute-step="-5"],
+  :root[data-font-scale="large"] .starting-attribute__stepper button[data-attribute-step="5"],
+  :root[data-font-scale="extra-large"]
+    .starting-attribute__stepper
+    button[data-attribute-step="-5"],
+  :root[data-font-scale="extra-large"]
+    .starting-attribute__stepper
+    button[data-attribute-step="5"] {
+    font-size: 0.72rem;
+  }
+}
+
+/* Sub-340px coarse portrait windows compact the briefing so the whole dialog
+   stays on one screen without internal scrolling at standard and large text. */
+@media (pointer: coarse) and (max-width: 340px) {
+  :root[data-font-scale="standard"] .round-briefing-dialog,
+  :root[data-font-scale="large"] .round-briefing-dialog {
+    padding: 12px;
+    max-height: calc(100dvh - 16px);
+  }
+
+  :root[data-font-scale="standard"] .round-briefing-dialog__heading p,
+  :root[data-font-scale="large"] .round-briefing-dialog__heading p {
+    margin-bottom: 2px;
+    font-size: 0.72rem;
+  }
+
+  :root[data-font-scale="standard"] .round-briefing-dialog__heading h2,
+  :root[data-font-scale="large"] .round-briefing-dialog__heading h2 {
+    font-size: 1.08rem;
+    line-height: 1.12;
+  }
+
+  :root[data-font-scale="standard"] .round-briefing-dialog__objective,
+  :root[data-font-scale="large"] .round-briefing-dialog__objective {
+    gap: 3px;
+    margin-top: 8px;
+    font-size: 0.78rem;
+    line-height: 1.32;
+  }
+
+  :root[data-font-scale="standard"] .round-briefing-dialog__loadout,
+  :root[data-font-scale="large"] .round-briefing-dialog__loadout {
+    gap: 3px;
+    margin-top: 8px;
+    padding: 7px 9px;
+  }
+
+  :root[data-font-scale="standard"] .round-briefing-dialog__loadout dt,
+  :root[data-font-scale="large"] .round-briefing-dialog__loadout dt {
+    font-size: 0.68rem;
+  }
+
+  :root[data-font-scale="standard"] .round-briefing-dialog__loadout dd,
+  :root[data-font-scale="large"] .round-briefing-dialog__loadout dd {
+    font-size: 0.76rem;
+    line-height: 1.25;
+  }
+
+  :root[data-font-scale="standard"] .round-briefing-dialog__controls,
+  :root[data-font-scale="large"] .round-briefing-dialog__controls {
+    gap: 6px;
+    margin-top: 8px;
+  }
+
+  :root[data-font-scale="standard"] .round-briefing-dialog__controls > div,
+  :root[data-font-scale="large"] .round-briefing-dialog__controls > div {
+    padding: 6px 8px;
+  }
+
+  :root[data-font-scale="standard"] .round-briefing-dialog__controls dt,
+  :root[data-font-scale="large"] .round-briefing-dialog__controls dt {
+    font-size: 0.64rem;
+  }
+
+  :root[data-font-scale="standard"] .round-briefing-dialog__controls dd,
+  :root[data-font-scale="large"] .round-briefing-dialog__controls dd {
+    margin-top: 2px;
+    font-size: 0.76rem;
+    line-height: 1.25;
+  }
+
+  :root[data-font-scale="standard"] .round-briefing-dialog__status,
+  :root[data-font-scale="large"] .round-briefing-dialog__status {
+    margin: 8px 0 6px;
+    font-size: 0.74rem;
+  }
+
+  :root[data-font-scale="standard"] .round-briefing-dialog > .primary-action,
+  :root[data-font-scale="large"] .round-briefing-dialog > .primary-action {
+    min-height: 44px;
+  }
+
+  :root[data-font-scale="extra-large"] .round-briefing-dialog {
+    padding: 12px;
+    max-height: calc(100dvh - 16px);
+  }
+
+  :root[data-font-scale="extra-large"] .round-briefing-dialog__status {
+    margin: 8px 0 4px;
+  }
+
+  :root[data-font-scale="extra-large"] .round-briefing-dialog > .primary-action {
+    min-height: 44px;
+  }
+}
+
+/* Fine-pointer portrait windows between 381 px and 700 px kept the desktop
+   padding with two-column statistics, so paused and completed panels
+   outgrew short viewports. Compact them like the sub-380 px portrait rule. */
+@media (pointer: fine) and (orientation: portrait) and (min-width: 381px) and (max-width: 700px) {
+  .pause-menu__panel {
+    gap: 4px;
+    padding: 8px;
+  }
+
+  .pause-menu__panel h3 {
+    font-size: 1rem;
+    line-height: 1.15;
+  }
+
+  .pause-menu[data-mode="paused"] .game-telemetry div {
+    grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+    align-items: baseline;
+    gap: 2px 6px;
+    padding: 2px 7px;
+  }
+
+  .pause-menu[data-mode="paused"] .game-telemetry dt {
+    font-size: 0.62rem;
+  }
+
+  .pause-menu[data-mode="paused"] .game-telemetry dd {
+    font-size: 0.78rem;
+    text-align: right;
+  }
+
+  :root .pause-menu .arena-actions__buttons .primary-action,
+  :root .pause-menu .arena-actions__buttons .secondary-action {
+    min-height: 44px;
+    padding: 0 6px;
+    font-size: 0.74rem;
+  }
+
+  .pause-menu[data-mode="completed"] .arena-actions {
+    gap: 4px;
+    padding: 8px 10px;
+  }
+
+  :root .pause-menu[data-mode="completed"] .ready-message {
+    font-size: 0.84rem;
+    line-height: 1.2;
+  }
+
+  :root .pause-menu[data-mode="completed"] .arena-actions__buttons .primary-action,
+  :root .pause-menu[data-mode="completed"] .arena-actions__buttons .secondary-action {
+    min-height: 44px;
+    padding: 0 10px;
+    font-size: 0.9rem;
+  }
+
+  .arena-actions__buttons {
+    gap: 5px;
+  }
+
+  .round-statistics {
+    gap: 4px;
+  }
+
+  .pause-menu[data-mode="completed"] .round-statistics__grid,
+  .pause-menu[data-mode="paused"] .round-statistics__grid {
+    gap: 2px;
+  }
+
+  .pause-menu[data-mode="completed"] .round-statistics__grid div,
+  .pause-menu[data-mode="paused"] .round-statistics__grid div {
+    grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+    align-items: baseline;
+    gap: 2px 6px;
+    padding: 2px 7px;
+  }
+
+  .pause-menu[data-mode="completed"] .round-statistics__grid dt,
+  .pause-menu[data-mode="paused"] .round-statistics__grid dt {
+    font-size: 0.62rem;
+  }
+
+  .pause-menu[data-mode="completed"] .round-statistics__grid dd,
+  .pause-menu[data-mode="paused"] .round-statistics__grid dd {
+    font-size: 0.78rem;
+    text-align: right;
+  }
+
+  .pause-menu[data-mode="completed"] .round-statistics h4,
+  .pause-menu[data-mode="paused"] .round-statistics h4,
+  .pause-menu[data-mode="completed"] .round-statistics h5,
+  .pause-menu[data-mode="paused"] .round-statistics h5 {
+    font-size: 0.82rem;
+    line-height: 1.2;
+  }
+
+  .pause-menu[data-mode="completed"] .round-statistics__skills ul,
+  .pause-menu[data-mode="paused"] .round-statistics__skills ul {
+    gap: 3px;
+  }
+
+  .pause-menu[data-mode="completed"] .round-statistics__skills li,
+  .pause-menu[data-mode="paused"] .round-statistics__skills li {
+    padding: 4px 8px;
+  }
+
+  :root[data-font-scale="extra-large"] .pause-menu__panel {
+    gap: 4px;
+    padding: 8px 10px;
+  }
+
+  :root[data-font-scale="extra-large"] .pause-menu__panel h3 {
+    font-size: 0.88rem;
+    line-height: 1.15;
+  }
+
+  :root[data-font-scale="extra-large"] .pause-menu[data-mode="completed"] .ready-message {
+    font-size: 0.8rem;
+    line-height: 1.2;
+  }
+
+  :root[data-font-scale="extra-large"] .pause-menu .round-statistics__grid {
+    gap: 2px;
+  }
+
+  :root[data-font-scale="extra-large"] .pause-menu .round-statistics__grid div {
+    gap: 1px;
+    padding: 2px 6px;
+  }
+
+  :root[data-font-scale="extra-large"] .pause-menu .round-statistics__grid dt {
+    font-size: 0.58rem;
+    line-height: 1.2;
+  }
+
+  :root[data-font-scale="extra-large"] .pause-menu .round-statistics__grid dd {
+    font-size: 0.72rem;
+    line-height: 1.2;
+  }
+
+  :root[data-font-scale="extra-large"] .pause-menu .round-statistics h4,
+  :root[data-font-scale="extra-large"] .pause-menu .round-statistics h5 {
+    font-size: 0.76rem;
+    line-height: 1.15;
+  }
+
+  :root[data-font-scale="extra-large"] .pause-menu .round-statistics__skills ul {
+    gap: 2px;
+  }
+
+  :root[data-font-scale="extra-large"] .pause-menu .round-statistics__skills li {
+    padding: 3px 6px;
+    font-size: 0.78rem;
+  }
+
+  :root[data-font-scale="extra-large"] .pause-menu .arena-actions__buttons .primary-action,
+  :root[data-font-scale="extra-large"] .pause-menu .arena-actions__buttons .secondary-action {
+    min-height: 44px;
+    padding: 0 8px;
+    font-size: 0.8rem;
+  }
+
+  :root[data-font-scale="extra-large"] .pause-menu[data-mode="paused"] .pause-control-guide {
+    display: none;
+  }
+
+  :root[data-font-scale="extra-large"]
+    .pause-menu[data-mode="paused"]
+    .arena-actions__buttons
+    .primary-action,
+  :root[data-font-scale="extra-large"]
+    .pause-menu[data-mode="paused"]
+    .arena-actions__buttons
+    .secondary-action {
+    padding: 0 6px;
+    font-size: 0.74rem;
+  }
+
+  :root[data-font-scale="extra-large"] .pause-menu[data-mode="paused"] .game-telemetry {
+    gap: 2px;
+  }
+
+  :root[data-font-scale="extra-large"] .pause-menu[data-mode="paused"] .game-telemetry div {
+    grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+    align-items: baseline;
+    gap: 1px 4px;
+    padding: 1px 4px;
+  }
+
+  :root[data-font-scale="extra-large"] .pause-menu[data-mode="paused"] .game-telemetry dt {
+    font-size: 0.5rem;
+    line-height: 1.15;
+  }
+
+  :root[data-font-scale="extra-large"] .pause-menu[data-mode="paused"] .game-telemetry dd {
+    font-size: 0.62rem;
+    line-height: 1.2;
+    text-align: right;
+  }
+
+  :root[data-font-scale="extra-large"]
+    .pause-menu[data-mode="paused"]
+    .round-statistics__skills
+    li {
+    padding: 2px 5px;
+    font-size: 0.72rem;
+  }
+
+  :root[data-font-scale="extra-large"] .pause-menu[data-mode="paused"] .round-statistics__grid dt {
+    font-size: 0.52rem;
+    line-height: 1.15;
+  }
+
+  :root[data-font-scale="extra-large"] .pause-menu[data-mode="paused"] .round-statistics__grid dd {
+    font-size: 0.66rem;
+    line-height: 1.2;
+  }
+
+  :root[data-font-scale="extra-large"] .pause-menu[data-mode="paused"] .round-statistics h4,
+  :root[data-font-scale="extra-large"] .pause-menu[data-mode="paused"] .round-statistics h5 {
+    font-size: 0.7rem;
+    line-height: 1.15;
+  }
+}
+
+/* Fine-pointer portrait windows between 481 px and 560 px kept desktop-width
+   steppers inside two-column attribute cards, so the cards overflowed. Stack
+   the cards at these widths so the full-width stepper row fits one card. */
+@media (pointer: fine) and (orientation: portrait) and (min-width: 481px) and (max-width: 560px) {
+  .starting-attributes__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Cover-width coarse completed panels kept two-column statistic cells whose
+   values wrapped three lines, and three-column skill rows that doubled in
+   height. Stack both at 300 px and below so every cell stays on one line. */
+@media (pointer: coarse) and (max-width: 300px) {
+  .pause-menu[data-mode="completed"] .round-statistics__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pause-menu[data-mode="completed"] .round-statistics__skills ul {
+    grid-template-columns: 1fr;
+  }
+
+  .pause-menu[data-mode="completed"] .round-statistics__grid div {
+    grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+    align-items: baseline;
+    gap: 2px 6px;
+  }
+
+  .pause-menu[data-mode="completed"] .round-statistics__skills li {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 2px 8px;
+  }
+
+  :root[data-font-scale] .pause-menu[data-mode="completed"] .round-statistics__grid div {
+    padding: 1px 4px;
+    gap: 1px 4px;
+  }
+
+  :root[data-font-scale] .pause-menu[data-mode="completed"] .round-statistics__grid dt,
+  :root[data-font-scale] .pause-menu[data-mode="completed"] .round-statistics__grid dd {
+    line-height: 1.15;
+  }
+
+  :root[data-font-scale] .pause-menu[data-mode="completed"] .round-statistics__skills li {
+    padding: 1px 4px;
+  }
+
+  :root[data-font-scale] .pause-menu[data-mode="completed"] .round-statistics h4,
+  :root[data-font-scale] .pause-menu[data-mode="completed"] .round-statistics h5 {
+    margin: 0;
+    line-height: 1.1;
+  }
+}
+
+/* Short fine-pointer landscape windows compact the briefing loadout and
+   controls the same way coarse landscape does, and tighten the pause panel
+   so extra-large text still fits a 390 px-tall viewport. */
+@media (pointer: fine) and (orientation: landscape) and (max-height: 420px) {
+  .round-briefing-dialog {
+    padding: 12px 16px;
+    max-height: calc(100dvh - 16px);
+  }
+
+  .round-briefing-dialog__loadout {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 3px 10px;
+    margin-top: 10px;
+    padding: 7px 10px;
+  }
+
+  .round-briefing-dialog__loadout > div:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .round-briefing-dialog__loadout dd {
+    font-size: 0.74rem;
+  }
+
+  .round-briefing-dialog__heading h2 {
+    font-size: 1.1rem;
+  }
+
+  .round-briefing-dialog__objective {
+    gap: 2px;
+    margin-top: 6px;
+    font-size: 0.78rem;
+    line-height: 1.22;
+  }
+
+  .round-briefing-dialog__controls {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+    margin-top: 10px;
+  }
+
+  .round-briefing-dialog__controls > div {
+    padding: 6px 8px;
+  }
+
+  .round-briefing-dialog__controls dt {
+    font-size: 0.68rem;
+  }
+
+  .round-briefing-dialog__controls dd {
+    margin-top: 2px;
+    font-size: 0.78rem;
+  }
+
+  .round-briefing-dialog__status {
+    margin: 8px 0 4px;
+    font-size: 0.82rem;
+  }
+
+  .round-briefing-dialog > .primary-action {
+    min-height: 44px;
+  }
+
+  .pause-menu__panel {
+    gap: 6px;
+    padding: 10px 12px;
+  }
+
+  .pause-menu__panel h3 {
+    font-size: 0.92rem;
+    line-height: 1.15;
+  }
+
+  .pause-menu[data-mode="completed"] .arena-actions {
+    gap: 4px;
+    padding: 8px 10px;
+  }
+
+  .pause-menu .round-statistics {
+    gap: 4px;
+  }
+
+  .pause-menu .round-statistics__grid {
+    gap: 2px;
+  }
+
+  .pause-menu .round-statistics__grid div {
+    padding: 3px 8px;
+  }
+
+  .pause-menu .round-statistics__skills li {
+    padding: 2px 6px;
+  }
+
+  :root[data-font-scale="extra-large"] .round-briefing-dialog {
+    padding: 10px 12px;
+  }
+
+  :root[data-font-scale="extra-large"] .round-briefing-dialog__status {
+    margin: 8px 0 4px;
+  }
+
+  :root[data-font-scale="extra-large"] .pause-menu__panel {
+    gap: 4px;
+    padding: 8px 10px;
+  }
+
+  :root[data-font-scale="extra-large"] .pause-menu .round-statistics__grid dt {
+    font-size: 0.6rem;
+  }
+
+  :root[data-font-scale="extra-large"] .pause-menu .round-statistics__grid dd {
+    font-size: 0.78rem;
+  }
+
+  :root[data-font-scale="extra-large"] .pause-menu .round-statistics__grid div {
+    padding: 2px 6px;
+  }
+
+  :root[data-font-scale="extra-large"] .pause-menu .round-statistics h4,
+  :root[data-font-scale="extra-large"] .pause-menu .round-statistics h5 {
+    margin: 0;
+    line-height: 1.1;
+  }
+
+  :root[data-font-scale="extra-large"] .pause-menu .round-statistics__skills li {
+    padding: 2px 5px;
+    font-size: 0.72rem;
+  }
+
+  :root[data-font-scale="extra-large"] .pause-menu[data-mode="completed"] .arena-actions {
+    gap: 4px;
+    padding: 6px 8px;
   }
 }
