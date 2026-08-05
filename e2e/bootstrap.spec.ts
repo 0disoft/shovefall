@@ -1510,6 +1510,40 @@ test("fills every remaining attribute point with one tap and re-enables after a 
   await expect(strengthMax).toBeEnabled();
 });
 
+test("keeps every attribute stepper button inside its card without overlap", async ({ page }) => {
+  await page.goto("/");
+  await openSettings(page);
+  const layout = await page.evaluate(() => {
+    const cards = [...document.querySelectorAll<HTMLElement>(".starting-attribute")];
+    return cards.map((card) => {
+      const cardRect = card.getBoundingClientRect();
+      const buttons = [
+        ...card.querySelectorAll<HTMLElement>(".starting-attribute__stepper button"),
+      ].map((button) => {
+        const rect = button.getBoundingClientRect();
+        return { left: rect.left, right: rect.right };
+      });
+      const overlaps = buttons.some((button, index) => {
+        const previous = buttons[index - 1];
+        return previous !== undefined && index > 0 && button.left < previous.right - 1;
+      });
+      const last = buttons.at(-1);
+      return {
+        cardLeft: cardRect.left,
+        cardRight: cardRect.right,
+        buttonCount: buttons.length,
+        overlaps,
+        maxRight: last?.right ?? 0,
+      };
+    });
+  });
+  for (const card of layout) {
+    expect(card.buttonCount).toBe(5);
+    expect(card.overlaps).toBe(false);
+    expect(card.maxRight).toBeLessThanOrEqual(card.cardRight + 1);
+  }
+});
+
 test("keeps the version-history document short and reveals older entries on demand", async ({
   page,
 }) => {
@@ -1562,8 +1596,8 @@ test.describe("coarse-pointer surfaces", () => {
     await page.getByRole("button", { name: "설정하러 가기" }).click();
     await expect(page.locator("#app")).toHaveAttribute("data-screen", "settings");
     await expect(page.locator("#starting-build-summary")).not.toHaveAttribute("open", "");
-    await expect(page.getByText("길게 누르면 계속 · 5씩 버튼도 있어")).toBeVisible();
-    await expect(page.getByText("Ctrl+클릭은 5씩")).toBeHidden();
+    await expect(page.getByText("길게 누르면 계속 · 5씩 버튼 · MAX는 남은 전부")).toBeVisible();
+    await expect(page.getByText("Ctrl+클릭은 5씩 · MAX는 남은 전부")).toBeHidden();
     const stepperBox = await page.getByRole("button", { name: "완력 1 올리기" }).boundingBox();
     expect(stepperBox).not.toBeNull();
     if (stepperBox !== null) {
@@ -2356,11 +2390,16 @@ test.describe("coarse-pointer surfaces", () => {
           '.starting-attribute__stepper button[data-attribute-step="1"]',
         );
         const buttonRect = button?.getBoundingClientRect();
+        const maxButton = card?.querySelector<HTMLButtonElement>(
+          '.starting-attribute__stepper button[data-attribute-step="max"]',
+        );
+        const maxRect = maxButton?.getBoundingClientRect();
         return {
           cardLeft: cardRect === undefined ? null : Math.round(cardRect.left),
           cardRight: cardRect === undefined ? null : Math.round(cardRect.right),
           buttonWidth: buttonRect === undefined ? null : Math.round(buttonRect.width),
           buttonHeight: buttonRect === undefined ? null : Math.round(buttonRect.height),
+          maxRight: maxRect === undefined ? null : Math.round(maxRect.right),
         };
       });
       expect(stepper.cardLeft).not.toBeNull();
@@ -2369,6 +2408,8 @@ test.describe("coarse-pointer surfaces", () => {
       expect(stepper.buttonWidth).not.toBeNull();
       expect(stepper.buttonWidth).toBeGreaterThanOrEqual(36);
       expect(stepper.buttonHeight).toBeGreaterThanOrEqual(36);
+      expect(stepper.maxRight).not.toBeNull();
+      expect(stepper.maxRight).toBeLessThanOrEqual(260);
     });
 
     test("keeps the cover-width arena controls inside the viewport without overflow", async ({

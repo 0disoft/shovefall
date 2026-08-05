@@ -832,7 +832,7 @@ button:disabled {
 .starting-attribute__stepper {
   grid-area: stepper;
   display: grid;
-  grid-template-columns: 44px 44px 36px 44px 44px;
+  grid-template-columns: 40px 40px 32px 40px 40px 44px;
   align-items: center;
   gap: 4px;
   flex: 0 0 auto;
@@ -840,17 +840,25 @@ button:disabled {
 }
 
 .starting-attribute__stepper button {
-  width: 44px;
+  width: 40px;
   height: 44px;
   border: 1px solid var(--line-strong);
   border-radius: 10px;
   background: var(--surface);
   color: var(--ink-strong);
   font: inherit;
-  font-size: 1.3rem;
+  font-size: 1.15rem;
   font-weight: 900;
   cursor: pointer;
   touch-action: manipulation;
+}
+
+.starting-attribute__stepper button[data-attribute-step="max"] {
+  width: 44px;
+  color: #83e6aa;
+  border: 1px solid rgba(131, 230, 170, 0.55);
+  font-size: 0.6rem;
+  letter-spacing: 0;
 }
 
 .starting-attribute__stepper button:disabled {
@@ -860,11 +868,11 @@ button:disabled {
 
 .starting-attribute__stepper output {
   display: grid;
-  min-width: 36px;
+  min-width: 32px;
   height: 44px;
   place-items: center;
   color: var(--accent);
-  font-size: 1.1rem;
+  font-size: 1rem;
   font-weight: 900;
 }
 
@@ -3073,18 +3081,28 @@ button:disabled {
   }
 
   .starting-attribute__stepper {
-    grid-template-columns: 40px 40px 32px 40px 40px;
+    grid-template-columns: 32px 36px 28px 36px 32px 40px;
     gap: 3px;
   }
 
   .starting-attribute__stepper button {
-    width: 40px;
+    width: 36px;
     height: 40px;
     font-size: 1rem;
   }
 
+  .starting-attribute__stepper button[data-attribute-step="-5"],
+  .starting-attribute__stepper button[data-attribute-step="5"] {
+    width: 32px;
+  }
+
+  .starting-attribute__stepper button[data-attribute-step="max"] {
+    width: 40px;
+    font-size: 0.56rem;
+  }
+
   .starting-attribute__stepper output {
-    min-width: 32px;
+    min-width: 28px;
     height: 40px;
     font-size: 1rem;
   }
@@ -3390,6 +3408,11 @@ button:disabled {
     width: 36px;
     height: 44px;
     font-size: 0.95rem;
+  }
+
+  .starting-attribute__stepper button[data-attribute-step="-5"],
+  .starting-attribute__stepper button[data-attribute-step="5"] {
+    width: 28px;
   }
 
   .starting-attribute__stepper {
