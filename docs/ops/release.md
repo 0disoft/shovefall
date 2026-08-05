@@ -1,8 +1,10 @@
 # Static Release Procedure
 
-- Status: `0.199.50` attribute effect chips candidate; hosted proof pending
+- Status: `0.199.51` briefing loadout summary candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.199.50`
+- Current product version: `0.199.51`
+
+Product `0.199.51`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. The pre-round briefing now shows the selected loadout: starting attributes such as `완력 4 · 민첩 4`, the two starting skills, and the starting item, compressed on narrow phones and landscape so the briefing still fits one screen at standard and extra-large text. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
 Product `0.199.50`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. Starting-attribute cards now show per-point effect chips, such as `이동 +4.5%/점`, so players can see what each trait does before spending points, and below 300 px on fine-pointer windows the six stepper buttons shrink to fit inside their cards so the settings form no longer scrolls horizontally at 260 px. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 

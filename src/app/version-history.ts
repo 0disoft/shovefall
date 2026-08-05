@@ -9,6 +9,14 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.199.51",
+    title: "게임 시작 전에 내 로드아웃을 보여준다요 ㅇㅅㅇ",
+    reason:
+      "브리핑 화면에 조작법만 있고 내가 고른 특성·스킬·아이템이 안 보여서, 시작 직전에 확인하고 싶어도 설정으로 돌아가야 했다요.",
+    change:
+      "브리핑에 선택한 특성(예: 완력 4 · 민첩 4), 스킬, 아이템을 한눈에 보여주고, 좁은 화면에서도 한 화면에 들어오게 압축했다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.199.50",
     title: "특성마다 무슨 효과가 있는지 보인다요 ㅇㅅㅇ",
     reason:
