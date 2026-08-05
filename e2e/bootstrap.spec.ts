@@ -2501,6 +2501,55 @@ test.describe("coarse-pointer surfaces", () => {
       expect(stepper.maxRight).toBeLessThanOrEqual(260);
     });
 
+    test("explains each cover-width attribute card's per-point effect without clipping", async ({
+      page,
+    }) => {
+      await page.goto("/");
+      await openSettings(page);
+      await openSettingsTab(page, "특성");
+
+      const cards = await page.evaluate(() => {
+        const attributeCards = [...document.querySelectorAll(".starting-attribute")];
+        return attributeCards.map((card) => {
+          const cardRect = card.getBoundingClientRect();
+          const chips = [
+            ...card.querySelectorAll<HTMLElement>(".starting-attribute__effects span"),
+          ];
+          const chipCounts: Record<string, number> = {};
+          for (const chip of chips) {
+            const text = chip.textContent ?? "";
+            chipCounts[text] = (chipCounts[text] ?? 0) + 1;
+          }
+          return {
+            id: card.getAttribute("data-starting-attribute") ?? "",
+            chipCount: chips.length,
+            chipLabels: Object.keys(chipCounts),
+            cardLeft: Math.round(cardRect.left),
+            cardRight: Math.round(cardRect.right),
+            clippedChips: chips.filter((chip) => {
+              const rect = chip.getBoundingClientRect();
+              return (
+                rect.left < cardRect.left - 1 ||
+                rect.right > cardRect.right + 1 ||
+                rect.bottom > cardRect.bottom + 1
+              );
+            }).length,
+          };
+        });
+      });
+
+      expect(cards).toHaveLength(6);
+      for (const card of cards) {
+        expect(card.chipCount).toBeGreaterThanOrEqual(2);
+        expect(card.cardLeft).toBeGreaterThanOrEqual(0);
+        expect(card.cardRight).toBeLessThanOrEqual(260);
+        expect(card.clippedChips).toBe(0);
+        expect(card.chipLabels.length).toBe(card.chipCount);
+      }
+      const labelSet = new Set(cards.flatMap((card) => card.chipLabels));
+      expect(labelSet.size).toBeGreaterThanOrEqual(12);
+    });
+
     test("keeps the cover-width arena controls inside the viewport without overflow", async ({
       page,
     }) => {

@@ -304,6 +304,16 @@ type SettingsTabId = (typeof SETTINGS_TAB_IDS)[number];
 const STARTING_ATTRIBUTE_HOLD_DELAY_MS = 360;
 const STARTING_ATTRIBUTE_HOLD_REPEAT_MS = 90;
 
+const STARTING_ATTRIBUTE_EFFECT_LABELS: Readonly<Record<StartingAttributeId, readonly string[]>> =
+  Object.freeze({
+    strength: Object.freeze(["무게 +2.5%/점", "위력 +3.75%/점"]),
+    agility: Object.freeze(["이동 +4.5%/점", "대기 -4%/점", "마나 -3%/점"]),
+    constitution: Object.freeze(["체력 +1.5/점", "재생 +1.25%/점"]),
+    spirit: Object.freeze(["마나 +8/점", "재생 +15%/점", "스킬 +2%/점"]),
+    balance: Object.freeze(["밀침 저항 +5%/점", "제어 -4%/점"]),
+    willpower: Object.freeze(["피해 -1.25%/점", "보호막 +1.25%/점"]),
+  });
+
 const formatTouchActionLabel = (model: ActionButtonViewModel, fallbackKey: string): string => {
   const key = model.text.split(" · ")[0] ?? fallbackKey;
   return model.state === "cooldown" || model.state === "mana"
@@ -607,6 +617,12 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
       ] as const;
     }),
   );
+  for (const [id, { row }] of startingAttributeRows) {
+    renderMetricChips(
+      requireElement(row, ".starting-attribute__effects", HTMLElement),
+      STARTING_ATTRIBUTE_EFFECT_LABELS[id],
+    );
+  }
   const getStartingAttributeControls = (id: StartingAttributeId) => {
     const controls = startingAttributeRows.get(id);
     if (controls === undefined) {

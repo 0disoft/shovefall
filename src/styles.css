@@ -825,6 +825,27 @@ button:disabled {
   font-size: 1.05rem;
 }
 
+.starting-attribute__effects {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: start;
+  gap: 3px 4px;
+  min-width: 0;
+}
+
+.starting-attribute__effects span {
+  display: inline-flex;
+  width: fit-content;
+  padding: 2px 6px;
+  border: 1px solid color-mix(in srgb, var(--accent) 26%, var(--line));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  color: color-mix(in srgb, var(--accent) 72%, var(--ink));
+  font-size: 0.66rem;
+  font-weight: 750;
+  line-height: 1.25;
+}
+
 .starting-attribute__meter {
   grid-area: meter;
 }
@@ -2855,6 +2876,20 @@ button:disabled {
 @media (max-width: 820px) {
   :root {
     font-size: 17px;
+  }
+
+  .starting-attribute {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "copy"
+      "meter"
+      "stepper";
+    grid-template-rows: auto 7px auto;
+    gap: 8px;
+  }
+
+  .starting-attribute__stepper {
+    justify-content: start;
   }
 
   .app-shell {
