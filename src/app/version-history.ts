@@ -9,6 +9,14 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.199.46",
+    title: "커버 폭에서도 완료 통계가 안 잘린다요 ㅇㅅㅇ",
+    reason:
+      "260px처럼 아주 좁은 화면에서는 완료 화면 통계 값이 셀을 넘쳐 잘리고, 패널이 딱 맞아 떨어져 여유가 없었다요.",
+    change:
+      "300px 이하 화면에서는 완료·일시정지 통계 글자와 간격을 한 단계 더 압축해 값이 셀 안에 들어오고 패널에 여유가 생기게 했다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.199.45",
     title: "특성 버튼이 카드 안에 딱 들어온다요 ㅇㅅㅇ",
     reason:

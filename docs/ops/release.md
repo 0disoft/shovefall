@@ -1,8 +1,10 @@
 # Static Release Procedure
 
-- Status: `0.199.45` attribute stepper fit candidate; hosted proof pending
+- Status: `0.199.46` cover-width completed statistics candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.199.45`
+- Current product version: `0.199.46`
+
+Product `0.199.46`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. On cover-width screens up to 300 px, the completed and paused round statistics used the narrow-phone cell sizes, so values such as `100%` clipped inside 260 px cells and the completed panel fit with zero slack; the cells now tighten their font and padding at 300 px and below, values wrap instead of clipping, the completed panel gains about 27 px of slack, and the paused panel scroll shrinks by about 17 px. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
 Product `0.199.45`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. The MAX attribute button added in `0.199.43` left the stepper grid with five tracks on desktop and cover-width screens, so the six buttons overlapped or spilled outside the card on coarse 260-320 px and narrow fine-pointer viewports; every stepper now declares six tracks with per-button widths, so `−5 · −1 · 값 · +1 · +5 · MAX` fit without overlap inside the card at 260 px coarse, 320 px coarse and fine, and desktop, and the allocation hint now mentions the MAX shortcut. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
