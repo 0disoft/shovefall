@@ -9,6 +9,14 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.199.57",
+    title: "글씨를 아주 크게 해도 일시정지와 완료 화면이 한눈에 들어온다요 ㅇㅅㅇ",
+    reason:
+      "글씨를 아주 크게 키우면 일시정지와 라운드 종료 화면의 통계가 세로로 길게 쌓여 320×568 화면에서 스크롤해야 하고, 완료 화면의 동작 버튼이 화면 밖으로 밀려났다요.",
+    change:
+      "아주 큰 글씨 화면의 일시정지와 완료 통계를 두 줄 셀로 압축하고 조작법을 접어 320×568 화면에 스크롤 없이 들어오게 하고, 재개와 동작 버튼은 터치 크기로 유지했다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.199.56",
     title: "가로 납작한 창의 메뉴와 좁은 화면의 브리핑이 한눈에 들어온다요 ㅇㅅㅇ",
     reason:
