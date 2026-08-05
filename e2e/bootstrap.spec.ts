@@ -2416,6 +2416,44 @@ test.describe("coarse-pointer surfaces", () => {
   test.describe("foldable cover width", () => {
     test.use({ viewport: { width: 260, height: 653 } });
 
+    test("keeps the cover-width filled scoreboard readable without clipped cells", async ({
+      page,
+    }) => {
+      await page.addInitScript(() => {
+        const entries = Array.from({ length: 12 }, (_, index) => ({
+          id: `2026-08-05T00:00:0${index}.000Z:${index + 1}`,
+          playedAt: `2026-08-05T00:00:0${index}.000Z`,
+          rank: 1 + ((index * 7) % 50),
+          participantCount: 70,
+          score: 1000 + index * 137,
+          eliminations: (index * 3) % 12,
+          survivalSeconds: 180 + index * 42,
+          outcome: index % 4 === 0 ? ("victory" as const) : ("defeat" as const),
+        }));
+        localStorage.setItem("shovefall.scoreboard.v1", JSON.stringify(entries));
+      });
+      await page.goto("/");
+      await page.getByRole("button", { name: "점수표", exact: true }).click();
+      await expect(page.locator("#app")).toHaveAttribute("data-screen", "scoreboard");
+      await expect(page.locator("#scoreboard-list > li").first()).toBeVisible();
+
+      const layout = await page.evaluate(() => {
+        const cells = [...document.querySelectorAll(".scoreboard__stats div")];
+        return {
+          rowCount: document.querySelectorAll("#scoreboard-list > li").length,
+          clippedCells: cells.filter(
+            (cell) =>
+              cell.scrollWidth > cell.clientWidth + 2 || cell.scrollHeight > cell.clientHeight + 2,
+          ).length,
+          scrollWidth: document.documentElement.scrollWidth,
+          clientWidth: document.documentElement.clientWidth,
+        };
+      });
+      expect(layout.rowCount).toBeGreaterThanOrEqual(10);
+      expect(layout.clippedCells).toBe(0);
+      expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth);
+    });
+
     test("keeps the cover-width menu, settings tabs, and attribute steppers free of horizontal overflow", async ({
       page,
     }) => {

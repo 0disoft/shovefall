@@ -3666,6 +3666,18 @@ button:disabled {
     font-size: 0.72rem;
   }
 
+  .scoreboard__stats div {
+    grid-template-columns: 1fr;
+    align-items: start;
+    gap: 1px 0;
+    padding: 6px 8px;
+  }
+
+  .scoreboard__stats dd {
+    margin-top: 0;
+    text-align: left;
+  }
+
   :root[data-font-scale="extra-large"] .stat-status-toggle {
     gap: 4px;
     padding: 8px;
