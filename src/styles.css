@@ -3232,7 +3232,7 @@ button:disabled {
   }
 }
 
-@media (pointer: fine) and (max-width: 300px) {
+@media (pointer: fine) and (max-width: 376px) {
   .starting-attribute__stepper {
     grid-template-columns: 30px 34px 26px 34px 30px 38px;
     gap: 2px;
@@ -3959,6 +3959,13 @@ button:disabled {
 
   :root[data-font-scale="extra-large"] .pause-menu__panel {
     padding: 17px 28px;
+  }
+}
+
+@media (pointer: fine) and (max-width: 700px) {
+  .pause-menu[data-mode="completed"] .round-statistics__grid,
+  .pause-menu[data-mode="paused"] .round-statistics__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

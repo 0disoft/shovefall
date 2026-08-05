@@ -3224,3 +3224,88 @@ test.describe("narrow fine-pointer settings", () => {
     expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth);
   });
 });
+
+test("keeps narrow fine-pointer trait cards inside the settings form", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.goto("/");
+  await openSettings(page);
+  await openSettingsTab(page, "특성");
+
+  const layout = await page.evaluate(() => {
+    const form = document.querySelector<HTMLElement>("#game-settings");
+    const formRect = form?.getBoundingClientRect();
+    const cards = [...document.querySelectorAll<HTMLElement>(".starting-attribute")].map((card) => {
+      const rect = card.getBoundingClientRect();
+      return {
+        left: Math.round(rect.left * 10) / 10,
+        right: Math.round(rect.right * 10) / 10,
+      };
+    });
+    return {
+      formLeft: formRect === undefined ? null : Math.round(formRect.left * 10) / 10,
+      formRight: formRect === undefined ? null : Math.round(formRect.right * 10) / 10,
+      formScrollWidth: form?.scrollWidth ?? 0,
+      formClientWidth: form?.clientWidth ?? 0,
+      cards,
+      coarse: matchMedia("(pointer: coarse)").matches,
+      docScrollWidth: document.documentElement.scrollWidth,
+      docClientWidth: document.documentElement.clientWidth,
+    };
+  });
+  expect(layout.coarse).toBe(false);
+  expect(layout.formScrollWidth).toBeLessThanOrEqual(layout.formClientWidth);
+  expect(layout.docScrollWidth).toBeLessThanOrEqual(layout.docClientWidth);
+  expect(layout.formLeft).not.toBeNull();
+  expect(layout.formRight).not.toBeNull();
+  for (const card of layout.cards) {
+    expect(card.left).toBeGreaterThanOrEqual(layout.formLeft! - 1);
+    expect(card.right).toBeLessThanOrEqual(layout.formRight! + 1);
+  }
+});
+
+test("keeps narrow fine-pointer pause statistics readable in two columns", async ({ page }) => {
+  test.setTimeout(60_000);
+  await page.setViewportSize({ width: 320, height: 568 });
+  await installFixedRoundSeed(page, 1, 0);
+  await page.goto("/");
+  await openSettings(page);
+  await saveSettings(page);
+  await startGame(page);
+  await expect(page.locator("#app")).toHaveAttribute("data-round", "active");
+
+  await page.keyboard.press("p");
+  await expect(page.locator("#pause-menu")).toBeVisible();
+
+  const layout = await page.evaluate(() => {
+    const grid = document.querySelector<HTMLElement>(".round-statistics__grid");
+    const cells =
+      grid === null
+        ? []
+        : [...grid.querySelectorAll<HTMLElement>(":scope > div")].map((cell) => {
+            const dt = cell.querySelector<HTMLElement>("dt");
+            const dd = cell.querySelector<HTMLElement>("dd");
+            return {
+              label: dt?.textContent ?? "",
+              dtClipped: dt !== null && dt.scrollWidth > dt.clientWidth + 2,
+              ddClipped: dd !== null && dd.scrollWidth > dd.clientWidth + 2,
+            };
+          });
+    return {
+      coarse: matchMedia("(pointer: coarse)").matches,
+      columns: grid === null ? 0 : getComputedStyle(grid).gridTemplateColumns.split(" ").length,
+      gridClipped: grid !== null && grid.scrollWidth > grid.clientWidth + 2,
+      cells,
+      docScrollWidth: document.documentElement.scrollWidth,
+      docClientWidth: document.documentElement.clientWidth,
+    };
+  });
+  expect(layout.coarse).toBe(false);
+  expect(layout.columns).toBe(2);
+  expect(layout.gridClipped).toBe(false);
+  expect(layout.docScrollWidth).toBeLessThanOrEqual(layout.docClientWidth);
+  expect(layout.cells.length).toBeGreaterThanOrEqual(6);
+  for (const cell of layout.cells) {
+    expect(cell.dtClipped).toBe(false);
+    expect(cell.ddClipped).toBe(false);
+  }
+});
