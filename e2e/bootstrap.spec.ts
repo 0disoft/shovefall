@@ -3310,6 +3310,47 @@ test("keeps narrow fine-pointer pause statistics readable in two columns", async
   }
 });
 
+test("fits the fine-pointer landscape pause panel on one screen", async ({ page }) => {
+  test.setTimeout(60_000);
+  await page.setViewportSize({ width: 844, height: 390 });
+  await installFixedRoundSeed(page, 1, 0);
+  await page.goto("/");
+  await openSettings(page);
+  await saveSettings(page);
+  await startGame(page);
+  await expect(page.locator("#app")).toHaveAttribute("data-round", "active");
+  await page.keyboard.press("p");
+  await expect(page.locator("#pause-menu")).toBeVisible();
+
+  await expect(page.locator(".pause-menu .round-statistics__grid")).toHaveCSS(
+    "grid-template-columns",
+    /^\d+(?:\.\d+)?px \d+(?:\.\d+)?px \d+(?:\.\d+)?px \d+(?:\.\d+)?px$/u,
+  );
+  const layout = await page.evaluate(() => {
+    const panel = document.querySelector<HTMLElement>(".pause-menu__panel");
+    const resume = document.querySelector<HTMLElement>("#resume-round");
+    const resumeRect = resume?.getBoundingClientRect();
+    const guide = document.querySelector<HTMLElement>("#pause-control-guide");
+    return {
+      coarse: matchMedia("(pointer: coarse)").matches,
+      panelScrollHeight: panel?.scrollHeight ?? 0,
+      panelClientHeight: panel?.clientHeight ?? 0,
+      resumeTop: resumeRect === undefined ? null : Math.round(resumeRect.top * 10) / 10,
+      resumeBottom: resumeRect === undefined ? null : Math.round(resumeRect.bottom * 10) / 10,
+      guideDisplay: guide === null ? "" : getComputedStyle(guide).display,
+      scrollWidth: document.documentElement.scrollWidth,
+      clientWidth: document.documentElement.clientWidth,
+    };
+  });
+  expect(layout.coarse).toBe(false);
+  expect(layout.panelScrollHeight).toBeLessThan(560);
+  expect(layout.resumeTop).not.toBeNull();
+  expect(layout.resumeTop).toBeGreaterThanOrEqual(0);
+  expect(layout.resumeBottom).toBeLessThanOrEqual(390);
+  expect(layout.guideDisplay).toBe("none");
+  expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth);
+});
+
 test("keeps the desktop build-summary skill-efficiency cell unclipped after allocation", async ({
   page,
 }) => {

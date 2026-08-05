@@ -4127,56 +4127,87 @@ button:disabled {
   }
 }
 
-@media (pointer: coarse) and (orientation: landscape) and (max-height: 520px) {
+@media (pointer: coarse) and (orientation: landscape) and (max-height: 520px),
+  (pointer: fine) and (orientation: landscape) and (max-height: 520px) {
   .pause-menu__panel {
     gap: 6px;
     padding: 8px 10px;
   }
 
-  .round-statistics__grid {
+  .pause-menu__panel h3 {
+    font-size: 1.05rem;
+    line-height: 1.15;
+  }
+
+  .pause-menu[data-mode="completed"] .arena-actions__buttons,
+  .pause-menu[data-mode="paused"] .arena-actions__buttons {
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 4px;
   }
 
-  .round-statistics__grid div {
-    gap: 1px;
+  .pause-menu[data-mode="completed"] .pause-control-guide,
+  .pause-menu[data-mode="paused"] .pause-control-guide {
+    display: none;
+  }
+
+  .pause-menu[data-mode="completed"] .round-statistics__grid,
+  .pause-menu[data-mode="paused"] .round-statistics__grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 4px;
+  }
+
+  .pause-menu[data-mode="completed"] .round-statistics__grid div,
+  .pause-menu[data-mode="paused"] .round-statistics__grid div {
+    grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+    align-items: baseline;
+    gap: 2px 6px;
     padding: 4px 6px;
   }
 
-  .round-statistics__grid dt {
+  .pause-menu[data-mode="completed"] .round-statistics__grid dt,
+  .pause-menu[data-mode="paused"] .round-statistics__grid dt {
     font-size: 0.6rem;
     line-height: 1.15;
   }
 
-  .round-statistics__grid dd {
+  .pause-menu[data-mode="completed"] .round-statistics__grid dd,
+  .pause-menu[data-mode="paused"] .round-statistics__grid dd {
     font-size: 0.74rem;
     line-height: 1.2;
   }
 
-  .round-statistics h4,
-  .round-statistics h5 {
+  .pause-menu[data-mode="completed"] .round-statistics h4,
+  .pause-menu[data-mode="paused"] .round-statistics h4,
+  .pause-menu[data-mode="completed"] .round-statistics h5,
+  .pause-menu[data-mode="paused"] .round-statistics h5 {
     font-size: 0.78rem;
     line-height: 1.15;
   }
 
-  .game-telemetry div {
+  .pause-menu[data-mode="completed"] .game-telemetry div,
+  .pause-menu[data-mode="paused"] .game-telemetry div {
+    grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+    align-items: baseline;
+    gap: 2px 6px;
     padding: 4px 6px;
   }
 
-  .game-telemetry dt {
+  .pause-menu[data-mode="completed"] .game-telemetry dt,
+  .pause-menu[data-mode="paused"] .game-telemetry dt {
     font-size: 0.62rem;
   }
 
-  .game-telemetry dd {
+  .pause-menu[data-mode="completed"] .game-telemetry dd,
+  .pause-menu[data-mode="paused"] .game-telemetry dd {
     font-size: 0.74rem;
   }
 
-  .round-statistics__skills li {
+  .pause-menu .round-statistics__skills li {
     padding: 4px 7px;
     font-size: 0.8rem;
   }
 
-  .pause-control-guide summary {
+  .pause-menu .pause-control-guide summary {
     padding: 7px 10px;
     font-size: 0.82rem;
   }
@@ -4194,60 +4225,60 @@ button:disabled {
     font-size: 1.05rem;
   }
 
-  :root[data-font-scale="extra-large"] .game-telemetry div {
+  :root[data-font-scale="extra-large"] .pause-menu .game-telemetry div {
     padding: 4px 6px;
   }
 
-  :root[data-font-scale="extra-large"] .game-telemetry dt {
+  :root[data-font-scale="extra-large"] .pause-menu .game-telemetry dt {
     font-size: 0.58rem;
   }
 
-  :root[data-font-scale="extra-large"] .game-telemetry dd {
+  :root[data-font-scale="extra-large"] .pause-menu .game-telemetry dd {
     font-size: 0.7rem;
   }
 
-  :root[data-font-scale="extra-large"] .round-statistics__grid {
+  :root[data-font-scale="extra-large"] .pause-menu .round-statistics__grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 4px;
   }
 
-  :root[data-font-scale="extra-large"] .round-statistics__grid div {
+  :root[data-font-scale="extra-large"] .pause-menu .round-statistics__grid div {
     gap: 1px;
     padding: 2px 5px;
   }
 
-  :root[data-font-scale="extra-large"] .round-statistics__grid dt {
+  :root[data-font-scale="extra-large"] .pause-menu .round-statistics__grid dt {
     font-size: 0.5rem;
     line-height: 1.15;
   }
 
-  :root[data-font-scale="extra-large"] .round-statistics__grid dd {
+  :root[data-font-scale="extra-large"] .pause-menu .round-statistics__grid dd {
     font-size: 0.64rem;
     line-height: 1.2;
   }
 
-  :root[data-font-scale="extra-large"] .round-statistics h4,
-  :root[data-font-scale="extra-large"] .round-statistics h5 {
+  :root[data-font-scale="extra-large"] .pause-menu .round-statistics h4,
+  :root[data-font-scale="extra-large"] .pause-menu .round-statistics h5 {
     font-size: 0.72rem;
     line-height: 1.15;
   }
 
-  :root[data-font-scale="extra-large"] .round-statistics__skills ul {
+  :root[data-font-scale="extra-large"] .pause-menu .round-statistics__skills ul {
     gap: 3px;
   }
 
-  :root[data-font-scale="extra-large"] .round-statistics__skills li {
+  :root[data-font-scale="extra-large"] .pause-menu .round-statistics__skills li {
     padding: 3px 6px;
     font-size: 0.72rem;
   }
 
-  :root[data-font-scale="extra-large"] .pause-control-guide summary {
+  :root[data-font-scale="extra-large"] .pause-menu .pause-control-guide summary {
     padding: 7px 10px;
     font-size: 0.78rem;
   }
 
-  :root[data-font-scale="extra-large"] .arena-actions__buttons .primary-action,
-  :root[data-font-scale="extra-large"] .arena-actions__buttons .secondary-action {
+  :root[data-font-scale="extra-large"] .pause-menu .arena-actions__buttons .primary-action,
+  :root[data-font-scale="extra-large"] .pause-menu .arena-actions__buttons .secondary-action {
     min-height: 44px;
     font-size: 0.8rem;
   }
