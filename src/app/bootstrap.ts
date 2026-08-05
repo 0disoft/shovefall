@@ -1969,6 +1969,14 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   const prepareRoundBehindBriefing = async (settings: GameSettings): Promise<void> => {
     const preparationId = ++roundPreparationId;
     preparedRoundId = undefined;
+    requireElement(root, "#briefing-starting-attributes", HTMLElement).textContent =
+      STARTING_ATTRIBUTE_IDS.map(
+        (id) => `${STARTING_ATTRIBUTE_LABELS[id]} ${settings.startingAttributes[id]}`,
+      ).join(" · ");
+    requireElement(root, "#briefing-starting-skills", HTMLElement).textContent =
+      settings.startingSkills.map((id) => getSkillDefinition(id).label).join(" · ");
+    requireElement(root, "#briefing-starting-item", HTMLElement).textContent =
+      settings.startingItems.map((id) => getItemDefinition(id).label).join(" · ");
     roundBriefingDialog.dataset.state = "loading";
     roundBriefingStatus.textContent = "섬을 불러오는 중…";
     confirmRoundBriefingButton.disabled = true;

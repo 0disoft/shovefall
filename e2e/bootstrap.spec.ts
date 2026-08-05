@@ -1954,6 +1954,24 @@ test.describe("coarse-pointer surfaces", () => {
     await page.getByRole("button", { name: "알겠다요 ㅇㅅㅇ" }).click();
   });
 
+  test("shows the selected loadout in the round briefing", async ({ page }) => {
+    await installFixedRoundSeed(page, 1, 0);
+    await page.goto("/");
+    await openSettings(page);
+    await saveSettings(page);
+    await page.getByRole("button", { name: "게임 시작" }).click();
+    const briefing = page.getByRole("dialog", {
+      name: "포격으로 무너지는 섬에서 끝까지 살아남아.",
+    });
+    await expect(briefing).toBeVisible();
+    await expect(page.locator("#briefing-starting-attributes")).toHaveText(
+      "완력 4 · 민첩 4 · 체질 4 · 정신 4 · 균형 4 · 의지 0",
+    );
+    await expect(page.locator("#briefing-starting-skills")).toHaveText("잔상 회피 · 파동탄");
+    await expect(page.locator("#briefing-starting-item")).toHaveText("시한폭탄");
+    await page.getByRole("button", { name: "알겠다요 ㅇㅅㅇ" }).click();
+  });
+
   test("keeps the settings save action on screen while the form scrolls", async ({ page }) => {
     await installFixedRoundSeed(page, 1, 0);
     await page.goto("/");
