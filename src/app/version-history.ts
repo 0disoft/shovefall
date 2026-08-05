@@ -9,6 +9,14 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.199.55",
+    title: "좁은 마우스 창과 가로 화면에서도 완료 화면과 보상 선택이 한눈에 들어온다요 ㅇㅅㅇ",
+    reason:
+      "세로로 좁은 마우스 창의 라운드 종료 화면이 버튼이 과하게 늘어나며 화면을 두 배나 밀었고, 가로로 납작한 화면의 처치 보상 특성 카드가 좁은 스트립 안에서 거의 보이지 않게 잘렸다요.",
+    change:
+      "좁은 세로 마우스 창의 완료 화면을 터치 화면처럼 압축해서 한 화면에 들어오게 하고 버튼 높이를 유지하고, 가로 납작한 화면의 보상 특성 카드 영역을 키우고 카드를 압축해서 첫 카드 줄과 저장 버튼이 한 화면에 보이게 줄였다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.199.54",
     title: "마우스 창에서도 완료 화면과 조작 버튼이 안 겹친다요 ㅇㅅㅇ",
     reason:

@@ -1,8 +1,10 @@
 # Static Release Procedure
 
-- Status: `0.199.54` completed panel and control clearance candidate; hosted proof pending
+- Status: `0.199.55` portrait completed panel and landscape reward candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.199.54`
+- Current product version: `0.199.55`
+
+Product `0.199.55`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. Fine-pointer portrait windows up to 380 px now compact the completed-round panel like touch layouts so it fits a 320×568 screen without scrolling and the action buttons stay at touch height, and short landscape screens compact the kill-reward trait picker so its choice strip nearly doubles in height with the first card row and the save action staying visible. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
 Product `0.199.54`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. Fine-pointer short-landscape completed panels now use the same compact action buttons as touch layouts so the finished panel fits one screen, the in-round stat toggle rises above the two-by-two touch action grid on narrow windows, and the desktop skill/inventory action stack narrows enough to stay clear of the top-right pause trigger. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
