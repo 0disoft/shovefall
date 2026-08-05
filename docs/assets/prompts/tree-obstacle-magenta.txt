@@ -1,4 +1,4 @@
-Create one production-ready game sprite of a sturdy tropical island tree for the 2.5D top-down web game "바닥이 사라지는 술래잡기".
+Create one production-ready game sprite of a sturdy tropical island tree for the 2.5D top-down web game "바닥이 사라지는 섬".
 
 Output one isolated tree centered on a perfectly flat solid chroma-key magenta background (#ff00ff). Do not draw checkerboard pixels, scenery, a ground tile, border, frame, text, water, rocks, fruit, people, or additional trees. Keep the complete canopy and trunk at least 80 pixels from every edge.
 

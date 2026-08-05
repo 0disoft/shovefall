@@ -1934,7 +1934,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     readyMessage.textContent = "3";
     arenaHost.setAttribute(
       "aria-label",
-      `${settings.playerCount}명이 참가하는 바닥이 사라지는 술래잡기 아레나. 방향키, 땅 우클릭 또는 터치 조이스틱으로 이동해. Q와 W는 스킬, D는 아이템 조준을 시작하고, 방향키나 마우스로 조준한 뒤 같은 키, Enter 또는 좌클릭으로 확정해.`,
+      `${settings.playerCount}명이 참가하는 바닥이 사라지는 섬 아레나. 방향키, 땅 우클릭 또는 터치 조이스틱으로 이동해. Q와 W는 스킬, D는 아이템 조준을 시작하고, 방향키나 마우스로 조준한 뒤 같은 키, Enter 또는 좌클릭으로 확정해.`,
     );
     try {
       session.start(createConfig(settings), latestMasterSeed, DEFAULT_GAMEPLAY_TUNING, {
@@ -2487,7 +2487,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     developerTelemetry?.setVisible(false);
     rendererStatus.dataset.state = "ready";
     rendererStatus.textContent = "WebGL 준비됨";
-    arenaHost.setAttribute("aria-label", "바닥이 사라지는 술래잡기 아레나");
+    arenaHost.setAttribute("aria-label", "바닥이 사라지는 섬 아레나");
     startGameButton.focus();
   });
 

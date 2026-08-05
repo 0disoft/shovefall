@@ -1,4 +1,4 @@
-# 바닥이 사라지는 술래잡기
+# 바닥이 사라지는 섬
 
 - Status: Playable fixed 70-participant rounds with deterministic items, Coal-Twilight presentation, GitHub Pages deployment, and reviewed contributor recognition
 - Scope: frontend
@@ -7,7 +7,7 @@
 
 Play: <https://0disoft.github.io/shovefall/>
 
-바닥이 사라지는 술래잡기 (`Shovefall`) is a short single-player browser party game about shoving opponents off a collapsing arena. One participant is human and the remaining participants are deterministic rule-based bots. The MVP is a static client application with no backend, database, account system, runtime LLM, or remote analytics.
+바닥이 사라지는 섬 (`Shovefall`) is a short single-player browser party game about shoving opponents off a collapsing arena. One participant is human and the remaining participants are deterministic rule-based bots. The MVP is a static client application with no backend, database, account system, runtime LLM, or remote analytics.
 
 The repository contains a playable semantic DOM and PixiJS WebGL client, exact package graph, local validation commands, and a Clarissimi-backed public contribution review path. A pausable `3→2→1` session countdown renders the fresh arena while keeping simulation and bots at tick zero; movement held during the countdown is remembered, while skills and items remain gated until play begins. Public play is one 70-participant Hard-AI mode.
 

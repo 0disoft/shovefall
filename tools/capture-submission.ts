@@ -650,7 +650,7 @@ export async function captureMedia(
     if (response === null || !response.ok()) {
       throw new Error(`Capture page failed to load: ${response?.status() ?? "no response"}.`);
     }
-    if ((await page.title()) !== "바닥이 사라지는 술래잡기") {
+    if ((await page.title()) !== "바닥이 사라지는 섬") {
       throw new Error(`Unexpected capture page title: ${await page.title()}`);
     }
 

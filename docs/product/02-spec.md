@@ -7,7 +7,7 @@
 
 ## Product
 
-바닥이 사라지는 술래잡기 (`Shovefall`) is a single-player browser party-action game with no public round time limit; play continues until one participant remains or nobody survives. One human and deterministic rule-based bots shove each other from a collapsing tile arena. The game must explain itself through movement, telegraphs, impacts, and falling rather than a long tutorial or decorative marketing copy. A target human-play duration distribution remains a playtest decision rather than a claim inferred from bot-only rounds.
+바닥이 사라지는 섬 (`Shovefall`) is a single-player browser party-action game with no public round time limit; play continues until one participant remains or nobody survives. One human and deterministic rule-based bots shove each other from a collapsing tile arena. The game must explain itself through movement, telegraphs, impacts, and falling rather than a long tutorial or decorative marketing copy. A target human-play duration distribution remains a playtest decision rather than a claim inferred from bot-only rounds.
 
 The central promise is a readable comic reversal: a player can dodge an incoming shove so that the attacker stumbles into the void, or two attackers can collide on the same tick and both fly away. A result may be chaotic, but it must follow visible state and deterministic rules rather than a hidden probability roll.
 

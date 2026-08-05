@@ -9,7 +9,7 @@
 
 ## The Game
 
-바닥이 사라지는 술래잡기 (`Shovefall`) is a short single-player browser party-action game. One person and deterministic
+바닥이 사라지는 섬 (`Shovefall`) is a short single-player browser party-action game. One person and deterministic
 rule-based bots fight on a collapsing tile arena. Movement, shove timing, dodge timing, changing
 mass, item temptation, and the distance to the void decide the result. Hidden random combat rolls
 do not.

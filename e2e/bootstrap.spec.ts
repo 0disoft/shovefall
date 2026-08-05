@@ -714,7 +714,7 @@ test("@ci-smoke boots the production artifact into a live arena", async ({ page 
   await page.goto("/");
   await pauseInstalledClock(page);
 
-  await expect(page).toHaveTitle("바닥이 사라지는 술래잡기");
+  await expect(page).toHaveTitle("바닥이 사라지는 섬");
   await expect(page.locator("#arena-host canvas")).toBeHidden();
   await saveBalancedDefaults(page);
   await startGame(page);
@@ -839,10 +839,8 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   const productionArtifact = new URL(page.url()).port === "4175";
   await pauseInstalledClock(page);
 
-  await expect(page).toHaveTitle("바닥이 사라지는 술래잡기");
-  await expect(
-    page.getByRole("heading", { level: 1, name: "바닥이 사라지는 술래잡기" }),
-  ).toBeVisible();
+  await expect(page).toHaveTitle("바닥이 사라지는 섬");
+  await expect(page.getByRole("heading", { level: 1, name: "바닥이 사라지는 섬" })).toBeVisible();
   await expect(page.getByText("SHOVE · DODGE · SURVIVE")).toHaveCount(0);
   await expect(page.locator("#app")).toHaveAttribute("data-screen", "menu");
   await expect(page.getByRole("button", { name: "게임 시작" })).toBeVisible();

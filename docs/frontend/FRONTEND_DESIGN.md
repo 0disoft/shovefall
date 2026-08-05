@@ -6,7 +6,7 @@ Product `0.199.58` presents one fixed 70-participant Hard-AI round on a 57×48 i
 
 ## 0. Decision Summary
 
-바닥이 사라지는 술래잡기 uses one static browser application. PixiJS 8 with WebGL owns the game world. Semantic HTML, DOM, and CSS own setup, settings, results, fatal errors, focus, and accessibility text. TypeScript 7, Vite 8, Bun, Oxlint, and Oxfmt form the accepted toolchain baseline.
+바닥이 사라지는 섬 uses one static browser application. PixiJS 8 with WebGL owns the game world. Semantic HTML, DOM, and CSS own setup, settings, results, fatal errors, focus, and accessibility text. TypeScript 7, Vite 8, Bun, Oxlint, and Oxfmt form the accepted toolchain baseline.
 
 React, Vue, Svelte, Phaser, Tailwind CSS, a general state manager, and a general-purpose physics engine are not part of the initial baseline. The contest-submission visual direction is Coal-Twilight: a single dark palette shared by the DOM shell and the PixiJS canvas. Character, item, terrain, pirate-ship, cannonball, boulder, explosion, seawater-impact, and seven active skill-effect sprites have passed the asset ledger and now layer over the procedural renderer. Retired skill source sprites are not loaded. The rejected opaque-checkerboard sheets stay outside the runtime. Procedural action geometry remains authoritative because its direction and timing must stay readable above character art and remains the optional-asset failure fallback. Reduced-motion presentation preserves the same telegraph timing with fixed scale and rotation.
 
