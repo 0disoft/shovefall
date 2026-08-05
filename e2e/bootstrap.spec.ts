@@ -1832,6 +1832,59 @@ test.describe("coarse-pointer surfaces", () => {
     expect(layout.bodyOverflow).toBe(false);
   });
 
+  test("keeps the paused panel on one screen with the resume action visible on a narrow phone", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    await page.setViewportSize({ width: 320, height: 568 });
+    await page.evaluate(() => {
+      const app = document.querySelector("#app");
+      const pause = document.querySelector("#pause-menu");
+      for (const candidate of [
+        pause?.closest("section"),
+        pause?.closest("main"),
+        document.querySelector("#arena-host"),
+      ]) {
+        if (candidate) candidate.removeAttribute("hidden");
+      }
+      pause?.removeAttribute("hidden");
+      pause?.setAttribute("data-mode", "paused");
+      app?.setAttribute("data-screen", "arena");
+      app?.setAttribute("data-pause-menu", "open");
+      app?.setAttribute("data-round", "active");
+      document.querySelector("#arena-actions")?.removeAttribute("hidden");
+      document.querySelector("#game-telemetry")?.removeAttribute("hidden");
+      document.body.classList.add("game-screen-active");
+    });
+    await expect(page.locator("#pause-menu")).toHaveAttribute("data-mode", "paused");
+    await expect(page.getByRole("button", { name: "계속", exact: true })).toBeVisible();
+
+    const layout = await page.evaluate(() => {
+      const panel = document.querySelector(".pause-menu__panel");
+      const telemetry = document.querySelector("#game-telemetry");
+      const statistics = document.querySelector(".round-statistics");
+      const resume = document.querySelector("#resume-round");
+      const guide = document.querySelector("#pause-control-guide");
+      const resumeRect = resume?.getBoundingClientRect();
+      return {
+        panelScrollHeight: panel?.scrollHeight ?? 0,
+        panelClientHeight: panel?.clientHeight ?? 0,
+        telemetryHeight: Math.round(telemetry?.getBoundingClientRect().height ?? 0),
+        statisticsTop: Math.round(statistics?.getBoundingClientRect().top ?? 0),
+        resumeBottom: Math.round(resumeRect?.bottom ?? 0),
+        guideHidden: guide === null || getComputedStyle(guide).display === "none",
+        bodyOverflow: document.body.scrollWidth > document.documentElement.clientWidth,
+      };
+    });
+    expect(layout.panelScrollHeight).toBeLessThanOrEqual(layout.panelClientHeight + 2);
+    expect(layout.telemetryHeight).toBeLessThan(110);
+    expect(layout.statisticsTop).toBeGreaterThan(0);
+    expect(layout.statisticsTop).toBeLessThan(400);
+    expect(layout.resumeBottom).toBeLessThanOrEqual(568);
+    expect(layout.guideHidden).toBe(true);
+    expect(layout.bodyOverflow).toBe(false);
+  });
+
   test("fits the round briefing into the portrait viewport", async ({ page }) => {
     await installFixedRoundSeed(page, 1, 0);
     await page.goto("/");
