@@ -1,8 +1,10 @@
 # Static Release Procedure
 
-- Status: `0.199.41` compact mobile scoreboard candidate; hosted proof pending
+- Status: `0.199.42` narrow-phone completed-round candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.199.41`
+- Current product version: `0.199.42`
+
+Product `0.199.42`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. On narrow phones, the completed-round pause panel used to stack every statistics cell with the label above its value, so a 320×568 screen had to scroll about 123 px to reach the skill-use rows; the eleven statistics cells now lay label and value on one line in two columns, and the finished message, action buttons, and skill rows tighten so the whole panel, including two filled skill rows, fits a 320×568 viewport without scrolling. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
 Product `0.199.41`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. On narrow phones, each filled scoreboard row used to stack its four stat cells in two rows with labels above values, growing to about 207 px; the stat cells now lay label and value on one line with tighter spacing, shrinking each row to about 161 px, and a new 320×568 scoreboard smoke journey seeds twelve entries and asserts the two-column cells, the row-height bound, and no horizontal overflow. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 

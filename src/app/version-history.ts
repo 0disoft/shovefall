@@ -9,6 +9,14 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.199.42",
+    title: "좁은 폰에서도 완료 통계를 한 화면에 ㅇㅅㅇ",
+    reason:
+      "320px처럼 좁은 화면에서는 라운드 종료 패널이 통계가 끝없이 늘어져 스크롤을 내려야 마지막 스킬 사용까지 볼 수 있었다요.",
+    change:
+      "좁은 화면에서는 완료 화면 통계를 라벨과 값 한 줄로 나란히 배치하고 메시지·버튼·스킬 줄을 압축해, 스킬 사용까지 스크롤 없이 한 화면에 보이게 했다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.199.41",
     title: "점수표 한 줄에 다 담는다요 ㅇㅅㅇ",
     reason:
