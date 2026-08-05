@@ -9,6 +9,14 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.199.45",
+    title: "특성 버튼이 카드 안에 딱 들어온다요 ㅇㅅㅇ",
+    reason:
+      "MAX 버튼을 더하면서 좁은 화면에서는 −5·−1 버튼이 서로 겹쳐 눌리는 버튼이 이상해 보였다요.",
+    change:
+      "모든 화면에서 특성 스테퍼를 여섯 칸으로 맞추고 각 버튼 폭을 칸에 딱 맞게 해, −5·−1·+1·+5·MAX 버튼이 어느 화면에서도 안 겹치고 카드 안에 들어오게 했다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.199.44",
     title: "일시정지 화면도 한 장에 다 담는다요 ㅇㅅㅇ",
     reason:

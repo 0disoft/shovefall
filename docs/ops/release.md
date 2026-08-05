@@ -1,8 +1,10 @@
 # Static Release Procedure
 
-- Status: `0.199.44` one-screen narrow-phone pause candidate; hosted proof pending
+- Status: `0.199.45` attribute stepper fit candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.199.44`
+- Current product version: `0.199.45`
+
+Product `0.199.45`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. The MAX attribute button added in `0.199.43` left the stepper grid with five tracks on desktop and cover-width screens, so the six buttons overlapped or spilled outside the card on coarse 260-320 px and narrow fine-pointer viewports; every stepper now declares six tracks with per-button widths, so `−5 · −1 · 값 · +1 · +5 · MAX` fit without overlap inside the card at 260 px coarse, 320 px coarse and fine, and desktop, and the allocation hint now mentions the MAX shortcut. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
 Product `0.199.44`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. On narrow phones, the paused round panel used to stack status values below their labels and kept a folded control-guide summary, so a 320×568 screen scrolled before showing the statistics; the status cells now lay label and value on one line, the guide hides on the narrowest coarse-pointer screens, and the whole paused panel including telemetry and statistics fits a 320×568 viewport without scrolling. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
