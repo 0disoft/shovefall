@@ -2505,6 +2505,53 @@ test.describe("coarse-pointer surfaces", () => {
       expect(layout.columns).toBe(4);
       await page.getByRole("button", { name: "알겠다요 ㅇㅅㅇ" }).click();
     });
+
+    test("fits the extra-large round briefing into the landscape viewport", async ({ page }) => {
+      await page.goto("/");
+      await openSettings(page);
+      await saveSettings(page);
+      await openSettings(page);
+      await openSettingsTab(page, "설정");
+      await page.locator('input[name="fontScale"][value="extra-large"]').check();
+      await page.getByRole("button", { name: "설정 저장" }).click();
+      await expect(page.locator("#app")).toHaveAttribute("data-screen", "menu");
+      await page.getByRole("button", { name: "게임 시작" }).click();
+      const briefing = page.getByRole("dialog", {
+        name: "포격으로 무너지는 섬에서 끝까지 살아남아.",
+      });
+      await expect(briefing).toBeVisible();
+      await expect(page.getByRole("button", { name: "알겠다요 ㅇㅅㅇ" })).toBeEnabled();
+
+      const layout = await page.evaluate(() => {
+        const dialog = document.querySelector("#round-briefing-dialog");
+        const rect = dialog?.getBoundingClientRect();
+        const confirm = document.querySelector("#confirm-round-briefing")?.getBoundingClientRect();
+        const loadout = document.querySelector(".round-briefing-dialog__loadout");
+        return {
+          scrollHeight: dialog?.scrollHeight ?? 0,
+          clientHeight: dialog?.clientHeight ?? 0,
+          top: rect?.top ?? 0,
+          bottom: rect?.bottom ?? 0,
+          confirmTop: confirm?.top ?? 0,
+          confirmBottom: confirm?.bottom ?? 0,
+          innerHeight,
+          scrollWidth: document.documentElement.scrollWidth,
+          clientWidth: document.documentElement.clientWidth,
+          loadoutColumns: getComputedStyle(loadout ?? document.body).gridTemplateColumns.split(" ")
+            .length,
+          rootFont: getComputedStyle(document.documentElement).fontSize,
+        };
+      });
+      expect(layout.rootFont).toBe("22px");
+      expect(layout.scrollHeight).toBeLessThanOrEqual(layout.clientHeight);
+      expect(layout.top).toBeGreaterThanOrEqual(0);
+      expect(layout.bottom).toBeLessThanOrEqual(layout.innerHeight);
+      expect(layout.confirmTop).toBeGreaterThanOrEqual(0);
+      expect(layout.confirmBottom).toBeLessThanOrEqual(layout.innerHeight);
+      expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth);
+      expect(layout.loadoutColumns).toBe(2);
+      await page.getByRole("button", { name: "알겠다요 ㅇㅅㅇ" }).click();
+    });
   });
 
   test.describe("landscape settings", () => {
@@ -3871,4 +3918,248 @@ test("keeps the desktop build-summary skill-efficiency cell unclipped after allo
   });
   expect(layout.clipped).toEqual([]);
   expect(layout.docScrollWidth).toBeLessThanOrEqual(layout.docClientWidth);
+});
+
+test.describe("short-window layout smokes", () => {
+  test("keeps the fine-pointer paused panel on one screen at 390x667", async ({ page }) => {
+    test.setTimeout(90_000);
+    await installFixedRoundSeed(page, 1, 0);
+    await page.goto("/");
+    await page.setViewportSize({ width: 390, height: 667 });
+    await openSettings(page);
+    await saveSettings(page);
+    await startGame(page);
+    await expect(page.locator("#app")).toHaveAttribute("data-round", "active");
+    await page.keyboard.press("p");
+    await expect(page.locator("#pause-menu")).toBeVisible();
+    await page.locator("#developer-telemetry").evaluate((details: HTMLElement) => {
+      details.hidden = true;
+    });
+
+    const layout = await page.evaluate(() => {
+      const panel = document.querySelector(".pause-menu__panel");
+      const statistics = document.querySelector(".round-statistics")?.getBoundingClientRect();
+      const resume = document.querySelector("#resume-round")?.getBoundingClientRect();
+      return {
+        panelScrollHeight: panel?.scrollHeight ?? 0,
+        panelClientHeight: panel?.clientHeight ?? 0,
+        statisticsVisible:
+          statistics !== undefined &&
+          statistics.top >= 0 &&
+          statistics.bottom <= window.innerHeight,
+        resumeVisible:
+          resume !== undefined && resume.top >= 0 && resume.bottom <= window.innerHeight,
+        horizontal: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+      };
+    });
+    expect(layout.panelScrollHeight).toBeLessThanOrEqual(layout.panelClientHeight + 2);
+    expect(layout.resumeVisible).toBe(true);
+    expect(layout.statisticsVisible).toBe(true);
+    expect(layout.horizontal).toBe(false);
+  });
+
+  test("stacks extra-large trait cards in one column on a 560px fine-pointer window", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    await page.setViewportSize({ width: 560, height: 800 });
+    await openSettings(page);
+    await saveSettings(page);
+    await openSettings(page);
+    await openSettingsTab(page, "설정");
+    await page.locator('input[name="fontScale"][value="extra-large"]').check();
+    await page.getByRole("button", { name: "설정 저장" }).click();
+    await expect(page.locator("#app")).toHaveAttribute("data-screen", "menu");
+    await openSettings(page);
+    await openSettingsTab(page, "특성");
+
+    const layout = await page.evaluate(() => {
+      const grid = document.querySelector(".starting-attributes__grid");
+      const cards = [...document.querySelectorAll<HTMLElement>(".starting-attribute")];
+      return {
+        rootFont: getComputedStyle(document.documentElement).fontSize,
+        columns: grid ? getComputedStyle(grid).gridTemplateColumns.split(" ").length : 0,
+        clippedCards: cards.filter((card) => card.scrollWidth > card.clientWidth + 2).length,
+        horizontal: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+      };
+    });
+    expect(layout.rootFont).toBe("22px");
+    expect(layout.columns).toBe(1);
+    expect(layout.clippedCards).toBe(0);
+    expect(layout.horizontal).toBe(false);
+  });
+
+  test.describe("coarse cover-width panels", () => {
+    test.use({ hasTouch: true, isMobile: true });
+
+    async function installFontScale(page: Page, fontScale: "standard" | "large" | "extra-large") {
+      await page.addInitScript((scale) => {
+        localStorage.setItem(
+          "shovefall:user-preferences:v1",
+          JSON.stringify({
+            fontScale: scale,
+            soundEffectsVolume: 50,
+            backgroundMusicVolume: 50,
+          }),
+        );
+      }, fontScale);
+    }
+
+    async function forceCompletedPanel(page: Page): Promise<void> {
+      await page.evaluate(() => {
+        const app = document.querySelector("#app");
+        const pause = document.querySelector("#pause-menu");
+        for (const candidate of [
+          pause?.closest("section"),
+          pause?.closest("main"),
+          document.querySelector("#arena-host"),
+        ]) {
+          if (candidate) candidate.removeAttribute("hidden");
+        }
+        pause?.removeAttribute("hidden");
+        pause?.setAttribute("data-mode", "completed");
+        app?.setAttribute("data-screen", "arena");
+        app?.setAttribute("data-pause-menu", "open");
+        app?.setAttribute("data-round", "completed");
+        document.querySelector("#arena-actions")?.removeAttribute("hidden");
+        document.querySelector("#copy-round-report")?.removeAttribute("hidden");
+        document.querySelector("#view-finished-map")?.removeAttribute("hidden");
+        document.querySelector("#resume-round")?.setAttribute("hidden", "");
+        const skillList = document.querySelector("#round-skill-uses");
+        if (skillList) {
+          skillList.replaceChildren(
+            ...["빙결 지대", "수호 방패"].map((label) => {
+              const item = document.createElement("li");
+              const span = document.createElement("span");
+              const output = document.createElement("output");
+              span.textContent = label;
+              output.value = "6회";
+              item.append(span, output);
+              return item;
+            }),
+          );
+        }
+        document.body.classList.add("game-screen-active");
+      });
+      await expect(page.locator("#pause-menu")).toHaveAttribute("data-mode", "completed");
+    }
+
+    for (const width of [260, 280]) {
+      test(`keeps the extra-large completed panel on one screen at ${width}px cover width`, async ({
+        page,
+      }) => {
+        await installFontScale(page, "extra-large");
+        await page.setViewportSize({ width, height: 653 });
+        await page.goto("/");
+        await openSettings(page);
+        await saveSettings(page);
+        await forceCompletedPanel(page);
+
+        const layout = await page.evaluate(() => {
+          const panel = document.querySelector(".pause-menu__panel");
+          const cells = [...document.querySelectorAll(".round-statistics__grid div")];
+          const skills = [...document.querySelectorAll(".round-statistics__skills li")];
+          const buttons = [...document.querySelectorAll("#arena-actions button:not([hidden])")];
+          return {
+            rootFont: getComputedStyle(document.documentElement).fontSize,
+            panelScrollHeight: panel?.scrollHeight ?? 0,
+            panelClientHeight: panel?.clientHeight ?? 0,
+            statsColumns: getComputedStyle(
+              document.querySelector(".round-statistics__grid") ?? document.body,
+            ).gridTemplateColumns.split(" ").length,
+            skillColumns: getComputedStyle(
+              document.querySelector(".round-statistics__skills ul") ?? document.body,
+            ).gridTemplateColumns.split(" ").length,
+            wrappedCells: cells.filter((cell) => cell.scrollHeight > cell.clientHeight + 2).length,
+            wrappedSkills: skills.filter((skill) => skill.scrollHeight > skill.clientHeight + 2)
+              .length,
+            buttonHeights: buttons.map((button) =>
+              Math.round(button.getBoundingClientRect().height),
+            ),
+            horizontal: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+          };
+        });
+        expect(layout.rootFont).toBe("22px");
+        expect(layout.panelScrollHeight).toBeLessThanOrEqual(layout.panelClientHeight + 2);
+        expect(layout.statsColumns).toBe(1);
+        expect(layout.skillColumns).toBe(1);
+        expect(layout.wrappedCells).toBe(0);
+        expect(layout.wrappedSkills).toBe(0);
+        expect(layout.buttonHeights.every((height) => height >= 44)).toBe(true);
+        expect(layout.horizontal).toBe(false);
+      });
+    }
+
+    for (const combo of [
+      { width: 260, fontScale: "standard" },
+      { width: 280, fontScale: "large" },
+    ] as const) {
+      test(`fits the ${combo.fontScale} round briefing on one screen at ${combo.width}px cover width`, async ({
+        page,
+      }) => {
+        await installFontScale(page, combo.fontScale);
+        await page.setViewportSize({ width: combo.width, height: 653 });
+        await page.goto("/");
+        await openSettings(page);
+        await saveSettings(page);
+        await page.getByRole("button", { name: "게임 시작" }).click();
+        const briefing = page.getByRole("dialog", {
+          name: "포격으로 무너지는 섬에서 끝까지 살아남아.",
+        });
+        await expect(briefing).toBeVisible();
+        await expect(page.getByRole("button", { name: "알겠다요 ㅇㅅㅇ" })).toBeEnabled();
+
+        const layout = await page.evaluate(() => {
+          const dialog = document.querySelector("#round-briefing-dialog");
+          const rect = dialog?.getBoundingClientRect();
+          const confirm = document
+            .querySelector("#confirm-round-briefing")
+            ?.getBoundingClientRect();
+          return {
+            scrollHeight: dialog?.scrollHeight ?? 0,
+            clientHeight: dialog?.clientHeight ?? 0,
+            top: rect?.top ?? 0,
+            bottom: rect?.bottom ?? 0,
+            confirmTop: confirm?.top ?? 0,
+            confirmBottom: confirm?.bottom ?? 0,
+            innerHeight,
+            horizontal: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+          };
+        });
+        expect(layout.scrollHeight).toBeLessThanOrEqual(layout.clientHeight);
+        expect(layout.top).toBeGreaterThanOrEqual(0);
+        expect(layout.bottom).toBeLessThanOrEqual(layout.innerHeight);
+        expect(layout.confirmTop).toBeGreaterThanOrEqual(0);
+        expect(layout.confirmBottom).toBeLessThanOrEqual(layout.innerHeight);
+        expect(layout.horizontal).toBe(false);
+        await page.getByRole("button", { name: "알겠다요 ㅇㅅㅇ" }).click();
+      });
+    }
+
+    test("keeps the extra-large -5/+5 stepper buttons unclipped at 260px cover width", async ({
+      page,
+    }) => {
+      await installFontScale(page, "extra-large");
+      await page.setViewportSize({ width: 260, height: 653 });
+      await page.goto("/");
+      await openSettings(page);
+      await openSettingsTab(page, "특성");
+
+      const layout = await page.evaluate(() => {
+        const buttons = [
+          ...document.querySelectorAll<HTMLButtonElement>(
+            '.starting-attribute__stepper button[data-attribute-step="-5"], .starting-attribute__stepper button[data-attribute-step="5"]',
+          ),
+        ];
+        return {
+          rootFont: getComputedStyle(document.documentElement).fontSize,
+          count: buttons.length,
+          clipped: buttons.filter((button) => button.scrollWidth > button.clientWidth + 2).length,
+        };
+      });
+      expect(layout.rootFont).toBe("22px");
+      expect(layout.count).toBeGreaterThan(0);
+      expect(layout.clipped).toBe(0);
+    });
+  });
 });
