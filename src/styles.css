@@ -2110,7 +2110,7 @@ button:disabled {
   display: grid;
   gap: 8px;
   width: max-content;
-  max-width: calc(100% - 28px);
+  max-width: calc(100% - 150px);
   pointer-events: none;
 }
 
@@ -3147,7 +3147,7 @@ button:disabled {
   .stat-status-wrap {
     top: auto;
     right: max(14px, env(safe-area-inset-right));
-    bottom: 118px;
+    bottom: 172px;
     max-width: calc(100% - 28px);
   }
 

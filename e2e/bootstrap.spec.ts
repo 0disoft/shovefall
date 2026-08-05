@@ -2880,9 +2880,13 @@ test("keeps narrow fine-pointer arena controls clear of the pause trigger", asyn
   const joystickBox = await page.locator("#pointer-joystick").boundingBox();
   const actionsBox = await page.locator(".touch-actions").boundingBox();
   const pauseBox = await page.locator("#pause-round").boundingBox();
+  const skillActionsBox = await page.locator("#skill-actions").boundingBox();
+  const toggleBox = await page.locator("#toggle-stat-status").boundingBox();
   expect(joystickBox).not.toBeNull();
   expect(actionsBox).not.toBeNull();
   expect(pauseBox).not.toBeNull();
+  expect(skillActionsBox).not.toBeNull();
+  expect(toggleBox).not.toBeNull();
 
   if (pauseBox !== null) {
     expect(pauseBox.y).toBeLessThanOrEqual(120);
@@ -2893,6 +2897,12 @@ test("keeps narrow fine-pointer arena controls clear of the pause trigger", asyn
   }
   if (actionsBox !== null && pauseBox !== null) {
     expect(pauseBox.y + pauseBox.height).toBeLessThanOrEqual(actionsBox.y);
+  }
+  if (skillActionsBox !== null && pauseBox !== null) {
+    expect(skillActionsBox.x + skillActionsBox.width + 8).toBeLessThanOrEqual(pauseBox.x);
+  }
+  if (actionsBox !== null && toggleBox !== null) {
+    expect(toggleBox.y + toggleBox.height + 8).toBeLessThanOrEqual(actionsBox.y);
   }
 
   await expect(page.locator("#stat-status-wrap")).toHaveAttribute("data-expanded", "false");
