@@ -9,6 +9,14 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.199.47",
+    title: "작은 화면의 일시정지가 한 장에 들어온다요 ㅇㅅㅇ",
+    reason:
+      "320px 폰에서는 실제 라운드 중 일시정지 패널이 세로로 60px 넘쳐 스크롤해야 했고, 260px에서는 체력·마나 버튼 라벨이 4px 잘렸으며, 태블릿에서는 터치 버튼이 그리드 밖으로 8px 삐져나왔다요.",
+    change:
+      "360px 이하 터치 화면에서는 일시정지 패널 전체를 한 단계 더 압축해 한 장에 들어오게 하고, 300px 이하에서는 체력·마나 버튼 간격과 글자를 줄여 라벨이 안 잘리게 했으며, 터치 버튼 폭을 그리드 칸에 맞춰 태블릿에서도 안 삐져나오게 했다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.199.46",
     title: "커버 폭에서도 완료 통계가 안 잘린다요 ㅇㅅㅇ",
     reason:

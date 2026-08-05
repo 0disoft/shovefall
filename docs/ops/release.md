@@ -1,8 +1,10 @@
 # Static Release Procedure
 
-- Status: `0.199.46` cover-width completed statistics candidate; hosted proof pending
+- Status: `0.199.47` live-round narrow-phone pause candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.199.46`
+- Current product version: `0.199.47`
+
+Product `0.199.47`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. During a live round on a 320×568 phone, the paused panel used the empty-statistics layout, so populated telemetry and round statistics overflowed the panel by about 66 px and required scrolling; the panel now compresses its action area, telemetry cells, statistics cells, and heading below 360 px coarse so the whole panel including populated values fits a 320×568 screen, the 체력·마나 toggle tightens its gap, padding, and font below 300 px so its label no longer clips by 4 px at 260 px, and touch action buttons size to the 68 px grid so the tablet control row no longer spills 8 px past the container at 768 px. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
 Product `0.199.46`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. On cover-width screens up to 300 px, the completed and paused round statistics used the narrow-phone cell sizes, so values such as `100%` clipped inside 260 px cells and the completed panel fit with zero slack; the cells now tighten their font and padding at 300 px and below, values wrap instead of clipping, the completed panel gains about 27 px of slack, and the paused panel scroll shrinks by about 17 px. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
