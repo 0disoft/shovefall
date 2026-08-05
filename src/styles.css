@@ -582,6 +582,9 @@ button:disabled {
 }
 
 .settings-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 5;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;

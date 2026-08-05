@@ -3351,6 +3351,43 @@ test("fits the fine-pointer landscape pause panel on one screen", async ({ page 
   expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth);
 });
 
+test("keeps the settings tabs reachable and starts each panel at the top", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  await openSettings(page);
+  await openSettingsTab(page, "특성");
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  await page.waitForTimeout(100);
+
+  const before = await page.evaluate(() => {
+    const tabs = document.querySelector<HTMLElement>(".settings-tabs");
+    const rect = tabs?.getBoundingClientRect();
+    return {
+      scrollY: Math.round(window.scrollY),
+      tabsTop: rect === undefined ? null : Math.round(rect.top),
+      tabsBottom: rect === undefined ? null : Math.round(rect.bottom),
+    };
+  });
+  expect(before.scrollY).toBeGreaterThan(0);
+  expect(before.tabsTop).not.toBeNull();
+  expect(before.tabsTop).toBeGreaterThanOrEqual(0);
+  expect(before.tabsBottom).toBeLessThanOrEqual(844);
+
+  await page.getByRole("tab", { name: "스킬", exact: true }).click();
+  await expect(page.locator("#app")).toHaveAttribute("data-settings-tab", "skills");
+  const after = await page.evaluate(() => {
+    const card = document.querySelector<HTMLElement>(".skill-loadout-fieldset .preset-card");
+    const rect = card?.getBoundingClientRect();
+    return {
+      scrollY: Math.round(window.scrollY),
+      firstSkillCardTop: rect === undefined ? null : Math.round(rect.top),
+    };
+  });
+  expect(after.scrollY).toBe(0);
+  expect(after.firstSkillCardTop).not.toBeNull();
+  expect(after.firstSkillCardTop).toBeGreaterThanOrEqual(0);
+});
+
 test("keeps the desktop build-summary skill-efficiency cell unclipped after allocation", async ({
   page,
 }) => {

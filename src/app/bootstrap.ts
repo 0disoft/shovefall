@@ -959,6 +959,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
       getSettingsPanel(candidateId).hidden = !active;
     }
     root.dataset.settingsTab = activeId;
+    window.scrollTo({ top: 0 });
     if (moveFocus) {
       getSettingsTabButton(activeId).focus({ preventScroll: true });
     }
