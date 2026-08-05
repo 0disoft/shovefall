@@ -3270,6 +3270,44 @@ test.describe("narrow fine-pointer portrait panels", () => {
   });
 });
 
+test("keeps kill-reward trait cards readable with the save action visible on a short landscape screen", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 568, height: 320 });
+  await page.goto("/");
+  await page.evaluate(() => {
+    const app = document.querySelector<HTMLElement>("#app");
+    if (app) app.dataset.screen = "arena";
+    document.body.classList.add("game-screen-active");
+    document.querySelector("#stat-upgrade-overlay")?.removeAttribute("hidden");
+  });
+  await expect(page.locator("#stat-upgrade-overlay")).toBeVisible();
+
+  const layout = await page.evaluate(() => {
+    const choices = document.querySelector(".trait-upgrade__choices");
+    const save = document.querySelector("#save-trait-upgrade");
+    const firstCard = document.querySelector(".trait-upgrade__choice");
+    const choicesRect = choices?.getBoundingClientRect();
+    const saveRect = save?.getBoundingClientRect();
+    const firstCardRect = firstCard?.getBoundingClientRect();
+    return {
+      choicesHeight: Math.round(choicesRect?.height ?? 0),
+      saveVisible:
+        saveRect !== undefined && saveRect.top >= 0 && saveRect.bottom <= window.innerHeight,
+      firstCardVisible:
+        choicesRect !== undefined &&
+        firstCardRect !== undefined &&
+        firstCardRect.top >= choicesRect.top - 1 &&
+        firstCardRect.bottom <= choicesRect.bottom + 1,
+      bodyOverflow: document.body.scrollWidth > document.documentElement.clientWidth,
+    };
+  });
+  expect(layout.choicesHeight).toBeGreaterThanOrEqual(120);
+  expect(layout.saveVisible).toBe(true);
+  expect(layout.firstCardVisible).toBe(true);
+  expect(layout.bodyOverflow).toBe(false);
+});
+
 test.describe("narrow fine-pointer settings", () => {
   test.use({ viewport: { width: 260, height: 653 } });
 
