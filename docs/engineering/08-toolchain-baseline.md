@@ -14,16 +14,16 @@ Shovefall adopts a Bun-managed Vite and PixiJS browser stack with TypeScript 7, 
 |---|---|---|
 | Package manager and automation runtime | Bun 1.3.14 | Owns installs, `bun.lock`, package scripts, and project-authored TypeScript automation. |
 | Language and authoritative type check | TypeScript 7.0.2 | `tsc --noEmit` remains the authoritative compiler diagnostic gate. The repository does not require the legacy JavaScript compiler API. |
-| Development and production build | Vite 8.1.5 | Produces one provider-neutral static `dist` artifact. |
+| Development and production build | Vite 8.2.0 | Produces one provider-neutral static `dist` artifact. |
 | Game-world rendering | PixiJS 8.19.0 with WebGL preference | Owns rendering only; simulation state and rules remain renderer-independent. |
-| Lint | Oxlint 1.75.0 | Owns correctness, suspicious, import, and repository-approved restriction rules. |
+| Lint | Oxlint 1.77.0 | Owns correctness, suspicious, import, and repository-approved restriction rules. |
 | Type-aware lint | `oxlint-tsgolint` 7.0.2001 | Runs Oxlint type-aware rules against the TypeScript 7 program. Oxlint, tsgolint, and TypeScript compatibility is reviewed and pinned as a set. |
-| Format | Oxfmt 0.60.0 | Owns formatting for approved project paths. A direct Prettier dependency is not installed. |
+| Format | Oxfmt 0.62.0 | Owns formatting for approved project paths. A direct Prettier dependency is not installed. |
 | Unit and scenario tests | Vitest 4.1.10 | Owns pure simulation, contracts, deterministic scenarios, and application-model tests. |
-| Browser smoke and E2E | Playwright Test 1.61.1 | Owns browser boot, input, focus, round, failure, restart, and static-build checks. The local bootstrap smoke uses installed stable Chrome. |
+| Browser smoke and E2E | Playwright Test 1.62.1 | Owns browser boot, input, focus, round, failure, restart, and static-build checks. The local bootstrap smoke uses installed stable Chrome. |
 | Audio | Browser Web Audio API | Avoids an initial audio runtime dependency. |
 
-`@types/node` 26.1.1 supports configuration and repository-owned Bun TypeScript tools. Exact declarations live in `package.json`; exact resolutions live in `bun.lock`. Dependency lifecycle scripts are disabled during installation.
+`@types/node` 26.1.2 supports configuration and repository-owned Bun TypeScript tools. Exact declarations live in `package.json`; exact resolutions live in `bun.lock`. Dependency lifecycle scripts are disabled during installation.
 
 ## Rejected Baseline Alternatives
 
