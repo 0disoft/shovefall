@@ -7,7 +7,7 @@ const rootDirectory = fileURLToPath(new URL(".", import.meta.url));
 export default defineConfig({
   base: "./",
   build: {
-    target: "es2022",
+    target: "es2023",
     sourcemap: true,
     rollupOptions: {
       input: {
