@@ -1,8 +1,10 @@
 # Static Release Procedure
 
-- Status: `0.199.55` portrait completed panel and landscape reward candidate; hosted proof pending
+- Status: `0.199.56` menu and briefing candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.199.55`
+- Current product version: `0.199.56`
+
+Product `0.199.56`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. Short landscape windows lay the five menu actions in two columns so the menu fits one screen without scrolling even at extra-large text, fine-pointer landscape settings keep the attribute steppers inside their cards, the current version-history title wraps to full lines instead of truncating, and narrow portrait screens compact the round briefing and pin its confirm action to the bottom so the player can always start the round. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
 Product `0.199.55`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. Fine-pointer portrait windows up to 380 px now compact the completed-round panel like touch layouts so it fits a 320×568 screen without scrolling and the action buttons stay at touch height, and short landscape screens compact the kill-reward trait picker so its choice strip nearly doubles in height with the first card row and the save action staying visible. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 

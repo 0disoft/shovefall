@@ -9,6 +9,14 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.199.56",
+    title: "가로 납작한 창의 메뉴와 좁은 화면의 브리핑이 한눈에 들어온다요 ㅇㅅㅇ",
+    reason:
+      "가로 납작한 마우스 창의 메뉴가 버튼 다섯 개가 세로로 쌓여 화면을 밀었고, 좁은 세로 화면의 브리핑이 조작법 한 줄씩 쌓여 확인 버튼이 화면 밖으로 밀려났다요.",
+    change:
+      "가로 납작한 창의 메뉴 버튼을 두 줄로 배치해 한 화면에 들어오게 하고, 좁은 세로 화면의 브리핑을 압축하고 확인 버튼을 아래에 고정해 항상 보이게 하고, 가로 설정의 특성 버튼이 카드를 넘치지 않게 하고, 버전 기록의 최신 제목이 잘리지 않게 줄바꿈했다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.199.55",
     title: "좁은 마우스 창과 가로 화면에서도 완료 화면과 보상 선택이 한눈에 들어온다요 ㅇㅅㅇ",
     reason:
