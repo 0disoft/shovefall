@@ -2216,6 +2216,56 @@ test.describe("coarse-pointer surfaces", () => {
       expect(layout.confirmBottom).toBeLessThanOrEqual(layout.innerHeight);
       await page.getByRole("button", { name: "알겠다요 ㅇㅅㅇ" }).click();
     });
+
+    test("keeps the completed-round panel on one screen at extra-large text", async ({ page }) => {
+      await page.goto("/");
+      await openSettings(page);
+      await saveSettings(page);
+      await openSettings(page);
+      await openSettingsTab(page, "설정");
+      await page.locator('input[name="fontScale"][value="extra-large"]').check();
+      await page.getByRole("button", { name: "설정 저장" }).click();
+      await page.evaluate(() => {
+        const app = document.querySelector("#app");
+        const pause = document.querySelector("#pause-menu");
+        for (const candidate of [
+          pause?.closest("section"),
+          pause?.closest("main"),
+          document.querySelector("#arena-host"),
+        ]) {
+          if (candidate) candidate.removeAttribute("hidden");
+        }
+        pause?.removeAttribute("hidden");
+        pause?.setAttribute("data-mode", "completed");
+        app?.setAttribute("data-screen", "arena");
+        app?.setAttribute("data-pause-menu", "open");
+        app?.setAttribute("data-round", "completed");
+        document.querySelector("#arena-actions")?.removeAttribute("hidden");
+        document.querySelector("#copy-round-report")?.removeAttribute("hidden");
+        document.querySelector("#view-finished-map")?.removeAttribute("hidden");
+        document.querySelector("#resume-round")?.setAttribute("hidden", "");
+        const message = document.querySelector("#round-message");
+        if (message) message.textContent = "라운드 종료 · 7위";
+        document.body.classList.add("game-screen-active");
+      });
+      await expect(page.locator("#pause-menu")).toHaveAttribute("data-mode", "completed");
+
+      const layout = await page.evaluate(() => {
+        const panel = document.querySelector(".pause-menu__panel");
+        const buttons = [...document.querySelectorAll("#arena-actions button:not([hidden])")];
+        return {
+          panelScrollHeight: panel?.scrollHeight ?? 0,
+          panelClientHeight: panel?.clientHeight ?? 0,
+          buttonHeights: buttons.map((button) => Math.round(button.getBoundingClientRect().height)),
+          bodyOverflow: document.body.scrollWidth > document.documentElement.clientWidth,
+          rootFont: getComputedStyle(document.documentElement).fontSize,
+        };
+      });
+      expect(layout.rootFont).toBe("22px");
+      expect(layout.panelScrollHeight).toBeLessThanOrEqual(layout.panelClientHeight + 2);
+      expect(layout.buttonHeights.every((height) => height >= 44)).toBe(true);
+      expect(layout.bodyOverflow).toBe(false);
+    });
   });
 
   test.describe("landscape play HUD", () => {
@@ -3266,6 +3316,54 @@ test.describe("narrow fine-pointer portrait panels", () => {
     expect(layout.panelScrollHeight).toBeLessThanOrEqual(layout.panelClientHeight + 2);
     expect(layout.buttonHeights.every((height) => height >= 44)).toBe(true);
     expect(layout.buttonHeights.every((height) => height < 90)).toBe(true);
+    expect(layout.bodyOverflow).toBe(false);
+  });
+
+  test("keeps the completed-round panel on one screen at extra-large text", async ({ page }) => {
+    await page.goto("/");
+    await openSettings(page);
+    await saveSettings(page);
+    await openSettings(page);
+    await openSettingsTab(page, "설정");
+    await page.locator('input[name="fontScale"][value="extra-large"]').check();
+    await page.getByRole("button", { name: "설정 저장" }).click();
+    await page.evaluate(() => {
+      const app = document.querySelector("#app");
+      const pause = document.querySelector("#pause-menu");
+      for (const candidate of [
+        pause?.closest("section"),
+        pause?.closest("main"),
+        document.querySelector("#arena-host"),
+      ]) {
+        if (candidate) candidate.removeAttribute("hidden");
+      }
+      pause?.removeAttribute("hidden");
+      pause?.setAttribute("data-mode", "completed");
+      app?.setAttribute("data-screen", "arena");
+      app?.setAttribute("data-pause-menu", "open");
+      app?.setAttribute("data-round", "completed");
+      document.querySelector("#arena-actions")?.removeAttribute("hidden");
+      document.querySelector("#copy-round-report")?.removeAttribute("hidden");
+      document.querySelector("#view-finished-map")?.removeAttribute("hidden");
+      document.querySelector("#resume-round")?.setAttribute("hidden", "");
+      const message = document.querySelector("#round-message");
+      if (message) message.textContent = "라운드 종료 · 7위";
+      document.body.classList.add("game-screen-active");
+    });
+    await expect(page.locator("#pause-menu")).toHaveAttribute("data-mode", "completed");
+
+    const layout = await page.evaluate(() => {
+      const panel = document.querySelector(".pause-menu__panel");
+      const buttons = [...document.querySelectorAll("#arena-actions button:not([hidden])")];
+      return {
+        panelScrollHeight: panel?.scrollHeight ?? 0,
+        panelClientHeight: panel?.clientHeight ?? 0,
+        buttonHeights: buttons.map((button) => Math.round(button.getBoundingClientRect().height)),
+        bodyOverflow: document.body.scrollWidth > document.documentElement.clientWidth,
+      };
+    });
+    expect(layout.panelScrollHeight).toBeLessThanOrEqual(layout.panelClientHeight + 2);
+    expect(layout.buttonHeights.every((height) => height >= 44)).toBe(true);
     expect(layout.bodyOverflow).toBe(false);
   });
 });
