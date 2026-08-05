@@ -1869,29 +1869,23 @@ test.describe("coarse-pointer surfaces", () => {
   test("keeps the paused panel on one screen with the resume action visible on a narrow phone", async ({
     page,
   }) => {
+    test.setTimeout(90_000);
+    await installFixedRoundSeed(page, 1, 0);
     await page.goto("/");
     await page.setViewportSize({ width: 320, height: 568 });
-    await page.evaluate(() => {
-      const app = document.querySelector("#app");
-      const pause = document.querySelector("#pause-menu");
-      for (const candidate of [
-        pause?.closest("section"),
-        pause?.closest("main"),
-        document.querySelector("#arena-host"),
-      ]) {
-        if (candidate) candidate.removeAttribute("hidden");
-      }
-      pause?.removeAttribute("hidden");
-      pause?.setAttribute("data-mode", "paused");
-      app?.setAttribute("data-screen", "arena");
-      app?.setAttribute("data-pause-menu", "open");
-      app?.setAttribute("data-round", "active");
-      document.querySelector("#arena-actions")?.removeAttribute("hidden");
-      document.querySelector("#game-telemetry")?.removeAttribute("hidden");
-      document.body.classList.add("game-screen-active");
-    });
-    await expect(page.locator("#pause-menu")).toHaveAttribute("data-mode", "paused");
+    await openSettings(page);
+    await saveSettings(page);
+    await startGame(page);
+    await expect(page.locator("#app")).toHaveAttribute("data-round", "active");
+    await page.keyboard.press("p");
+    await expect(page.locator("#pause-menu")).toBeVisible();
     await expect(page.getByRole("button", { name: "계속", exact: true })).toBeVisible();
+
+    // The dev-only telemetry block is absent from production builds; hide it so the
+    // measurement matches the artifact a real player sees.
+    await page.locator("#developer-telemetry").evaluate((details: HTMLElement) => {
+      details.hidden = true;
+    });
 
     const layout = await page.evaluate(() => {
       const panel = document.querySelector(".pause-menu__panel");
@@ -1899,22 +1893,31 @@ test.describe("coarse-pointer surfaces", () => {
       const statistics = document.querySelector(".round-statistics");
       const resume = document.querySelector("#resume-round");
       const guide = document.querySelector("#pause-control-guide");
+      const resumeVisible =
+        resume instanceof HTMLElement &&
+        !resume.hidden &&
+        getComputedStyle(resume).display !== "none";
       const resumeRect = resume?.getBoundingClientRect();
       return {
         panelScrollHeight: panel?.scrollHeight ?? 0,
         panelClientHeight: panel?.clientHeight ?? 0,
         telemetryHeight: Math.round(telemetry?.getBoundingClientRect().height ?? 0),
         statisticsTop: Math.round(statistics?.getBoundingClientRect().top ?? 0),
-        resumeBottom: Math.round(resumeRect?.bottom ?? 0),
+        resumeBottom: resumeRect === undefined ? null : Math.round(resumeRect.bottom),
         guideHidden: guide === null || getComputedStyle(guide).display === "none",
         bodyOverflow: document.body.scrollWidth > document.documentElement.clientWidth,
+        resumeVisible,
       };
     });
     expect(layout.panelScrollHeight).toBeLessThanOrEqual(layout.panelClientHeight + 2);
     expect(layout.telemetryHeight).toBeLessThan(110);
     expect(layout.statisticsTop).toBeGreaterThan(0);
     expect(layout.statisticsTop).toBeLessThan(400);
-    expect(layout.resumeBottom).toBeLessThanOrEqual(568);
+    expect(layout.resumeVisible).toBe(true);
+    expect(layout.resumeBottom).not.toBeNull();
+    if (layout.resumeBottom !== null) {
+      expect(layout.resumeBottom).toBeLessThanOrEqual(568);
+    }
     expect(layout.guideHidden).toBe(true);
     expect(layout.bodyOverflow).toBe(false);
   });
@@ -2068,6 +2071,54 @@ test.describe("coarse-pointer surfaces", () => {
         "grid-template-columns",
         /repeat\(2,\s*minmax\(0px,\s*1fr\)\)|^\d+(?:\.\d+)?px(?: \d+(?:\.\d+)?px)+$/u,
       );
+    });
+  });
+
+  test.describe("tablet touch controls", () => {
+    test.use({ viewport: { width: 768, height: 1024 } });
+
+    test("keeps tablet touch buttons inside their grid without horizontal overflow", async ({
+      page,
+    }) => {
+      test.setTimeout(90_000);
+      await installFixedRoundSeed(page, 1, 0);
+      await page.goto("/");
+      await openSettings(page);
+      await saveSettings(page);
+      await startGame(page);
+      await expect(page.locator("#app")).toHaveAttribute("data-round", "active");
+      await expect(page.locator(".touch-actions")).toBeVisible();
+
+      const layout = await page.evaluate(() => {
+        const actions = document.querySelector<HTMLElement>(".touch-actions");
+        const root = document.querySelector<HTMLElement>(".touch-controls");
+        const buttons = [...document.querySelectorAll(".touch-actions button")].map((button) => {
+          const rect = button.getBoundingClientRect();
+          return {
+            left: Math.round(rect.left * 10) / 10,
+            right: Math.round(rect.right * 10) / 10,
+            width: Math.round(rect.width * 10) / 10,
+            height: Math.round(rect.height * 10) / 10,
+          };
+        });
+        return {
+          actionsScrollWidth: actions?.scrollWidth ?? 0,
+          actionsClientWidth: actions?.clientWidth ?? 0,
+          rootScrollWidth: root?.scrollWidth ?? 0,
+          rootClientWidth: root?.clientWidth ?? 0,
+          buttons,
+          viewportWidth: document.documentElement.clientWidth,
+        };
+      });
+      expect(layout.actionsScrollWidth).toBeLessThanOrEqual(layout.actionsClientWidth);
+      expect(layout.rootScrollWidth).toBeLessThanOrEqual(layout.rootClientWidth);
+      expect(layout.buttons.length).toBeGreaterThanOrEqual(3);
+      for (const button of layout.buttons) {
+        expect(button.left).toBeGreaterThanOrEqual(0);
+        expect(button.right).toBeLessThanOrEqual(layout.viewportWidth);
+        expect(button.width).toBeGreaterThanOrEqual(60);
+        expect(button.height).toBeGreaterThanOrEqual(60);
+      }
     });
   });
 
@@ -2496,6 +2547,25 @@ test.describe("coarse-pointer surfaces", () => {
       if (layout.panelBottom !== null && layout.joystickTop !== null) {
         expect(layout.panelBottom).toBeLessThanOrEqual(layout.joystickTop + 4);
       }
+      expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth);
+    });
+
+    test("keeps the cover-width stat toggle label fully readable during a live round", async ({
+      page,
+    }) => {
+      test.setTimeout(90_000);
+      await installFixedRoundSeed(page, 1, 0);
+      await page.goto("/");
+      await openSettings(page);
+      await saveSettings(page);
+      await startGame(page);
+      await expect(page.locator("#app")).toHaveAttribute("data-round", "active");
+      await expect(page.locator("#toggle-stat-status")).toBeVisible();
+
+      const layout = await page.locator("#toggle-stat-status").evaluate((toggle) => ({
+        scrollWidth: toggle.scrollWidth,
+        clientWidth: toggle.clientWidth,
+      }));
       expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth);
     });
 

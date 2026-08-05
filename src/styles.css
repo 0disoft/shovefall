@@ -2123,6 +2123,8 @@ button:disabled {
 }
 
 .stat-status-toggle output {
+  flex: 1 1 auto;
+  min-width: 0;
   overflow: hidden;
   color: var(--accent);
   font-size: 0.74rem;
@@ -2550,8 +2552,8 @@ button:disabled {
 }
 
 .touch-actions button {
-  width: 76px;
-  height: 76px;
+  width: 68px;
+  height: 68px;
   padding: 0;
   touch-action: manipulation;
   color: var(--ink-strong);
@@ -3600,7 +3602,70 @@ button:disabled {
   }
 }
 
+@media (pointer: coarse) and (max-width: 360px) {
+  .pause-menu__panel {
+    gap: 3px;
+    padding: 8px;
+  }
+
+  .pause-menu__panel h3 {
+    font-size: 0.9rem;
+  }
+
+  .pause-menu[data-mode="paused"] .arena-actions {
+    gap: 3px;
+    padding: 6px 8px;
+  }
+
+  :root .pause-menu[data-mode="paused"] .arena-actions__buttons .primary-action,
+  :root .pause-menu[data-mode="paused"] .arena-actions__buttons .secondary-action {
+    min-height: 42px;
+    padding: 0 8px;
+    font-size: 0.86rem;
+  }
+
+  .pause-menu[data-mode="paused"] .game-telemetry div,
+  .pause-menu[data-mode="paused"] .round-statistics__grid div {
+    gap: 2px 4px;
+    padding: 1px 5px;
+  }
+
+  .pause-menu[data-mode="paused"] .game-telemetry dt,
+  .pause-menu[data-mode="paused"] .round-statistics__grid dt {
+    font-size: 0.54rem;
+  }
+
+  .pause-menu[data-mode="paused"] .game-telemetry dd,
+  .pause-menu[data-mode="paused"] .round-statistics__grid dd {
+    font-size: 0.7rem;
+    overflow-wrap: anywhere;
+  }
+
+  .pause-menu[data-mode="paused"] .round-statistics {
+    gap: 3px;
+  }
+
+  .pause-menu[data-mode="paused"] .round-statistics h4,
+  .pause-menu[data-mode="paused"] .round-statistics h5 {
+    font-size: 0.76rem;
+  }
+
+  .pause-menu[data-mode="paused"] .round-statistics__skills ul {
+    gap: 4px;
+  }
+
+  .pause-menu[data-mode="paused"] .round-statistics__skills li {
+    padding: 5px 7px;
+  }
+}
+
 @media (pointer: coarse) and (max-width: 300px) {
+  .stat-status-toggle {
+    gap: 6px;
+    padding: 8px 10px;
+    font-size: 0.72rem;
+  }
+
   .pause-menu[data-mode="completed"] .round-statistics__grid div {
     gap: 2px 4px;
     padding: 2px 5px;
