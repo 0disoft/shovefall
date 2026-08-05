@@ -2498,6 +2498,71 @@ test.describe("coarse-pointer surfaces", () => {
       }
       expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth);
     });
+
+    test("keeps the cover-width completed panel readable without clipped values", async ({
+      page,
+    }) => {
+      await page.goto("/");
+      await page.locator("#app").evaluate((app) => {
+        const pause = document.querySelector("#pause-menu");
+        for (const candidate of [
+          pause?.closest("section"),
+          pause?.closest("main"),
+          document.querySelector("#arena-host"),
+        ]) {
+          if (candidate) candidate.removeAttribute("hidden");
+        }
+        pause?.removeAttribute("hidden");
+        pause?.setAttribute("data-mode", "completed");
+        app?.setAttribute("data-screen", "arena");
+        app?.setAttribute("data-pause-menu", "open");
+        app?.setAttribute("data-round", "completed");
+        document.querySelector("#arena-actions")?.removeAttribute("hidden");
+        document.querySelector("#copy-round-report")?.removeAttribute("hidden");
+        document.querySelector("#view-finished-map")?.removeAttribute("hidden");
+        document.querySelector("#resume-round")?.setAttribute("hidden", "");
+        const skillList = document.querySelector("#round-skill-uses");
+        if (skillList) {
+          skillList.replaceChildren(
+            ...["빙결 지대", "수호 방패"].map((label) => {
+              const item = document.createElement("li");
+              const span = document.createElement("span");
+              const output = document.createElement("output");
+              span.textContent = label;
+              output.value = "6회";
+              item.append(span, output);
+              return item;
+            }),
+          );
+        }
+        document.body.classList.add("game-screen-active");
+      });
+      await expect(page.locator("#pause-menu")).toHaveAttribute("data-mode", "completed");
+      await expect(page.locator("#round-skill-uses li")).toHaveCount(2);
+
+      const layout = await page.evaluate(() => {
+        const panel = document.querySelector(".pause-menu__panel");
+        const cells = [...document.querySelectorAll(".round-statistics__grid > div")].map(
+          (cell) => {
+            const dd = cell.querySelector("dd");
+            return {
+              height: Math.round(cell.getBoundingClientRect().height),
+              overflow: dd !== null && dd.scrollWidth > dd.clientWidth + 1,
+            };
+          },
+        );
+        return {
+          panelScrollHeight: panel?.scrollHeight ?? 0,
+          panelClientHeight: panel?.clientHeight ?? 0,
+          cells,
+          scrollWidth: document.documentElement.scrollWidth,
+          clientWidth: document.documentElement.clientWidth,
+        };
+      });
+      expect(layout.panelScrollHeight).toBeLessThanOrEqual(layout.panelClientHeight + 2);
+      expect(layout.cells.every((cell) => !cell.overflow)).toBe(true);
+      expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth);
+    });
   });
 });
 

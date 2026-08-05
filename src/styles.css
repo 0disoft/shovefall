@@ -3600,6 +3600,33 @@ button:disabled {
   }
 }
 
+@media (pointer: coarse) and (max-width: 300px) {
+  .pause-menu[data-mode="completed"] .round-statistics__grid div {
+    gap: 2px 4px;
+    padding: 2px 5px;
+  }
+
+  .pause-menu[data-mode="paused"] .game-telemetry div {
+    gap: 2px 4px;
+    padding: 2px 5px;
+  }
+
+  .pause-menu[data-mode="completed"] .round-statistics__grid dt,
+  .pause-menu[data-mode="completed"] .game-telemetry dt,
+  .pause-menu[data-mode="paused"] .game-telemetry dt,
+  .pause-menu[data-mode="paused"] .round-statistics__grid dt {
+    font-size: 0.56rem;
+  }
+
+  .pause-menu[data-mode="completed"] .round-statistics__grid dd,
+  .pause-menu[data-mode="completed"] .game-telemetry dd,
+  .pause-menu[data-mode="paused"] .game-telemetry dd,
+  .pause-menu[data-mode="paused"] .round-statistics__grid dd {
+    font-size: 0.72rem;
+    overflow-wrap: anywhere;
+  }
+}
+
 @media (pointer: coarse) and (max-width: 280px) {
   :root[data-font-scale="standard"] .stat-status {
     grid-template-columns: repeat(2, minmax(0, 1fr));
