@@ -9,6 +9,14 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.199.54",
+    title: "마우스 창에서도 완료 화면과 조작 버튼이 안 겹친다요 ㅇㅅㅇ",
+    reason:
+      "가로 납작한 마우스 창의 라운드 종료 화면이 세로로 길어져 스크롤해야 하고, 좁은 마우스 창에서는 체력·마나 버튼이 터치 버튼을 가리고 일시정지 버튼이 스킬 버튼 위에 겹쳤다요.",
+    change:
+      "가로 납작한 마우스 창의 라운드 종료 화면도 터치 화면처럼 압축해서 한 화면에 들어오게 하고, 체력·마나 버튼을 터치 버튼 위로 올리고 스킬 버튼 영역을 일시정지 버튼을 피하게 줄였다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.199.53",
     title: "가로 마우스 창도 일시정지가 한눈에 들어온다요 ㅇㅅㅇ",
     reason:

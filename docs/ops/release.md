@@ -1,8 +1,10 @@
 # Static Release Procedure
 
-- Status: `0.199.53` landscape pause and settings tab candidate; hosted proof pending
+- Status: `0.199.54` completed panel and control clearance candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.199.53`
+- Current product version: `0.199.54`
+
+Product `0.199.54`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. Fine-pointer short-landscape completed panels now use the same compact action buttons as touch layouts so the finished panel fits one screen, the in-round stat toggle rises above the two-by-two touch action grid on narrow windows, and the desktop skill/inventory action stack narrows enough to stay clear of the top-right pause trigger. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
 Product `0.199.53`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. Fine-pointer short-landscape pause panels now use the same compact two-line statistics cells as touch layouts, fold the control guide, and keep the pause actions in one row so the panel no longer stretches far beyond the viewport, and the settings tab bar stays pinned to the top while the form scrolls with each panel switch returning to the top of the new panel. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
