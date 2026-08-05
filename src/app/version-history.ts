@@ -9,6 +9,14 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.199.58",
+    title: "납작한 창과 아주 좁은 화면에서도 일시정지·완료·브리핑이 한눈에 들어온다요 ㅇㅅㅇ",
+    reason:
+      "가로 납작한 창과 381~700px 세로 창에서는 일시정지와 완료 화면이 세로로 길어 스크롤해야 하고, 481~560px 창에서는 특성 카드가 두 줄이라 스테퍼가 카드 밖으로 밀려났다요. 340px 이하 화면에서는 브리핑이 안으로 스크롤되고 완료 통계 값이 여러 줄로 감싸졌다요.",
+    change:
+      "납작한 창과 381~700px 세로 창의 일시정지·완료 패널을 압축하고, 481~560px 창에서는 특성 카드를 한 줄로 쌓고, 340px 이하 화면의 브리핑을 한 화면에 맞추고, 300px 이하 완료 통계를 한 줄 셀로 펼치고, 아주 큰 글씨의 -5/+5 버튼 글자를 줄여 잘리지 않게 했다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.199.57",
     title: "글씨를 아주 크게 해도 일시정지와 완료 화면이 한눈에 들어온다요 ㅇㅅㅇ",
     reason:

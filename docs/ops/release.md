@@ -1,8 +1,10 @@
 # Static Release Procedure
 
-- Status: `0.199.57` extra-large portrait panel candidate; hosted proof pending
+- Status: `0.199.58` short-window and cover-width layout candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.199.57`
+- Current product version: `0.199.58`
+
+Product `0.199.58`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. Fine-pointer portrait windows from 381 px to 700 px and short landscape windows now compact the paused and completed panels so they fit one screen, 481 px to 560 px windows stack the trait cards in one column so the steppers stay inside their cards, cover widths up to 340 px fit the round briefing on one screen, cover widths up to 300 px stack the completed statistics and skill rows so every value stays on one line, and extra-large -5/+5 quick buttons shrink so they never clip. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
 Product `0.199.57`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. Extra-large portrait screens now compact the paused and completed panels with two-line statistic cells and a folded control guide so both fit a 320×568 screen without scrolling while the resume and action buttons stay touch-height. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
