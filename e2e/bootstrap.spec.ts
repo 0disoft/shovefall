@@ -409,6 +409,61 @@ async function saveBalancedDefaults(page: Page): Promise<void> {
   await saveSettings(page);
 }
 
+async function installFontScale(
+  page: Page,
+  fontScale: "standard" | "large" | "extra-large",
+): Promise<void> {
+  await page.addInitScript((scale) => {
+    localStorage.setItem(
+      "shovefall:user-preferences:v1",
+      JSON.stringify({
+        fontScale: scale,
+        soundEffectsVolume: 50,
+        backgroundMusicVolume: 50,
+      }),
+    );
+  }, fontScale);
+}
+
+async function forceCompletedPanel(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const app = document.querySelector("#app");
+    const pause = document.querySelector("#pause-menu");
+    for (const candidate of [
+      pause?.closest("section"),
+      pause?.closest("main"),
+      document.querySelector("#arena-host"),
+    ]) {
+      if (candidate) candidate.removeAttribute("hidden");
+    }
+    pause?.removeAttribute("hidden");
+    pause?.setAttribute("data-mode", "completed");
+    app?.setAttribute("data-screen", "arena");
+    app?.setAttribute("data-pause-menu", "open");
+    app?.setAttribute("data-round", "completed");
+    document.querySelector("#arena-actions")?.removeAttribute("hidden");
+    document.querySelector("#copy-round-report")?.removeAttribute("hidden");
+    document.querySelector("#view-finished-map")?.removeAttribute("hidden");
+    document.querySelector("#resume-round")?.setAttribute("hidden", "");
+    const skillList = document.querySelector("#round-skill-uses");
+    if (skillList) {
+      skillList.replaceChildren(
+        ...["빙결 지대", "수호 방패"].map((label) => {
+          const item = document.createElement("li");
+          const span = document.createElement("span");
+          const output = document.createElement("output");
+          span.textContent = label;
+          output.value = "6회";
+          item.append(span, output);
+          return item;
+        }),
+      );
+    }
+    document.body.classList.add("game-screen-active");
+  });
+  await expect(page.locator("#pause-menu")).toHaveAttribute("data-mode", "completed");
+}
+
 async function readSimulationTick(page: Page): Promise<number> {
   return Number(await page.locator("#game-telemetry").getAttribute("data-tick"));
 }
@@ -3991,58 +4046,6 @@ test.describe("short-window layout smokes", () => {
 
   test.describe("coarse cover-width panels", () => {
     test.use({ hasTouch: true, isMobile: true });
-
-    async function installFontScale(page: Page, fontScale: "standard" | "large" | "extra-large") {
-      await page.addInitScript((scale) => {
-        localStorage.setItem(
-          "shovefall:user-preferences:v1",
-          JSON.stringify({
-            fontScale: scale,
-            soundEffectsVolume: 50,
-            backgroundMusicVolume: 50,
-          }),
-        );
-      }, fontScale);
-    }
-
-    async function forceCompletedPanel(page: Page): Promise<void> {
-      await page.evaluate(() => {
-        const app = document.querySelector("#app");
-        const pause = document.querySelector("#pause-menu");
-        for (const candidate of [
-          pause?.closest("section"),
-          pause?.closest("main"),
-          document.querySelector("#arena-host"),
-        ]) {
-          if (candidate) candidate.removeAttribute("hidden");
-        }
-        pause?.removeAttribute("hidden");
-        pause?.setAttribute("data-mode", "completed");
-        app?.setAttribute("data-screen", "arena");
-        app?.setAttribute("data-pause-menu", "open");
-        app?.setAttribute("data-round", "completed");
-        document.querySelector("#arena-actions")?.removeAttribute("hidden");
-        document.querySelector("#copy-round-report")?.removeAttribute("hidden");
-        document.querySelector("#view-finished-map")?.removeAttribute("hidden");
-        document.querySelector("#resume-round")?.setAttribute("hidden", "");
-        const skillList = document.querySelector("#round-skill-uses");
-        if (skillList) {
-          skillList.replaceChildren(
-            ...["빙결 지대", "수호 방패"].map((label) => {
-              const item = document.createElement("li");
-              const span = document.createElement("span");
-              const output = document.createElement("output");
-              span.textContent = label;
-              output.value = "6회";
-              item.append(span, output);
-              return item;
-            }),
-          );
-        }
-        document.body.classList.add("game-screen-active");
-      });
-      await expect(page.locator("#pause-menu")).toHaveAttribute("data-mode", "completed");
-    }
 
     for (const width of [260, 280]) {
       test(`keeps the extra-large completed panel on one screen at ${width}px cover width`, async ({
