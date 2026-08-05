@@ -1,8 +1,10 @@
 # Static Release Procedure
 
-- Status: `0.199.42` narrow-phone completed-round candidate; hosted proof pending
+- Status: `0.199.43` one-tap attribute fill candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.199.42`
+- Current product version: `0.199.43`
+
+Product `0.199.43`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. Every starting-attribute card now ends with a MAX button that fills all remaining points at once, disables itself when the total budget or the card's own cap is reached, and re-enables as soon as points are freed; a new smoke journey fills all 20 points, frees five, refills, and asserts the disabled and enabled states. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
 Product `0.199.42`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. On narrow phones, the completed-round pause panel used to stack every statistics cell with the label above its value, so a 320×568 screen had to scroll about 123 px to reach the skill-use rows; the eleven statistics cells now lay label and value on one line in two columns, and the finished message, action buttons, and skill rows tighten so the whole panel, including two filled skill rows, fits a 320×568 viewport without scrolling. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 

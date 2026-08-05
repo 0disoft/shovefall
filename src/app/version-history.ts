@@ -9,6 +9,14 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.199.43",
+    title: "특성 포인트를 한 번에 다 넣는다요 ㅇㅅㅇ",
+    reason:
+      "남은 특성 포인트를 한 곳에 몰아주려면 + 버튼을 여러 번 눌러야 해서, 20포인트를 채우는 손가락이 지쳤다요.",
+    change:
+      "각 특성 카드에 MAX 버튼을 더해 남은 포인트를 전부 한 번에 넣고, 포인트가 없거나 칸이 꽉 차면 버튼이 알아서 잠긴다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.199.42",
     title: "좁은 폰에서도 완료 통계를 한 화면에 ㅇㅅㅇ",
     reason:
