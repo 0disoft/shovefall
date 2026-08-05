@@ -3308,6 +3308,86 @@ test("keeps kill-reward trait cards readable with the save action visible on a s
   expect(layout.bodyOverflow).toBe(false);
 });
 
+test("fits the landscape menu on fine-pointer short windows at standard and extra-large text", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 568, height: 320 });
+  await page.goto("/");
+  const standard = await page.evaluate(() => ({
+    scrollHeight: document.documentElement.scrollHeight,
+    clientHeight: document.documentElement.clientHeight,
+    scrollWidth: document.documentElement.scrollWidth,
+    clientWidth: document.documentElement.clientWidth,
+    menuActionsColumns: getComputedStyle(
+      document.querySelector(".main-menu__actions") ?? document.body,
+    ).gridTemplateColumns.split(" ").length,
+  }));
+  expect(standard.scrollHeight).toBeLessThanOrEqual(standard.clientHeight);
+  expect(standard.scrollWidth).toBeLessThanOrEqual(standard.clientWidth);
+  expect(standard.menuActionsColumns).toBeGreaterThanOrEqual(2);
+
+  await openSettings(page);
+  await openSettingsTab(page, "설정");
+  await page.getByLabel("아주 크게").check();
+  await page.getByRole("button", { name: "취소" }).click();
+  await expect(page.locator("#app")).toHaveAttribute("data-screen", "menu");
+  const extraLarge = await page.evaluate(() => ({
+    scrollHeight: document.documentElement.scrollHeight,
+    clientHeight: document.documentElement.clientHeight,
+    scrollWidth: document.documentElement.scrollWidth,
+    clientWidth: document.documentElement.clientWidth,
+  }));
+  expect(extraLarge.scrollHeight).toBeLessThanOrEqual(extraLarge.clientHeight);
+  expect(extraLarge.scrollWidth).toBeLessThanOrEqual(extraLarge.clientWidth);
+
+  await page.setViewportSize({ width: 844, height: 390 });
+  await page.goto("/");
+  const wideLandscape = await page.evaluate(() => ({
+    scrollHeight: document.documentElement.scrollHeight,
+    clientHeight: document.documentElement.clientHeight,
+  }));
+  expect(wideLandscape.scrollHeight).toBeLessThanOrEqual(wideLandscape.clientHeight);
+});
+
+test("keeps the fine-pointer landscape attribute steppers inside their cards", async ({ page }) => {
+  await page.setViewportSize({ width: 568, height: 320 });
+  await page.goto("/");
+  await openSettings(page);
+  const contained = await page.evaluate(() =>
+    [...document.querySelectorAll<HTMLElement>(".starting-attribute")].every((card) => {
+      const stepper = card.querySelector<HTMLElement>(".starting-attribute__stepper");
+      if (stepper === null) {
+        return true;
+      }
+      const cardRect = card.getBoundingClientRect();
+      const stepperRect = stepper.getBoundingClientRect();
+      return stepperRect.left >= cardRect.left - 1 && stepperRect.right <= cardRect.right + 1;
+    }),
+  );
+  expect(contained).toBe(true);
+});
+
+test("keeps the current version-history title fully visible on a narrow phone", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.goto("/");
+  await page.getByRole("button", { name: "버전 기록", exact: true }).click();
+  await expect(page.locator("#app")).toHaveAttribute("data-screen", "history");
+  const detail = await page.evaluate(() => {
+    const title = document.querySelector<HTMLElement>(
+      ".version-history__entry[data-current='true'] summary h3",
+    );
+    return title === null
+      ? null
+      : { scrollWidth: title.scrollWidth, clientWidth: title.clientWidth };
+  });
+  expect(detail).not.toBeNull();
+  if (detail !== null) {
+    expect(detail.scrollWidth).toBeLessThanOrEqual(detail.clientWidth + 1);
+  }
+});
+
 test.describe("narrow fine-pointer settings", () => {
   test.use({ viewport: { width: 260, height: 653 } });
 

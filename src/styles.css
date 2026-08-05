@@ -394,6 +394,17 @@ button:disabled {
   }
 }
 
+@media (max-height: 420px) {
+  .app-shell[data-screen="menu"] .main-menu__actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .app-shell[data-screen="menu"] .main-menu__actions .primary-action {
+    grid-column: 1 / -1;
+  }
+}
+
 .main-menu__actions .primary-action,
 .main-menu__actions .secondary-action {
   justify-content: center;
@@ -1123,6 +1134,12 @@ button:disabled {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.version-history__entry[open] summary h3 {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
 }
 
 .version-history__entry summary .version-history__version {
@@ -3335,6 +3352,35 @@ button:disabled {
     min-width: 26px;
     height: 40px;
     font-size: 0.9rem;
+  }
+}
+
+@media (pointer: fine) and (orientation: landscape) and (max-width: 640px) {
+  .starting-attribute__stepper {
+    grid-template-columns: 28px 36px 28px 36px 28px 44px;
+    gap: 2px;
+  }
+
+  .starting-attribute__stepper button {
+    width: 36px;
+    height: 44px;
+    font-size: 0.95rem;
+  }
+
+  .starting-attribute__stepper button[data-attribute-step="-5"],
+  .starting-attribute__stepper button[data-attribute-step="5"] {
+    width: 28px;
+  }
+
+  .starting-attribute__stepper button[data-attribute-step="max"] {
+    width: 44px;
+    font-size: 0.6rem;
+  }
+
+  .starting-attribute__stepper output {
+    min-width: 28px;
+    height: 44px;
+    font-size: 0.95rem;
   }
 }
 
