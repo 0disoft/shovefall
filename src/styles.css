@@ -844,7 +844,7 @@ button:disabled {
 }
 
 #starting-total-cooldown {
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .combat-stat-meter,

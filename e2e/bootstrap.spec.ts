@@ -3309,3 +3309,30 @@ test("keeps narrow fine-pointer pause statistics readable in two columns", async
     expect(cell.ddClipped).toBe(false);
   }
 });
+
+test("keeps the desktop build-summary skill-efficiency cell unclipped after allocation", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await openSettings(page);
+  await openSettingsTab(page, "특성");
+  await allocateBalancedAttributes(page);
+
+  const layout = await page.evaluate(() => {
+    const cells = [...document.querySelectorAll<HTMLElement>(".starting-build-summary > div")];
+    return {
+      clipped: cells
+        .filter((cell) => cell.scrollWidth > cell.clientWidth + 2)
+        .map((cell) => ({
+          label: cell.querySelector("dt")?.textContent ?? "",
+          value: (cell.querySelector("dd")?.textContent ?? "").trim().replace(/\s+/gu, " "),
+          sw: cell.scrollWidth,
+          cw: cell.clientWidth,
+        })),
+      docScrollWidth: document.documentElement.scrollWidth,
+      docClientWidth: document.documentElement.clientWidth,
+    };
+  });
+  expect(layout.clipped).toEqual([]);
+  expect(layout.docScrollWidth).toBeLessThanOrEqual(layout.docClientWidth);
+});
