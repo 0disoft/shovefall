@@ -9,6 +9,14 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.199.48",
+    title: "아주 크게 글씨에서도 체력·마나가 안 잘린다요 ㅇㅅㅇ",
+    reason:
+      "260px 화면에서 글씨를 아주 크게 키우면 체력·마나 버튼의 라벨이 값을 밀어내고 요약 숫자가 사라졌다요.",
+    change:
+      "300px 이하 화면의 아주 크게 글씨에서는 버튼 라벨을 접근성용으로만 남기고 요약 숫자가 전폭을 쓰게 해, 아무리 글씨가 커도 값이 잘리거나 사라지지 않게 했다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.199.47",
     title: "작은 화면의 일시정지가 한 장에 들어온다요 ㅇㅅㅇ",
     reason:
