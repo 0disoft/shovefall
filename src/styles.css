@@ -3398,17 +3398,33 @@ button:disabled {
   }
 
   .pause-menu__panel {
-    gap: 10px;
-    padding: 12px;
+    gap: 6px;
+    padding: 10px;
   }
 
-  .arena-actions {
-    gap: 8px;
-    padding-top: 0;
+  .pause-menu__panel h3 {
+    font-size: 1.06rem;
+  }
+
+  .pause-menu[data-mode="completed"] .arena-actions {
+    gap: 4px;
+    padding: 8px 10px;
+  }
+
+  :root .pause-menu[data-mode="completed"] .ready-message {
+    font-size: 0.84rem;
+    line-height: 1.2;
+  }
+
+  :root .pause-menu[data-mode="completed"] .arena-actions__buttons .primary-action,
+  :root .pause-menu[data-mode="completed"] .arena-actions__buttons .secondary-action {
+    min-height: 44px;
+    padding: 0 10px;
+    font-size: 0.9rem;
   }
 
   .arena-actions__buttons {
-    gap: 6px;
+    gap: 5px;
   }
 
   .game-telemetry {
@@ -3421,33 +3437,42 @@ button:disabled {
   }
 
   .round-statistics {
-    gap: 5px;
+    gap: 4px;
   }
 
   .round-statistics__grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 5px;
+    gap: 2px;
   }
 
   .round-statistics__grid div {
-    gap: 2px;
-    padding: 5px 7px;
+    grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+    align-items: baseline;
+    gap: 2px 6px;
+    padding: 2px 7px;
   }
 
   .round-statistics__grid dt {
-    font-size: 0.64rem;
+    font-size: 0.62rem;
   }
 
   .round-statistics__grid dd {
-    font-size: 0.8rem;
+    font-size: 0.78rem;
+    text-align: right;
+  }
+
+  .round-statistics h4,
+  .round-statistics h5 {
+    font-size: 0.82rem;
+    line-height: 1.2;
   }
 
   .round-statistics__skills ul {
-    gap: 5px;
+    gap: 3px;
   }
 
   .round-statistics__skills li {
-    padding: 7px 9px;
+    padding: 4px 8px;
   }
 
   .round-briefing-dialog {

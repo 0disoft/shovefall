@@ -1753,11 +1753,30 @@ test.describe("coarse-pointer surfaces", () => {
       document.querySelector("#resume-round")?.setAttribute("hidden", "");
       const message = document.querySelector("#round-message");
       if (message) message.textContent = "라운드 종료 · 7위";
+      const rankOutput = document.querySelector("#round-current-rank");
+      if (rankOutput instanceof HTMLOutputElement) rankOutput.value = "7위";
+      const elapsedOutput = document.querySelector("#round-elapsed-time");
+      if (elapsedOutput instanceof HTMLOutputElement) elapsedOutput.value = "3:24";
+      const skillList = document.querySelector("#round-skill-uses");
+      if (skillList) {
+        skillList.replaceChildren(
+          ...["빙결 지대", "수호 방패"].map((label) => {
+            const item = document.createElement("li");
+            const span = document.createElement("span");
+            const output = document.createElement("output");
+            span.textContent = label;
+            output.value = "6회";
+            item.append(span, output);
+            return item;
+          }),
+        );
+      }
       document.body.classList.add("game-screen-active");
     });
     await expect(page.locator("#pause-menu")).toHaveAttribute("data-mode", "completed");
     await expect(page.locator("#resume-round")).toBeHidden();
     await expect(page.locator("#game-telemetry")).toBeHidden();
+    await expect(page.locator("#round-skill-uses li")).toHaveCount(2);
 
     const layout = await page.evaluate(() => {
       const panel = document.querySelector(".pause-menu__panel");
@@ -1776,7 +1795,7 @@ test.describe("coarse-pointer surfaces", () => {
       };
     });
     expect(layout.actionsAboveStatistics).toBe(true);
-    expect(layout.panelScrollHeight).toBeGreaterThan(layout.panelClientHeight);
+    expect(layout.panelScrollHeight).toBeLessThanOrEqual(layout.panelClientHeight + 2);
     expect(layout.buttonHeights.every((height) => height >= 44)).toBe(true);
     expect(layout.bodyOverflow).toBe(false);
   });
