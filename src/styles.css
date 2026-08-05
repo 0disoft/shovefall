@@ -4268,7 +4268,7 @@ button:disabled {
   }
 
   :root[data-font-scale="extra-large"] .pause-menu__panel h3 {
-    font-size: 0.92rem;
+    font-size: 0.88rem;
     line-height: 1.15;
   }
 
@@ -4316,6 +4316,68 @@ button:disabled {
     min-height: 44px;
     padding: 0 8px;
     font-size: 0.8rem;
+  }
+
+  :root[data-font-scale="extra-large"] .pause-menu[data-mode="paused"] .pause-control-guide {
+    display: none;
+  }
+
+  :root[data-font-scale="extra-large"]
+    .pause-menu[data-mode="paused"]
+    .arena-actions__buttons
+    .primary-action,
+  :root[data-font-scale="extra-large"]
+    .pause-menu[data-mode="paused"]
+    .arena-actions__buttons
+    .secondary-action {
+    padding: 0 6px;
+    font-size: 0.74rem;
+  }
+
+  :root[data-font-scale="extra-large"] .pause-menu[data-mode="paused"] .game-telemetry {
+    gap: 2px;
+  }
+
+  :root[data-font-scale="extra-large"] .pause-menu[data-mode="paused"] .game-telemetry div {
+    grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+    align-items: baseline;
+    gap: 1px 4px;
+    padding: 1px 4px;
+  }
+
+  :root[data-font-scale="extra-large"] .pause-menu[data-mode="paused"] .game-telemetry dt {
+    font-size: 0.5rem;
+    line-height: 1.15;
+  }
+
+  :root[data-font-scale="extra-large"] .pause-menu[data-mode="paused"] .game-telemetry dd {
+    font-size: 0.62rem;
+    line-height: 1.2;
+    text-align: right;
+  }
+
+  :root[data-font-scale="extra-large"]
+    .pause-menu[data-mode="paused"]
+    .round-statistics__skills
+    li {
+    padding: 2px 5px;
+    font-size: 0.72rem;
+  }
+
+  :root[data-font-scale="extra-large"] .pause-menu[data-mode="paused"] .round-statistics__grid dt {
+    font-size: 0.52rem;
+    line-height: 1.15;
+  }
+
+  :root[data-font-scale="extra-large"] .pause-menu[data-mode="paused"] .round-statistics__grid dd {
+    font-size: 0.66rem;
+    line-height: 1.2;
+  }
+
+  :root[data-font-scale="extra-large"] .pause-menu[data-mode="paused"] .round-statistics h4,
+  :root[data-font-scale="extra-large"] .pause-menu[data-mode="paused"] .round-statistics h5 {
+    font-size: 0.7rem;
+    line-height: 1.15;
   }
 }
 

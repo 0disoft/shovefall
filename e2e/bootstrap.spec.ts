@@ -2266,6 +2266,45 @@ test.describe("coarse-pointer surfaces", () => {
       expect(layout.buttonHeights.every((height) => height >= 44)).toBe(true);
       expect(layout.bodyOverflow).toBe(false);
     });
+
+    test("keeps the paused panel on one screen at extra-large text", async ({ page }) => {
+      test.setTimeout(90_000);
+      await installFixedRoundSeed(page, 1, 0);
+      await page.goto("/");
+      await openSettings(page);
+      await saveSettings(page);
+      await openSettings(page);
+      await openSettingsTab(page, "설정");
+      await page.locator('input[name="fontScale"][value="extra-large"]').check();
+      await page.getByRole("button", { name: "설정 저장" }).click();
+      await expect(page.locator("#app")).toHaveAttribute("data-screen", "menu");
+      await startGame(page);
+      await expect(page.locator("#app")).toHaveAttribute("data-round", "active");
+      await page.keyboard.press("p");
+      await expect(page.locator("#pause-menu")).toBeVisible();
+      await page.locator("#developer-telemetry").evaluate((details: HTMLElement) => {
+        details.hidden = true;
+      });
+
+      const layout = await page.evaluate(() => {
+        const panel = document.querySelector(".pause-menu__panel");
+        const statistics = document.querySelector(".round-statistics")?.getBoundingClientRect();
+        const resume = document.querySelector("#resume-round")?.getBoundingClientRect();
+        return {
+          panelScrollHeight: panel?.scrollHeight ?? 0,
+          panelClientHeight: panel?.clientHeight ?? 0,
+          statisticsVisible:
+            statistics !== undefined &&
+            statistics.top >= 0 &&
+            statistics.bottom <= window.innerHeight,
+          resumeVisible:
+            resume !== undefined && resume.top >= 0 && resume.bottom <= window.innerHeight,
+        };
+      });
+      expect(layout.panelScrollHeight).toBeLessThanOrEqual(layout.panelClientHeight + 2);
+      expect(layout.resumeVisible).toBe(true);
+      expect(layout.statisticsVisible).toBe(true);
+    });
   });
 
   test.describe("landscape play HUD", () => {
@@ -3365,6 +3404,46 @@ test.describe("narrow fine-pointer portrait panels", () => {
     expect(layout.panelScrollHeight).toBeLessThanOrEqual(layout.panelClientHeight + 2);
     expect(layout.buttonHeights.every((height) => height >= 44)).toBe(true);
     expect(layout.bodyOverflow).toBe(false);
+  });
+
+  test("keeps the paused panel on one screen at extra-large text", async ({ page }) => {
+    test.setTimeout(90_000);
+    await installFixedRoundSeed(page, 1, 0);
+    await page.setViewportSize({ width: 320, height: 568 });
+    await page.goto("/");
+    await openSettings(page);
+    await saveSettings(page);
+    await openSettings(page);
+    await openSettingsTab(page, "설정");
+    await page.locator('input[name="fontScale"][value="extra-large"]').check();
+    await page.getByRole("button", { name: "설정 저장" }).click();
+    await expect(page.locator("#app")).toHaveAttribute("data-screen", "menu");
+    await startGame(page);
+    await expect(page.locator("#app")).toHaveAttribute("data-round", "active");
+    await page.keyboard.press("p");
+    await expect(page.locator("#pause-menu")).toBeVisible();
+    await page.locator("#developer-telemetry").evaluate((details: HTMLElement) => {
+      details.hidden = true;
+    });
+
+    const layout = await page.evaluate(() => {
+      const panel = document.querySelector(".pause-menu__panel");
+      const statistics = document.querySelector(".round-statistics")?.getBoundingClientRect();
+      const resume = document.querySelector("#resume-round")?.getBoundingClientRect();
+      return {
+        panelScrollHeight: panel?.scrollHeight ?? 0,
+        panelClientHeight: panel?.clientHeight ?? 0,
+        statisticsVisible:
+          statistics !== undefined &&
+          statistics.top >= 0 &&
+          statistics.bottom <= window.innerHeight,
+        resumeVisible:
+          resume !== undefined && resume.top >= 0 && resume.bottom <= window.innerHeight,
+      };
+    });
+    expect(layout.panelScrollHeight).toBeLessThanOrEqual(layout.panelClientHeight + 2);
+    expect(layout.resumeVisible).toBe(true);
+    expect(layout.statisticsVisible).toBe(true);
   });
 });
 
