@@ -9,6 +9,14 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.199.52",
+    title: "좁은 마우스 창도 특성과 일시정지가 삐져나오지 않는다요 ㅇㅅㅇ",
+    reason:
+      "특성 버튼이 320px 마우스 창에서 카드를 넘쳐 설정 화면이 가로로 밀리고, 일시정지 통계가 4열로 강제되어 '남은 육지' 라벨이 잘리고, 특성을 채우면 스킬 효율 요약이 셀을 넘쳤다요.",
+    change:
+      "특성 스테퍼를 376px 이하 마우스 창에서 카드 안에 들어오게 줄이고, 좁은 마우스 창의 일시정지 통계를 두 열로 바꾸고, 스킬 효율 요약이 길어지면 셀 안에서 줄바꿈되게 했다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.199.51",
     title: "게임 시작 전에 내 로드아웃을 보여준다요 ㅇㅅㅇ",
     reason:

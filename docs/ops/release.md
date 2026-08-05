@@ -1,8 +1,10 @@
 # Static Release Procedure
 
-- Status: `0.199.51` briefing loadout summary candidate; hosted proof pending
+- Status: `0.199.52` narrow fine-pointer clipping candidate; hosted proof pending
 - Primary owner: Repository owner
-- Current product version: `0.199.51`
+- Current product version: `0.199.52`
+
+Product `0.199.52`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. On fine-pointer windows up to 376 px the six attribute stepper buttons now shrink so the trait cards stay inside the settings form instead of spilling, fine-pointer pause statistics below 700 px switch from four cramped columns to two so labels such as `남은 육지` never clip, and long skill-efficiency totals such as `대기 -16% · 마나 -12%` wrap inside their build-summary cells after allocation. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
 Product `0.199.51`, simulation `84.0.0`, and content `50.0.0` keep replay v8 and reports v11. The pre-round briefing now shows the selected loadout: starting attributes such as `완력 4 · 민첩 4`, the two starting skills, and the starting item, compressed on narrow phones and landscape so the briefing still fits one screen at standard and extra-large text. These changes are presentation-only and do not alter simulation, AI, replay hashes, or balance; checked-in replay fixtures stay untouched. Hosted proof and physical-device validation remain pending.
 
