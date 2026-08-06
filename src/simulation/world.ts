@@ -2921,6 +2921,19 @@ export class SimulationWorld {
           velocity: Object.freeze({ x: direction.x * speed, y: direction.y * speed }),
         }),
         action: createTimedAction("Slipping", this.#tick, stumbleTicks, direction),
+        // A slip that carries a victim off the arena is as much the owner's
+        // kill as a shove into the water: record an offensive credit at
+        // trigger time so #resolveSupport attributes the fall. Strength is
+        // the actual slip speed so a same-tick shove with more impulse wins
+        // through chooseOffensiveCredit instead of being overridden.
+        shoveCredit: chooseOffensiveCredit(
+          participant.shoveCredit,
+          Object.freeze({
+            attackerActorId: patch.ownerActorId,
+            strength: speed,
+          }),
+          this.#tick,
+        ),
       });
     });
 

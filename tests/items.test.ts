@@ -635,6 +635,61 @@ describe("deterministic item effects", () => {
     );
   });
 
+  it("credits the Soap owner when a slipping victim slides off the arena into the water", () => {
+    const world = new SimulationWorld(
+      createItemConfig({ arenaColumns: 9, arenaRows: 9 }),
+      "soap-ocean-credit",
+      {
+        arenaLayout: "rectangular-fixture",
+        participantOverrides: [
+          {
+            startingAttributes: NEUTRAL_ATTRIBUTES,
+            actorId: 1,
+            position: { x: 2.5, y: 4.5 },
+            facing: { x: 1, y: 0 },
+            startingItems: ["soap"],
+          },
+          {
+            startingAttributes: NEUTRAL_ATTRIBUTES,
+            actorId: 2,
+            position: { x: 4.5, y: 4.5 },
+            facing: { x: 1, y: 0 },
+          },
+          ...PARTICIPANT_OVERRIDES.slice(2),
+        ],
+      },
+    );
+
+    world.step([
+      {
+        ...createNeutralCommand(world.tick, 1),
+        useItemSlot: 0,
+        targetPosition: { x: 5.5, y: 4.5 },
+      },
+    ]);
+    expect(world.createRenderFrame().soapPatches).toEqual([
+      expect.objectContaining({ ownerActorId: 1, tileId: "5:4" }),
+    ]);
+
+    let credited = false;
+    for (let index = 0; index < 240; index += 1) {
+      const result = world.step([{ ...createNeutralCommand(world.tick, 2), move: { x: 1, y: 0 } }]);
+      if (
+        result.events.some(
+          ({ kind, actorId, targetActorId }) =>
+            kind === "stat-point-earned" && actorId === 1 && targetActorId === 2,
+        )
+      ) {
+        credited = true;
+        break;
+      }
+    }
+
+    expect(credited).toBe(true);
+    expect(getActor(world, 1).progression.creditedEliminations).toBeGreaterThan(0);
+    expect(getActor(world, 2).action).toBe("Falling");
+  });
+
   it("does not grapple toward a body or bare ground and spends no cooldown", () => {
     const world = new SimulationWorld(createItemConfig(), "grapple-bare-ground", {
       arenaLayout: "rectangular-fixture",
