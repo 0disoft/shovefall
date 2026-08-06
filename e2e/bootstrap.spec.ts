@@ -3373,7 +3373,8 @@ test("allows an immediate fresh restart after a deterministic human defeat", asy
 
   await driveHumanUntilEliminated(page);
   await expect(page.locator("#app")).toHaveAttribute("data-human-eliminated", "true");
-  await expect(page.locator("#game-telemetry")).toHaveAttribute("data-simulation-rate", "6");
+  await expect(page.locator("#game-telemetry")).toHaveAttribute("data-simulation-rate", "3");
+  await expect(page.locator("#renderer-status")).toHaveText("빠른 관전 · 3×");
   await expect(page.locator("#arena-host")).toHaveAttribute("data-camera-mode", "spectator");
   await panSpectatorCameraWithArrows(page);
   const spectatorArenaBounds = await page.locator("#arena-host").boundingBox();
