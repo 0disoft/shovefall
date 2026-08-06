@@ -12,6 +12,7 @@
     "contract": "bun tools/check-architecture.ts",
     "fixtures:replay": "bun tools/generate-replay-fixtures.ts",
     "profile:scale": "bun tools/profile-scale.ts",
+    "profile:construction": "bun tools/profile-world-construction.ts",
     "audit:rounds": "bun tools/audit-rounds.ts all",
     "audit:rounds:production": "bun tools/audit-rounds.ts production-merge",
     "audit:rounds:production:shard-0": "bun tools/audit-rounds.ts production-shard 0",
