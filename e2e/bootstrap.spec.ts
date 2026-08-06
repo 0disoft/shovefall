@@ -1248,6 +1248,36 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await expect(page.locator("#skill-actions")).toBeHidden();
 });
 
+test("suppresses the native context menu inside in-game modal overlays", async ({ page }) => {
+  await page.goto("/");
+
+  // App-wide context-menu suppression stays removed (see the earlier test):
+  // only the in-game modal overlays that live outside the arena canvas may
+  // suppress the browser menu.
+  const overlays = ["#stat-upgrade-overlay", "#pause-menu", "#round-briefing-dialog"] as const;
+  const preventedBySelector = await Promise.all(
+    overlays.map(async (selector) => ({
+      selector,
+      prevented: await page.locator(selector).evaluate((surface) => {
+        const target = surface.querySelector("form, .pause-menu__panel") ?? surface;
+        const event = new MouseEvent("contextmenu", { bubbles: true, cancelable: true });
+        target.dispatchEvent(event);
+        return event.defaultPrevented;
+      }),
+    })),
+  );
+  for (const { selector, prevented } of preventedBySelector) {
+    expect(prevented, `${selector} should suppress the native context menu`).toBe(true);
+  }
+
+  // The app shell itself must still allow the native menu (menu/settings).
+  const appAllowsMenu = await page.locator("#app").evaluate((app) => {
+    const event = new MouseEvent("contextmenu", { bubbles: true, cancelable: true });
+    return app.dispatchEvent(event);
+  });
+  expect(appAllowsMenu).toBe(true);
+});
+
 test("offers six direct kill-reward traits without a progression tree", async ({ page }) => {
   await page.goto("/");
   await page.locator("#stat-upgrade-overlay").evaluate((overlay) => {
