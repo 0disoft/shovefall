@@ -547,7 +547,7 @@ function getEventMessage(event: SimulationEventV1): string | undefined {
   }
 }
 
-const suppressOverlayContextMenu = (event: MouseEvent): void => {
+const suppressNativeContextMenu = (event: MouseEvent): void => {
   event.preventDefault();
 };
 
@@ -1237,14 +1237,14 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
   document.addEventListener("keydown", handleAudioGesture, true);
   root.addEventListener("click", handleUiButtonClick);
 
-  // The arena canvas owns right-click while a round is active, but the
-  // in-game modal overlays live outside the canvas. Suppress the browser
-  // context menu on exactly those surfaces so a right-click inside the
-  // trait-upgrade, pause, or round-briefing dialog never leaks the native
-  // menu. Menu and settings screens intentionally keep the native menu.
-  for (const surface of [statUpgradeOverlay, pauseMenu, roundBriefingDialog]) {
-    surface.addEventListener("contextmenu", suppressOverlayContextMenu);
-  }
+  // The game owns right-click on every screen: menu, settings, scoreboard,
+  // version history, the arena, and the in-game overlays. Suppress the
+  // browser context menu at the document root so no surface — including the
+  // completed or dead round panel — leaks the native menu. The active
+  // arena's more specific handler still resolves destination movement or
+  // targeting cancellation before the canceled event bubbles to the
+  // document.
+  document.addEventListener("contextmenu", suppressNativeContextMenu);
 
   const getSelectedStartingItems = (): readonly string[] =>
     startingItemInputs.filter(({ checked }) => checked).map(({ value }) => value);
@@ -2527,9 +2527,7 @@ export async function bootstrapApplication(root: HTMLElement): Promise<void> {
     removeAudioGestureListeners();
     document.removeEventListener("keydown", handleGlobalKeyboard);
     root.removeEventListener("click", handleUiButtonClick);
-    for (const surface of [statUpgradeOverlay, pauseMenu, roundBriefingDialog]) {
-      surface.removeEventListener("contextmenu", suppressOverlayContextMenu);
-    }
+    document.removeEventListener("contextmenu", suppressNativeContextMenu);
 
     if (import.meta.env.DEV) {
       window.removeEventListener("shovefall:diagnostic-fatal", handleDiagnosticFatal);

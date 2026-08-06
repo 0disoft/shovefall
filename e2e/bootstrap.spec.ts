@@ -756,14 +756,14 @@ test("centers the fullscreen menu actions on the viewport", async ({ page }) => 
   expect(Math.abs(geometry.actionCenter - geometry.viewportCenter)).toBeLessThanOrEqual(1);
   await expect(page.locator(".masthead h1")).toBeVisible();
   await expect(page.locator(".fullscreen-guide")).toBeVisible();
-  // App-wide context-menu suppression was removed; the arena owns right-click
-  // (movement and targeting cancel) only while a round is active.
+  // The game suppresses the native context menu on every screen, including
+  // the main menu, settings, and the completed/dead round panel.
   const menuContextMenuAllowed = await page.locator("#app").evaluate((app) => {
     const event = new MouseEvent("contextmenu", { bubbles: true, cancelable: true });
     return app.dispatchEvent(event);
   });
 
-  expect(menuContextMenuAllowed).toBe(true);
+  expect(menuContextMenuAllowed).toBe(false);
 });
 
 test("saves the complete submission-capture loadout from fresh settings", async ({ page }) => {
@@ -1248,12 +1248,11 @@ test("boots WebGL and drives the fixed-tick gray-box round", async ({ page }) =>
   await expect(page.locator("#skill-actions")).toBeHidden();
 });
 
-test("suppresses the native context menu inside in-game modal overlays", async ({ page }) => {
+test("suppresses the native context menu across every game screen", async ({ page }) => {
   await page.goto("/");
 
-  // App-wide context-menu suppression stays removed (see the earlier test):
-  // only the in-game modal overlays that live outside the arena canvas may
-  // suppress the browser menu.
+  // The game suppresses the native context menu app-wide, and the in-game
+  // modal overlays that live outside the arena canvas are covered as well.
   const overlays = ["#stat-upgrade-overlay", "#pause-menu", "#round-briefing-dialog"] as const;
   const preventedBySelector = await Promise.all(
     overlays.map(async (selector) => ({
@@ -1270,12 +1269,25 @@ test("suppresses the native context menu inside in-game modal overlays", async (
     expect(prevented, `${selector} should suppress the native context menu`).toBe(true);
   }
 
-  // The app shell itself must still allow the native menu (menu/settings).
+  // The completed/dead round panel that the player reported also suppresses
+  // the native menu: it is the pause panel in completed mode.
+  const completedPanelPrevented = await page.locator("#pause-menu").evaluate((pauseMenu) => {
+    pauseMenu.setAttribute("data-mode", "completed");
+    const event = new MouseEvent("contextmenu", { bubbles: true, cancelable: true });
+    pauseMenu.dispatchEvent(event);
+    return event.defaultPrevented;
+  });
+  expect(completedPanelPrevented, "completed round panel should suppress the native menu").toBe(
+    true,
+  );
+
+  // The app shell suppresses the native menu on menu, settings, and every
+  // other game screen.
   const appAllowsMenu = await page.locator("#app").evaluate((app) => {
     const event = new MouseEvent("contextmenu", { bubbles: true, cancelable: true });
     return app.dispatchEvent(event);
   });
-  expect(appAllowsMenu).toBe(true);
+  expect(appAllowsMenu).toBe(false);
 });
 
 test("offers six direct kill-reward traits without a progression tree", async ({ page }) => {
