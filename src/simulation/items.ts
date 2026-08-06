@@ -207,10 +207,9 @@ function isFarEnough(position: Vector2, other: Vector2, clearance: number): bool
   return Math.hypot(position.x - other.x, position.y - other.y) >= clearance;
 }
 
-function getSpawnCandidates(
+function buildSpawnPool(
   tiles: readonly TileState[],
   participants: readonly ParticipantState[],
-  items: readonly ItemState[],
   blockedTileIds: ReadonlySet<string>,
 ): readonly ItemSpawnCandidate[] {
   const stableTiles = getStableTiles(tiles);
@@ -224,14 +223,22 @@ function getSpawnCandidates(
         isFarEnough(position, participant.body.position, PARTICIPANT_SPAWN_CLEARANCE),
       ),
     )
-    .filter((position) =>
-      items.every((item) => isFarEnough(position, item.position, ITEM_SPAWN_CLEARANCE)),
-    )
     .map((position) => {
       const band = getItemSpawnBandFromStableTiles(position, stableTileIds);
       const shoreDistance = getStableShoreDistance(position, stableTileIds);
       return Object.freeze({ position, band, shoreDistance });
     });
+}
+
+function getSpawnCandidates(
+  tiles: readonly TileState[],
+  participants: readonly ParticipantState[],
+  items: readonly ItemState[],
+  blockedTileIds: ReadonlySet<string>,
+): readonly ItemSpawnCandidate[] {
+  return buildSpawnPool(tiles, participants, blockedTileIds).filter((candidate) =>
+    items.every((item) => isFarEnough(candidate.position, item.position, ITEM_SPAWN_CLEARANCE)),
+  );
 }
 
 function chooseCandidate(
@@ -318,14 +325,16 @@ function createItem(itemId: ItemId, position: Vector2, tick: Tick, random: XorSh
 
 function spawnOne(
   state: ItemSystemState,
-  tiles: readonly TileState[],
-  participants: readonly ParticipantState[],
+  pool: readonly ItemSpawnCandidate[],
   tick: Tick,
   random: XorShift32,
-  blockedTileIds: ReadonlySet<string> = new Set(),
 ): { state: ItemSystemState; fact?: ItemEventFact } {
   const position = chooseCandidate(
-    getSpawnCandidates(tiles, participants, state.items, blockedTileIds),
+    pool.filter((candidate) =>
+      state.items.every((item) =>
+        isFarEnough(candidate.position, item.position, ITEM_SPAWN_CLEARANCE),
+      ),
+    ),
     random,
   );
 
@@ -415,8 +424,14 @@ export function createItemSystem(
     return state;
   }
 
+  // Participants and blocked tiles (trees) are static for the whole initial
+  // placement, so the candidate pool (positions, bands, shore distances) is
+  // built once. Only the distance-to-existing-items filter stays dynamic,
+  // preserving candidate order, filter order, and RNG draw sequence.
+  const initialSpawnPool = buildSpawnPool(tiles, participants, blockedTileIds);
+
   for (let index = 0; index < config.initialItemCount; index += 1) {
-    const next = spawnOne(state, tiles, participants, 0, random, blockedTileIds);
+    const next = spawnOne(state, initialSpawnPool, 0, random);
 
     if (next.fact === undefined) {
       break;
