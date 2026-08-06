@@ -2,7 +2,7 @@
 
 ## Current `0.198.0` contract
 
-- Product/simulation/content: `0.198.0 / 84.0.0 / 50.0.0`
+- Product/simulation/content: `0.198.0 / 84.1.0 / 50.0.0`
 - Public mode: 70 participants, Hard AI, fixed Slow collapse
 - Public map: `57×48`, exactly 12 separated 5–9-tile lakes under a 96-tile budget
 - Public round limit: 120 seconds

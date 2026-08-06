@@ -9,6 +9,14 @@ export interface VersionHistoryEntry {
 
 export const VERSION_HISTORY: readonly VersionHistoryEntry[] = Object.freeze([
   Object.freeze({
+    version: "0.199.59",
+    title: "비누를 밟고 강물에 빠진 적도 내가 처치한 것으로 기록된다요 ㅇㅅㅇ",
+    reason:
+      "내 비누에 미끄러진 적이 그대로 강물에 빠져 죽었는데 처치로 인정되지 않아 특성 포인트를 받지 못했다요.",
+    change:
+      "비누가 발화하는 순간 공격자로 기록해, 미끄러져 아레나 밖으로 떨어진 적도 내 처치로 인정받고 포인트를 받게 했다요 ㅇㅅㅇ",
+  }),
+  Object.freeze({
     version: "0.199.58",
     title: "납작한 창과 아주 좁은 화면에서도 일시정지·완료·브리핑이 한눈에 들어온다요 ㅇㅅㅇ",
     reason:

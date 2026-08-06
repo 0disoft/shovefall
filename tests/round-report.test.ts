@@ -82,8 +82,8 @@ describe("playtest round reports", () => {
       },
     });
     expect(report.versions).toEqual({
-      product: "0.199.58",
-      simulation: "84.0.0",
+      product: "0.199.59",
+      simulation: "84.1.0",
       content: "50.0.0",
     });
     expect(JSON.parse(serializePlaytestRoundReport(report))).toEqual(report);
