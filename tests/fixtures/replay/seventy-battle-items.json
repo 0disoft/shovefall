@@ -17,7 +17,7 @@
     "itemPolicyVersion": 2,
     "initialItemCount": 35,
     "maximumItemCount": 35,
-    "itemSpawnIntervalTicks": 300
+    "itemSpawnIntervalTicks": 180
   },
   "masterSeed": "seventy-battle-items-v1",
   "humanActorId": 1,
@@ -38,20 +38,20 @@
   "checkpoints": [
     {
       "tick": 1,
-      "stateHash": "fnv1a32:fbfd49cc"
+      "stateHash": "fnv1a32:5935a4c1"
     },
     {
       "tick": 60,
-      "stateHash": "fnv1a32:76bef065"
+      "stateHash": "fnv1a32:7090533a"
     },
     {
       "tick": 120,
-      "stateHash": "fnv1a32:23fb4122"
+      "stateHash": "fnv1a32:ff40b19d"
     },
     {
       "tick": 240,
-      "stateHash": "fnv1a32:5227dae8"
+      "stateHash": "fnv1a32:53580cb8"
     }
   ],
-  "finalHash": "fnv1a32:5227dae8"
+  "finalHash": "fnv1a32:53580cb8"
 }
