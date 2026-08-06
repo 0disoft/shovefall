@@ -6,20 +6,20 @@
   "buildId": "fixture-v4",
   "config": {
     "configVersion": 1,
-    "participantCount": 4,
-    "arenaColumns": 12,
-    "arenaRows": 10,
+    "participantCount": 70,
+    "arenaColumns": 57,
+    "arenaRows": 48,
     "roundLimitTicks": 600,
     "density": "normal",
     "difficulty": "normal",
     "collapseSpeed": "normal",
-    "itemsEnabled": false,
+    "itemsEnabled": true,
     "itemPolicyVersion": 2,
-    "initialItemCount": 0,
-    "maximumItemCount": 2,
-    "itemSpawnIntervalTicks": 0
+    "initialItemCount": 35,
+    "maximumItemCount": 35,
+    "itemSpawnIntervalTicks": 300
   },
-  "masterSeed": "idle-four-v1",
+  "masterSeed": "seventy-battle-items-v1",
   "humanActorId": 1,
   "humanSetup": {
     "startingAttributes": {
@@ -33,21 +33,25 @@
     "startingItems": [],
     "startingSkills": ["blink-step", "arc-bolt"]
   },
-  "endTick": 180,
+  "endTick": 240,
   "commands": [],
   "checkpoints": [
     {
+      "tick": 1,
+      "stateHash": "fnv1a32:fbfd49cc"
+    },
+    {
       "tick": 60,
-      "stateHash": "fnv1a32:c575453f"
+      "stateHash": "fnv1a32:76bef065"
     },
     {
       "tick": 120,
-      "stateHash": "fnv1a32:afe483f0"
+      "stateHash": "fnv1a32:23fb4122"
     },
     {
-      "tick": 180,
-      "stateHash": "fnv1a32:2bd99bfa"
+      "tick": 240,
+      "stateHash": "fnv1a32:5227dae8"
     }
   ],
-  "finalHash": "fnv1a32:2bd99bfa"
+  "finalHash": "fnv1a32:5227dae8"
 }

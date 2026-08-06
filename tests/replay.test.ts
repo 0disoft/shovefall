@@ -32,7 +32,9 @@ describe("replay fixture contract", () => {
       .filter((file) => file.endsWith(".json"))
       .toSorted();
 
-    expect(fixtureFiles).toHaveLength(3);
+    expect(fixtureFiles.length).toBeGreaterThanOrEqual(4);
+    expect(fixtureFiles).toContain("seventy-battle.json");
+    expect(fixtureFiles).toContain("seventy-battle-items.json");
 
     const fixtures = await Promise.all(
       fixtureFiles.map(async (fixtureFile) =>

@@ -1,5 +1,6 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { getArenaSize } from "../src/app/settings";
 import {
   createNeutralCommand,
   normalizeGameConfig,
@@ -16,6 +17,9 @@ interface FixtureDefinition {
   readonly commands: readonly ActorCommandV1[];
   readonly checkpoints: readonly number[];
   readonly humanSetup?: ReplayHumanSetupV4;
+  readonly itemsEnabled?: boolean;
+  readonly initialItemCount?: number;
+  readonly itemRespawnSeconds?: number;
 }
 
 function movementCommand(tick: number, x: number, y: number): ActorCommandV1 {
@@ -73,6 +77,25 @@ const definitions: readonly FixtureDefinition[] = [
     ],
     checkpoints: [60, 120, 180, 240],
   },
+  {
+    name: "seventy-battle",
+    participantCount: 70,
+    seed: "seventy-battle-v1",
+    endTick: 120,
+    commands: [],
+    checkpoints: [60, 120],
+  },
+  {
+    name: "seventy-battle-items",
+    participantCount: 70,
+    seed: "seventy-battle-items-v1",
+    endTick: 240,
+    commands: [],
+    checkpoints: [1, 60, 120, 240],
+    itemsEnabled: true,
+    initialItemCount: 35,
+    itemRespawnSeconds: 3,
+  },
 ];
 
 const outputDirectory = join(process.cwd(), "tests", "fixtures", "replay");
@@ -80,10 +103,21 @@ await mkdir(outputDirectory, { recursive: true });
 
 await Promise.all(
   definitions.map(async (definition) => {
+    const arenaSize = getArenaSize(definition.participantCount);
     const fixture = createReplayFixture({
       buildId: "fixture-v4",
       config: normalizeGameConfig({
         participantCount: definition.participantCount,
+        ...(definition.participantCount >= 70
+          ? { arenaColumns: arenaSize.columns, arenaRows: arenaSize.rows }
+          : {}),
+        ...(definition.itemsEnabled === undefined ? {} : { itemsEnabled: definition.itemsEnabled }),
+        ...(definition.initialItemCount === undefined
+          ? {}
+          : { initialItemCount: definition.initialItemCount }),
+        ...(definition.itemRespawnSeconds === undefined
+          ? {}
+          : { itemRespawnSeconds: definition.itemRespawnSeconds }),
         roundLimitSeconds: 10,
       }),
       masterSeed: definition.seed,
