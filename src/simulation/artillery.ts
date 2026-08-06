@@ -212,6 +212,28 @@ export function createArtilleryPlan(
   let impactCursor = 0;
   let consecutiveMisses = 0;
 
+  // A clear ocean approach stays clear for the whole plan: exposeNeighbors
+  // only ever removes tiles from supportedTileIds, so a ray that crossed no
+  // supported tile at some point crosses none at any later point. Cache clear
+  // verdicts per (ship, tile) so already-proven ocean rays are not sampled
+  // again on every launch decision. Blocked verdicts are never cached.
+  const clearApproachByShipAndTile = new Set<string>();
+  const hasClearApproach = (shipIndex: number, tile: TileState): boolean => {
+    const cacheKey = `${shipIndex}:${tile.tileId}`;
+    if (clearApproachByShipAndTile.has(cacheKey)) {
+      return true;
+    }
+    const shipOrigin = shipPositions[shipIndex];
+    if (shipOrigin === undefined) {
+      return false;
+    }
+    const clear = hasClearOceanApproach(shipOrigin, tile, supportedTileIds);
+    if (clear) {
+      clearApproachByShipAndTile.add(cacheKey);
+    }
+    return clear;
+  };
+
   while (pendingByTileId.size > 0) {
     const shipIndex = nextLaunchTickByShip.reduce(
       (selected, tick, index, ticks) =>
@@ -251,12 +273,15 @@ export function createArtilleryPlan(
         } =>
           choice.pending !== undefined &&
           choice.tile !== undefined &&
-          hasClearOceanApproach(origin, choice.tile, supportedTileIds),
+          hasClearApproach(shipIndex, choice.tile),
       )
+      .map((choice) => ({
+        ...choice,
+        distance: Math.hypot(choice.tile.column + 0.5 - origin.x, choice.tile.row + 0.5 - origin.y),
+      }))
       .toSorted(
         (left, right) =>
-          Math.hypot(left.tile.column + 0.5 - origin.x, left.tile.row + 0.5 - origin.y) -
-            Math.hypot(right.tile.column + 0.5 - origin.x, right.tile.row + 0.5 - origin.y) ||
+          left.distance - right.distance ||
           left.pending.priority - right.pending.priority ||
           left.tile.tileId.localeCompare(right.tile.tileId),
       )[0];
