@@ -5280,24 +5280,26 @@ button:disabled {
 
 /* Hybrid devices (touchscreen laptops, large tablets) expose touch even when
    the primary pointer is fine. Bootstrap marks html[data-touch-capable] from
-   navigator.maxTouchPoints and (any-pointer: coarse); that flag switches the
-   briefing and targeting guidance between keyboard and touch labels. Touch
-   controls themselves stay gated by width + primary pointer so a mouse-driven
-   touchscreen desktop keeps the keyboard-first HUD. */
+   navigator.maxTouchPoints and (any-pointer: coarse) as a reserved
+   input-mode-awareness flag for later input tracking; the guidance labels
+   below follow the same gate as the touch controls themselves. */
 
-/* Briefing and targeting guidance show keyboard labels by default and touch
-   labels only when the device exposes touch (hybrid devices included). */
+/* Briefing and targeting guidance follow the same gate as the touch
+   controls, so the copy never promises controls that are not shown on the
+   current device. */
 .round-briefing-dialog__controls .control-touch,
 .targeting-help .control-touch {
   display: none;
 }
 
-html[data-touch-capable="true"] .round-briefing-dialog__controls .control-keyboard,
-html[data-touch-capable="true"] .targeting-help .control-keyboard {
-  display: none;
-}
+@media (max-width: 820px), (pointer: coarse) {
+  .round-briefing-dialog__controls .control-keyboard,
+  .targeting-help .control-keyboard {
+    display: none;
+  }
 
-html[data-touch-capable="true"] .round-briefing-dialog__controls .control-touch,
-html[data-touch-capable="true"] .targeting-help .control-touch {
-  display: inline;
+  .round-briefing-dialog__controls .control-touch,
+  .targeting-help .control-touch {
+    display: inline;
+  }
 }
